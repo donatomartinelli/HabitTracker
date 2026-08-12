@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minimal Habit Tracker</title>
+    <style>
+        :root {
+            --bg-main: #000000;
+            --bg-sec: #0a0a0a;
+            --text-main: #ffffff;
+            --text-dim: #777777;
+            --border-color: #222222;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .layout {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .left-pane {
+            flex: 1;
+            border-right: 1px solid var(--border-color);
+            padding: 40px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .right-pane {
+            flex: 1;
+            background-color: var(--bg-sec);
+            padding: 40px;
+            overflow-y: auto;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+        }
+
+        h2 {
+            font-size: 1.2rem;
+            font-weight: 500;
+            color: #aaaaaa;
+            margin-top: 40px;
+            border-bottom: 1px dashed var(--border-color);
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        /* CALENDARIO MENSILE */
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .month-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            text-align: center;
+        }
+
+        .day-label {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            padding-bottom: 5px;
+        }
+
+        .month-day {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid #151515;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            color: #555;
+        }
+
+        .month-day.in-month {
+            color: #ccc;
+            border-color: #2a2a2a;
+        }
+
+        .month-day.today {
+            background-color: var(--text-main);
+            color: var(--bg-main);
+            font-weight: bold;
+        }
+
+        /* TRACKER GITHUB STYLE */
+        .tracker-wrapper {
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+
+        .tracker-grid {
+            display: grid;
+            grid-template-rows: repeat(7, 14px);
+            grid-auto-flow: column;
+            gap: 4px;
+        }
+
+        .cell {
+            width: 14px;
+            height: 14px;
+            border-radius: 2px;
+        }
+
+        /* Colori percentuale */
+        .lvl-none { background: #0a0a0a; outline: 1px solid #1a1a1a; outline-offset: -1px; } /* Nessun task previsto */
+        .lvl-0 { background: #1a1a1a; outline: 1px solid #333; outline-offset: -1px; } /* Task previsti ma 0% completati */
+        .lvl-1 { background: #444444; } /* < 40% */
+        .lvl-2 { background: #888888; } /* < 75% */
+        .lvl-3 { background: #cccccc; } /* < 100% */
+        .lvl-4 { background: #ffffff; box-shadow: 0 0 5px rgba(255,255,255,0.3); } /* 100% */
+
+        /* TO-DO LIST (OGGI) */
+        .category-group {
+            margin-bottom: 40px;
+        }
+
+        .category-title {
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 2px;
+            color: var(--text-dim);
+            margin-bottom: 15px;
+        }
+
+        .task-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid #1a1a1a;
+        }
+
+        .task-title {
+            font-size: 1.05rem;
+            color: #eeeeee;
+        }
+
+        .instances-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        .check-box {
+            width: 24px;
+            height: 24px;
+            border: 2px solid #555;
+            background: transparent;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .check-box:hover {
+            border-color: #888;
+        }
+
+        .check-box.checked {
+            background: var(--text-main);
+            border-color: var(--text-main);
+        }
+
+        .empty-state {
+            color: var(--text-dim);
+            font-style: italic;
+            margin-top: 20px;
+        }
+
+        /* Scrollbar styling */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--bg-main); }
+        ::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body>
+
+    <div class="layout">
+        <!-- Sinistra: Visione d'Insieme -->
+        <div class="left-pane">
+            <h1>Panoramica</h1>
+            
+            <div class="calendar-header" id="calendar-month-name">Mese Anno</div>
+            <div class="month-grid" id="calendar-grid">
+                <!-- Generato via JS -->
+            </div>
+
+            <h2>Consistent Tracker</h2>
+            <div class="tracker-wrapper">
+                <div class="tracker-grid" id="github-tracker">
+                    <!-- Generato via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Destra: Il Presente -->
+        <div class="right-pane">
+            <h1>Oggi</h1>
+            <div id="today-tasks">
+                <!-- Generato via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. GESTIONE DATI (LocalStorage & Template) ---
+        
+        // Inizializzazione dati demo se non esistono
+        function initData() {
+            let templates = localStorage.getItem('tracker_templates');
+            if (!templates) {
+                // Modello dati iniziale
+                const defaultTemplates = [
+                    { id: "t1", category: "Studio", title: "Sessioni Matematica (15 min)", instances: 6, frequency: "weekdays", startDate: "2026-08-01", endDate: "2026-12-31" },
+                    { id: "t2", category: "Palestra", title: "Allenamento in sala", instances: 1, frequency: "specific", daysOfWeek: [1, 3, 5], startDate: "2026-08-01", endDate: "2026-12-31" },
+                    { id: "t3", category: "Progetti", title: "Sviluppo Poker Bot", instances: 2, frequency: "all", startDate: "2026-08-01", endDate: "2026-12-31" },
+                    { id: "t4", category: "Studio", title: "Ripasso Esercizi", instances: 1, frequency: "weekends", startDate: "2026-08-01", endDate: "2026-12-31" }
+                ];
+                localStorage.setItem('tracker_templates', JSON.stringify(defaultTemplates));
+            }
+            
+            if (!localStorage.getItem('tracker_logs')) {
+                localStorage.setItem('tracker_logs', JSON.stringify({}));
+            }
+        }
+
+        initData();
+        const templates = JSON.parse(localStorage.getItem('tracker_templates'));
+        let logs = JSON.parse(localStorage.getItem('tracker_logs'));
+
+        // Utility: formatta la data in YYYY-MM-DD (fuso orario locale)
+        function formatDate(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
+        const todayObj = new Date();
+        const todayStr = formatDate(todayObj);
+
+        // Controlla se un template è attivo in una specifica data
+        function isTaskActiveOnDate(template, dateStr) {
+            if (dateStr < template.startDate || dateStr > template.endDate) return false;
+            
+            const dateObj = new Date(dateStr);
+            const dayOfWeek = dateObj.getDay(); // 0 = Dom, 1 = Lun, ... 6 = Sab
+            
+            if (template.frequency === 'all') return true;
+            if (template.frequency === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) return true;
+            if (template.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) return true;
+            if (template.frequency === 'specific' && template.daysOfWeek.includes(dayOfWeek)) return true;
+            
+            return false;
+        }
+
+        // Calcola statistiche per una certa data (totale previsti vs completati)
+        function getStatsForDate(dateStr) {
+            let totalInstances = 0;
+            let completedInstances = 0;
+
+            templates.forEach(t => {
+                if (isTaskActiveOnDate(t, dateStr)) {
+                    totalInstances += t.instances;
+                    // Se c'è un log per questa data e questo task
+                    if (logs[dateStr] && logs[dateStr][t.id]) {
+                        // Conta quanti "true" ci sono nell'array delle checkbox
+                        completedInstances += logs[dateStr][t.id].filter(Boolean).length;
+                    }
+                }
+            });
+
+            return { total: totalInstances, completed: completedInstances };
+        }
+
+
+        // --- 2. RENDER: DESTRA (To-Do list di Oggi) ---
+        
+        function toggleTask(templateId, instanceIndex) {
+            if (!logs[todayStr]) logs[todayStr] = {};
+            if (!logs[todayStr][templateId]) {
+                // Inizializza array con 'false'
+                const t = templates.find(x => x.id === templateId);
+                logs[todayStr][templateId] = Array(t.instances).fill(false);
+            }
+            
+            // Inverti lo stato
+            logs[todayStr][templateId][instanceIndex] = !logs[todayStr][templateId][instanceIndex];
+            
+            // Salva e aggiorna UI
+            localStorage.setItem('tracker_logs', JSON.stringify(logs));
+            renderToday();
+            renderTracker();
+        }
+
+        function renderToday() {
+            const container = document.getElementById('today-tasks');
+            container.innerHTML = '';
+
+            // Raggruppa i task attivi oggi per categoria
+            const categories = {};
+            let hasTasks = false;
+
+            templates.forEach(t => {
+                if (isTaskActiveOnDate(t, todayStr)) {
+                    hasTasks = true;
+                    if (!categories[t.category]) categories[t.category] = [];
+                    categories[t.category].push(t);
+                }
+            });
+
+            if (!hasTasks) {
+                container.innerHTML = `<div class="empty-state">Nessun task programmato per oggi. Goditi il riposo.</div>`;
+                return;
+            }
+
+            // Genera HTML
+            for (const [cat, tasks] of Object.entries(categories)) {
+                const groupDiv = document.createElement('div');
+                groupDiv.className = 'category-group';
+                
+                const title = document.createElement('div');
+                title.className = 'category-title';
+                title.innerText = cat;
+                groupDiv.appendChild(title);
+
+                tasks.forEach(t => {
+                    const taskItem = document.createElement('div');
+                    taskItem.className = 'task-item';
+                    
+                    const taskTitle = document.createElement('div');
+                    taskTitle.className = 'task-title';
+                    taskTitle.innerText = t.title;
+                    
+                    const instancesContainer = document.createElement('div');
+                    instancesContainer.className = 'instances-container';
+
+                    // Recupera lo stato attuale dal log
+                    const currentLog = (logs[todayStr] && logs[todayStr][t.id]) || Array(t.instances).fill(false);
+
+                    for (let i = 0; i < t.instances; i++) {
+                        const box = document.createElement('div');
+                        box.className = `check-box ${currentLog[i] ? 'checked' : ''}`;
+                        box.onclick = () => toggleTask(t.id, i);
+                        instancesContainer.appendChild(box);
+                    }
+
+                    taskItem.appendChild(taskTitle);
+                    taskItem.appendChild(instancesContainer);
+                    groupDiv.appendChild(taskItem);
+                });
+
+                container.appendChild(groupDiv);
+            }
+        }
+
+
+        // --- 3. RENDER: SINISTRA (Tracker & Calendario) ---
+
+        function renderCalendar() {
+            const grid = document.getElementById('calendar-grid');
+            const header = document.getElementById('calendar-month-name');
+            grid.innerHTML = '';
+            
+            const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
+            header.innerText = `${monthNames[todayObj.getMonth()]} ${todayObj.getFullYear()}`;
+
+            const days = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
+            days.forEach(d => {
+                const label = document.createElement('div');
+                label.className = 'day-label';
+                label.innerText = d;
+                grid.appendChild(label);
+            });
+
+            // Calcoli per la griglia del mese (inziando da Lunedì)
+            const firstDay = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1);
+            const lastDay = new Date(todayObj.getFullYear(), todayObj.getMonth() + 1, 0);
+            
+            // Fai iniziare la settimana di Lunedì (getDay(): Dom=0, Lun=1 -> Dom=7, Lun=1)
+            let startOffset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
+
+            // Celle vuote prima del 1° del mese
+            for (let i = 0; i < startOffset; i++) {
+                const empty = document.createElement('div');
+                empty.className = 'month-day';
+                grid.appendChild(empty);
+            }
+
+            // Giorni del mese
+            for (let i = 1; i <= lastDay.getDate(); i++) {
+                const dayCell = document.createElement('div');
+                dayCell.className = 'month-day in-month';
+                if (i === todayObj.getDate()) dayCell.classList.add('today');
+                dayCell.innerText = i;
+                grid.appendChild(dayCell);
+            }
+        }
+
+        function renderTracker() {
+            const tracker = document.getElementById('github-tracker');
+            tracker.innerHTML = '';
+
+            // Genera l'ultimo anno (365 giorni) fino a oggi
+            const daysToRender = 364; // 52 settimane * 7 giorni = 364
+            const startDate = new Date(todayObj);
+            startDate.setDate(todayObj.getDate() - daysToRender + 1); 
+            
+            // Compensa per allineare la prima cella al giorno corretto della settimana
+            // Non strettamente necessario in un MVP flex, ma utile per formattazione grid rigorosa
+            
+            for (let i = 0; i < daysToRender; i++) {
+                const d = new Date(startDate);
+                d.setDate(startDate.getDate() + i);
+                const dateStr = formatDate(d);
+                
+                const stats = getStatsForDate(dateStr);
+                
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.title = dateStr; // Tooltip on hover
+
+                if (stats.total === 0) {
+                    cell.classList.add('lvl-none');
+                } else {
+                    const percentage = stats.completed / stats.total;
+                    if (percentage === 0) cell.classList.add('lvl-0');
+                    else if (percentage < 0.4) cell.classList.add('lvl-1');
+                    else if (percentage < 0.75) cell.classList.add('lvl-2');
+                    else if (percentage < 1) cell.classList.add('lvl-3');
+                    else cell.classList.add('lvl-4');
+                }
+
+                tracker.appendChild(cell);
+            }
+        }
+
+        // --- 4. AVVIO ---
+        renderToday();
+        renderCalendar();
+        renderTracker();
+
+    </script>
+</body>
+</html>
