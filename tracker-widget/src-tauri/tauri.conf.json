@@ -10,9 +10,15 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "tracker-widget",
-        "width": 800,
-        "height": 600
+        "title": "Minimal Tracker",
+        "width": 950,
+        "height": 620,
+        "decorations": false,
+        "transparent": false,
+        "skipTaskbar": false,
+        "center": true,
+        "resizable": true,
+        "visible": true
       }
     ],
     "security": {

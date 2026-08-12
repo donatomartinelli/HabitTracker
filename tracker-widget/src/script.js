@@ -558,3 +558,17 @@ document.getElementById('eventForm').addEventListener('submit', function(e) {
 renderTasks(); 
 renderCalendar();
 renderTracker();
+
+// --- 6. CHIUSURA NATIVA WIDGET ---
+function closeWidget() {
+    if (window.__TAURI__) {
+        // Chiude il processo nativo di Windows tramite Tauri
+        if (window.__TAURI__.window && window.__TAURI__.window.getCurrentWindow) {
+            window.__TAURI__.window.getCurrentWindow().close(); // Tauri v2
+        } else if (window.__TAURI__.window && window.__TAURI__.window.appWindow) {
+            window.__TAURI__.window.appWindow.close(); // Tauri v1
+        }
+    } else {
+        window.close(); // Fallback se aperto nel browser
+    }
+}
