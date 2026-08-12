@@ -1,16 +1,17 @@
 :root {
-    --bg-main: #000000;
-    --bg-sec: #050505;
+    /* rgba al 92% per una trasparenza leggerissima e molto elegante */
+    --bg-main: rgba(0, 0, 0, 0.92); 
+    --bg-sec: rgba(5, 5, 5, 0.92);
     --text-main: #ffffff;
     --text-dim: #666666;
-    --border-color: #333333;
+    --border-color: rgba(51, 51, 51, 0.8);
 }
 
-/* BRUTALIST & MONO STYLE */
 * { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
 
 body {
-    background-color: var(--bg-main);
+    /* Il body DEVE essere trasparente per far comunicare Tauri con Windows */
+    background-color: transparent; 
     color: var(--text-main);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
     display: flex;
@@ -23,6 +24,8 @@ body {
     display: flex; 
     width: 100%; 
     height: 100%; 
+    background-color: var(--bg-main); /* Applichiamo il colore semi-trasparente qui */
+    backdrop-filter: blur(8px); /* Sfoca leggermente lo sfondo dietro la finestra */
 }
 /* 40% Left Pane */
 .left-pane {

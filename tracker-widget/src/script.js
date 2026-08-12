@@ -348,7 +348,7 @@ function renderTasks() {
     }
 
     if (!hasAnyTasks) {
-        container.innerHTML = `<div class="empty-state">Nothing scheduled for this day. Rest.</div>`;
+        container.innerHTML = `<div class="empty-state">Nothing scheduled for this day. </div>`;
     }
 }
 
@@ -560,15 +560,11 @@ renderCalendar();
 renderTracker();
 
 // --- 6. CHIUSURA NATIVA WIDGET ---
-function closeWidget() {
+document.getElementById('btn-close-app').addEventListener('click', () => {
     if (window.__TAURI__) {
-        // Chiude il processo nativo di Windows tramite Tauri
-        if (window.__TAURI__.window && window.__TAURI__.window.getCurrentWindow) {
-            window.__TAURI__.window.getCurrentWindow().close(); // Tauri v2
-        } else if (window.__TAURI__.window && window.__TAURI__.window.appWindow) {
-            window.__TAURI__.window.appWindow.close(); // Tauri v1
-        }
+        // Ora che ha i permessi, questo comando chiuderà la finestra istantaneamente
+        window.__TAURI__.window.getCurrentWindow().close();
     } else {
-        window.close(); // Fallback se aperto nel browser
+        window.close();
     }
-}
+});
