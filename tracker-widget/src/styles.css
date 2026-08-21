@@ -10,7 +10,6 @@
 * { box-sizing: border-box; margin: 0; padding: 0; border-radius: 0 !important; }
 
 body {
-    /* Il body DEVE essere trasparente per far comunicare Tauri con Windows */
     background-color: transparent; 
     color: var(--text-main);
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
@@ -24,9 +23,10 @@ body {
     display: flex; 
     width: 100%; 
     height: 100%; 
-    background-color: var(--bg-main); /* Applichiamo il colore semi-trasparente qui */
-    backdrop-filter: blur(8px); /* Sfoca leggermente lo sfondo dietro la finestra */
+    background-color: var(--bg-main); 
+    backdrop-filter: blur(8px); 
 }
+
 /* 40% Left Pane */
 .left-pane {
     flex: 4;
@@ -35,16 +35,14 @@ body {
     flex-direction: column;
 }
 
-/* Il calendario si prende tutto lo spazio rimasto */
 .calendar-section {
     flex: 1; 
-    padding: 30px 40px;
+    padding: 20px 25px; /* Ridotto per schermi divisi */
     overflow-y: auto;
     display: flex;
     flex-direction: column;
 }
 
-/* Il tracker ha un'altezza fissa e non ruberà mai spazio al calendario */
 .tracker-section {
     flex: 0 0 170px; 
     padding: 20px 40px;
@@ -55,13 +53,36 @@ body {
     background-color: #020202;
 }
 
-/* 60% Right Pane */
+/* 60% Right Pane - Ora gestisce due righe impilate */
 .right-pane {
     flex: 6;
     background-color: var(--bg-sec);
+    position: relative;
+    display: flex;
+    flex-direction: column; /* Cambiato a colonna */
+}
+
+.agenda-section {
+    flex: 1; /* L'agenda prende tutto lo spazio superiore */
     padding: 40px;
     overflow-y: auto;
-    position: relative;
+}
+
+.notes-section {
+    flex: 0 0 170px; /* Stessa identica altezza del tracker a sinistra */
+    padding: 20px 40px;
+    background-color: #030303;
+    border-top: 1px dashed var(--border-color); /* Separatore sopra */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.notes-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
 }
 
 /* HEADERS */
@@ -84,18 +105,19 @@ h2 { font-size: 1rem; font-weight: normal; color: var(--text-dim); text-transfor
 .calendar-header .nav-btn { background: none; border: 1px solid transparent; color: var(--text-dim); cursor: pointer; font-size: 1.2rem; padding: 2px 8px; transition: 0.2s;}
 .calendar-header .nav-btn:hover { color: var(--text-main); border-color: var(--text-main); }
 
-/* Griglia del calendario leggermente più compatta per adattarsi meglio */
 .month-grid { 
     display: grid; 
     grid-template-columns: repeat(7, 1fr); 
-    gap: 4px; /* Ridotto il gap per recuperare spazio verticale */
+    gap: 4px; 
     width: 100%; 
     margin-top: 10px; 
 }
 .day-label { font-size: 0.75rem; color: var(--text-dim); padding-bottom: 5px; text-align: center; border-bottom: 1px solid var(--border-color);}
 
 .month-day { 
-    width: 100%; aspect-ratio: 1; 
+    width: 100%; 
+    min-height: 45px; /* Sostituisce aspect-ratio per prevenire il collasso */
+    padding-bottom: 12px; /* Lascia spazio ai puntini in basso */
     display: flex; align-items: center; justify-content: center; 
     border: 1px solid #1a1a1a; font-size: 1rem; color: #555; 
     cursor: pointer; transition: 0.1s; font-weight: bold; position: relative;
@@ -103,12 +125,17 @@ h2 { font-size: 1rem; font-weight: normal; color: var(--text-dim); text-transfor
 .month-day.in-month { color: #ccc; border-color: #333; }
 .month-day.in-month:hover { background-color: #111; border-color: #666;}
 
-.dots-container { position: absolute; bottom: 6px; display: flex; gap: 3px; justify-content: center; width: 100%; }
-.dot { width: 5px; height: 5px; }
+.dots-container { position: absolute; bottom: 6px; display: flex; gap: 3px; justify-content: center; align-items: center; width: 100%; }
+
+/* PUNTO CIRCOLARE (Ignora il reset) */
+.dot { width: 5px; height: 5px; border-radius: 50% !important; }
+
+/* MEDIA QUERY: Nasconde i puntini se l'altezza scende sotto 520px per evitare sovrapposizioni */
+@media (max-height: 520px) {
+    .dots-container { display: none !important; }
+}
 
 .month-day.today { border: 2px solid var(--text-main); color: var(--text-main); }
-
-/* Selected State Fix (No blend-mode, solid text color on hover) */
 .month-day.selected { 
     background-color: var(--text-main); 
     color: var(--bg-main); 
@@ -119,9 +146,7 @@ h2 { font-size: 1rem; font-weight: normal; color: var(--text-dim); text-transfor
     color: var(--bg-main); 
     border-color: var(--text-main); 
 }
-.month-day.selected .dot { 
-    outline: 1px solid var(--bg-main); /* Helps specific colors pop on white background */
-}
+.month-day.selected .dot { outline: 1px solid var(--bg-main); }
 
 /* TRACKER GITHUB STYLE */
 .tracker-wrapper { width: 100%; overflow-x: auto; padding-bottom: 10px; text-align: center; }

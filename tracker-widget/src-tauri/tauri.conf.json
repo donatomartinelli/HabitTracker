@@ -11,7 +11,7 @@
     "windows": [
       {
         "title": "Minimal Tracker",
-        "width": 950,
+        "width": 1100,
         "height": 620,
         "decorations": false,
         "transparent": true,

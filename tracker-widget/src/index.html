@@ -41,15 +41,36 @@
             <!-- 2. TASTO CHIUSURA (Senza onclick, usiamo l'ID) -->
             <button id="btn-close-app" style="position: absolute; top: 10px; right: 20px; background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem; z-index: 50;">✕</button>
             
-            <div class="header-actions">
-                <h1 id="selected-date-title">Today</h1>
-                <div class="header-buttons">
-                    <button class="btn btn-event" onclick="openEventModal()">+ Event</button>
-                    <button class="btn" onclick="openManagerModal()">⚙ Manage</button>
-                    <button class="btn btn-primary" onclick="openFormModal()">+ New Habit</button>
+            <!-- 3A. AGENDA (70% del blocco destro) -->
+            <div class="agenda-section">
+                <div class="header-actions">
+                    <h1 id="selected-date-title">Today</h1>
+                    <div class="header-buttons">
+                        <button class="btn btn-primary" onclick="openTimerModal()">▶ Focus</button>
+                        <button class="btn btn-event" onclick="openEventModal()">+ Event</button>
+                        <button class="btn" onclick="openManagerModal()">⚙ Manage</button>
+                        <button class="btn btn-primary" onclick="openFormModal()">+ New Habit</button>
+                    </div>
+                </div>
+                <div id="today-tasks"></div>
+            </div>
+
+            <!-- 3B. NOTES (Basso a destra, altezza fissa) -->
+            <div class="notes-section">
+                <div class="notes-controls">
+                    <h2 style="margin: 0; color: var(--text-main); border: none; padding: 0;">Quick Notes</h2>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <select id="note-category" class="form-control" style="width: 160px; padding: 4px; font-weight: bold;"></select>
+                        <button class="icon-btn" onclick="addNoteCategory()" title="Add Category">+</button>
+                        <button class="icon-btn delete" onclick="deleteNoteCategory()" title="Delete Category">×</button>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 15px; height: 100%;">
+                    <textarea id="note-text" class="form-control" style="flex: 1; resize: none; font-family: inherit; font-size: 0.9rem;" placeholder="Write your ideas here..."></textarea>
+                    <button id="btn-save-note" class="btn btn-primary" onclick="saveNote()" style="width: 120px; font-size: 0.9rem;">Save</button>
                 </div>
             </div>
-            <div id="today-tasks"></div>
+            
         </div>
     </div>
 
@@ -69,17 +90,27 @@
         <div class="modal-content" style="width: 350px;">
             <h2>Focus Session</h2>
             <form id="timerSetupForm">
-                <input type="hidden" id="tmr-task-id">
-                <input type="hidden" id="tmr-index">
                 <div class="form-group">
                     <label>Duration (Minutes)</label>
-                    <input type="number" id="tmr-minutes" class="form-control" min="1" required>
+                    <input type="number" id="tmr-minutes" class="form-control" value="25" min="1" required>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Start Timer</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Timer Complete Modal -->
+    <div id="timerCompleteModal" class="modal-overlay">
+        <div class="modal-content" style="width: 400px;">
+            <h2>Session Complete!</h2>
+            <p style="color: var(--text-dim); margin-bottom: 15px;">Select a task to check off:</p>
+            <div id="uncompleted-tasks-list" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeModals()">Skip</button>
+            </div>
         </div>
     </div>
 

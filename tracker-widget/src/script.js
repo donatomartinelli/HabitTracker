@@ -3,12 +3,46 @@ function initData() {
     if (!localStorage.getItem('tracker_templates')) localStorage.setItem('tracker_templates', JSON.stringify([]));
     if (!localStorage.getItem('tracker_logs')) localStorage.setItem('tracker_logs', JSON.stringify({}));
     if (!localStorage.getItem('tracker_events')) localStorage.setItem('tracker_events', JSON.stringify([]));
+    if (!localStorage.getItem('tracker_note_cats')) localStorage.setItem('tracker_note_cats', JSON.stringify(["General", "Productivity", "Math", "Ideas"]));
 }
 
 initData();
 let templates = JSON.parse(localStorage.getItem('tracker_templates'));
 let logs = JSON.parse(localStorage.getItem('tracker_logs'));
 let specificEvents = JSON.parse(localStorage.getItem('tracker_events'));
+let noteCategories = JSON.parse(localStorage.getItem('tracker_note_cats'));
+
+function renderNoteCategories() {
+    const select = document.getElementById('note-category');
+    select.innerHTML = '';
+    noteCategories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat;
+        opt.innerText = cat;
+        select.appendChild(opt);
+    });
+}
+
+function addNoteCategory() {
+    const newCat = prompt("Name of the new category (creates a new .txt file):");
+    if (newCat && newCat.trim() !== "" && !noteCategories.includes(newCat.trim())) {
+        noteCategories.push(newCat.trim());
+        localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
+        renderNoteCategories();
+        document.getElementById('note-category').value = newCat.trim();
+    }
+}
+
+function deleteNoteCategory() {
+    const select = document.getElementById('note-category');
+    const cat = select.value;
+    if (!cat) return;
+    if (confirm(`Remove "${cat}" from the list? (This won't delete the .txt file from your PC)`)) {
+        noteCategories = noteCategories.filter(c => c !== cat);
+        localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
+        renderNoteCategories();
+    }
+}
 
 function saveData() {
     localStorage.setItem('tracker_templates', JSON.stringify(templates));
@@ -48,17 +82,21 @@ function isTaskActiveOnDate(template, dateStr) {
     return false;
 }
 
+// AGGIORNAMENTO: Ora cerca le categorie uniche attive per mettere più puntini
 function getStatsForDate(dateStr) {
     let total = 0, completed = 0;
+    let activeCategories = new Set();
+    
     templates.forEach(t => {
         if (isTaskActiveOnDate(t, dateStr)) {
             total += t.instances;
+            activeCategories.add(t.category);
             if (logs[dateStr] && logs[dateStr][t.id]) {
                 completed += logs[dateStr][t.id].filter(Boolean).length;
             }
         }
     });
-    return { total, completed };
+    return { total, completed, categories: Array.from(activeCategories) };
 }
 
 // --- 2. ACTIONS (CRUD) ---
@@ -178,46 +216,20 @@ function selectDate(dateStr) {
 
 // --- 3. POMODORO TIMER (MODAL BASED) ---
 let pomodoroInterval;
-let activePomodoroData = null;
 
-// Apre la modale per decidere i minuti
-function openTimerModal(taskId, defaultMins) {
-    const t = templates.find(x => x.id === taskId);
-    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][taskId]) || Array(t.instances).fill(false);
-    
-    let targetIndex = -1;
-    for(let i=0; i < t.instances; i++){
-        if(!currentLog[i]) { targetIndex = i; break; }
-    }
-
-    if (targetIndex === -1) {
-        alert("All sessions for this task are already completed today!");
-        return;
-    }
-
-    document.getElementById('tmr-task-id').value = taskId;
-    document.getElementById('tmr-index').value = targetIndex;
-    document.getElementById('tmr-minutes').value = defaultMins;
-    
+function openTimerModal() {
     closeModals();
     document.getElementById('timerSetupModal').style.display = 'flex';
 }
 
-// Quando premi "Start" dalla modale
 document.getElementById('timerSetupForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const taskId = document.getElementById('tmr-task-id').value;
-    const index = parseInt(document.getElementById('tmr-index').value, 10);
     const mins = parseInt(document.getElementById('tmr-minutes').value, 10);
-    
     closeModals();
-    startPomodoro(taskId, index, mins);
+    startPomodoro(mins);
 });
 
-// Timer Reale
-function startPomodoro(taskId, index, mins) {
-    activePomodoroData = { id: taskId, index: index, minutes: mins };
-    
+function startPomodoro(mins) {
     document.getElementById('pomodoroOverlay').style.display = 'flex';
     const circle = document.getElementById('pomodoro-circle');
     const circumference = 2 * Math.PI * 180; 
@@ -241,29 +253,39 @@ function startPomodoro(taskId, index, mins) {
 }
 
 function handlePomodoroComplete() {
-    if(!activePomodoroData) return;
-    
-    // Auto check the instance
-    toggleTask(activePomodoroData.id, activePomodoroData.index);
-    
-    const currentLogAfter = logs[selectedDateStr][activePomodoroData.id];
-    const hasMore = currentLogAfter.includes(false);
+    const listContainer = document.getElementById('uncompleted-tasks-list');
+    listContainer.innerHTML = '';
+    let hasTasks = false;
 
-    setTimeout(() => {
-        if(hasMore) {
-            if(confirm(`Session complete and logged! Start next session for this task?`)) {
-                // Riapri la modale per la prossima istanza
-                openTimerModal(activePomodoroData.id, activePomodoroData.minutes);
+    templates.forEach(t => {
+        if (isTaskActiveOnDate(t, selectedDateStr)) {
+            const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
+            const firstUncheckedIndex = currentLog.indexOf(false);
+            if (firstUncheckedIndex !== -1) {
+                hasTasks = true;
+                const btn = document.createElement('button');
+                btn.className = 'btn';
+                btn.style.textAlign = 'left';
+                btn.style.fontFamily = 'inherit';
+                btn.innerText = `[${t.category}] ${t.title}`;
+                btn.onclick = () => {
+                    toggleTask(t.id, firstUncheckedIndex);
+                    closeModals();
+                };
+                listContainer.appendChild(btn);
             }
-        } else {
-            alert("Focus session complete! All daily repetitions for this task are done.");
         }
-    }, 100);
+    });
+
+    if (!hasTasks) {
+        listContainer.innerHTML = '<p style="color: var(--text-dim);">No pending tasks for today!</p>';
+    }
+
+    document.getElementById('timerCompleteModal').style.display = 'flex';
 }
 
 function stopPomodoro() {
     clearInterval(pomodoroInterval);
-    activePomodoroData = null;
     document.getElementById('pomodoroOverlay').style.display = 'none';
 }
 
@@ -285,7 +307,6 @@ function renderTasks() {
 
     let hasAnyTasks = false;
 
-    // 1. Render Specific Events for this date
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
     if (dayEvents.length > 0) {
         hasAnyTasks = true;
@@ -308,7 +329,6 @@ function renderTasks() {
         container.appendChild(eventGroup);
     }
 
-    // 2. Render Habits
     const categories = {};
     templates.forEach(t => { if (!categories[t.category]) categories[t.category] = []; });
 
@@ -337,7 +357,6 @@ function renderTasks() {
                 taskItem.innerHTML = `
                     <div class="task-left">
                         <div class="task-title">${t.title}</div>
-                        <button class="btn-start-task" onclick="openTimerModal('${t.id}', ${mins})" title="Start Timer">▶ Focus</button>
                     </div>
                     <div class="instances-container">${checkboxesHTML}</div>
                 `;
@@ -352,6 +371,7 @@ function renderTasks() {
     }
 }
 
+// AGGIORNAMENTO: Renderizzazione dei punti multipli
 function renderCalendar() {
     const grid = document.getElementById('calendar-grid');
     
@@ -382,7 +402,19 @@ function renderCalendar() {
         dayCell.innerText = i;
         
         let dotsHTML = '';
-        if (stats.total > 0) dotsHTML += `<div class="dot" style="background-color: var(--text-main);"></div>`;
+        const whiteDotsCount = stats.categories.length;
+        
+        // Logica 3 punti massimi + simbolo Plus
+        if (whiteDotsCount > 0) {
+            const maxDots = Math.min(whiteDotsCount, 3);
+            for(let k = 0; k < maxDots; k++) {
+                dotsHTML += `<div class="dot" style="background-color: var(--text-main);"></div>`;
+            }
+            if (whiteDotsCount > 3) {
+                dotsHTML += `<div style="font-size: 8px; color: var(--text-main); font-weight: bold; line-height: 5px; margin-left: 1px;">+</div>`;
+            }
+        }
+        
         dayEvents.forEach(e => { dotsHTML += `<div class="dot" style="background-color: ${e.color};"></div>`; });
         
         if (dotsHTML !== '') {
@@ -512,7 +544,6 @@ function toggleDays() {
     document.getElementById('h-days-container').style.display = (freq === 'specific') ? 'flex' : 'none';
 }
 
-// Habit Submit
 document.getElementById('habitForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const id = document.getElementById('h-id').value;
@@ -542,7 +573,6 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
     saveData(); closeModals(); renderTasks(); renderTracker(); renderCalendar();
 });
 
-// Event Submit
 document.getElementById('eventForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const title = document.getElementById('e-title').value.trim();
@@ -554,17 +584,54 @@ document.getElementById('eventForm').addEventListener('submit', function(e) {
     saveData(); closeModals(); renderTasks(); renderCalendar();
 });
 
-// STARTUP
 renderTasks(); 
 renderCalendar();
 renderTracker();
+renderNoteCategories();
 
 // --- 6. CHIUSURA NATIVA WIDGET ---
 document.getElementById('btn-close-app').addEventListener('click', () => {
     if (window.__TAURI__) {
-        // Ora che ha i permessi, questo comando chiuderà la finestra istantaneamente
         window.__TAURI__.window.getCurrentWindow().close();
     } else {
         window.close();
     }
 });
+
+// --- 7. NOTES MANAGEMENT (Comunicazione con Rust) ---
+async function saveNote() {
+    const category = document.getElementById('note-category').value;
+    const textEl = document.getElementById('note-text');
+    const text = textEl.value.trim();
+    
+    if (!text) return;
+    
+    if (window.__TAURI__) {
+        try {
+            // Niente più data e ora, solo due ritorni a capo tra un'idea e l'altra
+            const formattedText = `${text}\n\n`;
+            
+            // Invia i dati al backend Rust per creare/aggiornare il file .txt
+            await window.__TAURI__.core.invoke('save_note', { category: category, text: formattedText });
+            
+            textEl.value = ''; // Svuota l'input dopo il salvataggio
+            
+            // Feedback visivo sul bottone
+            const btn = document.getElementById('btn-save-note');
+            const originalText = btn.innerText;
+            btn.innerText = "✓ Saved!";
+            btn.style.backgroundColor = "#26a641";
+            btn.style.color = "#fff";
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.style.backgroundColor = "";
+                btn.style.color = "";
+            }, 2000);
+            
+        } catch (e) {
+            alert("Error saving note: " + e);
+        }
+    } else {
+        alert("This feature works only in the Desktop App.");
+    }
+}
