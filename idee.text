@@ -1,0 +1,3 @@
+Per implementare le modifiche, 
+cd tracker-widget 
+npm run tauri build

@@ -24,10 +24,17 @@
                 <div class="month-grid" id="calendar-grid"></div>
             </div>
 
-            <div class="tracker-section">
-                <h2>Consistency</h2>
-                <div class="tracker-wrapper">
-                    <div class="tracker-grid" id="github-tracker"></div>
+            <!-- QUICK NOTES (Salvataggio con Enter) -->
+            <div class="notes-section">
+                <div class="notes-controls">
+                    <h2 style="margin: 0; color: var(--text-main); border: none; padding: 0;">Quick Notes</h2>
+                    <div style="display: flex; gap: 5px; align-items: center;">
+                        <select id="note-category" class="form-control" style="width: 160px; padding: 4px; font-weight: bold;"></select>
+                        <button class="btn" onclick="openManageNotesModal()" title="Manage Categories">⚙ Manage</button>
+                    </div>
+                </div>
+                <div style="display: flex; height: 100%;">
+                    <textarea id="note-text" class="form-control" style="flex: 1; resize: none; font-family: inherit; font-size: 0.9rem;" placeholder="Write your idea and press Enter..." onkeydown="handleNoteKeyDown(event)"></textarea>
                 </div>
             </div>
         </div>
@@ -35,13 +42,10 @@
         <!-- RIGHT: 60% -->
         <div class="right-pane">
             
-            <!-- 1. BARRA DI TRASCINAMENTO (Fix Trasparenza Windows all'1%) -->
             <div data-tauri-drag-region style="position: absolute; top: 0; left: 0; width: calc(100% - 60px); height: 40px; z-index: 40; cursor: grab; background: rgba(0,0,0,0.01);"></div>
-            
-            <!-- 2. TASTO CHIUSURA (Senza onclick, usiamo l'ID) -->
             <button id="btn-close-app" style="position: absolute; top: 10px; right: 20px; background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem; z-index: 50;">✕</button>
             
-            <!-- 3A. AGENDA (70% del blocco destro) -->
+            <!-- AGENDA -->
             <div class="agenda-section">
                 <div class="header-actions">
                     <h1 id="selected-date-title">Today</h1>
@@ -55,19 +59,13 @@
                 <div id="today-tasks"></div>
             </div>
 
-            <!-- 3B. NOTES (Basso a destra, altezza fissa) -->
-            <div class="notes-section">
-                <div class="notes-controls">
-                    <h2 style="margin: 0; color: var(--text-main); border: none; padding: 0;">Quick Notes</h2>
-                    <div style="display: flex; gap: 5px; align-items: center;">
-                        <select id="note-category" class="form-control" style="width: 160px; padding: 4px; font-weight: bold;"></select>
-                        <button class="icon-btn" onclick="addNoteCategory()" title="Add Category">+</button>
-                        <button class="icon-btn delete" onclick="deleteNoteCategory()" title="Delete Category">×</button>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 15px; height: 100%;">
-                    <textarea id="note-text" class="form-control" style="flex: 1; resize: none; font-family: inherit; font-size: 0.9rem;" placeholder="Write your ideas here..."></textarea>
-                    <button id="btn-save-note" class="btn btn-primary" onclick="saveNote()" style="width: 120px; font-size: 0.9rem;">Save</button>
+            <!-- BARRA DI RIDIMENSIONAMENTO / TENDINA -->
+            <div id="tracker-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
+
+            <!-- TRACKER (Senza intestazione 'Consistency') -->
+            <div id="tracker-section" class="tracker-section">
+                <div class="tracker-wrapper">
+                    <div class="tracker-grid" id="github-tracker"></div>
                 </div>
             </div>
             
@@ -226,6 +224,24 @@
 
             <div class="modal-actions">
                 <button class="btn btn-primary" onclick="closeModals(); renderTasks();">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NUOVO MODALE: Manage Notes Modal -->
+    <div id="manageNotesModal" class="modal-overlay">
+        <div class="modal-content">
+            <h2>Manage Note Categories</h2>
+            
+            <div id="notes-manager-list" class="manager-list"></div>
+            
+            <div class="quick-add-task new-calendar-add">
+                <span>+</span>
+                <input type="text" placeholder="Add new category..." onkeypress="quickAddNoteCategory(event)">
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="closeModals(); renderNoteCategories();">Close</button>
             </div>
         </div>
     </div>

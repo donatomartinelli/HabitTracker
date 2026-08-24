@@ -23,25 +23,47 @@ function renderNoteCategories() {
     });
 }
 
-function addNoteCategory() {
-    const newCat = prompt("Name of the new category (creates a new .txt file):");
-    if (newCat && newCat.trim() !== "" && !noteCategories.includes(newCat.trim())) {
-        noteCategories.push(newCat.trim());
-        localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
-        renderNoteCategories();
-        document.getElementById('note-category').value = newCat.trim();
+// --- GESTIONE CATEGORIE NOTE TRAMITE MODALE ---
+
+function openManageNotesModal() {
+    renderNotesManager();
+    closeModals();
+    document.getElementById('manageNotesModal').style.display = 'flex';
+}
+
+function renderNotesManager() {
+    const container = document.getElementById('notes-manager-list');
+    container.innerHTML = '';
+    
+    noteCategories.forEach(cat => {
+        container.innerHTML += `
+            <div class="manager-task">
+                <span>${cat}</span>
+                <div class="action-btns" style="display:flex;">
+                    <button class="icon-btn delete" onclick="removeNoteCategory('${cat}')">×</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function quickAddNoteCategory(event) {
+    if (event.key === 'Enter') {
+        const newCat = event.target.value.trim();
+        if (newCat && !noteCategories.includes(newCat)) {
+            noteCategories.push(newCat);
+            localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
+            event.target.value = ''; // svuota l'input
+            renderNotesManager(); // ricarica la lista nel modale
+        }
     }
 }
 
-function deleteNoteCategory() {
-    const select = document.getElementById('note-category');
-    const cat = select.value;
-    if (!cat) return;
-    if (confirm(`Remove "${cat}" from the list? (This won't delete the .txt file from your PC)`)) {
-        noteCategories = noteCategories.filter(c => c !== cat);
-        localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
-        renderNoteCategories();
-    }
+function removeNoteCategory(cat) {
+    // Eliminazione diretta per aggirare l'alert nativo "Tauri localhost says..."
+    noteCategories = noteCategories.filter(c => c !== cat);
+    localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
+    renderNotesManager();
 }
 
 function saveData() {
@@ -598,7 +620,16 @@ document.getElementById('btn-close-app').addEventListener('click', () => {
     }
 });
 
-// --- 7. NOTES MANAGEMENT (Comunicazione con Rust) ---
+// --- 7. NOTES MANAGEMENT (Invio con Enter e salvataggio) ---
+
+function handleNoteKeyDown(event) {
+    // Premi Enter per salvare; Shift + Enter va a capo
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        saveNote();
+    }
+}
+
 async function saveNote() {
     const category = document.getElementById('note-category').value;
     const textEl = document.getElementById('note-text');
@@ -608,30 +639,93 @@ async function saveNote() {
     
     if (window.__TAURI__) {
         try {
-            // Niente più data e ora, solo due ritorni a capo tra un'idea e l'altra
             const formattedText = `${text}\n\n`;
-            
-            // Invia i dati al backend Rust per creare/aggiornare il file .txt
             await window.__TAURI__.core.invoke('save_note', { category: category, text: formattedText });
             
-            textEl.value = ''; // Svuota l'input dopo il salvataggio
+            // Svuota e dai feedback nel placeholder
+            textEl.value = '';
+            const originalPlaceholder = textEl.placeholder;
+            textEl.placeholder = "✓ Idea saved!";
             
-            // Feedback visivo sul bottone
-            const btn = document.getElementById('btn-save-note');
-            const originalText = btn.innerText;
-            btn.innerText = "✓ Saved!";
-            btn.style.backgroundColor = "#26a641";
-            btn.style.color = "#fff";
             setTimeout(() => {
-                btn.innerText = originalText;
-                btn.style.backgroundColor = "";
-                btn.style.color = "";
-            }, 2000);
+                textEl.placeholder = originalPlaceholder;
+            }, 1500);
             
         } catch (e) {
             alert("Error saving note: " + e);
         }
     } else {
-        alert("This feature works only in the Desktop App.");
+        // Fallback per test via browser
+        textEl.value = '';
+        const originalPlaceholder = textEl.placeholder;
+        textEl.placeholder = "✓ Idea saved (Mock)!";
+        setTimeout(() => {
+            textEl.placeholder = originalPlaceholder;
+        }, 1500);
     }
 }
+
+// --- 8. RESIZE E TENDINA PER IL TRACKER ---
+
+function initTrackerResizer() {
+    const resizer = document.getElementById('tracker-resizer');
+    const tracker = document.getElementById('tracker-section');
+    
+    if (!resizer || !tracker) return;
+
+    let isResizing = false;
+    let startY = 0;
+    let startHeight = 0;
+    const COLLAPSE_THRESHOLD = 55; // Se compresso sotto i 55px, si chiude
+    const DEFAULT_OPEN_HEIGHT = 150;
+
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        startY = e.clientY;
+        startHeight = tracker.getBoundingClientRect().height;
+        resizer.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'ns-resize';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        
+        // Trascinando verso l'alto (clientY diminuisce) l'altezza aumenta
+        const deltaY = startY - e.clientY;
+        let newHeight = startHeight + deltaY;
+
+        if (newHeight < COLLAPSE_THRESHOLD) {
+            tracker.classList.add('collapsed');
+            tracker.style.height = '0px';
+        } else {
+            tracker.classList.remove('collapsed');
+            const maxHeight = window.innerHeight * 0.65; // Limite massimo 65% dell'altezza
+            newHeight = Math.min(newHeight, maxHeight);
+            tracker.style.height = `${newHeight}px`;
+        }
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizer.classList.remove('dragging');
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+        }
+    });
+
+    // Doppio clic sulla barra divisoria per aprire/chiudere a scatto come tendina
+    resizer.addEventListener('dblclick', () => {
+        if (tracker.classList.contains('collapsed') || tracker.offsetHeight === 0) {
+            tracker.classList.remove('collapsed');
+            tracker.style.height = `${DEFAULT_OPEN_HEIGHT}px`;
+        } else {
+            tracker.classList.add('collapsed');
+            tracker.style.height = '0px';
+        }
+    });
+}
+
+// Inizializza il resizer al caricamento
+initTrackerResizer();
