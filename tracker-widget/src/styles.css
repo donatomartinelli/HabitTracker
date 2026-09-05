@@ -282,3 +282,32 @@ h2 { font-size: 1rem; font-weight: normal; color: var(--text-dim); text-transfor
 ::-webkit-scrollbar-track { background: var(--bg-main); }
 ::-webkit-scrollbar-thumb { background: #333; }
 ::-webkit-scrollbar-thumb:hover { background: #666; }
+
+/* COLOR PALETTE (Brutalist style) */
+.color-palette {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.color-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50% !important;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    color: var(--text-dim);
+}
+
+.color-circle:hover { border-color: rgba(255, 255, 255, 0.5); }
+.color-circle.active { border-color: white; outline: 2px solid var(--bg-main); outline-offset: -4px;}
+.color-circle.custom-color-btn { border: 1px dashed var(--text-dim); background: transparent; }
+.color-circle.custom-color-btn:hover { border-style: solid; color: white; }
+
+/* REORDER ARROWS IN MANAGER */
+.icon-btn.reorder { font-size: 0.8rem; padding: 0 4px; }

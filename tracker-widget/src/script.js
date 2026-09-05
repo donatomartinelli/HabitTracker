@@ -4,6 +4,7 @@ function initData() {
     if (!localStorage.getItem('tracker_logs')) localStorage.setItem('tracker_logs', JSON.stringify({}));
     if (!localStorage.getItem('tracker_events')) localStorage.setItem('tracker_events', JSON.stringify([]));
     if (!localStorage.getItem('tracker_note_cats')) localStorage.setItem('tracker_note_cats', JSON.stringify(["General", "Productivity", "Math", "Ideas"]));
+    if (!localStorage.getItem('tracker_category_order')) localStorage.setItem('tracker_category_order', JSON.stringify([]));
 }
 
 initData();
@@ -11,6 +12,25 @@ let templates = JSON.parse(localStorage.getItem('tracker_templates'));
 let logs = JSON.parse(localStorage.getItem('tracker_logs'));
 let specificEvents = JSON.parse(localStorage.getItem('tracker_events'));
 let noteCategories = JSON.parse(localStorage.getItem('tracker_note_cats'));
+let categoryOrder = JSON.parse(localStorage.getItem('tracker_category_order'));
+
+// Utility function to sync categoryOrder with reality
+function syncCategoryOrder() {
+    const existingCats = new Set(templates.map(t => t.category));
+    // Aggiungi le categorie mancanti in coda
+    existingCats.forEach(c => { if (!categoryOrder.includes(c)) categoryOrder.push(c); });
+    // Rimuovi quelle che non esistono più
+    categoryOrder = categoryOrder.filter(c => existingCats.has(c));
+    localStorage.setItem('tracker_category_order', JSON.stringify(categoryOrder));
+}
+syncCategoryOrder();
+
+function saveData() {
+    localStorage.setItem('tracker_templates', JSON.stringify(templates));
+    localStorage.setItem('tracker_logs', JSON.stringify(logs));
+    localStorage.setItem('tracker_events', JSON.stringify(specificEvents));
+    localStorage.setItem('tracker_category_order', JSON.stringify(categoryOrder));
+}
 
 function renderNoteCategories() {
     const select = document.getElementById('note-category');
@@ -91,6 +111,7 @@ function changeMonth(offset) {
 }
 
 function isTaskActiveOnDate(template, dateStr) {
+    if (template.exceptions && template.exceptions.includes(dateStr)) return false;
     if (dateStr < template.startDate) return false;
     if (template.endDate && dateStr > template.endDate) return false;
     
@@ -189,12 +210,17 @@ function editTask(id) {
     document.getElementById('formModal').style.display = 'flex';
 }
 
+let deleteTargetType = ''; // 'task' o 'category'
+let deleteTargetId = '';   // id del task o nome della categoria
+
 function deleteTask(id) {
-    if(confirm("Permanently delete this task?")) {
-        templates = templates.filter(t => t.id !== id);
-        saveData();
-        renderTasks(); renderTracker(); renderCalendar(); renderManager(); 
-    }
+    const t = templates.find(x => x.id === id);
+    if (!t) return;
+    deleteTargetType = 'task';
+    deleteTargetId = id;
+    document.getElementById('delete-target-name').innerText = `"${t.title}"`;
+    closeModals();
+    document.getElementById('deleteModal').style.display = 'flex';
 }
 
 function deleteEvent(id) {
@@ -223,11 +249,50 @@ document.getElementById('renameForm').addEventListener('submit', function(e) {
 });
 
 function deleteCategory(catName) {
-    if(confirm(`Delete the ENTIRE calendar "${catName}"?`)) {
-        templates = templates.filter(t => t.category !== catName);
-        saveData();
-        renderTasks(); renderTracker(); renderCalendar(); renderManager();
+    deleteTargetType = 'category';
+    deleteTargetId = catName;
+    document.getElementById('delete-target-name').innerText = `the "${catName}" calendar`;
+    closeModals();
+    document.getElementById('deleteModal').style.display = 'flex';
+}
+
+function confirmDelete(mode) {
+    // Calcola il giorno precedente a selectedDateStr per la modalità 'future'
+    let targetDate = new Date(selectedDateStr);
+    targetDate.setDate(targetDate.getDate() - 1);
+    const yesterdayStr = formatDate(targetDate);
+
+    if (deleteTargetType === 'task') {
+        const t = templates.find(x => x.id === deleteTargetId);
+        if (mode === 'single') {
+            if (!t.exceptions) t.exceptions = [];
+            t.exceptions.push(selectedDateStr);
+        } else if (mode === 'future') {
+            t.endDate = yesterdayStr;
+        } else if (mode === 'all') {
+            templates = templates.filter(x => x.id !== deleteTargetId);
+        }
+    } else if (deleteTargetType === 'category') {
+        if (mode === 'single') {
+            templates.forEach(t => {
+                if (t.category === deleteTargetId) {
+                    if (!t.exceptions) t.exceptions = [];
+                    t.exceptions.push(selectedDateStr);
+                }
+            });
+        } else if (mode === 'future') {
+            templates.forEach(t => {
+                if (t.category === deleteTargetId) t.endDate = yesterdayStr;
+            });
+        } else if (mode === 'all') {
+            templates = templates.filter(x => x.category !== deleteTargetId);
+            syncCategoryOrder();
+        }
     }
+
+    saveData();
+    closeModals();
+    renderTasks(); renderTracker(); renderCalendar(); renderManager();
 }
 
 function selectDate(dateStr) {
@@ -312,6 +377,154 @@ function stopPomodoro() {
 }
 
 // --- 4. RENDER ---
+// Aggiungi queste funzione per il reordering
+function moveCategory(catName, direction) {
+    const index = categoryOrder.indexOf(catName);
+    if (index === -1) return;
+    if (direction === -1 && index > 0) {
+        // Su
+        [categoryOrder[index - 1], categoryOrder[index]] = [categoryOrder[index], categoryOrder[index - 1]];
+    } else if (direction === 1 && index < categoryOrder.length - 1) {
+        // Giù
+        [categoryOrder[index + 1], categoryOrder[index]] = [categoryOrder[index], categoryOrder[index + 1]];
+    }
+    saveData();
+    renderManager();
+    renderTasks();
+}
+
+function renderManager() {
+    const container = document.getElementById('manager-list');
+    container.innerHTML = '';
+    
+    // Raggruppa i template per categoria
+    const cats = {};
+    templates.forEach(t => {
+        if(!cats[t.category]) cats[t.category] = [];
+        cats[t.category].push(t);
+    });
+
+    syncCategoryOrder();
+
+    // Cicla usando l'ordine forzato
+    categoryOrder.forEach(cat => {
+        if (!cats[cat]) return; // salta se la categoria è vuota
+        
+        let html = `
+        <div class="manager-category">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap: 10px;">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <button class="icon-btn reorder" onclick="moveCategory('${cat}', -1)">▲</button>
+                        <button class="icon-btn reorder" onclick="moveCategory('${cat}', 1)">▼</button>
+                    </div>
+                    <h3 style="margin:0; border:none; padding:0;">${cat}</h3>
+                </div>
+                <div class="action-btns" style="display:flex; margin-bottom:10px;">
+                    <button class="icon-btn" onclick="openRenameModal('${cat}')">✎</button>
+                    <button class="icon-btn delete" onclick="deleteCategory('${cat}')">×</button>
+                </div>
+            </div>
+            <div style="border-top: 1px solid #333; margin-top: 5px; padding-top: 10px;">
+        `;
+        
+        cats[cat].forEach(t => {
+            html += `
+                <div class="manager-task">
+                    <span>${t.title} (${t.instances}x)</span>
+                    <div class="action-btns" style="display:flex;">
+                        <button class="icon-btn" onclick="editTask('${t.id}')">✎</button>
+                        <button class="icon-btn delete" onclick="deleteTask('${t.id}')">×</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                <div class="quick-add-task">
+                    <span>+</span>
+                    <input type="text" placeholder="Add task to ${cat}..." onkeypress="quickAddTask(event, '${cat}')">
+                </div>
+            </div>
+        </div>`;
+        container.innerHTML += html;
+    });
+}
+
+// Aggiungi queste funzione per il reordering
+function moveCategory(catName, direction) {
+    const index = categoryOrder.indexOf(catName);
+    if (index === -1) return;
+    if (direction === -1 && index > 0) {
+        // Su
+        [categoryOrder[index - 1], categoryOrder[index]] = [categoryOrder[index], categoryOrder[index - 1]];
+    } else if (direction === 1 && index < categoryOrder.length - 1) {
+        // Giù
+        [categoryOrder[index + 1], categoryOrder[index]] = [categoryOrder[index], categoryOrder[index + 1]];
+    }
+    saveData();
+    renderManager();
+    renderTasks();
+}
+
+function renderManager() {
+    const container = document.getElementById('manager-list');
+    container.innerHTML = '';
+    
+    // Raggruppa i template per categoria
+    const cats = {};
+    templates.forEach(t => {
+        if(!cats[t.category]) cats[t.category] = [];
+        cats[t.category].push(t);
+    });
+
+    syncCategoryOrder();
+
+    // Cicla usando l'ordine forzato
+    categoryOrder.forEach(cat => {
+        if (!cats[cat]) return; // salta se la categoria è vuota
+        
+        let html = `
+        <div class="manager-category">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div style="display:flex; align-items:center; gap: 10px;">
+                    <div style="display:flex; flex-direction:column; gap:2px;">
+                        <button class="icon-btn reorder" onclick="moveCategory('${cat}', -1)">▲</button>
+                        <button class="icon-btn reorder" onclick="moveCategory('${cat}', 1)">▼</button>
+                    </div>
+                    <h3 style="margin:0; border:none; padding:0;">${cat}</h3>
+                </div>
+                <div class="action-btns" style="display:flex; margin-bottom:10px;">
+                    <button class="icon-btn" onclick="openRenameModal('${cat}')">✎</button>
+                    <button class="icon-btn delete" onclick="deleteCategory('${cat}')">×</button>
+                </div>
+            </div>
+            <div style="border-top: 1px solid #333; margin-top: 5px; padding-top: 10px;">
+        `;
+        
+        cats[cat].forEach(t => {
+            html += `
+                <div class="manager-task">
+                    <span>${t.title} (${t.instances}x)</span>
+                    <div class="action-btns" style="display:flex;">
+                        <button class="icon-btn" onclick="editTask('${t.id}')">✎</button>
+                        <button class="icon-btn delete" onclick="deleteTask('${t.id}')">×</button>
+                    </div>
+                </div>
+            `;
+        });
+        
+        html += `
+                <div class="quick-add-task">
+                    <span>+</span>
+                    <input type="text" placeholder="Add task to ${cat}..." onkeypress="quickAddTask(event, '${cat}')">
+                </div>
+            </div>
+        </div>`;
+        container.innerHTML += html;
+    });
+}
+
 function renderTasks() {
     const titleEl = document.getElementById('selected-date-title');
     const parts = selectedDateStr.split('-');
@@ -326,16 +539,15 @@ function renderTasks() {
 
     const container = document.getElementById('today-tasks');
     container.innerHTML = '';
-
     let hasAnyTasks = false;
 
+    // Events...
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
     if (dayEvents.length > 0) {
         hasAnyTasks = true;
         const eventGroup = document.createElement('div');
         eventGroup.className = 'category-group';
         eventGroup.innerHTML = `<div class="category-header-wrap" style="border-bottom-color: #333;"><div class="category-title" style="color: #888;">Events</div></div>`;
-        
         dayEvents.forEach(e => {
             eventGroup.innerHTML += `
                 <div class="task-item" style="border-left: 4px solid ${e.color}; padding-left: 15px;">
@@ -351,46 +563,38 @@ function renderTasks() {
         container.appendChild(eventGroup);
     }
 
-    const categories = {};
-    templates.forEach(t => { if (!categories[t.category]) categories[t.category] = []; });
+    syncCategoryOrder();
 
-    for (const cat in categories) {
+    // Tasks renderizzate secondo l'ordine di categoryOrder
+    categoryOrder.forEach(cat => {
         const activeTasks = templates.filter(t => t.category === cat && isTaskActiveOnDate(t, selectedDateStr));
         
         if (activeTasks.length > 0) {
             hasAnyTasks = true;
             const groupDiv = document.createElement('div');
             groupDiv.className = 'category-group';
-            
             groupDiv.innerHTML = `<div class="category-header-wrap"><div class="category-title">${cat}</div></div>`;
 
             activeTasks.forEach(t => {
                 const taskItem = document.createElement('div');
                 taskItem.className = 'task-item';
-                
                 const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
-                const mins = t.timerMinutes || 25;
                 
                 let checkboxesHTML = '';
                 for (let i = 0; i < t.instances; i++) {
                     checkboxesHTML += `<div class="check-box ${currentLog[i] ? 'checked' : ''}" onclick="toggleTask('${t.id}', ${i})"></div>`;
                 }
-
                 taskItem.innerHTML = `
-                    <div class="task-left">
-                        <div class="task-title">${t.title}</div>
-                    </div>
+                    <div class="task-left"><div class="task-title">${t.title}</div></div>
                     <div class="instances-container">${checkboxesHTML}</div>
                 `;
                 groupDiv.appendChild(taskItem);
             });
             container.appendChild(groupDiv);
         }
-    }
+    });
 
-    if (!hasAnyTasks) {
-        container.innerHTML = `<div class="empty-state">Nothing scheduled for this day. </div>`;
-    }
+    if (!hasAnyTasks) container.innerHTML = `<div class="empty-state">Nothing scheduled for this day.</div>`;
 }
 
 // AGGIORNAMENTO: Renderizzazione dei punti multipli
@@ -492,47 +696,6 @@ function renderTracker() {
     }, 10);
 }
 
-function renderManager() {
-    const container = document.getElementById('manager-list');
-    container.innerHTML = '';
-    
-    const cats = {};
-    templates.forEach(t => {
-        if(!cats[t.category]) cats[t.category] = [];
-        cats[t.category].push(t);
-    });
-
-    for(const cat in cats) {
-        let html = `
-        <div class="manager-category">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3>${cat}</h3>
-                <div class="action-btns" style="display:flex; margin-bottom:10px;">
-                    <button class="icon-btn" onclick="openRenameModal('${cat}')">✎</button>
-                    <button class="icon-btn delete" onclick="deleteCategory('${cat}')">×</button>
-                </div>
-            </div>
-        `;
-        cats[cat].forEach(t => {
-            html += `
-                <div class="manager-task">
-                    <span>${t.title} (${t.instances}x)</span>
-                    <div class="action-btns" style="display:flex;">
-                        <button class="icon-btn" onclick="editTask('${t.id}')">✎</button>
-                        <button class="icon-btn delete" onclick="deleteTask('${t.id}')">×</button>
-                    </div>
-                </div>
-            `;
-        });
-        html += `
-            <div class="quick-add-task">
-                <span>+</span>
-                <input type="text" placeholder="Add task to ${cat}..." onkeypress="quickAddTask(event, '${cat}')">
-            </div>
-        </div>`;
-        container.innerHTML += html;
-    }
-}
 
 // --- 5. MODALS MANAGEMENT ---
 function openFormModal() {
@@ -729,3 +892,22 @@ function initTrackerResizer() {
 
 // Inizializza il resizer al caricamento
 initTrackerResizer();
+
+// --- COLOR PALETTE LOGIC ---
+function selectColor(element) {
+    // Rimuovi classe active da tutti
+    document.querySelectorAll('.color-circle').forEach(el => el.classList.remove('active'));
+    // Aggiungi al cerchio cliccato
+    element.classList.add('active');
+    // Setta l'input nascosto per la logica di salvataggio
+    document.getElementById('e-color').value = element.getAttribute('data-color');
+}
+
+function updateCustomColor(input) {
+    document.querySelectorAll('.color-circle').forEach(el => el.classList.remove('active'));
+    const customBtn = document.querySelector('.custom-color-btn');
+    customBtn.classList.add('active');
+    customBtn.style.background = input.value;
+    customBtn.style.borderColor = input.value;
+    customBtn.innerText = ''; // toglie il "+" quando usi un colore custom
+}
