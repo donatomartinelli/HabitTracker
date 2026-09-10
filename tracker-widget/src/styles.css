@@ -32,7 +32,7 @@ body {
     backdrop-filter: blur(8px); 
 }
 
-/* 40% Left Pane */
+/* 40% Left Pane - Modificato per 60/40 ratio interno */
 .left-pane {
     flex: 4;
     border-right: 1px solid var(--border-color);
@@ -41,7 +41,7 @@ body {
 }
 
 .calendar-section {
-    flex: 1; /* Prende tutto lo spazio superiore disponibile */
+    flex: 6; /* Prende lo spazio superiore disponibile */
     padding: 20px 25px; 
     overflow-y: auto;
     display: flex;
@@ -49,7 +49,7 @@ body {
 }
 
 .notes-section {
-    height: 150px; /* Default height */
+    height: 150px; /* Default height aumentata a 150px come richiesto */
     flex-shrink: 0; /* Impedisce che flexbox la schiacci */
     min-height: 50px; 
     padding: 20px 25px;
@@ -130,13 +130,13 @@ body {
     background-color: #020202;
     display: flex;
     flex-direction: column;
-    justify-content: flex-start; 
+    justify-content: flex-start; /* Fondamentale: evita che la griglia imploda al centro */
     overflow: hidden;
     box-sizing: border-box;
 }
 
 .tracker-content { 
-    flex: 1; 
+    flex: 1; /* Forza l'espansione per occupare lo spazio */
     display: flex; 
     flex-direction: row; 
     gap: 15px; 
@@ -746,6 +746,34 @@ h2 {
     color: white;
 }
 
+/* TASK TYPE TOGGLE */
+.task-type-toggle {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+.type-radio {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid var(--border-color);
+    text-align: center;
+    cursor: pointer;
+    color: var(--text-dim);
+    transition: 0.2s;
+    font-weight: bold;
+}
+
+.type-radio input {
+    display: none;
+}
+
+.type-radio:has(input:checked) {
+    background: var(--text-main);
+    color: #000;
+    border-color: var(--text-main);
+}
+
 /* REORDER ARROWS IN MANAGER */
 .icon-btn.reorder {
     font-size: 0.8rem;
@@ -987,7 +1015,6 @@ h2 {
     border: 1px solid; 
     z-index: 1; 
     pointer-events: none; 
-    opacity: 0.8; 
 }
 
 .block-task { 

@@ -24,7 +24,7 @@
                 <div class="month-grid" id="calendar-grid"></div>
             </div>
 
-            <!-- QUICK NOTES (Salvataggio con Enter, Resizable dal basso) -->
+            <!-- QUICK NOTES -->
             <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
             <div id="notes-section" class="notes-section">
                 <div class="notes-controls">
@@ -155,10 +155,12 @@
             <h2 id="modal-title">Create New Habit</h2>
             <form id="habitForm">
                 <input type="hidden" id="h-id">
+                
                 <div class="form-group">
                     <label>Category (Calendar)</label>
                     <input type="text" id="h-category" class="form-control" placeholder="e.g. GYM, STUDY" required>
                 </div>
+                
                 <div class="form-group">
                     <label>Task Name</label>
                     <input type="text" id="h-title" class="form-control" placeholder="e.g. Math Session" required>
@@ -189,43 +191,63 @@
                         <input type="date" id="h-enddate" class="form-control">
                     </div>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Start Time (Opt)</label>
-                        <input type="time" id="h-starttime" class="form-control">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>End Time (Opt)</label>
-                        <input type="time" id="h-endtime" class="form-control">
-                    </div>
-                </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Repetitions</label>
-                        <input type="number" id="h-instances" class="form-control" value="1" min="1" max="50" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Default Timer (min)</label>
-                        <input type="number" id="h-timer" class="form-control" value="25" min="1" required>
-                    </div>
-                </div>
+
+                <!-- NUOVO: TOGGLE TIMED VS UNTIMED -->
                 <div class="form-group">
-                    <label>Frequency</label>
-                    <select id="h-frequency" class="form-control" onchange="toggleDays()">
-                        <option value="all">Every day</option>
-                        <option value="weekdays">Weekdays (Mon-Fri)</option>
-                        <option value="weekends">Weekends (Sat-Sun)</option>
-                        <option value="specific">Specific days</option>
-                    </select>
+                    <label>Task Type</label>
+                    <div class="task-type-toggle">
+                        <label class="type-radio">
+                            <input type="radio" name="h-type" value="timed" onchange="toggleHabitType()"> 
+                            Timed (Schedule)
+                        </label>
+                        <label class="type-radio">
+                            <input type="radio" name="h-type" value="untimed" checked onchange="toggleHabitType()"> 
+                            Untimed (Flexible)
+                        </label>
+                    </div>
                 </div>
-                <div class="form-group days-checkboxes" id="h-days-container">
-                    <label class="day-check"><input type="checkbox" value="1"> Mon</label>
-                    <label class="day-check"><input type="checkbox" value="2"> Tue</label>
-                    <label class="day-check"><input type="checkbox" value="3"> Wed</label>
-                    <label class="day-check"><input type="checkbox" value="4"> Thu</label>
-                    <label class="day-check"><input type="checkbox" value="5"> Fri</label>
-                    <label class="day-check"><input type="checkbox" value="6"> Sat</label>
-                    <label class="day-check"><input type="checkbox" value="0"> Sun</label>
+
+                <!-- SEZIONE TIMED (Solo finestre temporali) -->
+                <div id="timed-section" style="display: none;">
+                    <div class="form-group">
+                        <label>Time Windows & Days</label>
+                        <div id="h-time-windows-container"></div>
+                        <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addHabitTimeWindow()">+ Add Time Window</button>
+                    </div>
+                </div>
+
+                <!-- SEZIONE UNTIMED (Ripetizioni e Frequenza standard) -->
+                <div id="untimed-section">
+                    <div style="display: flex; gap: 15px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>Repetitions</label>
+                            <input type="number" id="h-instances" class="form-control" value="1" min="1" max="50">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Default Timer (min)</label>
+                            <input type="number" id="h-timer" class="form-control" value="25" min="1">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Frequency</label>
+                        <select id="h-frequency" class="form-control" onchange="toggleDays()">
+                            <option value="all">Every day</option>
+                            <option value="weekdays">Weekdays (Mon-Fri)</option>
+                            <option value="weekends">Weekends (Sat-Sun)</option>
+                            <option value="specific">Specific days</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group days-checkboxes" id="h-days-container">
+                        <label class="day-check"><input type="checkbox" value="1"> Mon</label>
+                        <label class="day-check"><input type="checkbox" value="2"> Tue</label>
+                        <label class="day-check"><input type="checkbox" value="3"> Wed</label>
+                        <label class="day-check"><input type="checkbox" value="4"> Thu</label>
+                        <label class="day-check"><input type="checkbox" value="5"> Fri</label>
+                        <label class="day-check"><input type="checkbox" value="6"> Sat</label>
+                        <label class="day-check"><input type="checkbox" value="0"> Sun</label>
+                    </div>
                 </div>
                 
                 <div class="modal-actions">
@@ -353,7 +375,7 @@
 
     <!-- Reference Layer Modal -->
     <div id="referenceModal" class="modal-overlay">
-        <div class="modal-content" style="width: 400px;">
+        <div class="modal-content" style="width: 450px;">
             <h2>Add Ghost Layer</h2>
             <p style="color: var(--text-dim); margin-bottom: 15px; font-size: 0.8rem;">Background references (e.g., Bus schedule, Gym hours). They won't appear in the to-do list.</p>
             <form id="referenceForm">
@@ -364,24 +386,11 @@
                 </div>
                 
                 <div class="form-group">
-                    <label>Time Windows</label>
+                    <label>Time Windows & Days</label>
                     <div id="ref-time-windows-container"></div>
                     <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addRefTimeWindow()">+ Add Time Window</button>
                 </div>
 
-                <div class="form-group">
-                    <label>Active Days</label>
-                    <div class="days-checkboxes" style="display: flex; gap: 10px;">
-                        <label class="day-check"><input type="checkbox" name="ref-day" value="1"> Mo</label>
-                        <label class="day-check"><input type="checkbox" name="ref-day" value="2"> Tu</label>
-                        <label class="day-check"><input type="checkbox" name="ref-day" value="3"> We</label>
-                        <label class="day-check"><input type="checkbox" name="ref-day" value="4"> Th</label>
-                        <label class="day-check"><input type="checkbox" name="ref-day" value="5"> Fr</label>
-                        <label class="day-check"><input type="checkbox" name="ref-day" value="6"> Sa</label>
-                        <label class="day-check"><input type="checkbox" name="ref-day" value="0"> Su</label>
-                    </div>
-                </div>
-                
                 <div class="form-group">
                     <label>Color</label>
                     <div class="color-palette" id="ref-color-palette">

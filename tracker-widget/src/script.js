@@ -25,7 +25,6 @@ function initData() {
 
 initData();
 
-// Aggiungendo || [] e || {} diciamo al codice di usare un contenitore vuoto se non trova nulla, evitando i crash.
 let templates = JSON.parse(localStorage.getItem('tracker_templates')) || [];
 let logs = JSON.parse(localStorage.getItem('tracker_logs')) || {};
 let specificEvents = JSON.parse(localStorage.getItem('tracker_events')) || [];
@@ -38,14 +37,12 @@ let refToggles = JSON.parse(localStorage.getItem('ref_toggles')) || {};
 function syncCategoryOrder() {
     const existingCats = new Set(templates.map(t => t.category));
     
-    // Aggiungi le categorie mancanti in coda
     existingCats.forEach(c => { 
         if (!categoryOrder.includes(c)) {
             categoryOrder.push(c); 
         }
     });
     
-    // Rimuovi quelle che non esistono più
     categoryOrder = categoryOrder.filter(c => existingCats.has(c));
     localStorage.setItem('tracker_category_order', JSON.stringify(categoryOrder));
 }
@@ -103,14 +100,13 @@ function quickAddNoteCategory(event) {
         if (newCat && !noteCategories.includes(newCat)) {
             noteCategories.push(newCat);
             localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
-            event.target.value = ''; // svuota l'input
-            renderNotesManager(); // ricarica la lista nel modale
+            event.target.value = ''; 
+            renderNotesManager(); 
         }
     }
 }
 
 function removeNoteCategory(cat) {
-    // Eliminazione diretta per aggirare l'alert nativo "Tauri localhost says..."
     noteCategories = noteCategories.filter(c => c !== cat);
     localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
     renderNotesManager();
@@ -148,6 +144,21 @@ function isTaskActiveOnDate(template, dateStr) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
     
+    // Se la task ha un tipo esplicito "timed" O possiede finestre temporali
+    if (template.type === 'timed' || (template.timeWindows && template.timeWindows.length > 0)) {
+        let inTimeWindowDays = false;
+        if (template.timeWindows && template.timeWindows.length > 0) {
+            for (let tw of template.timeWindows) {
+                if (tw.days && tw.days.includes(dayOfWeek)) {
+                    inTimeWindowDays = true;
+                    break;
+                }
+            }
+        }
+        return inTimeWindowDays;
+    }
+    
+    // Fallback logica standard per Untimed
     if (template.frequency === 'all') {
         return true;
     }
@@ -157,14 +168,13 @@ function isTaskActiveOnDate(template, dateStr) {
     if (template.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) {
         return true;
     }
-    if (template.frequency === 'specific' && template.daysOfWeek.includes(dayOfWeek)) {
+    if (template.frequency === 'specific' && template.daysOfWeek && template.daysOfWeek.includes(dayOfWeek)) {
         return true;
     }
     
     return false;
 }
 
-// AGGIORNAMENTO: Ora cerca le categorie uniche attive per mettere più puntini
 function getStatsForDate(dateStr) {
     let total = 0;
     let completed = 0;
@@ -222,7 +232,9 @@ function quickAddTask(event, categoryName) {
             daysOfWeek: [], 
             startDate: todayStr, 
             endDate: null,
-            color: '#ffffff'
+            color: '#ffffff',
+            type: 'untimed',
+            timeWindows: []
         });
         
         saveData();
@@ -250,7 +262,9 @@ function quickAddCalendar(event) {
             daysOfWeek: [], 
             startDate: todayStr, 
             endDate: null,
-            color: '#ffffff'
+            color: '#ffffff',
+            type: 'untimed',
+            timeWindows: []
         });
         
         saveData();
@@ -271,21 +285,42 @@ function editTask(id) {
     document.getElementById('h-id').value = t.id;
     document.getElementById('h-category').value = t.category;
     document.getElementById('h-title').value = t.title;
-    document.getElementById('h-instances').value = t.instances;
-    document.getElementById('h-timer').value = t.timerMinutes || 25;
-    document.getElementById('h-frequency').value = t.frequency;
+    document.getElementById('h-startdate').value = t.startDate || todayStr;
     document.getElementById('h-enddate').value = t.endDate || "";
     
-    // Gestione Colore nel modale di modifica
     const colorInput = document.getElementById('h-color');
     colorInput.value = t.color || '#ffffff';
     updateCustomColor(colorInput, 'h-color');
 
-    toggleDays();
-    if (t.frequency === 'specific') {
-        document.querySelectorAll('#h-days-container input').forEach(cb => { 
-            cb.checked = t.daysOfWeek.includes(parseInt(cb.value)); 
-        });
+    // Determina il tipo basato sul salvataggio precedente
+    const hasTimeWindows = t.timeWindows && t.timeWindows.length > 0;
+    const isTimed = t.type === 'timed' || hasTimeWindows;
+    
+    document.querySelector(`input[name="h-type"][value="${isTimed ? 'timed' : 'untimed'}"]`).checked = true;
+    toggleHabitType();
+
+    document.getElementById('h-time-windows-container').innerHTML = '';
+    
+    if (isTimed) {
+        if (hasTimeWindows) {
+            t.timeWindows.forEach(tw => {
+                addHabitTimeWindow(tw.start, tw.end, tw.days);
+            });
+        } else {
+            addHabitTimeWindow();
+        }
+    } else {
+        document.getElementById('h-instances').value = t.instances || 1;
+        document.getElementById('h-timer').value = t.timerMinutes || 25;
+        document.getElementById('h-frequency').value = t.frequency || 'all';
+        
+        toggleDays();
+        
+        if (t.frequency === 'specific') {
+            document.querySelectorAll('#h-days-container input').forEach(cb => { 
+                cb.checked = t.daysOfWeek && t.daysOfWeek.includes(parseInt(cb.value)); 
+            });
+        }
     }
     
     document.getElementById('modal-title').innerText = "Edit Habit";
@@ -293,7 +328,7 @@ function editTask(id) {
     document.getElementById('formModal').style.display = 'flex';
 }
 
-let deleteTargetType = ''; // 'task', 'category' o 'reference'
+let deleteTargetType = ''; 
 let deleteTargetId = '';   
 
 function deleteTask(id) {
@@ -306,7 +341,6 @@ function deleteTask(id) {
     deleteTargetId = id;
     document.getElementById('delete-target-name').innerText = `"${t.title}"`;
     
-    // Ripristiniamo i bottoni che magari erano stati nascosti
     document.getElementById('btn-del-single').style.display = 'block';
     document.getElementById('btn-del-future').style.display = 'block';
     
@@ -353,7 +387,6 @@ function deleteCategory(catName) {
     deleteTargetId = catName;
     document.getElementById('delete-target-name').innerText = `the "${catName}" calendar`;
     
-    // Ripristiniamo i bottoni che magari erano stati nascosti
     document.getElementById('btn-del-single').style.display = 'block';
     document.getElementById('btn-del-future').style.display = 'block';
     
@@ -362,7 +395,6 @@ function deleteCategory(catName) {
 }
 
 function confirmDelete(mode) {
-    // Calcola il giorno precedente a selectedDateStr per la modalità 'future'
     let targetDate = new Date(selectedDateStr);
     targetDate.setDate(targetDate.getDate() - 1);
     const yesterdayStr = formatDate(targetDate);
@@ -503,7 +535,6 @@ function renderManager() {
     const container = document.getElementById('manager-list');
     container.innerHTML = '';
     
-    // Raggruppa i template per categoria
     const cats = {};
     templates.forEach(t => {
         if (!cats[t.category]) {
@@ -514,10 +545,9 @@ function renderManager() {
 
     syncCategoryOrder();
 
-    // Cicla usando l'ordine forzato
     categoryOrder.forEach(cat => {
         if (!cats[cat]) {
-            return; // salta se la categoria è vuota
+            return; 
         }
         
         let html = `
@@ -610,7 +640,6 @@ function renderTasks() {
 
     syncCategoryOrder();
 
-    // Tasks renderizzate secondo l'ordine di categoryOrder
     categoryOrder.forEach(cat => {
         const activeTasks = templates.filter(t => t.category === cat && isTaskActiveOnDate(t, selectedDateStr));
         
@@ -692,7 +721,6 @@ function renderCalendar() {
         let dotsHTML = '';
         const whiteDotsCount = stats.categories.length;
         
-        // Logica 3 punti massimi + simbolo Plus
         if (whiteDotsCount > 0) {
             const maxDots = Math.min(whiteDotsCount, 3);
             for(let k = 0; k < maxDots; k++) {
@@ -774,15 +802,27 @@ function renderTracker() {
     }, 10);
 }
 
-// --- 5. MODALS MANAGEMENT ---
+// --- 5. MODALS MANAGEMENT E TYPE TOGGLE ---
+
+function toggleHabitType() {
+    const isTimed = document.querySelector('input[name="h-type"]:checked').value === 'timed';
+    document.getElementById('timed-section').style.display = isTimed ? 'block' : 'none';
+    document.getElementById('untimed-section').style.display = isTimed ? 'none' : 'block';
+}
 
 function openFormModal() {
     document.getElementById('habitForm').reset();
     document.getElementById('h-id').value = ""; 
+    document.getElementById('h-startdate').value = selectedDateStr;
     
-    // Resettiamo anche il colore a bianco
     document.getElementById('h-color').value = '#ffffff';
     updateCustomColor(document.getElementById('h-color'), 'h-color');
+    
+    document.querySelector('input[name="h-type"][value="timed"]').checked = true;
+    toggleHabitType();
+    
+    document.getElementById('h-time-windows-container').innerHTML = '';
+    addHabitTimeWindow();
 
     document.getElementById('modal-title').innerText = "Create New Habit";
     toggleDays();
@@ -818,6 +858,49 @@ function toggleDays() {
     document.getElementById('h-days-container').style.display = (freq === 'specific') ? 'flex' : 'none';
 }
 
+function addHabitTimeWindow(start = '', end = '', days = []) {
+    const container = document.getElementById('h-time-windows-container');
+    const div = document.createElement('div');
+    
+    div.className = 'habit-time-window-row';
+    div.style.border = '1px solid #333';
+    div.style.padding = '10px';
+    div.style.marginBottom = '10px';
+    div.style.background = 'rgba(255,255,255,0.02)';
+    
+    const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+    const dayVals = [1, 2, 3, 4, 5, 6, 0];
+    let checksHtml = '';
+    
+    for (let i = 0; i < 7; i++) {
+        const checked = days.includes(dayVals[i]) ? 'checked' : '';
+        checksHtml += `
+            <label class="day-check">
+                <input type="checkbox" value="${dayVals[i]}" class="tw-day-check" ${checked}> ${dayLabels[i]}
+            </label>
+        `;
+    }
+    
+    div.innerHTML = `
+        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>Start</label>
+                <input type="time" class="form-control h-start" value="${start}">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>End</label>
+                <input type="time" class="form-control h-end" value="${end}">
+            </div>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
+        </div>
+        <div class="days-checkboxes" style="display: flex; gap: 10px;">
+            ${checksHtml}
+        </div>
+    `;
+    
+    container.appendChild(div);
+}
+
 document.getElementById('habitForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -826,21 +909,50 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
     const title = document.getElementById('h-title').value.trim();
     const startDate = document.getElementById('h-startdate').value; 
     const endDate = document.getElementById('h-enddate').value || null;
-    const startTime = document.getElementById('h-starttime').value || null; 
-    const endTime = document.getElementById('h-endtime').value || null; 
-    const color = document.getElementById('h-color').value || '#ffffff'; // Nuovo
-    const instances = parseInt(document.getElementById('h-instances').value, 10);
-    const timerMins = parseInt(document.getElementById('h-timer').value, 10);
-    const frequency = document.getElementById('h-frequency').value;
+    const color = document.getElementById('h-color').value || '#ffffff';
+    const type = document.querySelector('input[name="h-type"]:checked').value;
     
+    let instances = 1;
+    let timerMins = 0;
+    let frequency = 'specific';
     let daysOfWeek = [];
-    if (frequency === 'specific') {
-        document.querySelectorAll('#h-days-container input:checked').forEach(cb => {
-            daysOfWeek.push(parseInt(cb.value));
+    let timeWindows = [];
+    
+    if (type === 'timed') {
+        document.querySelectorAll('.habit-time-window-row').forEach(row => {
+            const start = row.querySelector('.h-start').value;
+            const end = row.querySelector('.h-end').value;
+            let days = [];
+            
+            row.querySelectorAll('.tw-day-check:checked').forEach(cb => {
+                days.push(parseInt(cb.value));
+                if (!daysOfWeek.includes(parseInt(cb.value))) {
+                    daysOfWeek.push(parseInt(cb.value));
+                }
+            });
+            
+            if (start && end && days.length > 0) {
+                timeWindows.push({ start: start, end: end, days: days });
+            }
         });
-        if (daysOfWeek.length === 0) { 
-            alert("Please select at least one day!"); 
-            return; 
+        
+        if (timeWindows.length === 0) {
+            alert("Please complete at least one time window with selected days!");
+            return;
+        }
+    } else {
+        instances = parseInt(document.getElementById('h-instances').value, 10) || 1;
+        timerMins = parseInt(document.getElementById('h-timer').value, 10) || 25;
+        frequency = document.getElementById('h-frequency').value;
+        
+        if (frequency === 'specific') {
+            document.querySelectorAll('#h-days-container input:checked').forEach(cb => {
+                daysOfWeek.push(parseInt(cb.value));
+            });
+            if (daysOfWeek.length === 0) { 
+                alert("Please select at least one day!"); 
+                return; 
+            }
         }
     }
 
@@ -854,9 +966,9 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
         t.daysOfWeek = daysOfWeek; 
         t.startDate = startDate; 
         t.endDate = endDate;
-        t.startTime = startTime; 
-        t.endTime = endTime;
         t.color = color;
+        t.timeWindows = timeWindows;
+        t.type = type;
     } else {
         templates.push({
             id: 't_' + Date.now(), 
@@ -868,9 +980,9 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
             daysOfWeek: daysOfWeek, 
             startDate: startDate, 
             endDate: endDate, 
-            startTime: startTime, 
-            endTime: endTime, 
             color: color,
+            timeWindows: timeWindows,
+            type: type,
             exceptions: []
         });
     }
@@ -1135,22 +1247,44 @@ function switchDrawerView(view) {
     document.getElementById('tab-tracker').classList.toggle('active', view === 'tracker');
 }
 
-function addRefTimeWindow(start = '', end = '') {
+function addRefTimeWindow(start = '', end = '', days = []) {
     const container = document.getElementById('ref-time-windows-container');
     const div = document.createElement('div');
     
-    div.style.display = 'flex';
-    div.style.gap = '15px';
+    div.className = 'ref-time-window-row';
+    div.style.border = '1px solid #333';
+    div.style.padding = '10px';
     div.style.marginBottom = '10px';
+    div.style.background = 'rgba(255,255,255,0.02)';
+    
+    const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+    const dayVals = [1, 2, 3, 4, 5, 6, 0];
+    let checksHtml = '';
+    
+    for(let i=0; i<7; i++) {
+        const checked = days.includes(dayVals[i]) ? 'checked' : '';
+        checksHtml += `
+            <label class="day-check">
+                <input type="checkbox" value="${dayVals[i]}" class="tw-day-check" ${checked}> ${dayLabels[i]}
+            </label>
+        `;
+    }
     
     div.innerHTML = `
-        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-            <input type="time" class="form-control ref-start" required value="${start}">
+        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>Start</label>
+                <input type="time" class="form-control ref-start" required value="${start}">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>End</label>
+                <input type="time" class="form-control ref-end" required value="${end}">
+            </div>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
         </div>
-        <div class="form-group" style="flex: 1; margin-bottom: 0;">
-            <input type="time" class="form-control ref-end" required value="${end}">
+        <div class="days-checkboxes" style="display: flex; gap: 10px;">
+            ${checksHtml}
         </div>
-        <button type="button" class="icon-btn delete" onclick="this.parentElement.remove()" style="margin-top: 5px;">×</button>
     `;
     
     container.appendChild(div);
@@ -1175,25 +1309,26 @@ document.getElementById('referenceForm').addEventListener('submit', function(e) 
     
     const title = document.getElementById('ref-title').value.trim();
     const color = document.getElementById('r-color').value || '#444444';
-    
-    let days = [];
-    document.querySelectorAll('input[name="ref-day"]:checked').forEach(cb => {
-        days.push(parseInt(cb.value));
-    });
-    
-    if (days.length === 0) { 
-        alert("Select at least one day!"); 
-        return; 
-    }
+    const opacity = document.getElementById('ref-opacity').value || '0.8';
 
     let timeWindows = [];
-    document.querySelectorAll('#ref-time-windows-container > div').forEach(row => {
+    document.querySelectorAll('.ref-time-window-row').forEach(row => {
         const start = row.querySelector('.ref-start').value;
         const end = row.querySelector('.ref-end').value;
-        if (start && end) {
-            timeWindows.push({ start: start, end: end });
+        let days = [];
+        row.querySelectorAll('.tw-day-check:checked').forEach(cb => {
+            days.push(parseInt(cb.value));
+        });
+        
+        if (start && end && days.length > 0) {
+            timeWindows.push({ start: start, end: end, days: days });
         }
     });
+    
+    if (timeWindows.length === 0) { 
+        alert("Please complete at least one time window with selected days!"); 
+        return; 
+    }
 
     const id = document.getElementById('ref-id').value || 'r_' + Date.now();
     
@@ -1201,15 +1336,15 @@ document.getElementById('referenceForm').addEventListener('submit', function(e) 
         const ref = referenceLayers.find(x => x.id === id);
         ref.title = title; 
         ref.timeWindows = timeWindows; 
-        ref.days = days; 
         ref.color = color;
+        ref.opacity = opacity;
     } else {
         referenceLayers.push({ 
             id: id, 
             title: title, 
             timeWindows: timeWindows, 
-            days: days, 
-            color: color 
+            color: color,
+            opacity: opacity
         });
         refToggles[id] = true; 
     }
@@ -1255,7 +1390,8 @@ function timeToPx(timeStr) {
         return 0;
     }
     const [h, m] = timeStr.split(':').map(Number);
-    return (h + m/60) * 40;
+    // Spostiamo l'origine a 07:00 del mattino
+    return ((h - 7) + m/60) * 40;
 }
 
 function renderWeeklyPlanner() {
@@ -1294,14 +1430,15 @@ function renderWeeklyPlanner() {
         });
 
         const PIXELS_PER_HOUR = 40;
-        const totalGridHeight = 24 * PIXELS_PER_HOUR;
+        const startHour = 7;
+        const totalGridHeight = (24 - startHour) * PIXELS_PER_HOUR;
         
-        // 2. Colonna delle Ore fisse a sinistra
+        // 2. Colonna delle Ore fisse a sinistra (inizia dalle 07:00)
         timeLabels.innerHTML = '';
         timeLabels.style.height = `${totalGridHeight}px`;
         
-        for (let h = 0; h <= 24; h++) {
-            const top = h * PIXELS_PER_HOUR;
+        for (let h = startHour; h <= 24; h++) {
+            const top = (h - startHour) * PIXELS_PER_HOUR;
             if (h < 24) {
                 timeLabels.innerHTML += `
                     <div class="time-label" style="top: ${top}px;">
@@ -1344,8 +1481,10 @@ function renderWeeklyPlanner() {
             });
 
             safeTemplates.forEach(t => {
-                if (t && isTaskActiveOnDate(t, loopDateStr) && (!t.startTime || !t.endTime)) {
-                    flexibleCategories.add(t.category);
+                if (t && isTaskActiveOnDate(t, loopDateStr)) {
+                    if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) {
+                        flexibleCategories.add(t.category);
+                    }
                 }
             });
             
@@ -1361,56 +1500,62 @@ function renderWeeklyPlanner() {
             dayCol.className = 'planner-col-absolute';
             dayCol.style.height = `${totalGridHeight}px`; 
             
-            for (let h = 0; h <= 24; h++) {
+            for (let h = startHour; h <= 24; h++) {
+                const top = (h - startHour) * PIXELS_PER_HOUR;
                 dayCol.innerHTML += `
-                    <div class="grid-line-abs" style="top: ${h * PIXELS_PER_HOUR}px;"></div>
+                    <div class="grid-line-abs" style="top: ${top}px;"></div>
                 `;
             }
 
             safeLayers.forEach(ref => {
-                if (ref && ref.days && safeToggles[ref.id] && ref.days.includes(jsDay)) {
-                    // Mappiamo attraverso le multi-finestre
+                if (ref && safeToggles[ref.id]) {
                     const windows = ref.timeWindows || [];
+                    const opacity = ref.opacity || 0.8;
+                    
                     windows.forEach(tw => {
-                        const top = timeToPx(tw.start);
-                        const height = Math.max(timeToPx(tw.end) - top, 15);
-                        
-                        dayCol.innerHTML += `
-                            <div class="block-absolute block-ref" style="top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${ref.color}; color:${ref.color}; filter: brightness(1.5);">
-                                <i>${ref.title}</i>
-                            </div>
-                        `;
+                        const twDays = tw.days || [];
+                        if (twDays.includes(jsDay)) {
+                            const top = timeToPx(tw.start);
+                            const height = Math.max(timeToPx(tw.end) - top, 15);
+                            
+                            if (top + height > 0) {
+                                dayCol.innerHTML += `
+                                    <div class="block-absolute block-ref" style="top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${ref.color}; color:${ref.color}; opacity: ${opacity}; filter: brightness(1.5);">
+                                        <i>${ref.title}</i>
+                                    </div>
+                                `;
+                            }
+                        }
                     });
                 }
             });
 
             safeTemplates.forEach(t => {
-                if (t && isTaskActiveOnDate(t, loopDateStr) && t.startTime && t.endTime) {
-                    const top = timeToPx(t.startTime);
-                    const height = Math.max(timeToPx(t.endTime) - top, 15);
-                    const color = t.color || '#ffffff'; // Default a bianco
+                if (t && isTaskActiveOnDate(t, loopDateStr)) {
+                    const color = t.color || '#ffffff';
                     
-                    // Niente categoria (t.category), solo colore personalizzato
-                    dayCol.innerHTML += `
-                        <div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${color}; color: ${color};">
-                            <b>${t.title}</b>
-                        </div>
-                    `;
+                    if (t.timeWindows && t.timeWindows.length > 0) {
+                        t.timeWindows.forEach(tw => {
+                            if (tw.days && tw.days.includes(jsDay)) {
+                                const top = timeToPx(tw.start);
+                                const height = Math.max(timeToPx(tw.end) - top, 15);
+                                
+                                if (top + height > 0) {
+                                    dayCol.innerHTML += `
+                                        <div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${color}; color: ${color};">
+                                            <b>${t.title}</b>
+                                        </div>
+                                    `;
+                                }
+                            }
+                        });
+                    }
                 }
             });
 
             grid.appendChild(dayCol);
         }
         
-        // Timeout necessario affinché il DOM si aggiorni prima dello scroll
-        setTimeout(() => {
-            const scrollArea = document.getElementById('planner-scroll');
-            if (scrollArea) {
-                // Sottraiamo 20px per dare un piccolo margine visuale in alto
-                scrollArea.scrollTop = timeToPx('07:00') - 20; 
-            }
-        }, 50);
-
     } catch (error) {
         console.error("Crash evitato in renderWeeklyPlanner:", error);
     }
