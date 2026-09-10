@@ -24,9 +24,9 @@
                 <div class="month-grid" id="calendar-grid"></div>
             </div>
 
-            <!-- QUICK NOTES (Salvataggio con Enter & Resizable) -->
+            <!-- QUICK NOTES (Salvataggio con Enter, Resizable dal basso) -->
             <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
-            <div id="notes-section" class="notes-section collapsed">
+            <div id="notes-section" class="notes-section">
                 <div class="notes-controls">
                     <h2 style="margin: 0; color: var(--text-main); border: none; padding: 0;">Quick Notes</h2>
                     <div style="display: flex; gap: 5px; align-items: center;">
@@ -43,8 +43,7 @@
         <!-- RIGHT: 60% -->
         <div class="right-pane">
             
-            <div data-tauri-drag-region style="position: absolute; top: 0; left: 0; width: calc(100% - 90px); height: 40px; z-index: 40; cursor: grab; background: rgba(0,0,0,0.01);"></div>
-            <button id="btn-theme-toggle" onclick="toggleTheme()" style="position: absolute; top: 10px; right: 50px; background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem; z-index: 50;">🌗</button>
+            <div data-tauri-drag-region style="position: absolute; top: 0; left: 0; width: calc(100% - 60px); height: 40px; z-index: 40; cursor: grab; background: rgba(0,0,0,0.01);"></div>
             <button id="btn-close-app" style="position: absolute; top: 10px; right: 20px; background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem; z-index: 50;">✕</button>
             
             <!-- 3A. MAIN AREA: HEADER & WEEKLY PLANNER -->
@@ -72,11 +71,11 @@
                         </div>
                     </div>
                     
-                    <div class="planner-main-wrapper" style="border: 1px solid var(--border-color); background: rgba(0,0,0,0.2);">
+                    <div class="planner-main-wrapper" style="border: 1px solid var(--border-color);">
                         <!-- Header fissa -->
-                        <div class="planner-header-row" id="planner-header" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color);"></div>
+                        <div class="planner-header-row" id="planner-header" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); background: #050505;"></div>
                         <!-- Area scrollabile ore -->
-                        <div class="planner-scroll-area" id="planner-scroll">
+                        <div class="planner-scroll-area" id="planner-scroll" style="background: #020202;">
                             <div class="planner-time-labels" id="planner-time-labels"></div>
                             <div class="planner-grid-absolute" id="planner-grid"></div>
                         </div>
@@ -165,7 +164,6 @@
                     <input type="text" id="h-title" class="form-control" placeholder="e.g. Math Session" required>
                 </div>
                 
-                <!-- NEW: Color Palette for Habits -->
                 <div class="form-group">
                     <label>Color (For Timed Tasks)</label>
                     <div class="color-palette" id="habit-color-palette">
@@ -262,7 +260,6 @@
                         <div class="color-circle" style="background: #6e7073;" data-color="#6e7073" onclick="selectColor(this, 'e-color')"></div>
                         <div class="color-circle custom-color-btn" onclick="document.getElementById('e-color').click()">+</div>
                     </div>
-                    <!-- Input nativo nascosto -->
                     <input type="color" id="e-color" style="display: none;" value="#b84b4b" onchange="updateCustomColor(this, 'e-color')">
                 </div>
                 <div class="modal-actions">
@@ -394,6 +391,7 @@
                         <div class="color-circle" style="background: #4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'r-color')"></div>
                         <div class="color-circle" style="background: #b08d43;" data-color="#b08d43" onclick="selectColor(this, 'r-color')"></div>
                         <div class="color-circle" style="background: #725b7a;" data-color="#725b7a" onclick="selectColor(this, 'r-color')"></div>
+                        <div class="color-circle" style="background: #6e7073;" data-color="#6e7073" onclick="selectColor(this, 'r-color')"></div>
                         <div class="color-circle custom-color-btn" onclick="document.getElementById('r-color').click()">+</div>
                     </div>
                     <input type="color" id="r-color" style="display: none;" value="#444444" onchange="updateCustomColor(this, 'r-color')">
