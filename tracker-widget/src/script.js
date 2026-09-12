@@ -21,6 +21,9 @@ function initData() {
     if (!localStorage.getItem('ref_toggles')) {
         localStorage.setItem('ref_toggles', JSON.stringify({}));
     }
+    if (!localStorage.getItem('tracker_ephemeral')) {
+        localStorage.setItem('tracker_ephemeral', JSON.stringify({}));
+    }
 }
 
 initData();
@@ -32,6 +35,7 @@ let noteCategories = JSON.parse(localStorage.getItem('tracker_note_cats')) || []
 let categoryOrder = JSON.parse(localStorage.getItem('tracker_category_order')) || [];
 let referenceLayers = JSON.parse(localStorage.getItem('tracker_references')) || [];
 let refToggles = JSON.parse(localStorage.getItem('ref_toggles')) || {};
+let ephemeralData = JSON.parse(localStorage.getItem('tracker_ephemeral')) || {};
 
 // Utility function to sync categoryOrder with reality
 function syncCategoryOrder() {
@@ -56,17 +60,23 @@ function saveData() {
     localStorage.setItem('tracker_category_order', JSON.stringify(categoryOrder));
     localStorage.setItem('tracker_references', JSON.stringify(referenceLayers));
     localStorage.setItem('ref_toggles', JSON.stringify(refToggles));
+    localStorage.setItem('tracker_ephemeral', JSON.stringify(ephemeralData));
 }
 
 function renderNoteCategories() {
     const select = document.getElementById('note-category');
-    select.innerHTML = '';
+    const focusSelect = document.getElementById('focus-note-category');
+    if (select) select.innerHTML = '';
+    if (focusSelect) focusSelect.innerHTML = '';
     
     noteCategories.forEach(cat => {
         const opt = document.createElement('option');
-        opt.value = cat;
-        opt.innerText = cat;
-        select.appendChild(opt);
+        opt.value = cat; opt.innerText = cat;
+        if (select) select.appendChild(opt);
+        
+        const optFocus = document.createElement('option');
+        optFocus.value = cat; optFocus.innerText = cat;
+        if (focusSelect) focusSelect.appendChild(optFocus);
     });
 }
 
@@ -99,7 +109,7 @@ function quickAddNoteCategory(event) {
         const newCat = event.target.value.trim();
         if (newCat && !noteCategories.includes(newCat)) {
             noteCategories.push(newCat);
-            localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
+            saveData();
             event.target.value = ''; 
             renderNotesManager(); 
         }
@@ -108,7 +118,7 @@ function quickAddNoteCategory(event) {
 
 function removeNoteCategory(cat) {
     noteCategories = noteCategories.filter(c => c !== cat);
-    localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
+    saveData();
     renderNotesManager();
 }
 
@@ -121,6 +131,9 @@ function formatDate(date) {
 
 const todayObj = new Date();
 const todayStr = formatDate(todayObj);
+const tomorrowObj = new Date(todayObj);
+tomorrowObj.setDate(todayObj.getDate() + 1);
+const tomorrowStr = formatDate(tomorrowObj);
 
 let selectedDateStr = todayStr;
 let currentCalendarDate = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1);
@@ -144,7 +157,6 @@ function isTaskActiveOnDate(template, dateStr) {
     const dateObj = new Date(dateStr);
     const dayOfWeek = dateObj.getDay();
     
-    // Se la task ha un tipo esplicito "timed" O possiede finestre temporali
     if (template.type === 'timed' || (template.timeWindows && template.timeWindows.length > 0)) {
         let inTimeWindowDays = false;
         if (template.timeWindows && template.timeWindows.length > 0) {
@@ -158,7 +170,6 @@ function isTaskActiveOnDate(template, dateStr) {
         return inTimeWindowDays;
     }
     
-    // Fallback logica standard per Untimed
     if (template.frequency === 'all') {
         return true;
     }
@@ -242,6 +253,7 @@ function quickAddTask(event, categoryName) {
         renderTracker();
         renderCalendar(); 
         renderWeeklyPlanner();
+        renderAvailableTasksForFocus();
     }
 }
 
@@ -278,9 +290,7 @@ function quickAddCalendar(event) {
 
 function editTask(id) {
     const t = templates.find(x => x.id === id);
-    if (!t) {
-        return;
-    }
+    if (!t) return;
     
     document.getElementById('h-id').value = t.id;
     document.getElementById('h-category').value = t.category;
@@ -292,7 +302,6 @@ function editTask(id) {
     colorInput.value = t.color || '#ffffff';
     updateCustomColor(colorInput, 'h-color');
 
-    // Determina il tipo basato sul salvataggio precedente
     const hasTimeWindows = t.timeWindows && t.timeWindows.length > 0;
     const isTimed = t.type === 'timed' || hasTimeWindows;
     
@@ -333,9 +342,7 @@ let deleteTargetId = '';
 
 function deleteTask(id) {
     const t = templates.find(x => x.id === id);
-    if (!t) {
-        return;
-    }
+    if (!t) return;
     
     deleteTargetType = 'task';
     deleteTargetId = id;
@@ -443,6 +450,7 @@ function confirmDelete(mode) {
     renderCalendar(); 
     renderManager();
     renderWeeklyPlanner();
+    renderAvailableTasksForFocus();
 }
 
 function selectDate(dateStr) {
@@ -452,81 +460,279 @@ function selectDate(dateStr) {
     renderWeeklyPlanner(); 
 }
 
-// --- 3. POMODORO TIMER (MODAL BASED) ---
+// --- 3. POMODORO BUILDER & LOGIC ---
 let pomodoroInterval;
+let focusPlaylist = [];
+let isPomodoroPaused = false;
+let currentPlaylistIndex = 0;
+let timeRemaining = 0;
+let totalPhaseTime = 0;
+
+function renderAvailableTasksForFocus() {
+    const container = document.getElementById('focus-available-tasks');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    let hasTasks = false;
+    const cats = {};
+    
+    templates.forEach(t => {
+        if (isTaskActiveOnDate(t, selectedDateStr)) {
+            const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
+            const maxAvailable = currentLog.filter(x => !x).length;
+            
+            const inPlaylist = focusPlaylist.filter(p => p.type === 'task' && p.id === t.id).length;
+            const remaining = maxAvailable - inPlaylist;
+            
+            if (maxAvailable > 0) {
+                if (!cats[t.category]) cats[t.category] = [];
+                cats[t.category].push({ task: t, remaining: remaining });
+                hasTasks = true;
+            }
+        }
+    });
+    
+    if (!hasTasks) {
+        container.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">No uncompleted tasks for today.</span>';
+        return;
+    }
+
+    for (let cat in cats) {
+        let catHasAvailable = cats[cat].some(d => d.remaining > 0);
+        if (catHasAvailable) {
+            // Creo il titolo della categoria come elemento separato (fix per il bug di innerHTML)
+            const catTitle = document.createElement('div');
+            catTitle.style.cssText = "width: 100%; font-size: 0.75rem; color: #888; font-weight: bold; margin-top: 10px; margin-bottom: 5px; text-transform: uppercase; border-bottom: 1px dotted #333;";
+            catTitle.innerText = cat;
+            container.appendChild(catTitle);
+            
+            cats[cat].forEach(data => {
+                if (data.remaining > 0) {
+                    const chip = document.createElement('div');
+                    chip.className = 'playlist-task-chip';
+                    chip.innerHTML = `+ ${data.task.title} <span style="opacity:0.6; margin-left: 8px;">${data.remaining} left</span>`;
+                    chip.onclick = () => addTaskToPlaylist(data.task);
+                    container.appendChild(chip);
+                }
+            });
+        }
+    }
+}
+
+function addTaskToPlaylist(task) {
+    focusPlaylist.push({ type: 'task', id: task.id, title: task.title, duration: task.timerMinutes || 25, color: task.color || '#ffffff' });
+    focusPlaylist.push({ type: 'break', duration: 5 });
+    renderFocusPlaylist();
+    renderAvailableTasksForFocus(); // Aggiorna i contatori togliendo 1
+}
+
+function removePlaylistIndex(index) {
+    focusPlaylist.splice(index, 1);
+    renderFocusPlaylist();
+    renderAvailableTasksForFocus(); // Fa riapparire il bottone
+}
+
+function updatePlaylistDuration(index, value) {
+    const val = parseInt(value);
+    if (!isNaN(val) && val > 0) focusPlaylist[index].duration = val;
+}
+
+function renderFocusPlaylist() {
+    const container = document.getElementById('focus-playlist');
+    container.innerHTML = '';
+    
+    if (focusPlaylist.length === 0) {
+        container.innerHTML = '<div style="color: #444; font-size: 0.8rem; text-align: center; margin-top: 30px;">Select a task above to add it here</div>';
+        document.getElementById('btn-start-playlist').disabled = true;
+        return;
+    }
+    
+    document.getElementById('btn-start-playlist').disabled = false;
+    
+    focusPlaylist.forEach((item, index) => {
+        if (item.type === 'task') {
+            container.innerHTML += `
+                <div class="playlist-item" style="border-left: 3px solid ${item.color};">
+                    <div><strong>${item.title}</strong><div style="font-size: 0.7rem; color: var(--text-dim);">Task</div></div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="number" class="form-control no-spinners" style="width: 45px; padding: 4px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> <span style="font-size:0.7rem; color:#666;">min</span>
+                        <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
+                    </div>
+                </div>`;
+        } else if (item.type === 'break') {
+            container.innerHTML += `
+                <div class="playlist-break">
+                    <span style="font-size: 0.7rem; color: var(--text-dim);">PAUSE</span>
+                    <input type="number" class="form-control no-spinners" style="width: 45px; padding: 2px; text-align: center; border-color: #333;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)">
+                    <span style="font-size: 0.7rem; color: var(--text-dim);">MIN</span>
+                    <button type="button" class="icon-btn delete" style="margin-left: 10px;" onclick="removePlaylistIndex(${index})">×</button>
+                </div>`;
+        }
+    });
+}
 
 function openTimerModal() {
+    focusPlaylist = [];
+    renderAvailableTasksForFocus();
+    renderFocusPlaylist();
     closeModals();
     document.getElementById('timerSetupModal').style.display = 'flex';
 }
 
 document.getElementById('timerSetupForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    const mins = parseInt(document.getElementById('tmr-minutes').value, 10);
+    if(focusPlaylist.length === 0) return;
     closeModals();
-    startPomodoro(mins);
+    
+    if(focusPlaylist[focusPlaylist.length-1].type === 'break') focusPlaylist.pop();
+    
+    currentPlaylistIndex = 0;
+    startCurrentPlaylistPhase();
 });
 
-function startPomodoro(mins) {
+function startCurrentPlaylistPhase() {
+    if (currentPlaylistIndex >= focusPlaylist.length) {
+        resetWidgetMode(); // Ripristina layout
+        document.getElementById('pomodoroOverlay').style.display = 'none';
+        handlePomodoroComplete();
+        return;
+    }
+    isPomodoroPaused = false;
+    document.getElementById('btn-pomodoro-pause').innerText = "Pause";
+    
+    const phase = focusPlaylist[currentPlaylistIndex];
     document.getElementById('pomodoroOverlay').style.display = 'flex';
+    
+    const titleEl = document.getElementById('pomodoro-task-title');
     const circle = document.getElementById('pomodoro-circle');
-    const circumference = 2 * Math.PI * 180; 
-    circle.style.strokeDasharray = `${circumference} ${circumference}`;
     
-    const totalSeconds = mins * 60;
-    let timeLeft = totalSeconds;
-    
-    clearInterval(pomodoroInterval);
-    
-    pomodoroInterval = setInterval(() => {
-        timeLeft--;
-        const percent = timeLeft / totalSeconds;
-        circle.style.strokeDashoffset = circumference - (percent * circumference);
-        
-        if (timeLeft <= 0) {
-            clearInterval(pomodoroInterval);
-            document.getElementById('pomodoroOverlay').style.display = 'none';
-            handlePomodoroComplete();
-        }
-    }, 1000);
-}
-
-function handlePomodoroComplete() {
-    const listContainer = document.getElementById('uncompleted-tasks-list');
-    listContainer.innerHTML = '';
-    let hasTasks = false;
-
-    templates.forEach(t => {
-        if (isTaskActiveOnDate(t, selectedDateStr)) {
-            const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
-            const firstUncheckedIndex = currentLog.indexOf(false);
-            
-            if (firstUncheckedIndex !== -1) {
-                hasTasks = true;
-                const btn = document.createElement('button');
-                btn.className = 'btn';
-                btn.style.textAlign = 'left';
-                btn.style.fontFamily = 'inherit';
-                btn.innerText = `[${t.category}] ${t.title}`;
-                btn.onclick = () => {
-                    toggleTask(t.id, firstUncheckedIndex);
-                    closeModals();
-                };
-                listContainer.appendChild(btn);
-            }
-        }
-    });
-
-    if (!hasTasks) {
-        listContainer.innerHTML = '<p style="color: var(--text-dim);">No pending tasks for today!</p>';
+    if (phase.type === 'task') {
+        titleEl.innerText = `Focus: ${phase.title}`;
+        circle.setAttribute('stroke', phase.color);
+    } else {
+        titleEl.innerText = "Break Time";
+        circle.setAttribute('stroke', '#666666');
     }
 
-    document.getElementById('timerCompleteModal').style.display = 'flex';
+    totalPhaseTime = phase.duration * 60;
+    timeRemaining = totalPhaseTime;
+    
+    runPomodoroTick();
+    clearInterval(pomodoroInterval);
+    pomodoroInterval = setInterval(runPomodoroTick, 1000);
+}
+
+function runPomodoroTick() {
+    if (isPomodoroPaused) return;
+    timeRemaining--;
+    
+    const m = Math.floor(Math.abs(timeRemaining) / 60).toString().padStart(2, '0');
+    const s = (Math.abs(timeRemaining) % 60).toString().padStart(2, '0');
+    document.getElementById('pomodoro-time-text').innerText = `${timeRemaining < 0 ? '-' : ''}${m}:${s}`;
+
+    const overlay = document.getElementById('pomodoroOverlay');
+    const isWidget = overlay.classList.contains('widget-mode');
+    
+    // Raggio e circonferenza cambiano in widget mode (60 vs 180)
+    const radius = isWidget ? 60 : 180;
+    const circumference = 2 * Math.PI * radius; 
+    const circle = document.getElementById('pomodoro-circle');
+    circle.style.strokeDasharray = `${circumference} ${circumference}`;
+    
+    const percent = Math.max(0, timeRemaining / totalPhaseTime);
+    circle.style.strokeDashoffset = circumference - (percent * circumference);
+    
+    if (timeRemaining <= 0 && timeRemaining > -2) {
+        clearInterval(pomodoroInterval);
+        
+        if (focusPlaylist[currentPlaylistIndex].type === 'task') {
+            const t = templates.find(x => x.id === focusPlaylist[currentPlaylistIndex].id);
+            if (t) {
+                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
+                const firstUncheckedIndex = currentLog.indexOf(false);
+                if (firstUncheckedIndex !== -1) toggleTask(t.id, firstUncheckedIndex);
+            }
+        }
+        currentPlaylistIndex++;
+        startCurrentPlaylistPhase();
+    }
+}
+
+function togglePomodoroPause() {
+    isPomodoroPaused = !isPomodoroPaused;
+    document.getElementById('btn-pomodoro-pause').innerText = isPomodoroPaused ? "Resume" : "Pause";
 }
 
 function stopPomodoro() {
     clearInterval(pomodoroInterval);
+    resetWidgetMode(); // Ripristina layout
     document.getElementById('pomodoroOverlay').style.display = 'none';
+    focusPlaylist = [];
+}
+
+// NOTE FOCUS E WIDGET DRAG
+function handleFocusNoteKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        saveFocusNote();
+    }
+}
+async function saveFocusNote() {
+    const category = document.getElementById('focus-note-category').value;
+    const textEl = document.getElementById('focus-note-text');
+    const text = textEl.value.trim();
+    if (!text) return;
+    if (window.__TAURI__) {
+        try {
+            await window.__TAURI__.core.invoke('save_note', { category: category, text: `${text}\n\n` });
+            textEl.value = ''; textEl.placeholder = "✓ Idea saved!";
+            setTimeout(() => { textEl.placeholder = "Write your idea and press Enter..."; }, 1500);
+        } catch(e) {}
+    } else {
+        textEl.value = ''; textEl.placeholder = "✓ Idea saved (Mock)!";
+        setTimeout(() => { textEl.placeholder = "Write your idea and press Enter..."; }, 1500);
+    }
+}
+
+let isDraggingWidget = false;
+let widgetOffsetX, widgetOffsetY;
+
+document.getElementById('widget-drag-handle').addEventListener('mousedown', (e) => {
+    isDraggingWidget = true;
+    const overlay = document.getElementById('pomodoroOverlay');
+    widgetOffsetX = e.clientX - overlay.getBoundingClientRect().left;
+    widgetOffsetY = e.clientY - overlay.getBoundingClientRect().top;
+});
+document.addEventListener('mousemove', (e) => {
+    if (!isDraggingWidget) return;
+    const overlay = document.getElementById('pomodoroOverlay');
+    overlay.style.left = (e.clientX - widgetOffsetX) + 'px';
+    overlay.style.top = (e.clientY - widgetOffsetY) + 'px';
+    overlay.style.right = 'auto'; 
+    overlay.style.bottom = 'auto'; 
+});
+document.addEventListener('mouseup', () => { isDraggingWidget = false; });
+
+function toggleWidgetMode() {
+    const overlay = document.getElementById('pomodoroOverlay');
+    const btn = document.getElementById('btn-widget-mode');
+    const isWidget = overlay.classList.toggle('widget-mode');
+    
+    if (isWidget) {
+        btn.innerText = "⛶ Full";
+        overlay.style.top = '20px'; overlay.style.right = '30px'; overlay.style.left = 'auto'; overlay.style.bottom = 'auto';
+    } else {
+        resetWidgetMode();
+    }
+    runPomodoroTick(); // Forza l'aggiornamento grafico del cerchio
+}
+
+function resetWidgetMode() {
+    const overlay = document.getElementById('pomodoroOverlay');
+    const btn = document.getElementById('btn-widget-mode');
+    overlay.classList.remove('widget-mode');
+    btn.innerText = "🗗 Mini Widget";
+    overlay.style.top = '0'; overlay.style.left = '0'; overlay.style.right = '0'; overlay.style.bottom = '0';
 }
 
 // --- 4. RENDER ---
@@ -682,7 +888,6 @@ function renderTasks() {
     }
 }
 
-// AGGIORNAMENTO: Renderizzazione dei punti multipli
 function renderCalendar() {
     const grid = document.getElementById('calendar-grid');
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
@@ -718,25 +923,25 @@ function renderCalendar() {
         
         dayCell.innerText = i;
         
-        let dotsHTML = '';
-        const whiteDotsCount = stats.categories.length;
+        let barsHTML = '';
+        const whiteBarsCount = stats.categories.length;
         
-        if (whiteDotsCount > 0) {
-            const maxDots = Math.min(whiteDotsCount, 3);
-            for(let k = 0; k < maxDots; k++) {
-                dotsHTML += `<div class="dot" style="background-color: var(--text-main);"></div>`;
+        if (whiteBarsCount > 0) {
+            const maxBars = Math.min(whiteBarsCount, 3);
+            for(let k = 0; k < maxBars; k++) {
+                barsHTML += `<div class="bar" style="background-color: var(--text-main);"></div>`;
             }
-            if (whiteDotsCount > 3) {
-                dotsHTML += `<div style="font-size: 8px; color: var(--text-main); font-weight: bold; line-height: 5px; margin-left: 1px;">+</div>`;
+            if (whiteBarsCount > 3) {
+                barsHTML += `<div style="font-size: 10px; color: var(--text-main); font-weight: bold; margin-left: 2px;">+</div>`;
             }
         }
         
         dayEvents.forEach(e => { 
-            dotsHTML += `<div class="dot" style="background-color: ${e.color};"></div>`; 
+            barsHTML += `<div class="bar" style="background-color: ${e.color};"></div>`; 
         });
         
-        if (dotsHTML !== '') {
-            dayCell.innerHTML += `<div class="dots-container">${dotsHTML}</div>`;
+        if (barsHTML !== '') {
+            dayCell.innerHTML += `<div class="bars-container">${barsHTML}</div>`;
         }
         
         dayCell.onclick = () => selectDate(cellDateStr);
@@ -745,8 +950,11 @@ function renderCalendar() {
 }
 
 function renderTracker() {
-    const tracker = document.getElementById('github-tracker');
-    tracker.innerHTML = '';
+    const tracker2D = document.getElementById('github-tracker');
+    const strip1D = document.getElementById('tracker-strip-1d');
+    
+    tracker2D.innerHTML = '';
+    strip1D.innerHTML = '';
     
     let earliestDate = todayStr;
     templates.forEach(t => { 
@@ -758,14 +966,15 @@ function renderTracker() {
     const start = new Date(earliestDate);
     const today = new Date(todayStr);
     const diffDays = Math.ceil(Math.abs(today - start) / (1000 * 60 * 60 * 24));
-    const daysToRender = Math.max(7, diffDays + 1); 
     
-    const startDate = new Date(todayObj);
-    startDate.setDate(todayObj.getDate() - daysToRender + 1); 
+    // Per il 2D storico calcoliamo i giorni necessari (es. multipli di 7)
+    const daysToRender2D = Math.max(7, diffDays + 1); 
+    const startDate2D = new Date(todayObj);
+    startDate2D.setDate(todayObj.getDate() - daysToRender2D + 1); 
     
-    for (let i = 0; i < daysToRender; i++) {
-        const d = new Date(startDate);
-        d.setDate(startDate.getDate() + i);
+    for (let i = 0; i < daysToRender2D; i++) {
+        const d = new Date(startDate2D);
+        d.setDate(startDate2D.getDate() + i);
         const dateStr = formatDate(d);
         const stats = getStatsForDate(dateStr);
         
@@ -774,32 +983,70 @@ function renderTracker() {
         cell.title = `${dateStr} - ${stats.completed}/${stats.total} completed`; 
         cell.onclick = () => selectDate(dateStr);
 
-        if (stats.total === 0) {
-            cell.classList.add('lvl-none');
-        } else {
+        let lvlClass = 'lvl-none';
+        if (stats.total > 0) {
             const p = stats.completed / stats.total;
-            if (p === 0) {
-                cell.classList.add('lvl-none'); // Stesso nero assoluto di 0/0
-            } else if (p < 0.4) {
-                cell.classList.add('lvl-1');
-            } else if (p < 0.75) {
-                cell.classList.add('lvl-2');
-            } else if (p < 1) {
-                cell.classList.add('lvl-3');
-            } else {
-                cell.classList.add('lvl-4');
+            if (p > 0 && p < 0.4) {
+                lvlClass = 'lvl-1';
+            } else if (p >= 0.4 && p < 0.75) {
+                lvlClass = 'lvl-2';
+            } else if (p >= 0.75 && p < 1) {
+                lvlClass = 'lvl-3';
+            } else if (p === 1) {
+                lvlClass = 'lvl-4';
             }
         }
-        
-        tracker.appendChild(cell);
+        cell.classList.add(lvlClass);
+        tracker2D.appendChild(cell);
     }
 
-    setTimeout(() => {
-        const wrapper = document.querySelector('.tracker-wrapper');
-        if (wrapper) {
-            wrapper.scrollLeft = wrapper.scrollWidth;
+    // Per la striscia 1D in alto, prendiamo solo gli ultimi 25 giorni per non sbordare
+    const daysToRender1D = Math.min(25, diffDays + 1);
+    const startDate1D = new Date(todayObj);
+    startDate1D.setDate(todayObj.getDate() - daysToRender1D + 1);
+    
+    for (let i = 0; i < daysToRender1D; i++) {
+        const d = new Date(startDate1D);
+        d.setDate(startDate1D.getDate() + i);
+        const dateStr = formatDate(d);
+        const stats = getStatsForDate(dateStr);
+        
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.style.width = '12px'; // Più piccoli per la striscia
+        cell.style.height = '12px';
+        cell.title = `${dateStr} - ${stats.completed}/${stats.total}`; 
+        
+        let lvlClass = 'lvl-none';
+        if (stats.total > 0) {
+            const p = stats.completed / stats.total;
+            if (p > 0 && p < 0.4) {
+                lvlClass = 'lvl-1';
+            } else if (p >= 0.4 && p < 0.75) {
+                lvlClass = 'lvl-2';
+            } else if (p >= 0.75 && p < 1) {
+                lvlClass = 'lvl-3';
+            } else if (p === 1) {
+                lvlClass = 'lvl-4';
+            }
         }
-    }, 10);
+        cell.classList.add(lvlClass);
+        strip1D.appendChild(cell);
+    }
+}
+
+function toggleTrackerAccordion() {
+    const content = document.getElementById('tracker-accordion-content');
+    content.classList.toggle('expanded');
+    
+    if (content.classList.contains('expanded')) {
+        setTimeout(() => {
+            const wrapper = document.querySelector('.tracker-wrapper');
+            if (wrapper) {
+                wrapper.scrollLeft = wrapper.scrollWidth;
+            }
+        }, 10);
+    }
 }
 
 // --- 5. MODALS MANAGEMENT E TYPE TOGGLE ---
@@ -833,10 +1080,8 @@ function openFormModal() {
 function openEventModal() {
     document.getElementById('eventForm').reset();
     document.getElementById('e-date').value = selectedDateStr;
-    
     document.getElementById('e-color').value = '#b84b4b';
     updateCustomColor(document.getElementById('e-color'), 'e-color');
-
     closeModals();
     document.getElementById('eventModal').style.display = 'flex';
 }
@@ -949,9 +1194,9 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
             document.querySelectorAll('#h-days-container input:checked').forEach(cb => {
                 daysOfWeek.push(parseInt(cb.value));
             });
-            if (daysOfWeek.length === 0) { 
-                alert("Please select at least one day!"); 
-                return; 
+            if (daysOfWeek.length === 0) {
+                alert("Please select at least one day!");
+                return;
             }
         }
     }
@@ -966,8 +1211,8 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
         t.daysOfWeek = daysOfWeek; 
         t.startDate = startDate; 
         t.endDate = endDate;
-        t.color = color;
-        t.timeWindows = timeWindows;
+        t.color = color; 
+        t.timeWindows = timeWindows; 
         t.type = type;
     } else {
         templates.push({
@@ -981,8 +1226,8 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
             startDate: startDate, 
             endDate: endDate, 
             color: color,
-            timeWindows: timeWindows,
-            type: type,
+            timeWindows: timeWindows, 
+            type: type, 
             exceptions: []
         });
     }
@@ -992,36 +1237,28 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
     renderTasks(); 
     renderTracker(); 
     renderCalendar(); 
-    renderWeeklyPlanner();
+    renderWeeklyPlanner(); 
+    renderAvailableTasksForFocus();
 });
 
 document.getElementById('eventForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
-    const title = document.getElementById('e-title').value.trim();
-    const date = document.getElementById('e-date').value;
-    const color = document.getElementById('e-color').value;
-
     specificEvents.push({ 
         id: 'e_' + Date.now(), 
-        title: title, 
-        date: date, 
-        color: color 
+        title: document.getElementById('e-title').value.trim(), 
+        date: document.getElementById('e-date').value, 
+        color: document.getElementById('e-color').value 
     });
     
     saveData(); 
     closeModals(); 
     renderTasks(); 
-    renderCalendar();
+    renderCalendar(); 
     renderWeeklyPlanner();
 });
 
-renderTasks(); 
-renderCalendar();
-renderTracker();
-renderNoteCategories();
-
-// --- 6. CHIUSURA NATIVA WIDGET ---
+// --- CHIUSURA NATIVA WIDGET ---
 document.getElementById('btn-close-app').addEventListener('click', () => {
     if (window.__TAURI__) {
         window.__TAURI__.window.getCurrentWindow().close();
@@ -1030,10 +1267,8 @@ document.getElementById('btn-close-app').addEventListener('click', () => {
     }
 });
 
-// --- 7. NOTES MANAGEMENT (Invio con Enter e salvataggio) ---
-
+// --- NOTES MANAGEMENT ---
 function handleNoteKeyDown(event) {
-    // Premi Enter per salvare; Shift + Enter va a capo
     if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault();
         saveNote();
@@ -1051,34 +1286,27 @@ async function saveNote() {
     
     if (window.__TAURI__) {
         try {
-            const formattedText = `${text}\n\n`;
-            await window.__TAURI__.core.invoke('save_note', { category: category, text: formattedText });
-            
-            // Svuota e dai feedback nel placeholder
+            await window.__TAURI__.core.invoke('save_note', { category: category, text: `${text}\n\n` });
             textEl.value = '';
             const originalPlaceholder = textEl.placeholder;
             textEl.placeholder = "✓ Idea saved!";
-            
             setTimeout(() => {
                 textEl.placeholder = originalPlaceholder;
             }, 1500);
-            
         } catch (e) {
             alert("Error saving note: " + e);
         }
     } else {
-        // Fallback per test via browser
         textEl.value = '';
         const originalPlaceholder = textEl.placeholder;
         textEl.placeholder = "✓ Idea saved (Mock)!";
-        
         setTimeout(() => {
             textEl.placeholder = originalPlaceholder;
         }, 1500);
     }
 }
 
-// --- 8. RESIZE E TENDINA PER IL TRACKER ---
+// --- RESIZER ---
 
 function initTrackerResizer() {
     const resizer = document.getElementById('tracker-resizer');
@@ -1087,60 +1315,57 @@ function initTrackerResizer() {
     if (!resizer || !tracker) {
         return;
     }
-
+    
     let isResizing = false;
-    let startY = 0;
+    let startY = 0; 
     let startHeight = 0;
     const COLLAPSE_THRESHOLD = 55; 
     const DEFAULT_OPEN_HEIGHT = 350;
-
+    
     resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        startY = e.clientY;
+        isResizing = true; 
+        startY = e.clientY; 
         startHeight = tracker.getBoundingClientRect().height;
-        resizer.classList.add('dragging');
-        document.body.style.userSelect = 'none';
+        resizer.classList.add('dragging'); 
+        document.body.style.userSelect = 'none'; 
         document.body.style.cursor = 'ns-resize';
     });
-
+    
     document.addEventListener('mousemove', (e) => {
-        if (!isResizing) {
-            return;
-        }
-        
+        if (!isResizing) return;
         const deltaY = startY - e.clientY;
         let newHeight = startHeight + deltaY;
-
         if (newHeight < COLLAPSE_THRESHOLD) {
-            tracker.classList.add('collapsed');
-            tracker.style.height = '0px';
+            tracker.classList.add('collapsed'); 
+            tracker.style.height = '0px'; 
         } else {
-            tracker.classList.remove('collapsed');
+            tracker.classList.remove('collapsed'); 
             const maxHeight = window.innerHeight * 0.65; 
             newHeight = Math.min(newHeight, maxHeight);
-            tracker.style.height = `${newHeight}px`;
+            tracker.style.height = `${newHeight}px`; 
         }
     });
-
+    
     document.addEventListener('mouseup', () => {
         if (isResizing) {
-            isResizing = false;
-            resizer.classList.remove('dragging');
-            document.body.style.userSelect = '';
-            document.body.style.cursor = '';
+            isResizing = false; 
+            resizer.classList.remove('dragging'); 
+            document.body.style.userSelect = ''; 
+            document.body.style.cursor = ''; 
         }
     });
-
+    
     resizer.addEventListener('dblclick', () => {
         if (tracker.classList.contains('collapsed') || tracker.offsetHeight === 0) {
-            tracker.classList.remove('collapsed');
-            tracker.style.height = `${DEFAULT_OPEN_HEIGHT}px`;
+            tracker.classList.remove('collapsed'); 
+            tracker.style.height = `${DEFAULT_OPEN_HEIGHT}px`; 
         } else {
-            tracker.classList.add('collapsed');
-            tracker.style.height = '0px';
+            tracker.classList.add('collapsed'); 
+            tracker.style.height = '0px'; 
         }
     });
 }
+initTrackerResizer();
 
 function initNotesResizer() {
     const resizer = document.getElementById('notes-resizer');
@@ -1149,125 +1374,96 @@ function initNotesResizer() {
     if (!resizer || !notes) {
         return;
     }
-
+    
     let isResizing = false;
-    let startY = 0;
+    let startY = 0; 
     let startHeight = 0;
-    const COLLAPSE_THRESHOLD = 70; 
-    const DEFAULT_OPEN_HEIGHT = 150;
-
+    
     resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        startY = e.clientY;
+        isResizing = true; 
+        startY = e.clientY; 
         startHeight = notes.getBoundingClientRect().height;
-        resizer.classList.add('dragging');
-        document.body.style.userSelect = 'none';
+        resizer.classList.add('dragging'); 
+        document.body.style.userSelect = 'none'; 
         document.body.style.cursor = 'ns-resize';
     });
-
+    
     document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        
-        const deltaY = startY - e.clientY;
-        let newHeight = startHeight + deltaY;
-
-        if (newHeight < COLLAPSE_THRESHOLD) {
-            notes.classList.add('collapsed');
-            notes.style.height = '50px';
+        if (!isResizing) {
+            return;
+        }
+        let newHeight = startHeight + (startY - e.clientY);
+        if (newHeight < 70) {
+            notes.classList.add('collapsed'); 
+            notes.style.height = '50px'; 
         } else {
-            notes.classList.remove('collapsed');
-            const maxHeight = window.innerHeight * 0.6; 
-            newHeight = Math.min(newHeight, maxHeight);
-            notes.style.height = `${newHeight}px`;
+            notes.classList.remove('collapsed'); 
+            notes.style.height = `${Math.min(newHeight, window.innerHeight * 0.6)}px`; 
         }
     });
-
+    
     document.addEventListener('mouseup', () => {
         if (isResizing) {
-            isResizing = false;
-            resizer.classList.remove('dragging');
-            document.body.style.userSelect = '';
-            document.body.style.cursor = '';
+            isResizing = false; 
+            resizer.classList.remove('dragging'); 
+            document.body.style.userSelect = ''; 
+            document.body.style.cursor = ''; 
         }
     });
-
+    
     resizer.addEventListener('dblclick', () => {
         if (notes.classList.contains('collapsed') || notes.offsetHeight <= 50) {
-            notes.classList.remove('collapsed');
-            notes.style.height = `${DEFAULT_OPEN_HEIGHT}px`;
+            notes.classList.remove('collapsed'); 
+            notes.style.height = `150px`; 
         } else {
-            notes.classList.add('collapsed');
-            notes.style.height = '50px';
+            notes.classList.add('collapsed'); 
+            notes.style.height = '50px'; 
         }
     });
 }
-
-initTrackerResizer();
 initNotesResizer();
-
-// --- COLOR PALETTE E LAYERS LOGIC ---
 
 function selectColor(element, inputId) {
     const parent = element.closest('.color-palette');
-    
-    parent.querySelectorAll('.color-circle').forEach(el => {
-        el.classList.remove('active');
-    });
-    
+    parent.querySelectorAll('.color-circle').forEach(el => el.classList.remove('active'));
     element.classList.add('active');
     document.getElementById(inputId).value = element.getAttribute('data-color');
 }
 
 function updateCustomColor(input, inputId) {
     const parent = input.closest('.form-group').querySelector('.color-palette');
-    
-    parent.querySelectorAll('.color-circle').forEach(el => {
-        el.classList.remove('active');
-    });
-    
+    parent.querySelectorAll('.color-circle').forEach(el => el.classList.remove('active'));
     const preset = parent.querySelector(`.color-circle[data-color="${input.value}"]`);
     
     if (preset) {
         preset.classList.add('active');
     } else {
-        const customBtn = parent.querySelector('.custom-color-btn');
-        customBtn.classList.add('active');
-        customBtn.style.background = input.value;
-        customBtn.style.borderColor = input.value;
+        const customBtn = parent.querySelector('.custom-color-btn'); 
+        customBtn.classList.add('active'); 
+        customBtn.style.background = input.value; 
+        customBtn.style.borderColor = input.value; 
     }
     
     document.getElementById(inputId).value = input.value;
 }
 
-function switchDrawerView(view) {
-    document.getElementById('view-tasks').style.display = view === 'tasks' ? 'block' : 'none';
-    document.getElementById('view-tracker').style.display = view === 'tracker' ? 'flex' : 'none';
-    
-    document.getElementById('tab-tasks').classList.toggle('active', view === 'tasks');
-    document.getElementById('tab-tracker').classList.toggle('active', view === 'tracker');
-}
-
+// --- GHOST LAYERS LOGIC ---
 function addRefTimeWindow(start = '', end = '', days = []) {
     const container = document.getElementById('ref-time-windows-container');
     const div = document.createElement('div');
-    
     div.className = 'ref-time-window-row';
-    div.style.border = '1px solid #333';
-    div.style.padding = '10px';
-    div.style.marginBottom = '10px';
+    div.style.border = '1px solid #333'; 
+    div.style.padding = '10px'; 
+    div.style.marginBottom = '10px'; 
     div.style.background = 'rgba(255,255,255,0.02)';
     
-    const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+    const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; 
     const dayVals = [1, 2, 3, 4, 5, 6, 0];
     let checksHtml = '';
     
     for(let i=0; i<7; i++) {
         const checked = days.includes(dayVals[i]) ? 'checked' : '';
-        checksHtml += `
-            <label class="day-check">
-                <input type="checkbox" value="${dayVals[i]}" class="tw-day-check" ${checked}> ${dayLabels[i]}
-            </label>
-        `;
+        checksHtml += `<label class="day-check"><input type="checkbox" value="${dayVals[i]}" class="tw-day-check" ${checked}> ${dayLabels[i]}</label>`;
     }
     
     div.innerHTML = `
@@ -1282,70 +1478,52 @@ function addRefTimeWindow(start = '', end = '', days = []) {
             </div>
             <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
         </div>
-        <div class="days-checkboxes" style="display: flex; gap: 10px;">
-            ${checksHtml}
-        </div>
-    `;
-    
+        <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>`;
+        
     container.appendChild(div);
 }
 
 function openReferenceModal() {
-    document.getElementById('referenceForm').reset();
-    document.getElementById('ref-id').value = "";
+    document.getElementById('referenceForm').reset(); 
+    document.getElementById('ref-id').value = ""; 
     document.getElementById('ref-time-windows-container').innerHTML = '';
-    
-    addRefTimeWindow();
-    
-    document.getElementById('r-color').value = '#444444';
+    addRefTimeWindow(); 
+    document.getElementById('r-color').value = '#444444'; 
     updateCustomColor(document.getElementById('r-color'), 'r-color');
-
-    closeModals();
+    closeModals(); 
     document.getElementById('referenceModal').style.display = 'flex';
 }
 
 document.getElementById('referenceForm').addEventListener('submit', function(e) {
     e.preventDefault();
-    
-    const title = document.getElementById('ref-title').value.trim();
+    const title = document.getElementById('ref-title').value.trim(); 
     const color = document.getElementById('r-color').value || '#444444';
-    const opacity = document.getElementById('ref-opacity').value || '0.8';
-
     let timeWindows = [];
+    
     document.querySelectorAll('.ref-time-window-row').forEach(row => {
-        const start = row.querySelector('.ref-start').value;
-        const end = row.querySelector('.ref-end').value;
+        const start = row.querySelector('.ref-start').value; 
+        const end = row.querySelector('.ref-end').value; 
         let days = [];
-        row.querySelectorAll('.tw-day-check:checked').forEach(cb => {
-            days.push(parseInt(cb.value));
-        });
+        row.querySelectorAll('.tw-day-check:checked').forEach(cb => days.push(parseInt(cb.value)));
         
         if (start && end && days.length > 0) {
             timeWindows.push({ start: start, end: end, days: days });
         }
     });
     
-    if (timeWindows.length === 0) { 
-        alert("Please complete at least one time window with selected days!"); 
+    if (timeWindows.length === 0) {
+        alert("Please complete at least one time window!");
         return; 
     }
-
-    const id = document.getElementById('ref-id').value || 'r_' + Date.now();
     
+    const id = document.getElementById('ref-id').value || 'r_' + Date.now();
     if (document.getElementById('ref-id').value) {
-        const ref = referenceLayers.find(x => x.id === id);
+        const ref = referenceLayers.find(x => x.id === id); 
         ref.title = title; 
         ref.timeWindows = timeWindows; 
         ref.color = color;
-        ref.opacity = opacity;
     } else {
-        referenceLayers.push({ 
-            id: id, 
-            title: title, 
-            timeWindows: timeWindows, 
-            color: color,
-            opacity: opacity
-        });
+        referenceLayers.push({ id: id, title: title, timeWindows: timeWindows, color: color, opacity: '0.8' });
         refToggles[id] = true; 
     }
     
@@ -1355,31 +1533,28 @@ document.getElementById('referenceForm').addEventListener('submit', function(e) 
 });
 
 function deleteReference(id) {
-    const ref = referenceLayers.find(r => r.id === id);
+    const ref = referenceLayers.find(r => r.id === id); 
     if (!ref) {
         return;
     }
-    
-    deleteTargetType = 'reference';
-    deleteTargetId = id;
+    deleteTargetType = 'reference'; 
+    deleteTargetId = id; 
     document.getElementById('delete-target-name').innerText = `Ghost Layer "${ref.title}"`;
-    
-    document.getElementById('btn-del-single').style.display = 'none';
+    document.getElementById('btn-del-single').style.display = 'none'; 
     document.getElementById('btn-del-future').style.display = 'none';
-    
-    closeModals();
+    closeModals(); 
     document.getElementById('deleteModal').style.display = 'flex';
 }
 
 function toggleReference(id, checked) {
     refToggles[id] = checked;
-    saveData(); 
+    saveData();
     renderWeeklyPlanner();
 }
 
 // --- WEEKLY PLANNER ENGINE ---
 function getWeekStart(dateStr) {
-    const d = new Date(dateStr);
+    const d = new Date(dateStr); 
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1); 
     return new Date(d.setDate(diff));
@@ -1390,13 +1565,12 @@ function timeToPx(timeStr) {
         return 0;
     }
     const [h, m] = timeStr.split(':').map(Number);
-    // Spostiamo l'origine a 07:00 del mattino
     return ((h - 7) + m/60) * 40;
 }
 
 function renderWeeklyPlanner() {
     try {
-        const sidebar = document.getElementById('reference-toggles');
+        const sidebar = document.getElementById('reference-toggles-list'); 
         const headerRow = document.getElementById('planner-header');
         const timeLabels = document.getElementById('planner-time-labels');
         const grid = document.getElementById('planner-grid');
@@ -1405,22 +1579,23 @@ function renderWeeklyPlanner() {
             return;
         }
 
+        // --- LETTURA DEI NUOVI TOGGLES ---
+        const showFixed = document.getElementById('toggle-fixed-tasks') ? document.getElementById('toggle-fixed-tasks').checked : true;
+        const showFlexible = document.getElementById('toggle-flexible-tasks') ? document.getElementById('toggle-flexible-tasks').checked : true;
+
         const safeLayers = referenceLayers || [];
         const safeToggles = refToggles || {};
         const safeTemplates = templates || [];
         const safeEvents = specificEvents || [];
 
-        // 1. Render Topbar Toggles
+        // 1. Render Topbar Toggles (Ghost Layers)
         sidebar.innerHTML = ''; 
-        
         safeLayers.forEach(ref => {
-            if (!ref || !ref.id) {
-                return;
-            }
+            if (!ref || !ref.id) return;
             const isChecked = safeToggles[ref.id] ? 'checked' : '';
             sidebar.innerHTML += `
-                <div class="ref-toggle-wrap" style="border-left: 2px solid ${ref.color};">
-                    <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 5px;">
+                <div class="ref-toggle-wrap" style="border-left: 2px solid ${ref.color}; margin-bottom: 5px;">
+                    <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 5px; flex: 1;">
                         <input type="checkbox" onchange="toggleReference('${ref.id}', this.checked)" ${isChecked}>
                         ${ref.title}
                     </label>
@@ -1433,15 +1608,14 @@ function renderWeeklyPlanner() {
         const startHour = 7;
         const totalGridHeight = (24 - startHour) * PIXELS_PER_HOUR;
         
-        // 2. Colonna delle Ore fisse a sinistra (inizia dalle 07:00)
+        // 2. Colonna delle Ore fisse a sinistra
         timeLabels.innerHTML = '';
         timeLabels.style.height = `${totalGridHeight}px`;
         
         for (let h = startHour; h <= 24; h++) {
-            const top = (h - startHour) * PIXELS_PER_HOUR;
             if (h < 24) {
                 timeLabels.innerHTML += `
-                    <div class="time-label" style="top: ${top}px;">
+                    <div class="time-label" style="top: ${(h - startHour) * PIXELS_PER_HOUR}px;">
                         ${h.toString().padStart(2, '0')}:00
                     </div>
                 `;
@@ -1449,73 +1623,71 @@ function renderWeeklyPlanner() {
         }
 
         // 3. Reset Griglia e Header
-        headerRow.innerHTML = '';
+        headerRow.innerHTML = ''; 
         grid.innerHTML = '';
-        
         const weekStart = getWeekStart(selectedDateStr);
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         
         for (let i = 0; i < 7; i++) {
-            const currentD = new Date(weekStart);
+            const currentD = new Date(weekStart); 
             currentD.setDate(weekStart.getDate() + i);
-            const loopDateStr = formatDate(currentD);
+            const loopDateStr = formatDate(currentD); 
             const jsDay = currentD.getDay(); 
             const isToday = loopDateStr === selectedDateStr;
 
             const headerCell = document.createElement('div');
             headerCell.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-            headerCell.innerHTML = `
-                <div class="day-title">${days[i]} ${currentD.getDate()}</div>
-            `;
+            headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             
             let flexibleCategories = new Set();
-
-            safeEvents.forEach(e => {
-                if (e && e.date === loopDateStr) {
-                    headerCell.innerHTML += `
-                        <div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">
-                            ★ ${e.title}
-                        </div>
-                    `;
-                }
-            });
-
-            safeTemplates.forEach(t => {
-                if (t && isTaskActiveOnDate(t, loopDateStr)) {
-                    if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) {
-                        flexibleCategories.add(t.category);
-                    }
-                }
-            });
             
-            flexibleCategories.forEach(cat => {
-                headerCell.innerHTML += `
-                    <div class="flexible-task-badge">${cat}</div>
-                `;
-            });
+            // LOGICA SHOW FIXED (Badge Eventi Specifici in alto)
+            if (showFixed) {
+                safeEvents.forEach(e => {
+                    if (e && e.date === loopDateStr) {
+                        headerCell.innerHTML += `
+                            <div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">
+                                ★ ${e.title}
+                            </div>
+                        `;
+                    }
+                });
+            }
 
+            // LOGICA SHOW FLEXIBLE (Badge Task Flessibili in alto)
+            if (showFlexible) {
+                safeTemplates.forEach(t => {
+                    if (t && isTaskActiveOnDate(t, loopDateStr)) {
+                        if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) {
+                            flexibleCategories.add(t.category);
+                        }
+                    }
+                });
+                
+                flexibleCategories.forEach(cat => {
+                    headerCell.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
+                });
+            }
+            
             headerRow.appendChild(headerCell);
 
-            const dayCol = document.createElement('div');
-            dayCol.className = 'planner-col-absolute';
+            const dayCol = document.createElement('div'); 
+            dayCol.className = 'planner-col-absolute'; 
             dayCol.style.height = `${totalGridHeight}px`; 
             
             for (let h = startHour; h <= 24; h++) {
-                const top = (h - startHour) * PIXELS_PER_HOUR;
-                dayCol.innerHTML += `
-                    <div class="grid-line-abs" style="top: ${top}px;"></div>
-                `;
+                dayCol.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * PIXELS_PER_HOUR}px;"></div>`;
             }
 
+            // Ghost Layers (Indipendenti dai toggles task)
             safeLayers.forEach(ref => {
                 if (ref && safeToggles[ref.id]) {
                     const windows = ref.timeWindows || [];
                     const opacity = ref.opacity || 0.8;
                     
                     windows.forEach(tw => {
-                        const twDays = tw.days || [];
-                        if (twDays.includes(jsDay)) {
-                            const top = timeToPx(tw.start);
+                        if (tw.days && tw.days.includes(jsDay)) {
+                            const top = timeToPx(tw.start); 
                             const height = Math.max(timeToPx(tw.end) - top, 15);
                             
                             if (top + height > 0) {
@@ -1530,28 +1702,30 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            safeTemplates.forEach(t => {
-                if (t && isTaskActiveOnDate(t, loopDateStr)) {
-                    const color = t.color || '#ffffff';
-                    
-                    if (t.timeWindows && t.timeWindows.length > 0) {
-                        t.timeWindows.forEach(tw => {
-                            if (tw.days && tw.days.includes(jsDay)) {
-                                const top = timeToPx(tw.start);
-                                const height = Math.max(timeToPx(tw.end) - top, 15);
-                                
-                                if (top + height > 0) {
-                                    dayCol.innerHTML += `
-                                        <div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${color}; color: ${color};">
-                                            <b>${t.title}</b>
-                                        </div>
-                                    `;
+            // LOGICA SHOW FIXED (Blocchi Orari delle Task Temporizzate)
+            if (showFixed) {
+                safeTemplates.forEach(t => {
+                    if (t && isTaskActiveOnDate(t, loopDateStr)) {
+                        const color = t.color || '#ffffff';
+                        if (t.timeWindows && t.timeWindows.length > 0) {
+                            t.timeWindows.forEach(tw => {
+                                if (tw.days && tw.days.includes(jsDay)) {
+                                    const top = timeToPx(tw.start); 
+                                    const height = Math.max(timeToPx(tw.end) - top, 15);
+                                    
+                                    if (top + height > 0) {
+                                        dayCol.innerHTML += `
+                                            <div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${color}; color: ${color};">
+                                                <b>${t.title}</b>
+                                            </div>
+                                        `;
+                                    }
                                 }
-                            }
-                        });
+                            });
+                        }
                     }
-                }
-            });
+                });
+            }
 
             grid.appendChild(dayCol);
         }
@@ -1561,6 +1735,104 @@ function renderWeeklyPlanner() {
     }
 }
 
-// Inizializza al caricamento
+// --- GESTIONE TAB TODAY/TOMORROW & EFFIMERE LOGIC ---
+let currentDailyTab = 'today';
+
+function switchDailyTab(tab) {
+    currentDailyTab = tab;
+    document.getElementById('tab-today').classList.toggle('active', tab === 'today');
+    document.getElementById('tab-tomorrow').classList.toggle('active', tab === 'tomorrow');
+    renderDailySchedule();
+}
+
+function renderDailySchedule() {
+    const timeline = document.getElementById('daily-timeline');
+    const flexList = document.getElementById('daily-flexible-list');
+    
+    if (!timeline || !flexList) {
+        return;
+    }
+    
+    // Il target è 'today' o 'tomorrow'
+    const targetDateStr = currentDailyTab === 'today' ? todayStr : tomorrowStr;
+    const targetData = ephemeralData[targetDateStr] || [];
+    
+    // Renderizza Timeline da 06:30 a 23:00
+    timeline.innerHTML = '';
+    const startHour = 6;
+    for (let h = startHour; h <= 23; h++) {
+        // Label speciale per le 6 (facciamo finta inizi 6:30)
+        let timeLabel = h === 6 ? '06:30' : `${h.toString().padStart(2, '0')}:00`;
+        
+        // Trova se c'è un blocco effimero salvato per questa ora
+        const block = targetData.find(b => b.time === timeLabel);
+        
+        let contentHtml = block 
+            ? `<div class="ephemeral-content" onclick="removeEphemeralNote('${targetDateStr}', '${timeLabel}')">${block.text}</div>` 
+            : `<div style="flex:1; padding-top:4px; border-bottom: 1px dotted rgba(255,255,255,0.05);"></div>`;
+
+        timeline.innerHTML += `
+            <div class="ephemeral-block">
+                <div class="ephemeral-time">${timeLabel}</div>
+                ${contentHtml}
+                ${!block ? `<button class="timeline-add-btn" onclick="addEphemeralToTime('${targetDateStr}', '${timeLabel}')">+</button>` : ''}
+            </div>
+        `;
+    }
+
+    // Renderizza le Flexible Tasks attive (senza orario) nella colonna di destra
+    flexList.innerHTML = '';
+    templates.forEach(t => {
+        if (isTaskActiveOnDate(t, targetDateStr) && (t.type === 'untimed' || !t.timeWindows || t.timeWindows.length === 0)) {
+            flexList.innerHTML += `
+                <div style="background: rgba(255,255,255,0.05); padding: 6px; margin-bottom: 5px; font-size: 0.8rem; border-left: 2px solid #555;">
+                    ${t.title}
+                </div>
+            `;
+        }
+    });
+}
+
+function addEphemeralToTime(dateStr, timeLabel) {
+    const note = prompt(`Add task/note for ${timeLabel}:`);
+    if (note && note.trim() !== '') {
+        if (!ephemeralData[dateStr]) {
+            ephemeralData[dateStr] = [];
+        }
+        ephemeralData[dateStr].push({ time: timeLabel, text: note.trim() });
+        saveData();
+        renderDailySchedule();
+    }
+}
+
+function removeEphemeralNote(dateStr, timeLabel) {
+    if(confirm(`Remove note for ${timeLabel}?`)) {
+        ephemeralData[dateStr] = ephemeralData[dateStr].filter(b => b.time !== timeLabel);
+        saveData();
+        renderDailySchedule();
+    }
+}
+
+function addEphemeralNote() {
+    alert("Use the '+' buttons directly on the timeline times (Hover over the timeline to the left) to add a task to a specific hour!");
+}
+
+// --- CHIUSURA DROPDOWN GHOST LAYERS CLICCANDO FUORI ---
+window.onclick = function(event) {
+    if (!event.target.matches('.dropdown-btn')) {
+        const dropdowns = document.getElementsByClassName("dropdown-content");
+        for (let i = 0; i < dropdowns.length; i++) {
+            if (dropdowns[i].classList.contains('show')) {
+                dropdowns[i].classList.remove('show');
+            }
+        }
+    }
+}
+
+// Initialize rendering calls
+renderTasks(); 
+renderCalendar();
+renderTracker();
+renderNoteCategories();
 renderWeeklyPlanner();
-switchDrawerView('tasks');
+switchDailyTab('today');

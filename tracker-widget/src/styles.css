@@ -41,8 +41,9 @@ body {
 }
 
 .calendar-section {
-    flex: 6; /* Prende lo spazio superiore disponibile */
-    padding: 20px 25px; 
+    flex: none;
+    height: 35%; /* Limita l'altezza del calendario */
+    padding: 20px 25px 10px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -71,6 +72,86 @@ body {
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
+}
+
+/* TODAY / TOMORROW PLANNER */
+.daily-schedule-section {
+    flex: 1; /* Prende lo spazio sotto il calendario */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border-top: 1px dotted var(--border-color);
+    padding-top: 10px;
+}
+
+.daily-schedule-content {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+    padding: 0 25px 10px;
+    gap: 15px;
+}
+
+.daily-timeline {
+    flex: 6;
+    overflow-y: auto;
+    border-right: 1px dashed var(--border-color);
+    padding-right: 10px;
+}
+
+.daily-flexible {
+    flex: 4;
+    overflow-y: auto;
+}
+
+.ephemeral-block {
+    position: relative;
+    padding: 8px 0;
+    border-bottom: 1px dotted rgba(255,255,255,0.1);
+    display: flex;
+    align-items: center;
+    min-height: 35px;
+}
+
+.ephemeral-block:hover .timeline-add-btn {
+    opacity: 1;
+}
+
+.ephemeral-time {
+    font-size: 0.7rem;
+    color: var(--text-dim);
+    width: 40px;
+    flex-shrink: 0;
+    padding-top: 4px;
+}
+
+.ephemeral-content {
+    flex: 1;
+    background: rgba(255,255,255,0.03);
+    border-left: 2px solid #555;
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    cursor: pointer;
+}
+
+.ephemeral-content:hover { background: rgba(255,255,255,0.06); }
+
+.timeline-add-btn {
+    opacity: 0;
+    background: var(--text-main);
+    color: var(--bg-main);
+    border: none;
+    width: 20px;
+    height: 20px;
+    border-radius: 50% !important;
+    font-weight: bold;
+    cursor: pointer;
+    position: absolute;
+    left: 45px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.2s;
 }
 
 /* 60% Right Pane */
@@ -225,18 +306,18 @@ h2 {
 
 .month-day { 
     width: 100%; 
-    min-height: 45px; 
-    padding-bottom: 12px; 
+    min-height: 35px; /* Più schiacciato */
+    padding: 4px 8px; 
     display: flex;
+    flex-direction: row; /* Layout orizzontale */
     align-items: center;
-    justify-content: center; 
+    justify-content: space-between; /* Numero a sx, barrette a dx */
     border: 1px solid #1a1a1a;
-    font-size: 1rem;
+    font-size: 0.9rem;
     color: #555; 
     cursor: pointer;
     transition: 0.1s;
     font-weight: bold;
-    position: relative;
 }
 
 .month-day.in-month {
@@ -249,26 +330,17 @@ h2 {
     border-color: #666;
 }
 
-.dots-container {
-    position: absolute;
-    bottom: 6px;
+.bars-container {
     display: flex;
     gap: 3px;
-    justify-content: center;
     align-items: center;
-    width: 100%;
+    justify-content: flex-end;
 }
 
-.dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50% !important;
-}
-
-@media (max-height: 520px) {
-    .dots-container {
-        display: none !important;
-    }
+.bar {
+    width: 3px;
+    height: 14px;
+    border-radius: 2px !important;
 }
 
 .month-day.today {
@@ -288,8 +360,9 @@ h2 {
     border-color: var(--text-main); 
 }
 
-.month-day.selected .dot {
-    outline: 1px solid var(--bg-main);
+/* Fix Colore Barrette Calendario quando Selezionato */
+.month-day.selected .bar {
+    background-color: var(--bg-main) !important;
 }
 
 /* TRACKER GITHUB STYLE */
@@ -339,6 +412,45 @@ h2 {
     background: #fff;
     border-color: #fff;
 } 
+
+/* --- ACCORDION TRACKER --- */
+.tracker-accordion {
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+.tracker-strip-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    padding: 5px 0;
+}
+
+.tracker-strip-header:hover span {
+    color: var(--text-main);
+}
+
+.tracker-strip-1d {
+    display: flex;
+    gap: 4px;
+    justify-content: flex-end;
+    flex: 1;
+    margin-left: 20px;
+    overflow: hidden; /* Evita che sbordi se ci sono troppi giorni */
+}
+
+.tracker-accordion-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+}
+
+.tracker-accordion-content.expanded {
+    max-height: 200px; /* Abbastanza per contenere le 7 righe del tracker GitHub */
+}
+
 
 /* TO-DO LIST & HOVER ACTIONS */
 .category-group {
@@ -493,6 +605,11 @@ h2 {
 .btn-primary:hover {
     background: transparent;
     color: var(--text-main);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
 }
 
 .btn-event {
@@ -655,7 +772,7 @@ h2 {
     background: #050505;
 }
 
-/* POMODORO TIMER OVERLAY */
+/* POMODORO TIMER OVERLAY & HOVER */
 .pomodoro-overlay {
     display: none;
     position: fixed;
@@ -665,6 +782,27 @@ h2 {
     flex-direction: column;
     align-items: center;
     justify-content: center;
+}
+
+.timer-circle-wrapper {
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.timer-text-hover {
+    position: absolute;
+    font-size: 3rem;
+    font-weight: bold;
+    color: white;
+    opacity: 0; /* Nascosto di default */
+    transition: opacity 0.2s;
+    pointer-events: none; /* Lascia passare l'hover all'SVG */
+}
+
+.timer-circle-wrapper:hover .timer-text-hover {
+    opacity: 1; /* Appare all'hover */
 }
 
 .progress-ring__circle {
@@ -686,6 +824,44 @@ h2 {
 
 .pomodoro-cancel:hover {
     color: white;
+}
+
+/* --- POMODORO PLAYLIST BUILDER --- */
+.playlist-task-chip {
+    background: rgba(255,255,255,0.1);
+    border: 1px solid var(--border-color);
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.playlist-task-chip:hover {
+    background: var(--text-main);
+    color: var(--bg-main);
+}
+.playlist-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: #111;
+    border: 1px solid #333;
+    padding: 8px 10px;
+    font-size: 0.8rem;
+}
+.playlist-break {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin: 5px 0;
+}
+.playlist-break input {
+    width: 50px;
+    background: #000;
+    border: 1px solid #444;
+    color: white;
+    text-align: center;
+    padding: 2px;
 }
 
 ::-webkit-scrollbar {
@@ -810,12 +986,33 @@ h2 {
     color: white;
 }
 
-/* --- GHOST LAYERS TOPBAR (Orizzontale) --- */
-.reference-topbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    flex-wrap: wrap;
+/* --- GHOST LAYERS DROPDOWN --- */
+.dropdown {
+    position: relative;
+    display: inline-block;
+}
+
+.dropdown-btn { 
+    border: 1px dashed var(--text-dim); 
+    padding: 4px 8px; 
+    font-size: 0.75rem; 
+}
+
+.dropdown-content {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    background-color: var(--bg-sec);
+    min-width: 220px;
+    border: 1px solid var(--border-color);
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.8);
+    z-index: 100;
+    margin-top: 5px;
+}
+
+.dropdown-content.show {
+    display: block;
 }
 
 .ref-toggle-wrap { 
@@ -844,14 +1041,13 @@ h2 {
     margin-left: 2px;
 }
 
-/* --- DAILY TASKS MASONRY LAYOUT (Opzione D COMPATTA) --- */
+/* --- DAILY TASKS MASONRY LAYOUT --- */
 #today-tasks {
     column-count: 2; /* Divide in due colonne affiancate */
     column-gap: 25px;
     width: 100%;
 }
 
-/* Sovrascriviamo le vecchie classi delle task per renderle dense */
 .category-group { 
     break-inside: avoid; /* Evita che una categoria venga spezzata tra colonna 1 e 2 */
     margin-bottom: 20px; 
@@ -898,7 +1094,7 @@ h2 {
     overflow: hidden; /* Evita che il contenitore principale esploda */
 }
 
-/* HEADER FISSA */
+/* HEADER FISSA WEEKLY PLANNER */
 .planner-header-row {
     display: flex;
     padding-left: 45px; /* Compensa lo spazio della colonna delle ore sottostante */
@@ -950,9 +1146,10 @@ h2 {
 .planner-scroll-area {
     flex: 1;
     display: flex;
-    overflow-y: auto; /* Attiva lo scroll verticale per le ore */
+    overflow-y: auto;
     position: relative;
     padding-right: 5px;
+    padding-top: 15px; /* Fix per il tagliare le 07:00 */
 }
 
 .planner-time-labels {
@@ -960,6 +1157,7 @@ h2 {
     flex-shrink: 0;
     position: relative;
     border-right: 1px solid var(--border-color);
+    margin-top: 15px; /* Fix per il tagliare le 07:00 */
 }
 
 .time-label {
@@ -983,6 +1181,7 @@ h2 {
     position: relative;
     border-right: 1px solid var(--border-color);
     min-width: 0;
+    margin-top: 15px; /* Fix per il tagliare le 07:00 */
 }
 
 .planner-col-absolute:last-child {
@@ -1025,3 +1224,56 @@ h2 {
     border-top: 1px solid rgba(255,255,255,0.2); 
     backdrop-filter: blur(2px);
 }
+
+/* Fix resizer robustezza */
+.tracker-section { flex-shrink: 0; }
+
+/* Rimuove le frecce/spinners dagli input numerici del Pomodoro */
+input[type="number"].no-spinners::-webkit-outer-spin-button,
+input[type="number"].no-spinners::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+input[type="number"].no-spinners {
+    -moz-appearance: textfield;
+}
+
+/* WIDGET MODE (Finestra Fluttuante Interna) */
+.pomodoro-overlay {
+    transition: background 0.3s ease, border 0.3s ease;
+}
+.pomodoro-overlay.widget-mode {
+    position: fixed;
+    top: 20px;
+    left: auto;
+    right: 30px;
+    bottom: auto;
+    width: 260px;
+    height: 320px;
+    background: rgba(5,5,5,0.98);
+    border: 1px solid #444;
+    border-radius: 8px !important;
+    box-shadow: 0 15px 40px rgba(0,0,0,0.9);
+    z-index: 1000;
+}
+.widget-mode #focus-notes-section { display: none !important; }
+.widget-mode #pomodoro-svg { width: 140px; height: 140px; }
+.widget-mode #pomodoro-svg circle { r: 60; cx: 70; cy: 70; }
+.widget-mode #pomodoro-task-title { font-size: 0.9rem; margin-top: 15px; margin-bottom: 15px; }
+.widget-mode #focus-controls { margin-top: 20px; transform: scale(0.85); }
+.widget-mode .timer-text-hover { font-size: 1.5rem; pointer-events: none; }
+.widget-mode #btn-widget-mode { top: 10px; left: 10px; padding: 2px 6px; font-size: 0.65rem; border:none; color:#888;}
+.widget-mode #btn-widget-mode:hover { color:white; }
+
+/* Maniglia di trascinamento del widget */
+#widget-drag-handle {
+    display: none;
+    position: absolute;
+    top: 0; left: 0; width: 100%; height: 25px;
+    background: rgba(255,255,255,0.05);
+    color: #666; font-size: 0.7rem; text-align: center; line-height: 25px;
+    cursor: grab; z-index: 10;
+    border-bottom: 1px solid #222;
+}
+.widget-mode #widget-drag-handle { display: block; }
+#widget-drag-handle:active { cursor: grabbing; }
