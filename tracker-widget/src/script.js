@@ -129,14 +129,22 @@ function formatDate(date) {
     return `${y}-${m}-${d}`;
 }
 
-const todayObj = new Date();
-const todayStr = formatDate(todayObj);
-const tomorrowObj = new Date(todayObj);
-tomorrowObj.setDate(todayObj.getDate() + 1);
-const tomorrowStr = formatDate(tomorrowObj);
+function getNow() {
+    return new Date();
+}
 
-let selectedDateStr = todayStr;
-let currentCalendarDate = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1);
+function getTodayStr() {
+    return formatDate(getNow());
+}
+
+let selectedDateStr = getTodayStr();
+let currentCalendarDate = new Date(getNow().getFullYear(), getNow().getMonth(), 1);
+
+function getTomorrowStr() {
+    const t = getNow();
+    t.setDate(t.getDate() + 1);
+    return formatDate(t);
+}
 
 function changeMonth(offset) {
     currentCalendarDate.setMonth(currentCalendarDate.getMonth() + offset);
@@ -801,14 +809,16 @@ function renderManager() {
 
 function renderTasks() {
     const titleEl = document.getElementById('selected-date-title');
-    const parts = selectedDateStr.split('-');
-    const d = new Date(parts[0], parts[1] - 1, parts[2]);
+    const [y, m, dayNum] = selectedDateStr.split('-').map(Number);
+    // Impostare le 12:00 evita slittamenti al giorno precedente dovuti all'ora solare/legale
+    const d = new Date(y, m - 1, dayNum, 12, 0, 0);
     const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     
+    const todayStr = getTodayStr();
     if (selectedDateStr === todayStr) {
-        titleEl.innerText = `Today, ${days[d.getDay()]} ${d.getDate()}`;
+        titleEl.innerText = `Today, ${days[d.getDay()]} ${dayNum}`;
     } else {
-        titleEl.innerText = `${days[d.getDay()]} ${d.getDate()}`;
+        titleEl.innerText = `${days[d.getDay()]} ${dayNum}`;
     }
 
     const container = document.getElementById('today-tasks');
@@ -1754,7 +1764,7 @@ function renderDailySchedule() {
     }
     
     // Il target è 'today' o 'tomorrow'
-    const targetDateStr = currentDailyTab === 'today' ? todayStr : tomorrowStr;
+    const targetDateStr = currentDailyTab === 'today' ? getTodayStr() : getTomorrowStr();
     const targetData = ephemeralData[targetDateStr] || [];
     
     // Renderizza Timeline da 06:30 a 23:00
