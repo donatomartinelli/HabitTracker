@@ -144,6 +144,12 @@ h2 {
     background: rgba(255, 255, 255, 0.1);
 }
 
+/* Fix per le tendine in Dark Mode */
+option {
+    background-color: var(--bg-sec);
+    color: var(--text-main);
+}
+
 .color-palette {
     display: flex;
     gap: 10px;

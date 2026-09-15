@@ -424,7 +424,17 @@
 
     <div id="managerModal" class="modal-overlay">
         <div class="modal-content">
-            <h2>Manage Habits</h2>
+            <h2 style="margin-bottom: 15px;">Manage Habits</h2>
+            
+            <!-- NUOVO: Regolatore di Trasparenza -->
+            <div style="margin-bottom: 25px; padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid #333;">
+                <label style="display:flex; justify-content:space-between; color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; margin-bottom:10px;">
+                    <span>Background Opacity</span>
+                    <span id="opacity-val">0.92</span>
+                </label>
+                <input type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="width: 100%; accent-color: var(--text-main);" oninput="updateOpacity(this.value)">
+            </div>
+
             <div id="manager-list" class="manager-list"></div>
             
             <div class="quick-add-task new-calendar-add">

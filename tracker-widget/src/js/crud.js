@@ -575,3 +575,47 @@ if (btnMin) {
         }
     });
 }
+
+// --- FUNZIONE MANCANTE: Crea la finestra degli orari per le Habit ---
+
+function addHabitTimeWindow(start = '', end = '', days = []) {
+    const container = document.getElementById('h-time-windows-container'); 
+    const div = document.createElement('div'); 
+    div.className = 'habit-time-window-row'; 
+    div.style.border = '1px solid #333'; 
+    div.style.padding = '10px'; 
+    div.style.marginBottom = '10px'; 
+    div.style.background = 'rgba(255,255,255,0.02)';
+    
+    const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su']; 
+    const dayVals = [1, 2, 3, 4, 5, 6, 0]; 
+    let checksHtml = '';
+    
+    for (let i = 0; i < 7; i++) {
+        const checked = days.includes(dayVals[i]) ? 'checked' : '';
+        checksHtml += `
+            <label class="day-check">
+                <input type="checkbox" value="${dayVals[i]}" class="tw-day-check" ${checked}> ${dayLabels[i]}
+            </label>
+        `;
+    }
+    
+    div.innerHTML = `
+        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>Start</label>
+                <input type="time" class="form-control h-start" value="${start}">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>End</label>
+                <input type="time" class="form-control h-end" value="${end}">
+            </div>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
+        </div>
+        <div class="days-checkboxes" style="display: flex; gap: 10px;">
+            ${checksHtml}
+        </div>
+    `;
+    
+    container.appendChild(div);
+}

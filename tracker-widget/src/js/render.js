@@ -795,6 +795,21 @@ function removeNoteCategory(cat) {
     renderNotesManager();
 }
 // --- INITIALIZATION CALLS ---
+// --- GESTIONE TRASPARENZA (GLASSMORPHISM) ---
+function updateOpacity(val) {
+    document.documentElement.style.setProperty('--bg-opacity', val);
+    const label = document.getElementById('opacity-val');
+    if (label) label.innerText = val;
+    localStorage.setItem('tracker_opacity', val);
+}
+
+// Carica la trasparenza salvata all'avvio
+const savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
+document.documentElement.style.setProperty('--bg-opacity', savedOpacity);
+const sliderEl = document.getElementById('bg-opacity-slider');
+if (sliderEl) sliderEl.value = savedOpacity;
+const labelEl = document.getElementById('opacity-val');
+if (labelEl) labelEl.innerText = savedOpacity;
 initTrackerResizer();
 initNotesResizer();
 renderTasks(); 
