@@ -734,6 +734,66 @@ function initNotesResizer() {
     });
 } 
 
+// --- GESTIONE CATEGORIE NOTE (FUNZIONI MANCANTI) ---
+
+function renderNoteCategories() {
+    const select = document.getElementById('note-category');
+    const focusSelect = document.getElementById('focus-note-category');
+    if (select) select.innerHTML = '';
+    if (focusSelect) focusSelect.innerHTML = '';
+    
+    noteCategories.forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat; 
+        opt.innerText = cat;
+        if (select) select.appendChild(opt);
+        
+        const optFocus = document.createElement('option');
+        optFocus.value = cat; 
+        optFocus.innerText = cat;
+        if (focusSelect) focusSelect.appendChild(optFocus);
+    });
+}
+
+function openManageNotesModal() {
+    renderNotesManager();
+    closeModals();
+    document.getElementById('manageNotesModal').style.display = 'flex';
+}
+
+function renderNotesManager() {
+    const container = document.getElementById('notes-manager-list');
+    container.innerHTML = '';
+    
+    noteCategories.forEach(cat => {
+        container.innerHTML += `
+            <div class="manager-task">
+                <span>${cat}</span>
+                <div class="action-btns" style="display:flex;">
+                    <button class="icon-btn delete" onclick="removeNoteCategory('${cat}')">×</button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function quickAddNoteCategory(event) {
+    if (event.key === 'Enter') {
+        const newCat = event.target.value.trim();
+        if (newCat && !noteCategories.includes(newCat)) {
+            noteCategories.push(newCat);
+            saveData();
+            event.target.value = ''; 
+            renderNotesManager(); 
+        }
+    }
+}
+
+function removeNoteCategory(cat) {
+    noteCategories = noteCategories.filter(c => c !== cat);
+    saveData();
+    renderNotesManager();
+}
 // --- INITIALIZATION CALLS ---
 initTrackerResizer();
 initNotesResizer();
