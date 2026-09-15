@@ -1,0 +1,190 @@
+:root {
+    --bg-opacity: 0.92;
+    --bg-main: rgba(0, 0, 0, var(--bg-opacity)); 
+    --bg-sec: rgba(5, 5, 5, var(--bg-opacity));
+    --text-main: #ffffff;
+    --text-dim: #666666;
+    --border-color: rgba(51, 51, 51, 0.8);
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    border-radius: 0 !important;
+}
+
+body {
+    background-color: transparent;
+    color: var(--text-main);
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    display: flex;
+    height: 100vh;
+    overflow: hidden;
+    font-size: 14px;
+}
+
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+h1 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: -0.5px;
+}
+
+h2 {
+    font-size: 1rem;
+    font-weight: normal;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    margin-bottom: 15px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-main);
+    cursor: pointer;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    transition: 0.2s;
+    font-family: inherit;
+}
+
+.btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: #777;
+}
+
+.btn-primary {
+    background: var(--text-main);
+    color: #000;
+    font-weight: bold;
+    border: 1px solid var(--text-main);
+}
+
+.btn-primary:hover {
+    background: transparent;
+    color: var(--text-main);
+}
+
+.btn-primary:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.btn-event {
+    border-style: dashed;
+}
+
+.btn-event:hover {
+    border-style: solid;
+}
+
+.icon-btn {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    cursor: pointer;
+    font-size: 1rem;
+    transition: 0.2s;
+}
+
+.icon-btn:hover {
+    color: var(--text-main);
+}
+
+.icon-btn.delete:hover {
+    color: #ff3333;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.form-control {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 12px;
+    font-family: inherit;
+    transition: 0.2s;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.color-palette {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.color-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50% !important;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: 0.2s ease;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.2rem;
+    color: var(--text-dim);
+}
+
+.color-circle:hover {
+    border-color: rgba(255, 255, 255, 0.5);
+}
+
+.color-circle.active {
+    border-color: white;
+    outline: 2px solid var(--bg-main);
+    outline-offset: -4px;
+}
+
+.color-circle.custom-color-btn {
+    border: 1px dashed var(--text-dim);
+    background: transparent;
+}
+
+.color-circle.custom-color-btn:hover {
+    border-style: solid;
+    color: white;
+}
+
+.empty-state {
+    color: var(--text-dim);
+    margin-top: 20px;
+}
