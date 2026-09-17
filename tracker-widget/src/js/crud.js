@@ -626,3 +626,8 @@ function addHabitTimeWindow(start = '', end = '', days = []) {
     
     container.appendChild(div);
 }
+
+function openTrackerModal() { 
+    closeModals(); 
+    document.getElementById('trackerModal').style.display = 'flex'; 
+}

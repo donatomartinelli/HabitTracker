@@ -300,18 +300,6 @@ function renderTracker() {
     }
 }
 
-function toggleTrackerAccordion() { 
-    const content = document.getElementById('tracker-accordion-content'); 
-    content.classList.toggle('expanded'); 
-    
-    if (content.classList.contains('expanded')) {
-        setTimeout(() => { 
-            const wrapper = document.querySelector('.tracker-wrapper'); 
-            if (wrapper) wrapper.scrollLeft = wrapper.scrollWidth; 
-        }, 10); 
-    }
-}
-
 function getWeekStart(dateStr) { 
     const d = new Date(dateStr); 
     const day = d.getDay(); 

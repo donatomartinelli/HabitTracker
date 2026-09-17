@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/features.css">
+    <link rel="stylesheet" href="css/money.css">
 </head>
 <body>
 
@@ -85,8 +86,12 @@
             <!-- RIGHT: 60% -->
             <div class="right-pane">
                 <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 30px 40px 10px;">
-                    <div class="header-actions" style="margin-bottom: 15px; flex-shrink: 0; border-bottom: none;">
-                        <h1 id="selected-date-title">Today</h1>
+                    <div class="header-actions" style="margin-bottom: 15px; flex-shrink: 0; border-bottom: none; align-items: center;">
+                        <h1 id="selected-date-title" style="margin: 0; white-space: nowrap;">Today</h1>
+
+                        <!-- Nuova Posizione del Consistency Tracker (1D) -->
+                        <div id="tracker-strip-1d" class="tracker-strip-1d" style="cursor: pointer; flex: 1; margin: 0 20px; justify-content: flex-end;" onclick="openTrackerModal()" title="View full history"></div>
+
                         <div class="header-buttons" style="display: flex; gap: 25px; align-items: center;">
                             <button class="icon-btn" style="font-size: 1.3rem; color: var(--text-main);" onclick="openTimerModal()" title="Focus">▶</button>
                             <button class="icon-btn" style="font-size: 1.8rem; line-height: 0.8; color: var(--text-main);" onclick="openCreationModal()" title="Add New">+</button>
@@ -94,16 +99,6 @@
                         </div>
                     </div>
 
-                    <!-- ACCORDION CONSISTENCY TRACKER -->
-                    <div id="tracker-accordion" class="tracker-accordion">
-                        <div class="tracker-strip-header" onclick="toggleTrackerAccordion()" title="Click to expand/collapse history">
-                            <span style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase;">Consistency Tracker</span>
-                            <div id="tracker-strip-1d" class="tracker-strip-1d"></div>
-                        </div>
-                        <div id="tracker-accordion-content" class="tracker-accordion-content">
-                            <div class="tracker-grid" id="github-tracker" style="margin-top: 15px;"></div>
-                        </div>
-                    </div>
 
                     <!-- WEEKLY PLANNER -->
                     <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 10px;">
@@ -177,13 +172,59 @@
             </div>
         </div>
 
-        <!-- SCHEDA 3: MONEY (Strutturata come Overview) -->
+        <!-- SCHEDA 3: MONEY -->
         <div id="screen-money" class="layout" style="display: none; height: calc(100% + 60px); margin-top: -60px;">
-            <div class="left-pane" style="padding-top: 70px; display: flex; align-items: center; justify-content: center;">
-                <h2 style="color: var(--text-main);">FINANCIAL DASHBOARD</h2>
+            <!-- LEFT PANE: Balance, Azioni e Grafico -->
+            <div class="left-pane" style="padding: 70px 30px 20px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column;">
+                
+                <div style="margin-bottom: 30px;">
+                    <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Total Balance</div>
+                    <h1 style="font-size: 3rem; margin: 0; color: white;">€ <span id="m-balance-display">0.00</span></h1>
+                    
+                    <div style="display: flex; gap: 10px; margin-top: 15px;">
+                        <button class="btn btn-primary" style="flex: 1;" onclick="openTransactionModal('in')">+ IN</button>
+                        <button class="btn" style="flex: 1; border-color: #552222; color: #ff6666;" onclick="openTransactionModal('out')">- OUT</button>
+                    </div>
+                </div>
+
+                <!-- Grafico a gradini -->
+                <div style="flex: 1; min-height: 150px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 15px; display: flex; flex-direction: column; justify-content: flex-end; position: relative;">
+                    <span style="position:absolute; top:10px; left:15px; font-size:0.7rem; color:var(--text-dim);">30-DAY TREND</span>
+                    <svg id="m-chart-svg" width="100%" height="100%" preserveAspectRatio="none" style="overflow: visible;">
+                        <polyline id="m-chart-line" fill="none" stroke="var(--text-main)" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
+                    </svg>
+                </div>
             </div>
-            <div class="right-pane" style="padding-top: 70px; display: flex; align-items: center; justify-content: center;">
-                <h2 style="color: var(--text-dim);">(COMING SOON)</h2>
+
+            <!-- RIGHT PANE: Liste -->
+            <div class="right-pane" style="padding: 70px 40px 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 30px;">
+                
+                <!-- Purchase Ideas -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
+                        <h3 style="font-size: 0.85rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Purchase Ideas</h3>
+                        <button class="icon-btn" onclick="openWishlistModal()">+</button>
+                    </div>
+                    <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
+                <!-- Recurring -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
+                        <h3 style="font-size: 0.85rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recurring Payments</h3>
+                        <button class="icon-btn" onclick="openRecurringModal()">+</button>
+                    </div>
+                    <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
+                <!-- History -->
+                <div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
+                        <h3 style="font-size: 0.85rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recent History</h3>
+                    </div>
+                    <div id="m-history-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+                </div>
+
             </div>
         </div>
 
@@ -516,6 +557,64 @@
         </div>
     </div>
 
+    <!-- Modale Consistency Tracker (Griglia Completa) -->
+    <div id="trackerModal" class="modal-overlay">
+        <div class="modal-content" style="width: auto; max-width: 800px;">
+            <h2 style="margin-bottom: 20px; text-transform: uppercase;">Consistency History</h2>
+            <div class="tracker-wrapper" style="overflow-x: auto; padding-bottom: 10px;">
+                <div class="tracker-grid" id="github-tracker" style="margin-top: 5px;"></div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="closeModals()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modale Transazione Singola (+ IN / - OUT) -->
+    <div id="mTransactionModal" class="modal-overlay">
+        <div class="modal-content" style="width: 400px;">
+            <h2 id="m-trans-title">New Transaction</h2>
+            <form id="mTransactionForm">
+                <input type="hidden" id="m-trans-type">
+                <div class="form-group"><label>Amount (€)</label><input type="number" id="m-trans-amount" class="form-control no-spinners" step="0.01" required></div>
+                <div class="form-group"><label>Description</label><input type="text" id="m-trans-desc" class="form-control" required></div>
+                <div class="form-group"><label>Date</label><input type="date" id="m-trans-date" class="form-control" required></div>
+                <div class="modal-actions"><button type="button" class="btn" onclick="closeModals()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale Spesa Ricorrente -->
+    <div id="mRecurringModal" class="modal-overlay">
+        <div class="modal-content" style="width: 450px;">
+            <h2>Add Recurring Payment</h2>
+            <form id="mRecurringForm">
+                <div class="form-group"><label>Name (e.g. Orologio a rate)</label><input type="text" id="m-rec-title" class="form-control" required></div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;"><label>Amount (€)</label><input type="number" id="m-rec-amount" class="form-control no-spinners" step="0.01" required></div>
+                    <div class="form-group" style="flex: 1;"><label>Day of Month (1-31)</label><input type="number" id="m-rec-day" class="form-control no-spinners" min="1" max="31" required></div>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;"><label>Start Date</label><input type="date" id="m-rec-start" class="form-control" required></div>
+                    <div class="form-group" style="flex: 1;"><label>End Date (Optional)</label><input type="date" id="m-rec-end" class="form-control"></div>
+                </div>
+                <div class="modal-actions"><button type="button" class="btn" onclick="closeModals()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modale Idea di Acquisto -->
+    <div id="mWishlistModal" class="modal-overlay">
+        <div class="modal-content" style="width: 400px;">
+            <h2>Purchase Idea</h2>
+            <form id="mWishlistForm">
+                <div class="form-group"><label>Item Name</label><input type="text" id="m-wish-title" class="form-control" required></div>
+                <div class="form-group"><label>Estimated Cost (€)</label><input type="number" id="m-wish-cost" class="form-control no-spinners" step="0.01" required></div>
+                <div class="modal-actions"><button type="button" class="btn" onclick="closeModals()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+            </form>
+        </div>
+    </div>
+    
     <div id="referenceModal" class="modal-overlay">
         <div class="modal-content" style="width: 450px;">
             <h2>Add Ghost Layer</h2>
@@ -556,5 +655,6 @@
     <script src="js/crud.js"></script>
     <script src="js/pomodoro.js"></script>
     <script src="js/render.js"></script>
+    <script src="js/money.js"></script>
 </body>
 </html>
