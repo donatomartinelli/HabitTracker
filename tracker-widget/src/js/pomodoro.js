@@ -7,6 +7,68 @@ let currentPlaylistIndex = 0;
 let timeRemaining = 0; 
 let totalPhaseTime = 0;
 
+// --- AUDIO BEEP GENERATO DAL BROWSER ---
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function playBeep(frequency, duration) {
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    const oscillator = audioCtx.createOscillator();
+    const gainNode = audioCtx.createGain();
+    oscillator.type = 'sine';
+    oscillator.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+    gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+    oscillator.connect(gainNode);
+    gainNode.connect(audioCtx.destination);
+    oscillator.start();
+    oscillator.stop(audioCtx.currentTime + duration);
+}
+
+// --- SKIP & RESET ---
+function skipPomodoroPhase() {
+    if (focusPlaylist.length === 0 || currentPlaylistIndex >= focusPlaylist.length) return;
+    
+    const phase = focusPlaylist[currentPlaylistIndex];
+    if (phase.type === 'task' && !phase.isPartial) {
+        const t = templates.find(x => x.id === phase.id);
+        if (t) { 
+            const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false); 
+            const firstUncheckedIndex = currentLog.indexOf(false); 
+            if (firstUncheckedIndex !== -1) toggleTask(t.id, firstUncheckedIndex); 
+        }
+    }
+    
+    clearInterval(pomodoroInterval);
+    currentPlaylistIndex++; 
+    startCurrentPlaylistPhase();
+}
+
+function resetPomodoroPhase() {
+    if (focusPlaylist.length === 0) return;
+    timeRemaining = totalPhaseTime;
+    runPomodoroTick();
+}
+
+function splitPlaylistTask(index) {
+    const item = focusPlaylist[index];
+    
+    // Se non è una task o dura 2 minuti o meno, ignora il clic
+    if (item.type !== 'task' || item.duration <= 2) return;
+    
+    // Pausa di default (modificabile poi liberamente nell'interfaccia)
+    const breakMins = 3; 
+    
+    const half1 = Math.floor(item.duration / 2);
+    const half2 = item.duration - half1;
+    
+    const part1 = { type: 'task', id: item.id, title: item.title + " (Part 1)", duration: half1, color: item.color, isPartial: true };
+    const breakPart = { type: 'break', duration: breakMins };
+    const part2 = { type: 'task', id: item.id, title: item.title + " (Part 2)", duration: half2, color: item.color };
+    
+    // Sostituisce la singola task con i tre nuovi pezzi
+    focusPlaylist.splice(index, 1, part1, breakPart, part2);
+    renderFocusPlaylist();
+}
+
+
 function renderAvailableTasksForFocus() {
     const container = document.getElementById('focus-available-tasks'); 
     if (!container) return;
@@ -107,6 +169,7 @@ function renderFocusPlaylist() {
                     <div style="display: flex; gap: 10px; align-items: center;">
                         <input type="number" class="form-control no-spinners" style="width: 45px; padding: 4px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> 
                         <span style="font-size:0.7rem; color:#666;">min</span>
+                        <button type="button" class="btn" style="padding: 2px 6px; font-size: 0.65rem;" onclick="splitPlaylistTask(${index})">SPLIT</button>
                         <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
                     </div>
                 </div>
@@ -165,6 +228,7 @@ function startCurrentPlaylistPhase() {
     if (phase.type === 'task') { 
         titleEl.innerText = `Focus: ${phase.title}`; 
         circle.setAttribute('stroke', phase.color); 
+        playBeep(800, 0.2); // Beep acuto e breve (Inizio)
     } else { 
         titleEl.innerText = "Break Time"; 
         circle.setAttribute('stroke', '#666666'); 
@@ -200,14 +264,16 @@ function runPomodoroTick() {
     
     if (timeRemaining <= 0 && timeRemaining > -2) {
         clearInterval(pomodoroInterval);
+        const phase = focusPlaylist[currentPlaylistIndex];
         
-        if (focusPlaylist[currentPlaylistIndex].type === 'task') {
-            const t = templates.find(x => x.id === focusPlaylist[currentPlaylistIndex].id);
-            if (t) { 
-                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false); 
-                const firstUncheckedIndex = currentLog.indexOf(false); 
-                if (firstUncheckedIndex !== -1) {
-                    toggleTask(t.id, firstUncheckedIndex); 
+        if (phase.type === 'task') {
+            playBeep(400, 0.5); // Beep più grave e lungo (Fine)
+            if (!phase.isPartial) {
+                const t = templates.find(x => x.id === phase.id);
+                if (t) { 
+                    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false); 
+                    const firstUncheckedIndex = currentLog.indexOf(false); 
+                    if (firstUncheckedIndex !== -1) toggleTask(t.id, firstUncheckedIndex); 
                 }
             }
         }

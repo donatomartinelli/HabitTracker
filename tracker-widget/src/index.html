@@ -152,7 +152,16 @@
                         <span style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Daily Tasks</span>
                     </div>
                     <div id="view-tasks" class="tracker-content active" style="overflow-y: auto; display: block; margin-top: 0;">
-                        <div id="today-tasks"></div>
+                        <div id="today-tasks" style="display: flex; gap: 30px; width: 100%;">
+                            <div id="scheduled-tasks-col" style="flex: 1;">
+                                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Scheduled</div>
+                                <div id="scheduled-tasks-list"></div>
+                            </div>
+                            <div id="flexible-tasks-col" style="flex: 1;">
+                                <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 5px;">Flexible</div>
+                                <div id="flexible-tasks-list"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
                 
@@ -219,7 +228,9 @@
                 
                 <div id="focus-controls" style="display: flex; gap: 15px; margin-top: 40px; z-index: 501;">
                     <button id="btn-pomodoro-pause" class="btn btn-primary" onclick="togglePomodoroPause()">Pause</button>
-                    <button class="btn" onclick="stopPomodoro()">Abort</button>
+                    <button class="btn" onclick="skipPomodoroPhase()">Skip</button>
+                    <button class="btn" onclick="resetPomodoroPhase()">Reset</button>
+                    <button class="btn" style="border-color: #552222; color: #ff6666;" onclick="stopPomodoro()">Abort</button>
                 </div>
             </div>
             

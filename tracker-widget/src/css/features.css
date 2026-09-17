@@ -233,11 +233,6 @@
 }
 
 /* TO-DO LIST (TASKS) */
-#today-tasks {
-    column-count: 2;
-    column-gap: 25px;
-    width: 100%;
-}
 
 .category-group {
     break-inside: avoid;

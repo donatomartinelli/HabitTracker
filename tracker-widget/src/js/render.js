@@ -93,8 +93,13 @@ function renderTasks() {
     
     titleEl.innerText = (selectedDateStr === todayStr) ? `Today, ${days[d.getDay()]} ${dayNum}` : `${days[d.getDay()]} ${dayNum}`;
 
-    const container = document.getElementById('today-tasks'); 
-    container.innerHTML = ''; 
+    const schedContainer = document.getElementById('scheduled-tasks-list'); 
+    const flexContainer = document.getElementById('flexible-tasks-list');
+    
+    if (!schedContainer || !flexContainer) return;
+    
+    schedContainer.innerHTML = ''; 
+    flexContainer.innerHTML = ''; 
     let hasAnyTasks = false;
     
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
@@ -103,11 +108,7 @@ function renderTasks() {
         hasAnyTasks = true; 
         const eventGroup = document.createElement('div'); 
         eventGroup.className = 'category-group'; 
-        eventGroup.innerHTML = `
-            <div class="category-header-wrap" style="border-bottom-color: #333;">
-                <div class="category-title" style="color: #888;">Events</div>
-            </div>
-        `;
+        eventGroup.innerHTML = `<div class="category-header-wrap" style="border-bottom-color: #333;"><div class="category-title" style="color: #888;">Events</div></div>`;
         
         dayEvents.forEach(e => { 
             eventGroup.innerHTML += `
@@ -121,8 +122,7 @@ function renderTasks() {
                 </div>
             `; 
         }); 
-        
-        container.appendChild(eventGroup);
+        schedContainer.appendChild(eventGroup); // Gli eventi vanno sempre nei programmati
     }
     
     syncCategoryOrder();
@@ -132,40 +132,39 @@ function renderTasks() {
         
         if (activeTasks.length > 0) {
             hasAnyTasks = true; 
-            const groupDiv = document.createElement('div'); 
-            groupDiv.className = 'category-group'; 
-            groupDiv.innerHTML = `
-                <div class="category-header-wrap">
-                    <div class="category-title">${cat}</div>
-                </div>
-            `;
             
-            activeTasks.forEach(t => {
-                const taskItem = document.createElement('div'); 
-                taskItem.className = 'task-item'; 
-                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
+            const schedTasks = activeTasks.filter(t => t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0));
+            const flexTasks = activeTasks.filter(t => t.type !== 'timed' && (!t.timeWindows || t.timeWindows.length === 0));
+
+            const createGroup = (tasks) => {
+                const groupDiv = document.createElement('div'); 
+                groupDiv.className = 'category-group'; 
+                groupDiv.innerHTML = `<div class="category-header-wrap"><div class="category-title">${cat}</div></div>`;
                 
-                let checkboxesHTML = ''; 
-                for (let i = 0; i < t.instances; i++) {
-                    checkboxesHTML += `<div class="check-box ${currentLog[i] ? 'checked' : ''}" onclick="toggleTask('${t.id}', ${i})"></div>`;
-                }
-                
-                taskItem.innerHTML = `
-                    <div class="task-left">
-                        <div class="task-title">${t.title}</div>
-                    </div>
-                    <div class="instances-container">${checkboxesHTML}</div>
-                `; 
-                
-                groupDiv.appendChild(taskItem);
-            }); 
-            
-            container.appendChild(groupDiv);
+                tasks.forEach(t => {
+                    const taskItem = document.createElement('div'); 
+                    taskItem.className = 'task-item'; 
+                    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
+                    
+                    let checkboxesHTML = ''; 
+                    for (let i = 0; i < t.instances; i++) {
+                        checkboxesHTML += `<div class="check-box ${currentLog[i] ? 'checked' : ''}" onclick="toggleTask('${t.id}', ${i})"></div>`;
+                    }
+                    
+                    taskItem.innerHTML = `<div class="task-left"><div class="task-title">${t.title}</div></div><div class="instances-container">${checkboxesHTML}</div>`; 
+                    groupDiv.appendChild(taskItem);
+                }); 
+                return groupDiv;
+            };
+
+            if (schedTasks.length > 0) schedContainer.appendChild(createGroup(schedTasks));
+            if (flexTasks.length > 0) flexContainer.appendChild(createGroup(flexTasks));
         }
     });
     
     if (!hasAnyTasks) {
-        container.innerHTML = `<div class="empty-state">Nothing scheduled for this day.</div>`;
+        schedContainer.innerHTML = `<div class="empty-state">Nothing scheduled for this day.</div>`;
+        flexContainer.innerHTML = `<div class="empty-state">No flexible tasks for this day.</div>`;
     }
 }
 
