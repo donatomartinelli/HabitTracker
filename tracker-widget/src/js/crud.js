@@ -115,9 +115,10 @@ function editTask(id) {
         }
     }
     
-    document.getElementById('modal-title').innerText = "Edit Habit"; 
+    document.querySelector('input[name="creation-type"][value="habit"]').checked = true;
+    toggleCreationType();
     closeModals(); 
-    document.getElementById('formModal').style.display = 'flex';
+    document.getElementById('creationModal').style.display = 'flex';
 }
 
 let deleteTargetType = ''; 
@@ -399,7 +400,14 @@ function toggleHabitType() {
     document.getElementById('untimed-section').style.display = isTimed ? 'none' : 'block'; 
 }
 
-function openFormModal() { 
+function toggleCreationType() {
+    const type = document.querySelector('input[name="creation-type"]:checked').value;
+    document.getElementById('habitForm').style.display = type === 'habit' ? 'block' : 'none';
+    document.getElementById('eventForm').style.display = type === 'event' ? 'block' : 'none';
+}
+
+function openCreationModal() { 
+    // Resetta e prepara la sezione Habit
     document.getElementById('habitForm').reset(); 
     document.getElementById('h-id').value = ""; 
     document.getElementById('h-startdate').value = selectedDateStr; 
@@ -408,23 +416,22 @@ function openFormModal() {
     
     document.querySelector('input[name="h-type"][value="timed"]').checked = true; 
     toggleHabitType(); 
-    
     document.getElementById('h-time-windows-container').innerHTML = ''; 
     addHabitTimeWindow(); 
-    
-    document.getElementById('modal-title').innerText = "Create New Habit"; 
     toggleDays(); 
-    closeModals(); 
-    document.getElementById('formModal').style.display = 'flex'; 
-}
 
-function openEventModal() { 
+    // Resetta e prepara la sezione Event
     document.getElementById('eventForm').reset(); 
     document.getElementById('e-date').value = selectedDateStr; 
     document.getElementById('e-color').value = '#b84b4b'; 
     updateCustomColor(document.getElementById('e-color'), 'e-color'); 
+    
+    // Imposta di default la vista su "Habit" e apri il modale
+    document.querySelector('input[name="creation-type"][value="habit"]').checked = true;
+    toggleCreationType();
+    
     closeModals(); 
-    document.getElementById('eventModal').style.display = 'flex'; 
+    document.getElementById('creationModal').style.display = 'flex'; 
 }
 
 function openManagerModal() { 

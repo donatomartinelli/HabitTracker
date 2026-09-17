@@ -71,9 +71,9 @@
                 <div id="notes-section" class="notes-section">
                     <div class="notes-controls">
                         <h2 style="margin: 0; color: var(--text-main); border: none; padding: 0;">Quick Notes</h2>
-                        <div style="display: flex; gap: 5px; align-items: center;">
+                        <div style="display: flex; gap: 10px; align-items: center;">
                             <select id="note-category" class="form-control" style="width: 160px; padding: 4px; font-weight: bold;"></select>
-                            <button class="btn" onclick="openManageNotesModal()" title="Manage Categories">⚙ Manage</button>
+                            <button class="icon-btn" style="font-size: 1.3rem;" onclick="openManageNotesModal()" title="Manage Categories">⚙</button>
                         </div>
                     </div>
                     <div style="display: flex; height: 100%;">
@@ -87,11 +87,10 @@
                 <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 30px 40px 10px;">
                     <div class="header-actions" style="margin-bottom: 15px; flex-shrink: 0; border-bottom: none;">
                         <h1 id="selected-date-title">Today</h1>
-                        <div class="header-buttons">
-                            <button class="btn btn-primary" onclick="openTimerModal()">▶ Focus</button>
-                            <button class="btn btn-event" onclick="openEventModal()">+ Event</button>
-                            <button class="btn" onclick="openManagerModal()">⚙ Manage</button>
-                            <button class="btn btn-primary" onclick="openFormModal()">+ New Habit</button>
+                        <div class="header-buttons" style="display: flex; gap: 25px; align-items: center;">
+                            <button class="icon-btn" style="font-size: 1.3rem; color: var(--text-main);" onclick="openTimerModal()" title="Focus">▶</button>
+                            <button class="icon-btn" style="font-size: 1.8rem; line-height: 0.8; color: var(--text-main);" onclick="openCreationModal()" title="Add New">+</button>
+                            <button class="icon-btn" style="font-size: 1.4rem; color: var(--text-main);" onclick="openManagerModal()" title="Manage">⚙</button>
                         </div>
                     </div>
 
@@ -277,10 +276,22 @@
         </div>
     </div>
 
-    <!-- Form Modal (Habit) -->
-    <div id="formModal" class="modal-overlay">
+<!-- Combined Creation Modal (Habits & Events) -->
+    <div id="creationModal" class="modal-overlay">
         <div class="modal-content">
-            <h2 id="modal-title">Create New Habit</h2>
+            <h2 style="margin-bottom: 20px;">Add to Planner</h2>
+            
+            <!-- Toggle Habit vs Event -->
+            <div class="task-type-toggle" style="margin-bottom: 25px;">
+                <label class="type-radio">
+                    <input type="radio" name="creation-type" value="habit" checked onchange="toggleCreationType()"> Habit / Calendar
+                </label>
+                <label class="type-radio">
+                    <input type="radio" name="creation-type" value="event" onchange="toggleCreationType()"> Single Event
+                </label>
+            </div>
+
+            <!-- FORM HABIT -->
             <form id="habitForm">
                 <input type="hidden" id="h-id">
                 
@@ -375,17 +386,12 @@
                 
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-primary">Save Habit</button>
                 </div>
             </form>
-        </div>
-    </div>
 
-    <!-- Altri Modals (Event, Rename, Delete, Ghost Layer, ecc.) -->
-    <div id="eventModal" class="modal-overlay">
-        <div class="modal-content" style="width: 400px;">
-            <h2>Add Specific Event</h2>
-            <form id="eventForm">
+            <!-- FORM EVENT -->
+            <form id="eventForm" style="display: none;">
                 <div class="form-group">
                     <label>Event Name</label>
                     <input type="text" id="e-title" class="form-control" required>
@@ -410,7 +416,7 @@
                 
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="submit" class="btn btn-primary">Save Event</button>
                 </div>
             </form>
         </div>
@@ -444,6 +450,18 @@
                     <span id="opacity-val">0.92</span>
                 </label>
                 <input type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="width: 100%; accent-color: var(--text-main);" oninput="updateOpacity(this.value)">
+            </div>
+
+            <!-- NUOVO: Backup & Restore -->
+            <div style="margin-bottom: 25px; padding: 15px; background: rgba(255,255,255,0.02); border: 1px solid #333; display: flex; justify-content: space-between; align-items: center;">
+                <span style="color: var(--text-dim); font-size: 0.75rem; text-transform: uppercase;">Data Backup</span>
+                <div style="display: flex; gap: 10px;">
+                    <button class="btn" onclick="exportData()">Export JSON</button>
+                    <label class="btn" style="cursor: pointer; margin: 0;">
+                        Import JSON
+                        <input type="file" accept=".json" style="display: none;" onchange="importData(event)">
+                    </label>
+                </div>
             </div>
 
             <div id="manager-list" class="manager-list"></div>

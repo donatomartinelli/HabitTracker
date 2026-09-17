@@ -156,3 +156,57 @@ function getStatsForDate(dateStr) {
         categories: Array.from(activeCategories) 
     };
 }
+
+// --- BACKUP & RESTORE (OFFLINE JSON) ---
+
+function exportData() {
+    const backup = {
+        tracker_templates: localStorage.getItem('tracker_templates'),
+        tracker_logs: localStorage.getItem('tracker_logs'),
+        tracker_events: localStorage.getItem('tracker_events'),
+        tracker_note_cats: localStorage.getItem('tracker_note_cats'),
+        tracker_category_order: localStorage.getItem('tracker_category_order'),
+        tracker_references: localStorage.getItem('tracker_references'),
+        ref_toggles: localStorage.getItem('ref_toggles'),
+        tracker_ephemeral: localStorage.getItem('tracker_ephemeral'),
+        tracker_journal: localStorage.getItem('tracker_journal'),
+        tracker_opacity: localStorage.getItem('tracker_opacity')
+    };
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    
+    // Nomi dei file dinamici: es. minimal_backup_2026-09-18.json
+    downloadAnchorNode.setAttribute("download", "minimal_backup_" + formatDate(new Date()) + ".json");
+    
+    document.body.appendChild(downloadAnchorNode); 
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
+}
+
+function importData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        try {
+            const data = JSON.parse(e.target.result);
+            
+            // Controlla e ripristina ogni chiave
+            for (let key in data) {
+                if (data[key] !== null && data[key] !== undefined) {
+                    localStorage.setItem(key, data[key]);
+                }
+            }
+            
+            alert("Backup restored successfully! The app will now reload.");
+            location.reload(); // Forza il riavvio per caricare i nuovi dati
+            
+        } catch (err) {
+            alert("Error reading backup file. Make sure it's a valid JSON from this app.");
+        }
+    };
+    reader.readAsText(file);
+}
