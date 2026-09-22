@@ -458,7 +458,7 @@ function renderWeeklyPlanner() {
                             const top = timeToPx(tw.start); 
                             const height = Math.max(timeToPx(tw.end) - top, 15);
                             if (top + height > 0) {
-                                dayCol.innerHTML += `<div class="block-absolute block-ref" style="top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)}; color:${ref.color};" onmouseenter="showTooltip(event, '${ref.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', 'Ghost Layer')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><i>${ref.title}</i></div>`;
+                                dayCol.innerHTML += `<div class="block-absolute block-ref" style="top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)};" onmouseenter="showTooltip(event, '${ref.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', 'Ghost Layer')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"></div>`;
                             }
                         }
                     });
@@ -497,18 +497,27 @@ function renderWeeklyPlanner() {
             // Hover logic
             scrollArea.addEventListener('mousemove', function(e) {
                 const rect = scrollArea.getBoundingClientRect();
+                // Calcola la Y assoluta del mouse all'interno dell'area scrollabile
                 const y = e.clientY - rect.top + scrollArea.scrollTop;
-                const hoursDec = (y / plannerZoom) + 7;
-                if (hoursDec >= 7 && hoursDec <= 24) {
+                
+                // Offset di 30px dovuto al CSS (padding-top: 15px del contenitore + margin-top: 15px delle colonne)
+                const gridOffset = 30;
+                
+                // Sottraiamo l'offset per calcolare l'orario rispetto all'inizio reale della griglia
+                const relativeY = y - gridOffset;
+                const hoursDec = (relativeY / plannerZoom) + 7;
+                
+                if (hoursDec >= 7 && hoursDec <= 24 && relativeY >= 0) {
                     const h = Math.floor(hoursDec);
                     const m = Math.floor((hoursDec - h) * 60);
                     document.getElementById('planner-hover-time').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
                     hl.style.display = 'block';
-                    hl.style.top = `${y}px`;
+                    hl.style.top = `${y}px`; // La linea fisica deve comunque tenere conto dell'offset
                 } else {
                     hl.style.display = 'none';
                 }
             });
+            
             scrollArea.addEventListener('mouseleave', () => hl.style.display = 'none');
             
             // Mouse Wheel Zoom logic (Ctrl + Scroll)
@@ -525,7 +534,7 @@ function renderWeeklyPlanner() {
             // Mantiene la linea in cima ri-appendendola
             scrollArea.appendChild(document.getElementById('planner-hover-line'));
         }
-        
+
         drawCurrentTimeLine(); 
         
     } catch (error) { 
@@ -619,7 +628,7 @@ function renderDailySchedule() {
                     const top = timeToPx(tw.start); 
                     const height = Math.max(timeToPx(tw.end) - top, 15);
                     if (top + height > 0) {
-                        container.innerHTML += `<div class="block-absolute block-ref" style="top:${top}px; height:${height}px; left:40px; right:5px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)}; color:${ref.color};" onmouseenter="showTooltip(event, '${ref.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', 'Ghost Layer')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><i>${ref.title}</i></div>`;
+                        container.innerHTML += `<div class="block-absolute block-ref" style="top:${top}px; height:${height}px; left:40px; right:5px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)};" onmouseenter="showTooltip(event, '${ref.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', 'Ghost Layer')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"></div>`;
                     }
                 }
             });
