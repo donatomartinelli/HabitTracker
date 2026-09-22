@@ -53,15 +53,18 @@
                     </div>
                     
                     <div class="daily-schedule-content">
-                        <!-- Sinistra: Timeline Oraria -->
-                        <div class="daily-timeline" id="daily-timeline" onmouseleave="cancelTimelineDrag()">
+                        <!-- Sinistra: Timeline Mirror (Sola lettura) -->
+                        <div class="daily-timeline-mirror" id="daily-timeline-mirror" style="flex: 4; position: relative; border-right: 1px dashed var(--border-color); padding-right: 15px; overflow-y: auto;">
                             <!-- Generato da JS -->
                         </div>
                         
-                        <!-- Destra: Task Flessibili -->
-                        <div class="daily-flexible">
-                            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px;">Flexible Tasks & Notes</div>
-                            <div id="daily-flexible-list"></div>
+                        <!-- Destra: Testo Libero Daily -->
+                        <div class="daily-flexible" style="flex: 6; display: flex; flex-direction: column; padding-left: 10px;">
+                            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; display: flex; justify-content: space-between;">
+                                <span>Daily Notes</span>
+                                <span id="daily-save-status" style="color: #5f7a61; opacity: 0; transition: opacity 0.3s;">Saved</span>
+                            </div>
+                            <textarea id="daily-notes-area" class="form-control" style="flex: 1; resize: none; font-size: 0.85rem;" placeholder="What do you need to do?..." oninput="debounceSaveDailyNotes()"></textarea>
                         </div>
                     </div>
                 </div>
@@ -649,6 +652,9 @@
             </form>
         </div>
     </div>
+
+    <!-- Tooltip Globale per il Planner -->
+    <div id="planner-tooltip" style="display:none; position:fixed; background:rgba(10,10,10,0.95); border:1px solid var(--border-color); padding:8px 12px; color:white; font-size:0.75rem; z-index:9999; pointer-events:none; border-radius:4px !important; backdrop-filter:blur(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.5);"></div>
 
     <!-- JS Modulari -->
     <script src="js/data.js"></script>

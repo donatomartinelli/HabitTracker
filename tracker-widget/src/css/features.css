@@ -445,10 +445,13 @@
 }
 
 .block-ref {
-    background: rgba(255, 255, 255, 0.05);
+    /* Il background ora lo gestiamo in JS per iniettare l'opacità corretta */
     border: 1px solid;
     z-index: 1;
-    pointer-events: none;
+    user-select: none; /* EVITA LA SELEZIONE BLU */
+    pointer-events: auto; /* ABILITA IL MOUSE PER IL TOOLTIP */
+    backdrop-filter: blur(2px); /* UNIFORMA L'EFFETTO VETRO */
+    cursor: default;
 }
 
 .block-task {
