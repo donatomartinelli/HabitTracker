@@ -121,55 +121,70 @@ function renderMoneyDashboard() {
     drawSteppedChart();
 }
 
-// --- GRAFICO A SCALINI (Basato sulle singole transazioni, non sui giorni) ---
+// --- GRAFICO A SCALINI (Griglia Fissa e Avanzamento per Singola Transazione) ---
 function drawSteppedChart() {
     const svg = document.getElementById('m-chart-svg');
     const polyline = document.getElementById('m-chart-line');
     if (!svg || !polyline) return;
     
-    const width = svg.clientWidth;
-    const height = svg.clientHeight;
-    if (width === 0 || height === 0) return;
+    // ViewBox nativo per layout responsivo sicuro
+    svg.setAttribute('viewBox', '0 0 1000 1000');
+    svg.setAttribute('preserveAspectRatio', 'none');
 
-    let historyPoints = [];
-    let currentBal = mBalance;
-    
-    // Il punto corrispondente all'ultima transazione
-    historyPoints.push(currentBal);
-
-    let recentTrans = [...mTransactions].sort((a, b) => {
+    // 1. Ordiniamo dalla PIÙ VECCHIA alla PIÙ RECENTE per riempire il grafico da sx a dx
+    let sortedT = [...mTransactions].sort((a, b) => {
         let timeA = parseInt(a.id.split('_')[1]) || new Date(a.date).getTime();
         let timeB = parseInt(b.id.split('_')[1]) || new Date(b.date).getTime();
-        return timeB - timeA; 
-    }).slice(0, 30);
-    
-    recentTrans.forEach(t => {
-        if(t.type === 'in') currentBal -= parseFloat(t.amount);
-        else currentBal += parseFloat(t.amount);
-        historyPoints.unshift(currentBal);
+        return timeA - timeB; 
     });
+    
+    // 2. Capacità massima del grafico: 50 transazioni
+    const maxTrans = 50;
+    let displayTrans = sortedT.slice(-maxTrans); // Prende solo le ultime 50 se superi il limite
+    
+    // 3. Calcoliamo il saldo "zero" della nostra finestra tornando indietro dal saldo attuale
+    let startBal = mBalance;
+    for (let i = displayTrans.length - 1; i >= 0; i--) {
+        let t = displayTrans[i];
+        if(t.type === 'in') startBal -= parseFloat(t.amount);
+        else startBal += parseFloat(t.amount);
+    }
 
-    // FIX: Aggiungiamo un punto extra alla fine, identico al saldo attuale.
-    // Spinge la timeline a sinistra, rendendo visibile il gradino finale.
-    historyPoints.push(mBalance);
+    let historyPoints = [];
+    let currentBal = startBal;
+    historyPoints.push(currentBal); // Punto iniziale della linea
+
+    // 4. Aggiungiamo un punto per ogni singola transazione (aggiunge granulometria reale)
+    displayTrans.forEach(t => {
+        if(t.type === 'in') currentBal += parseFloat(t.amount);
+        else currentBal -= parseFloat(t.amount);
+        historyPoints.push(currentBal);
+    });
 
     const maxBal = Math.max(...historyPoints, mBalance + 5);
     const minBal = Math.min(...historyPoints, 0); 
     const rangeY = (maxBal - minBal) || 1;
 
     let pointsStr = "";
+    const width = 1000;
+    const height = 1000;
+
+    // 5. Disegniamo. Ogni transazione avanza di un pezzetto fisso (width / 50).
+    // Se ci sono solo 7 transazioni, il grafico si ferma prima e lascia il resto vuoto.
     for (let i = 0; i < historyPoints.length; i++) {
-        let x = (i / (historyPoints.length - 1)) * width;
+        let x = (i / maxTrans) * width; // La distanza orizzontale è FISSA e immutabile
         let y = height - (((historyPoints[i] - minBal) / rangeY) * height);
         
         if (i === 0) {
             pointsStr += `${x},${y} `;
         } else {
+            // Logica del gradino: orizzontale fisso, poi salto verticale netto
             let prevY = height - (((historyPoints[i-1] - minBal) / rangeY) * height);
             pointsStr += `${x},${prevY} `;
             pointsStr += `${x},${y} `;
         }
     }
+    
     polyline.setAttribute("points", pointsStr);
 }
 
