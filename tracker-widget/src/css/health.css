@@ -1,0 +1,101 @@
+/* --- DIET WEEKLY GRID --- */
+.diet-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.diet-row {
+    display: grid;
+    grid-template-columns: 80px repeat(7, 1fr);
+    gap: 2px;
+}
+.diet-header {
+    background: rgba(0, 0, 0, 0.8);
+    color: var(--text-dim);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    font-weight: bold;
+    padding: 10px 5px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+.diet-cell {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 8px 5px;
+    font-size: 0.7rem;
+    color: #ccc;
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: pre-line; /* Permette i ritorni a capo */
+    line-height: 1.4;
+}
+.diet-row-label {
+    background: transparent;
+    color: var(--text-dim);
+    font-weight: bold;
+    text-align: right;
+    padding-right: 10px;
+    border: none;
+}
+/* Evidenzia il giorno corrente */
+.diet-col-active {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: #fff;
+    font-weight: bold;
+}
+
+/* --- GYM WORKOUT LIST --- */
+.gym-header-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+.gym-exercise-row {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-left: 3px solid var(--text-main);
+    padding: 15px;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.gym-ex-title {
+    font-weight: bold;
+    font-size: 0.9rem;
+    color: #eee;
+}
+.gym-ex-reps {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+}
+.gym-sets-container {
+    display: flex;
+    gap: 8px;
+}
+.gym-weight-input {
+    width: 50px;
+    background: rgba(0, 0, 0, 0.5);
+    border: 1px dashed var(--text-dim);
+    color: white;
+    text-align: center;
+    padding: 6px;
+    font-family: inherit;
+    font-size: 0.8rem;
+    transition: 0.2s;
+}
+.gym-weight-input:focus {
+    outline: none;
+    border-style: solid;
+    border-color: white;
+    background: rgba(255, 255, 255, 0.1);
+}
+.gym-weight-input::placeholder {
+    color: #444;
+}

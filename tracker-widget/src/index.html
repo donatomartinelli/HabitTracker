@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/features.css">
     <link rel="stylesheet" href="css/money.css">
+    <link rel="stylesheet" href="css/health.css">
 </head>
 <body>
 
@@ -179,13 +180,36 @@
             </div> <!-- Chiusura Right Pane -->
         </div> <!-- CHIUSURA SCHEDA OVERVIEW -->
 
-        <!-- SCHEDA 2: HEALTH (Strutturata come Overview per evitare differenze visive) -->
+        <!-- SCHEDA 2: HEALTH -->
         <div id="screen-health" class="layout" style="display: none; height: calc(100% + 60px); margin-top: -60px;">
-            <div class="left-pane" style="padding-top: 70px; display: flex; align-items: center; justify-content: center;">
-                <h2 style="color: var(--text-main);">HEALTH DASHBOARD</h2>
+            <!-- LEFT PANE: Contenuto Principale (Griglia Dieta o Form Allenamento) -->
+            <div class="left-pane" style="padding: 70px 30px 20px; display: flex; flex-direction: column;">
+                
+                <div style="display: flex; gap: 15px; align-items: center; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 15px;">
+                    <h2 style="margin: 0; color: var(--text-main); border: none; padding: 0;">Health</h2>
+                    
+                    <!-- Toggle Pillola DIET / GYM -->
+                    <label class="notes-toggle" style="width: 120px;">
+                        <input type="checkbox" id="health-mode-checkbox" onchange="toggleHealthMode()">
+                        <span class="notes-slider">
+                            <span class="t-label write" style="left: 12px;">DIET</span>
+                            <span class="t-label browse" style="right: 12px;">GYM</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div id="health-main-content" style="flex: 1; overflow-y: auto; padding-right: 10px;">
+                    <!-- Generato da JS -->
+                </div>
             </div>
-            <div class="right-pane" style="padding-top: 70px; display: flex; align-items: center; justify-content: center;">
-                <h2 style="color: var(--text-dim);">(COMING SOON)</h2>
+
+            <!-- RIGHT PANE: Statistiche e Metriche -->
+            <div class="right-pane" style="padding: 70px 40px 20px; display: flex; flex-direction: column;">
+                
+                <div id="health-side-content" style="flex: 1; display: flex; flex-direction: column;">
+                    <!-- Generato da JS (Grafico Linee o Regole Dieta) -->
+                </div>
+
             </div>
         </div>
 
@@ -676,5 +700,6 @@
     <script src="js/pomodoro.js"></script>
     <script src="js/render.js"></script>
     <script src="js/money.js"></script>
+    <script src="js/health.js"></script>
 </body>
 </html>
