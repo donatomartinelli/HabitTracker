@@ -59,13 +59,18 @@ function processRecurringPayments() {
 function renderMoneyDashboard() {
     document.getElementById('m-balance-display').innerText = mBalance.toFixed(2);
     
-    // Sort
-    mTransactions.sort((a,b) => new Date(b.date) - new Date(a.date));
+    // ORDINAMENTO CRONOLOGICO ASSOLUTO (Al millisecondo, sfruttando l'ID)
+    mTransactions.sort((a,b) => {
+        let timeA = parseInt(a.id.split('_')[1]) || new Date(a.date).getTime();
+        let timeB = parseInt(b.id.split('_')[1]) || new Date(b.date).getTime();
+        return timeB - timeA; // I più recenti in alto
+    });
+    
     mWishlist.sort((a,b) => a.order - b.order);
 
     const histCont = document.getElementById('m-history-container');
     histCont.innerHTML = '';
-    mTransactions.slice(0, 15).forEach(t => { // Mostra le ultime 15
+    mTransactions.slice(0, 15).forEach(t => { 
         const isOut = t.type === 'out';
         histCont.innerHTML += `
             <div class="m-item-row ${isOut ? 'out' : 'in'}">
@@ -114,6 +119,59 @@ function renderMoneyDashboard() {
     });
 
     drawSteppedChart();
+}
+
+// --- GRAFICO A SCALINI (Basato sulle singole transazioni, non sui giorni) ---
+function drawSteppedChart() {
+    const svg = document.getElementById('m-chart-svg');
+    const polyline = document.getElementById('m-chart-line');
+    if (!svg || !polyline) return;
+    
+    // FIX: Se il tab è nascosto, clientWidth è 0. Interrompiamo per ridisegnarlo al momento dell'apertura
+    const width = svg.clientWidth;
+    const height = svg.clientHeight;
+    if (width === 0 || height === 0) return;
+
+    let historyPoints = [];
+    let currentBal = mBalance;
+    
+    // Il punto finale attuale
+    historyPoints.push(currentBal);
+
+    // Prendiamo le ultime 30 transazioni cronologiche per costruire i gradini precisi
+    let recentTrans = [...mTransactions].sort((a, b) => {
+        let timeA = parseInt(a.id.split('_')[1]) || new Date(a.date).getTime();
+        let timeB = parseInt(b.id.split('_')[1]) || new Date(b.date).getTime();
+        return timeB - timeA; 
+    }).slice(0, 30);
+    
+    // Andiamo indietro calcolando il saldo *prima* di ogni transazione
+    recentTrans.forEach(t => {
+        if(t.type === 'in') currentBal -= parseFloat(t.amount);
+        else currentBal += parseFloat(t.amount);
+        // Aggiungiamo in testa all'array (per andare da sx verso dx nel grafico)
+        historyPoints.unshift(currentBal);
+    });
+
+    const maxBal = Math.max(...historyPoints, mBalance + 5);
+    const minBal = Math.min(...historyPoints, 0); // Non va sotto lo zero nel calcolo scala
+    const rangeY = (maxBal - minBal) || 1;
+
+    let pointsStr = "";
+    for (let i = 0; i < historyPoints.length; i++) {
+        let x = (i / (historyPoints.length - 1)) * width;
+        let y = height - (((historyPoints[i] - minBal) / rangeY) * height);
+        
+        if (i === 0) {
+            pointsStr += `${x},${y} `;
+        } else {
+            // STEP: Disegna prima orizzontale al livello precedente, poi scende/sale verticale
+            let prevY = height - (((historyPoints[i-1] - minBal) / rangeY) * height);
+            pointsStr += `${x},${prevY} `;
+            pointsStr += `${x},${y} `;
+        }
+    }
+    polyline.setAttribute("points", pointsStr);
 }
 
 // --- AZIONI MODALI ---

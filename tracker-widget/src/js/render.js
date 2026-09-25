@@ -729,9 +729,14 @@ function switchAppTab(tabId) {
         
         const screenEl = document.getElementById(`screen-${id}`); 
         if(screenEl) {
-            screenEl.style.display = (id === tabId) ? (id === 'overview' ? 'flex' : 'flex') : 'none';
+            screenEl.style.display = (id === tabId) ? 'flex' : 'none';
         }
     });
+
+    // FIX GRAFICO: Ridisegna il grafico un istante dopo che la scheda diventa "flex" e l'SVG ottiene i suoi pixel reali
+    if (tabId === 'money' && typeof drawSteppedChart === 'function') {
+        setTimeout(drawSteppedChart, 10);
+    }
 }
 
 function initTrackerResizer() {
