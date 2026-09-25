@@ -127,7 +127,6 @@ function drawSteppedChart() {
     const polyline = document.getElementById('m-chart-line');
     if (!svg || !polyline) return;
     
-    // FIX: Se il tab è nascosto, clientWidth è 0. Interrompiamo per ridisegnarlo al momento dell'apertura
     const width = svg.clientWidth;
     const height = svg.clientHeight;
     if (width === 0 || height === 0) return;
@@ -135,26 +134,27 @@ function drawSteppedChart() {
     let historyPoints = [];
     let currentBal = mBalance;
     
-    // Il punto finale attuale
+    // Il punto corrispondente all'ultima transazione
     historyPoints.push(currentBal);
 
-    // Prendiamo le ultime 30 transazioni cronologiche per costruire i gradini precisi
     let recentTrans = [...mTransactions].sort((a, b) => {
         let timeA = parseInt(a.id.split('_')[1]) || new Date(a.date).getTime();
         let timeB = parseInt(b.id.split('_')[1]) || new Date(b.date).getTime();
         return timeB - timeA; 
     }).slice(0, 30);
     
-    // Andiamo indietro calcolando il saldo *prima* di ogni transazione
     recentTrans.forEach(t => {
         if(t.type === 'in') currentBal -= parseFloat(t.amount);
         else currentBal += parseFloat(t.amount);
-        // Aggiungiamo in testa all'array (per andare da sx verso dx nel grafico)
         historyPoints.unshift(currentBal);
     });
 
+    // FIX: Aggiungiamo un punto extra alla fine, identico al saldo attuale.
+    // Spinge la timeline a sinistra, rendendo visibile il gradino finale.
+    historyPoints.push(mBalance);
+
     const maxBal = Math.max(...historyPoints, mBalance + 5);
-    const minBal = Math.min(...historyPoints, 0); // Non va sotto lo zero nel calcolo scala
+    const minBal = Math.min(...historyPoints, 0); 
     const rangeY = (maxBal - minBal) || 1;
 
     let pointsStr = "";
@@ -165,7 +165,6 @@ function drawSteppedChart() {
         if (i === 0) {
             pointsStr += `${x},${y} `;
         } else {
-            // STEP: Disegna prima orizzontale al livello precedente, poi scende/sale verticale
             let prevY = height - (((historyPoints[i-1] - minBal) / rangeY) * height);
             pointsStr += `${x},${prevY} `;
             pointsStr += `${x},${y} `;
