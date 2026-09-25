@@ -774,3 +774,53 @@ input[type="number"].no-spinners {
     font-size: 0.9rem;
     margin-left: 2px;
 }
+
+/* NOTES TOGGLE (Write/Browse) */
+.notes-toggle {
+    position: relative;
+    display: inline-block;
+    width: 110px;
+    height: 24px;
+}
+.notes-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.notes-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    border-radius: 12px !important;
+    transition: .3s;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 10px;
+}
+.notes-slider:before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 52px;
+    left: 2px;
+    bottom: 2px;
+    background: var(--text-main);
+    border-radius: 10px !important;
+    transition: .3s;
+    z-index: 1;
+}
+input:checked + .notes-slider:before {
+    transform: translateX(52px);
+}
+.t-label {
+    font-size: 0.6rem;
+    font-weight: bold;
+    color: #888;
+    z-index: 2;
+    transition: color 0.3s;
+}
+input:not(:checked) + .notes-slider .t-label.write { color: #000; }
+input:checked + .notes-slider .t-label.browse { color: #000; }

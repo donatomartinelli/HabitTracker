@@ -302,29 +302,19 @@ function handleFocusNoteKeyDown(event) {
     } 
 }
 
-async function saveFocusNote() {
-    const category = document.getElementById('focus-note-category').value; 
+function saveFocusNote() {
+    const cat = document.getElementById('focus-note-category').value; 
     const textEl = document.getElementById('focus-note-text'); 
     const text = textEl.value.trim(); 
-    
     if (!text) return;
     
-    if (window.__TAURI__) { 
-        try { 
-            await window.__TAURI__.core.invoke('save_note', { category: category, text: `${text}\n\n` }); 
-            textEl.value = ''; 
-            textEl.placeholder = "✓ Idea saved!"; 
-            setTimeout(() => { 
-                textEl.placeholder = "Write your idea and press Enter..."; 
-            }, 1500); 
-        } catch(e) {} 
-    } else { 
-        textEl.value = ''; 
-        textEl.placeholder = "✓ Idea saved (Mock)!"; 
-        setTimeout(() => { 
-            textEl.placeholder = "Write your idea and press Enter..."; 
-        }, 1500); 
-    }
+    if (!notesContent[cat]) notesContent[cat] = "";
+    notesContent[cat] += (notesContent[cat] === "" ? "" : "\n\n") + text;
+    localStorage.setItem('tracker_notes', JSON.stringify(notesContent));
+    
+    textEl.value = ''; 
+    textEl.placeholder = "✓ Idea saved!"; 
+    setTimeout(() => { textEl.placeholder = "Write your idea and press Enter..."; }, 1500); 
 }
 
 let isDraggingWidget = false; 

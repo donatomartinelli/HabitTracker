@@ -236,33 +236,68 @@ function selectDate(dateStr) {
     renderWeeklyPlanner(); 
 }
 
+// --- GESTIONE NOTES (Local Storage, Write/Browse, Autosave) ---
+let notesContent = JSON.parse(localStorage.getItem('tracker_notes')) || {};
+let currentNoteMode = 'write';
+let notesAutosaveTimer;
+
+function toggleNotesMode() {
+    currentNoteMode = document.getElementById('notes-mode-checkbox').checked ? 'browse' : 'write';
+    refreshNotesView();
+}
+
+function refreshNotesView() {
+    const cat = document.getElementById('note-category').value;
+    const textEl = document.getElementById('note-text');
+    
+    if (currentNoteMode === 'write') {
+        textEl.value = '';
+        textEl.placeholder = "Write your idea and press Enter...";
+    } else {
+        // Modalità Browse: carica l'archivio della categoria (Hot-Swap)
+        textEl.value = notesContent[cat] || '';
+        textEl.placeholder = "";
+    }
+}
+
 function handleNoteKeyDown(event) { 
-    if (event.key === 'Enter' && !event.shiftKey) { 
+    // Intercetta l'Invio SOLO se siamo in modalità Write
+    if (currentNoteMode === 'write' && event.key === 'Enter' && !event.shiftKey) { 
         event.preventDefault(); 
         saveNote(); 
     } 
+    // In modalità Browse l'Invio si comporta normalmente mandando a capo
 }
 
-async function saveNote() {
-    const category = document.getElementById('note-category').value; 
+function saveNote() {
+    const cat = document.getElementById('note-category').value; 
     const textEl = document.getElementById('note-text'); 
     const text = textEl.value.trim(); 
-    
     if (!text) return;
+
+    if (!notesContent[cat]) notesContent[cat] = "";
+    // Appende la nuova idea a fine documento, lasciando uno spazio vuoto (\n\n)
+    notesContent[cat] += (notesContent[cat] === "" ? "" : "\n\n") + text;
+    localStorage.setItem('tracker_notes', JSON.stringify(notesContent));
     
-    if (window.__TAURI__) { 
-        try { 
-            await window.__TAURI__.core.invoke('save_note', { category: category, text: `${text}\n\n` }); 
-            textEl.value = ''; 
-            textEl.placeholder = "✓ Idea saved!"; 
-            setTimeout(() => { textEl.placeholder = "Write your idea and press Enter..."; }, 1500); 
-        } catch (e) { 
-            alert("Error saving note: " + e); 
-        } 
-    } else { 
-        textEl.value = ''; 
-        textEl.placeholder = "✓ Idea saved (Mock)!"; 
-        setTimeout(() => { textEl.placeholder = "Write your idea and press Enter..."; }, 1500); 
+    // Feedback visivo
+    textEl.value = ''; 
+    textEl.placeholder = "✓ Idea saved!"; 
+    setTimeout(() => { 
+        if (currentNoteMode === 'write') textEl.placeholder = "Write your idea and press Enter..."; 
+    }, 1500); 
+}
+
+function handleNoteInput() {
+    // Autosave attivato ogni volta che scrivi in modalità Browse
+    if (currentNoteMode === 'browse') {
+        clearTimeout(notesAutosaveTimer);
+        notesAutosaveTimer = setTimeout(() => {
+            const cat = document.getElementById('note-category').value;
+            const textEl = document.getElementById('note-text');
+            notesContent[cat] = textEl.value; // Sovrascrive il documento
+            localStorage.setItem('tracker_notes', JSON.stringify(notesContent));
+        }, 800); // Salva 800ms dopo che smetti di digitare
     }
 }
 
