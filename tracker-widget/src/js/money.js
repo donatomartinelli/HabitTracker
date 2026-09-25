@@ -121,28 +121,29 @@ function renderMoneyDashboard() {
     drawSteppedChart();
 }
 
-// --- GRAFICO A SCALINI (Griglia Fissa e Avanzamento per Singola Transazione) ---
+// --- GRAFICO A SCALINI (Dominio discreto, finestra fissa 30, padding dinamico) ---
+// --- GRAFICO A SCALINI (Ancorato a destra, Griglia Fissa 30, Caso A) ---
 function drawSteppedChart() {
     const svg = document.getElementById('m-chart-svg');
     const polyline = document.getElementById('m-chart-line');
     if (!svg || !polyline) return;
     
-    // ViewBox nativo per layout responsivo sicuro
+    // ViewBox fisso 1000x1000 per svincolarsi dalle dimensioni CSS del contenitore
     svg.setAttribute('viewBox', '0 0 1000 1000');
     svg.setAttribute('preserveAspectRatio', 'none');
 
-    // 1. Ordiniamo dalla PIÙ VECCHIA alla PIÙ RECENTE per riempire il grafico da sx a dx
+    // 1. Ordiniamo cronologicamente (dal passato al presente)
     let sortedT = [...mTransactions].sort((a, b) => {
         let timeA = parseInt(a.id.split('_')[1]) || new Date(a.date).getTime();
         let timeB = parseInt(b.id.split('_')[1]) || new Date(b.date).getTime();
         return timeA - timeB; 
     });
     
-    // 2. Capacità massima del grafico: 50 transazioni
-    const maxTrans = 50;
-    let displayTrans = sortedT.slice(-maxTrans); // Prende solo le ultime 50 se superi il limite
+    // 2. Finestra logica: massimo 30 transazioni
+    const maxTrans = 30;
+    let displayTrans = sortedT.slice(-maxTrans);
     
-    // 3. Calcoliamo il saldo "zero" della nostra finestra tornando indietro dal saldo attuale
+    // 3. Calcolo del punto Iniziale (S_0): il saldo originario a ritroso
     let startBal = mBalance;
     for (let i = displayTrans.length - 1; i >= 0; i--) {
         let t = displayTrans[i];
@@ -150,38 +151,49 @@ function drawSteppedChart() {
         else startBal += parseFloat(t.amount);
     }
 
+    // Costruiamo la successione completa dei valori
     let historyPoints = [];
     let currentBal = startBal;
-    historyPoints.push(currentBal); // Punto iniziale della linea
+    historyPoints.push(currentBal); // Inseriamo S_0
 
-    // 4. Aggiungiamo un punto per ogni singola transazione (aggiunge granulometria reale)
     displayTrans.forEach(t => {
         if(t.type === 'in') currentBal += parseFloat(t.amount);
         else currentBal -= parseFloat(t.amount);
         historyPoints.push(currentBal);
     });
 
-    const maxBal = Math.max(...historyPoints, mBalance + 5);
-    const minBal = Math.min(...historyPoints, 0); 
-    const rangeY = (maxBal - minBal) || 1;
+    // 4. Intorno (Padding dinamico sulle Y): Calcoliamo min/max e aggiungiamo il 5% di respiro
+    const maxBal = Math.max(...historyPoints);
+    const minBal = Math.min(...historyPoints);
+    
+    let rawRange = maxBal - minBal;
+    if (rawRange === 0) rawRange = 1; // Evita la divisione per 0 in caso di saldo piatto
+    
+    const padding = rawRange * 0.05; 
+    const paddedMax = maxBal + padding;
+    const paddedMin = minBal - padding;
+    const paddedRange = paddedMax - paddedMin;
 
     let pointsStr = "";
     const width = 1000;
     const height = 1000;
 
-    // 5. Disegniamo. Ogni transazione avanza di un pezzetto fisso (width / 50).
-    // Se ci sono solo 7 transazioni, il grafico si ferma prima e lascia il resto vuoto.
+    // 5. Tracciamento ancorato a DESTRA e geometria a gradino
+    // Calcoliamo l'offset iniziale affinché l'ULTIMO punto tocchi esattamente il bordo destro
+    const stepWidth = width / maxTrans; 
+    const xOffset = width - ((historyPoints.length - 1) * stepWidth);
+
     for (let i = 0; i < historyPoints.length; i++) {
-        let x = (i / maxTrans) * width; // La distanza orizzontale è FISSA e immutabile
-        let y = height - (((historyPoints[i] - minBal) / rangeY) * height);
+        let x = xOffset + (i * stepWidth); 
+        let y = height - (((historyPoints[i] - paddedMin) / paddedRange) * height);
         
         if (i === 0) {
             pointsStr += `${x},${y} `;
         } else {
-            // Logica del gradino: orizzontale fisso, poi salto verticale netto
-            let prevY = height - (((historyPoints[i-1] - minBal) / rangeY) * height);
-            pointsStr += `${x},${prevY} `;
-            pointsStr += `${x},${y} `;
+            // Gradino A: mantiene il livello Y orizzontalmente fino alla nuova X, poi scatto verticale
+            let prevY = height - (((historyPoints[i-1] - paddedMin) / paddedRange) * height);
+            pointsStr += `${x},${prevY} `; 
+            pointsStr += `${x},${y} `;     
         }
     }
     
@@ -279,60 +291,6 @@ function moveWish(index, dir) {
     mWishlist[index].order = mWishlist[index + dir].order;
     mWishlist[index + dir].order = temp;
     saveMoneyData(); renderMoneyDashboard();
-}
-
-// --- GRAFICO A SCALINI ---
-function drawSteppedChart() {
-    const svg = document.getElementById('m-chart-svg');
-    const polyline = document.getElementById('m-chart-line');
-    if (!svg || !polyline) return;
-    
-    // Calcoliamo lo storico a ritroso
-    let historyPoints = [];
-    let tempBalance = mBalance;
-    historyPoints.push({ date: new Date(), bal: tempBalance });
-
-    // Ordina dal più recente al più vecchio per il calcolo
-    let sortedT = [...mTransactions].sort((a,b) => new Date(b.date) - new Date(a.date));
-    
-    // Andiamo indietro di 30 giorni max
-    let pastDate = new Date();
-    for(let i=0; i<30; i++) {
-        let dStr = formatDate(pastDate);
-        let transOnDay = sortedT.filter(t => t.date === dStr);
-        // Per tornare al saldo *prima* di questa giornata, togliamo le entrate e sommiamo le uscite
-        transOnDay.forEach(t => {
-            if(t.type === 'in') tempBalance -= parseFloat(t.amount);
-            else tempBalance += parseFloat(t.amount);
-        });
-        pastDate.setDate(pastDate.getDate() - 1);
-        historyPoints.unshift({ date: new Date(pastDate), bal: tempBalance }); // unshift per metterlo in ordine cronologico
-    }
-
-    // Troviamo min e max
-    const maxBal = Math.max(...historyPoints.map(p => p.bal), mBalance + 10);
-    const minBal = Math.min(...historyPoints.map(p => p.bal), 0);
-    const rangeY = (maxBal - minBal) || 1;
-
-    // Costruiamo i punti SVG per una linea a gradini (stepped)
-    let pointsStr = "";
-    const width = svg.clientWidth;
-    const height = svg.clientHeight;
-    
-    for (let i = 0; i < historyPoints.length; i++) {
-        let x = (i / (historyPoints.length - 1)) * width;
-        let y = height - (((historyPoints[i].bal - minBal) / rangeY) * height);
-        
-        if (i === 0) {
-            pointsStr += `${x},${y} `;
-        } else {
-            // STEP: Disegna prima in orizzontale, poi in verticale
-            let prevX = ((i - 1) / (historyPoints.length - 1)) * width;
-            pointsStr += `${x},${height - (((historyPoints[i-1].bal - minBal) / rangeY) * height)} `;
-            pointsStr += `${x},${y} `;
-        }
-    }
-    polyline.setAttribute("points", pointsStr);
 }
 
 // INIZIALIZZAZIONE MONEY ALL'AVVIO
