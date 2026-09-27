@@ -1,6 +1,4 @@
-// --- DATI HEALTH (Hardcoded dai PDF forniti) ---
-
-// Piano Dietetico
+// --- DATI HEALTH (Dieta e Palestra) ---
 const dietData = [
     { type: 'Spuntino 1', 1: 'MilkPro 200g', 2: 'MilkPro 200g', 3: 'Anacardi 20g', 4: 'MilkPro 200g', 5: 'Anacardi 20g', 6: 'MilkPro 200g', 0: 'Anacardi 20g' },
     { type: 'Pranzo', 1: 'Soncino 100g\nRiso 160g\nVitellone 200g', 2: 'Rucola 100g\nRiso 160g\nTonno 90g', 3: 'Soncino 100g\nRiso 90g\nCeci 120g\nTonno 100g', 4: 'Rucola 100g\nRiso 160g\nVitellone 200g', 5: 'Soncino 100g\nRiso 90g\nCeci 120g\n2 Uova', 6: 'Rucola 100g\nRiso 160g\nTonno 90g', 0: 'Soncino 100g\nPasta\nVitellone 200g' },
@@ -8,7 +6,6 @@ const dietData = [
     { type: 'Cena', 1: 'Spinaci 100g\nMerluzzo 250g\nPane 50g', 2: 'Spinaci 100g\nPollo 200g\nPane 50g', 3: 'Spinaci 100g\nBresaola 100g\nPane 50g', 4: 'Spinaci 100g\nSalmone 100g\nPane 50g', 5: 'Spinaci 100g\nPollo 200g\nPane 50g', 6: '[ PASTO\nLIBERO ]', 0: 'Spinaci 100g\nTonno 70g\nRobiola 30g\nPane 50g' }
 ];
 
-// Scheda Palestra (Giorno 1 e 2)
 const gymPlan = {
     1: [
         { id: "g1_1", name: "Panca Inclinata 2 Manubri", repStr: "4x5-8", sets: 4 },
@@ -18,7 +15,7 @@ const gymPlan = {
         { id: "g1_5", name: "Alzate Laterali Deltoid", repStr: "2x12 + 1xmax - 20%", sets: 2 },
         { id: "g1_6", name: "Curl Bicheps-Machine", repStr: "10-8-8", sets: 3 },
         { id: "g1_7", name: "Curl Alt. Seduto Panca Incl.", repStr: "2x12 + 1xmax - 20%", sets: 2 },
-        { id: "g1_8", name: "Crunch Machine", repStr: "3xMax", sets: 0 }, // Bodyweight
+        { id: "g1_8", name: "Crunch Machine", repStr: "3xMax", sets: 0 },
         { id: "g1_9", name: "Plank Busto Scorrimento", repStr: "3xMax", sets: 0 }
     ],
     2: [
@@ -34,33 +31,28 @@ const gymPlan = {
     ]
 };
 
-// --- LOGICA DI STATO ---
+// Variabili di stato salvate
 let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next')) || 1;
-let gymLogs = JSON.parse(localStorage.getItem('tracker_gym_logs')) || [];
+let savedGymWeights = JSON.parse(localStorage.getItem('tracker_gym_weights')) || {};
 
-function toggleHealthMode() {
-    const isGym = document.getElementById('health-mode-checkbox').checked;
-    const mainArea = document.getElementById('health-main-content');
-    const sideArea = document.getElementById('health-side-content');
+// Inizializzazione Globale Health
+function renderHealthDashboard() {
+    renderDiet();
     
-    mainArea.innerHTML = '';
-    sideArea.innerHTML = '';
-
-    if (isGym) {
-        renderGymMode(mainArea, sideArea);
-    } else {
-        renderDietMode(mainArea, sideArea);
-    }
+    // Carica le date salvate
+    document.getElementById('gym-start-date').value = localStorage.getItem('gym_start_date') || "";
+    document.getElementById('gym-end-date').value = localStorage.getItem('gym_end_date') || "";
+    
+    renderGym();
 }
 
-// --- MODALITÀ DIETA ---
-function renderDietMode(mainArea, sideArea) {
-    // Left Pane: Weekly Grid
-    const todayJS = new Date(selectedDateStr).getDay(); // Usiamo la data selezionata nel planner
+function renderDiet() {
+    const mainArea = document.getElementById('diet-main-content');
+    const todayJS = new Date(selectedDateStr).getDay();
 
     let html = `<div class="diet-wrapper">
                     <div class="diet-row">
-                        <div class="diet-header" style="background:transparent; border:none;"></div>
+                        <div class="diet-header" style="border:none;"></div>
                         <div class="diet-header ${todayJS === 1 ? 'diet-col-active' : ''}">LUN</div>
                         <div class="diet-header ${todayJS === 2 ? 'diet-col-active' : ''}">MAR</div>
                         <div class="diet-header ${todayJS === 3 ? 'diet-col-active' : ''}">MER</div>
@@ -84,165 +76,91 @@ function renderDietMode(mainArea, sideArea) {
     });
     html += `</div>`;
     mainArea.innerHTML = html;
-
-    // Right Pane: Regole Fisse
-    sideArea.innerHTML = `
-        <h2 style="color: white; margin-bottom: 20px;">Regole Fisse</h2>
-        <div style="background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 20px; color: #ccc; font-size: 0.85rem; line-height: 1.6;">
-            <p><strong style="color:white;">COLAZIONE:</strong><br>200g Latte + 20g Biscotti + 10g Cioccolato Fondente</p>
-            <div style="height:1px; background:var(--border-color); margin: 15px 0;"></div>
-            <p><strong style="color:white;">CONDIMENTO:</strong><br>15g Olio EVO (Pranzo, Cena)</p>
-            <div style="height:1px; background:var(--border-color); margin: 15px 0;"></div>
-            <p><strong style="color:white;">ACQUA:</strong><br>Minimo 3L / Giorno</p>
-        </div>
-    `;
 }
 
-// --- MODALITÀ PALESTRA ---
-function renderGymMode(mainArea, sideArea) {
-    const exercises = gymPlan[nextWorkoutDay];
-    
-    // Left Pane: Form di Log
-    let html = `<div class="gym-header-bar">
-                    <h3 style="margin:0; color:white; font-size: 1.1rem;">Schedulato: GIORNO ${nextWorkoutDay}</h3>
-                    <button class="btn btn-primary" onclick="saveGymSession()">Salva Allenamento</button>
-                </div>`;
-                
-    exercises.forEach((ex, idx) => {
-        let inputsHtml = '';
-        if (ex.sets > 0) {
-            for (let i = 0; i < ex.sets; i++) {
-                inputsHtml += `<input type="number" class="gym-weight-input no-spinners" id="gw_${ex.id}_${i}" placeholder="kg">`;
-            }
-        } else {
-            inputsHtml = `<span style="font-size:0.75rem; color:var(--text-dim);">Bodyweight</span>`;
-        }
+function renderGym() {
+    const mainArea = document.getElementById('gym-main-content');
+    let html = '';
 
-        html += `<div class="gym-exercise-row">
-                    <div>
-                        <div class="gym-ex-title">${ex.name}</div>
-                        <div class="gym-ex-reps">Rep: ${ex.repStr}</div>
+    [1, 2].forEach(dayNum => {
+        const isActive = (dayNum === nextWorkoutDay);
+        const cardClass = isActive ? 'gym-day-active' : 'gym-day-inactive';
+        
+        html += `<div class="gym-day-card ${cardClass}">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                        <h3 style="margin:0; font-size:0.9rem; color: ${isActive ? 'white' : 'var(--text-dim)'};">GIORNO ${dayNum}</h3>
+                        ${isActive ? `<button class="btn btn-primary" style="padding: 4px 10px; font-size: 0.7rem;" onclick="completeWorkout(${dayNum})">✓ DONE</button>` : ''}
                     </div>
-                    <div class="gym-sets-container">
-                        ${inputsHtml}
-                    </div>
-                 </div>`;
+                    <div class="gym-ex-list">`;
+        
+        gymPlan[dayNum].forEach(ex => {
+            let inputsHtml = '';
+            if (ex.sets > 0) {
+                for (let i = 0; i < ex.sets; i++) {
+                    const inputId = `gw_${ex.id}_${i}`;
+                    const lastWeight = savedGymWeights[inputId] || '';
+                    inputsHtml += `<input type="number" class="gym-input no-spinners" id="${inputId}" placeholder="kg" value="${lastWeight}">`;
+                }
+            } else {
+                inputsHtml = `<span style="font-size:0.65rem; color:var(--text-dim);">BW</span>`;
+            }
+
+            html += `<div class="gym-ex-row">
+                        <div class="gym-ex-info">
+                            <span class="gym-ex-name">${ex.name}</span>
+                            <span class="gym-ex-reps">${ex.repStr}</span>
+                        </div>
+                        <div class="gym-sets-container">${inputsHtml}</div>
+                     </div>`;
+        });
+        html += `</div></div>`;
     });
+
     mainArea.innerHTML = html;
-
-    // Right Pane: Grafico Linee
-    let optionsHtml = `<option value="">-- Seleziona Esercizio --</option>`;
-    // Uniamo tutti gli esercizi per la tendina
-    [...gymPlan[1], ...gymPlan[2]].filter(e => e.sets > 0).forEach(e => {
-        optionsHtml += `<option value="${e.id}">${e.name}</option>`;
-    });
-
-    sideArea.innerHTML = `
-        <h2 style="color: white; margin-bottom: 20px;">Progressione Carichi</h2>
-        <select id="gym-chart-select" class="form-control" style="margin-bottom: 20px; font-weight: bold;" onchange="drawGymChart()">
-            ${optionsHtml}
-        </select>
-        <div style="flex: 1; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); padding: 15px; position: relative;">
-            <svg id="g-chart-svg" width="100%" height="100%" preserveAspectRatio="none" style="overflow: visible;">
-                <polyline id="g-chart-line" fill="none" stroke="#5f7a61" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
-            </svg>
-        </div>
-    `;
 }
 
-// Salva e slitta la macchina a stati
-function saveGymSession() {
-    const exercises = gymPlan[nextWorkoutDay];
-    let sessionData = {
-        date: todayStr, // Salva la data in cui si clicca
-        dayType: nextWorkoutDay,
-        weights: {}
-    };
-
-    let hasData = false;
-    exercises.forEach(ex => {
+// Azione "DONE": Salva i pesi, slitta il giorno e ricarica
+function completeWorkout(dayNum) {
+    // 1. Memorizza i pesi inseriti
+    gymPlan[dayNum].forEach(ex => {
         if (ex.sets > 0) {
-            let setsData = [];
             for (let i = 0; i < ex.sets; i++) {
-                let val = document.getElementById(`gw_${ex.id}_${i}`).value;
-                setsData.push(val ? parseFloat(val) : 0);
-                if (val) hasData = true;
+                const inputId = `gw_${ex.id}_${i}`;
+                const val = document.getElementById(inputId).value;
+                if (val) savedGymWeights[inputId] = val;
             }
-            // Salviamo il peso massimo sollevato in quell'esercizio come metrica principale
-            sessionData.weights[ex.id] = Math.max(...setsData);
         }
     });
+    localStorage.setItem('tracker_gym_weights', JSON.stringify(savedGymWeights));
 
-    if (!hasData) {
-        alert("Inserisci almeno un peso prima di salvare!");
-        return;
-    }
-
-    gymLogs.push(sessionData);
-    localStorage.setItem('tracker_gym_logs', JSON.stringify(gymLogs));
-
-    // Slittamento rigido (Macchina a stati)
+    // 2. Inverte il giorno attivo
     nextWorkoutDay = nextWorkoutDay === 1 ? 2 : 1;
     localStorage.setItem('tracker_gym_next', nextWorkoutDay);
 
-    toggleHealthMode(); // Ricarica la UI
+    // 3. Ridisegna
+    renderGym();
 }
 
-// Disegna il grafico a linee per l'esercizio (Point to Point, non a scalini)
-function drawGymChart() {
-    const svg = document.getElementById('g-chart-svg');
-    const polyline = document.getElementById('g-chart-line');
-    const exId = document.getElementById('gym-chart-select').value;
+// Aggiorna le date e le inietta nel calendario di Overview
+function updateGymDates() {
+    const start = document.getElementById('gym-start-date').value;
+    const end = document.getElementById('gym-end-date').value;
     
-    if (!svg || !polyline || !exId) {
-        if (polyline) polyline.setAttribute("points", "");
-        return;
-    }
+    localStorage.setItem('gym_start_date', start);
+    localStorage.setItem('gym_end_date', end);
 
-    svg.setAttribute('viewBox', '0 0 1000 1000');
-    svg.setAttribute('preserveAspectRatio', 'none');
-
-    // Filtriamo i log che contengono questo esercizio e li ordiniamo cronologicamente
-    let exLogs = gymLogs.filter(log => log.weights && log.weights[exId] !== undefined && log.weights[exId] > 0)
-                        .sort((a,b) => new Date(a.date) - new Date(b.date));
-
-    if (exLogs.length === 0) {
-        polyline.setAttribute("points", "");
-        return;
-    }
-
-    const historyPoints = exLogs.map(log => log.weights[exId]);
-    const maxWeight = Math.max(...historyPoints);
-    const minWeight = Math.min(...historyPoints);
+    // Sincronizza con tracker_events (CRUD)
+    let events = JSON.parse(localStorage.getItem('tracker_events')) || [];
+    // Pulisce i vecchi
+    events = events.filter(e => e.id !== 'gym_start_evt' && e.id !== 'gym_end_evt');
     
-    let rawRange = maxWeight - minWeight;
-    if (rawRange === 0) rawRange = 10; 
-
-    const padding = rawRange * 0.2; // 20% respiro
-    const paddedMax = maxWeight + padding;
-    const paddedMin = minWeight - padding;
-    const paddedRange = paddedMax - paddedMin;
-
-    let pointsStr = "";
-    const width = 1000;
-    const height = 1000;
-
-    // Grafico a Linee (Diagonale, non a scalini)
-    if (historyPoints.length === 1) {
-        // Se c'è solo un punto, linea dritta
-        let y = height - (((historyPoints[0] - paddedMin) / paddedRange) * height);
-        pointsStr = `0,${y} ${width},${y}`;
-    } else {
-        const stepWidth = width / (historyPoints.length - 1);
-        for (let i = 0; i < historyPoints.length; i++) {
-            let x = i * stepWidth;
-            let y = height - (((historyPoints[i] - paddedMin) / paddedRange) * height);
-            pointsStr += `${x},${y} `;
-        }
-    }
-
-    polyline.setAttribute("points", pointsStr.trim());
+    // Aggiunge i nuovi come puntini
+    if (start) events.push({ id: 'gym_start_evt', date: start, title: 'Inizio Scheda', category: 'Health', color: '#5f7a61' });
+    if (end) events.push({ id: 'gym_end_evt', date: end, title: 'Scadenza Scheda', category: 'Health', color: '#ff6666' });
+    
+    localStorage.setItem('tracker_events', JSON.stringify(events));
+    
+    // Aggiorna i render esterni se le funzioni esistono nello scope globale
+    if (typeof renderCalendar === 'function') renderCalendar();
+    if (typeof renderTasks === 'function') renderTasks();
 }
-
-// Inizializza al volo la tab se aperta
-toggleHealthMode();
