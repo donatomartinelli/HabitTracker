@@ -609,15 +609,6 @@ if (btnClose) {
     });
 }
 
-const btnMin = document.getElementById('btn-minimize-app'); 
-if (btnMin) {
-    btnMin.addEventListener('click', () => { 
-        if (window.__TAURI__) {
-            window.__TAURI__.window.getCurrentWindow().minimize(); 
-        }
-    });
-}
-
 // --- FUNZIONE MANCANTE: Crea la finestra degli orari per le Habit ---
 
 function addHabitTimeWindow(start = '', end = '', days = []) {

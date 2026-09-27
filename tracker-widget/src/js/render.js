@@ -134,13 +134,6 @@ function renderManager() {
 }
 
 function renderTasks() {
-    const titleEl = document.getElementById('selected-date-title');
-    const [y, m, dayNum] = selectedDateStr.split('-').map(Number); 
-    const d = new Date(y, m - 1, dayNum, 12, 0, 0); 
-    const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    
-    titleEl.innerText = (selectedDateStr === todayStr) ? `Today, ${days[d.getDay()]} ${dayNum}` : `${days[d.getDay()]} ${dayNum}`;
-
     const schedContainer = document.getElementById('scheduled-tasks-list'); 
     const flexContainer = document.getElementById('flexible-tasks-list');
     
@@ -274,6 +267,11 @@ function renderCalendar() {
     }
 }
 
+function changeMonth(dir) {
+    currentCalendarDate.setMonth(currentCalendarDate.getMonth() + dir);
+    renderCalendar();
+}
+
 function renderTracker() {
     const tracker2D = document.getElementById('github-tracker'); 
     const strip1D = document.getElementById('tracker-strip-1d');
@@ -318,7 +316,7 @@ function renderTracker() {
         tracker2D.appendChild(cell);
     }
 
-    const daysToRender1D = Math.min(25, diffDays + 1); 
+    const daysToRender1D = Math.min(45, diffDays + 1); 
     const startDate1D = new Date(todayObj); 
     startDate1D.setDate(todayObj.getDate() - daysToRender1D + 1);
     
@@ -925,3 +923,24 @@ renderTracker();
 renderNoteCategories();
 renderWeeklyPlanner();
 switchDailyTab('today');
+
+// --- GLOBAL CLOCK ---
+function updateGlobalClock() {
+    const clockEl = document.getElementById('global-clock');
+    if (!clockEl) return;
+    
+    const now = getNow();
+    
+    // Formato HH:MM
+    const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
+    
+    // Formato SUNDAY 27
+    const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+    const dayName = days[now.getDay()];
+    const dayNum = now.getDate().toString().padStart(2, '0');
+    
+    clockEl.innerText = `${timeStr} ${dayName} ${dayNum}`;
+}
+
+setInterval(updateGlobalClock, 1000);
+updateGlobalClock();
