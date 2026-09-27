@@ -50,30 +50,9 @@
                     <div class="month-grid" id="calendar-grid"></div>
                 </div>
 
-                <!-- TODAY / TOMORROW PLANNER -->
-                <div class="daily-schedule-section">
-                    <div class="section-tabs" style="margin-bottom: 10px; padding: 0 25px;">
-                        <button id="tab-today" class="tab-btn active" onclick="switchDailyTab('today')">Today</button>
-                        <button id="tab-tomorrow" class="tab-btn" onclick="switchDailyTab('tomorrow')">Tomorrow</button>
-                    </div>
-                    
-                    <div class="daily-schedule-content">
-                        <!-- Sinistra: Timeline Mirror (Sola lettura) -->
-                        <div class="daily-timeline-mirror" id="daily-timeline-mirror" style="flex: 4; position: relative; border-right: 1px dashed var(--border-color); padding-right: 15px; overflow-y: auto;">
-                            <!-- Generato da JS -->
-                        </div>
-                        
-                        <!-- Destra: Testo Libero Daily -->
-                        <div class="daily-flexible" style="flex: 6; display: flex; flex-direction: column; padding-left: 10px;">
-                            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; display: flex; justify-content: space-between;">
-                                <span>Daily Notes</span>
-                                <span id="daily-save-status" style="color: #5f7a61; opacity: 0; transition: opacity 0.3s;">Saved</span>
-                            </div>
-                            <textarea id="daily-notes-area" class="form-control" style="flex: 1; resize: none; font-size: 0.85rem;" placeholder="What do you need to do?..." oninput="debounceSaveDailyNotes()"></textarea>
-                        </div>
-                    </div>
-                </div>
-
+                <!-- CUSCINETTO INVISIBILE ELASTICO -->
+                <div style="flex: 1;"></div>
+                
                 <!-- QUICK NOTES -->
                 <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
                 

@@ -28,26 +28,6 @@ function hideTooltip() {
     if(tooltip) tooltip.style.display = 'none';
 }
 
-// Auto-salvataggio delle Daily Notes
-let dailyNoteTimeout;
-function debounceSaveDailyNotes() {
-    clearTimeout(dailyNoteTimeout);
-    const status = document.getElementById('daily-save-status');
-    status.style.opacity = '0';
-    
-    dailyNoteTimeout = setTimeout(() => {
-        const targetDateStr = currentDailyTab === 'today' ? todayStr : tomorrowStr;
-        // Se in precedenza usavamo array qui, sovrascriviamo pulito a stringa
-        if (typeof ephemeralData[targetDateStr] !== 'string') {
-            ephemeralData[targetDateStr] = ""; 
-        }
-        ephemeralData[targetDateStr] = document.getElementById('daily-notes-area').value;
-        saveData();
-        status.style.opacity = '1';
-        setTimeout(() => { status.style.opacity = '0'; }, 2000);
-    }, 800);
-}
-
 function selectColor(element, inputId) { 
     const parent = element.closest('.color-palette'); 
     parent.querySelectorAll('.color-circle').forEach(el => el.classList.remove('active')); 
@@ -540,130 +520,9 @@ function renderWeeklyPlanner() {
     }
 }
 
-function switchDailyTab(tab) {
-    currentDailyTab = tab;
-    document.getElementById('tab-today').classList.toggle('active', tab === 'today');
-    document.getElementById('tab-tomorrow').classList.toggle('active', tab === 'tomorrow');
-    renderDailySchedule();
-}
 
-function startTimelineDrag(h) { 
-    dragStartH = h; 
-}
-
-function enterTimelineDrag(h) {
-    if (dragStartH !== null) {
-        document.querySelectorAll('.ephemeral-block').forEach(el => {
-            let blockH = parseInt(el.getAttribute('data-h'));
-            if ((blockH >= dragStartH && blockH <= h) || (blockH <= dragStartH && blockH >= h)) {
-                el.style.background = 'rgba(255,255,255,0.05)';
-            } else {
-                el.style.background = '';
-            }
-        });
-    }
-}
-
-function cancelTimelineDrag() { 
-    dragStartH = null; 
-    document.querySelectorAll('.ephemeral-block').forEach(el => el.style.background = ''); 
-}
-
-function endTimelineDrag(h, dateStr) {
-    if (dragStartH !== null) {
-        let start = Math.min(dragStartH, h); 
-        let end = Math.max(dragStartH, h);
-        dragStartH = null; 
-        
-        document.querySelectorAll('.ephemeral-block').forEach(el => el.style.background = '');
-        
-        const note = prompt(`Add task/note from ${start.toString().padStart(2,'0')}:00 to ${(end+1).toString().padStart(2,'0')}:00:`);
-        
-        if (note && note.trim() !== '') {
-            let timeLabel = start === 6 ? '06:30' : `${start.toString().padStart(2,'0')}:00`;
-            let span = end - start + 1;
-            
-            if (!ephemeralData[dateStr]) {
-                ephemeralData[dateStr] = [];
-            }
-            
-            ephemeralData[dateStr] = ephemeralData[dateStr].filter(b => b.time !== timeLabel);
-            ephemeralData[dateStr].push({ time: timeLabel, text: note.trim(), span: span }); 
-            saveData();
-        }
-        
-        renderDailySchedule();
-    }
-}
-
-function renderDailySchedule() {
-    const mirror = document.getElementById('daily-timeline-mirror');
-    const notesArea = document.getElementById('daily-notes-area');
-    if (!mirror || !notesArea) return;
-    
-    const targetDateStr = currentDailyTab === 'today' ? todayStr : tomorrowStr;
-    const noteText = typeof ephemeralData[targetDateStr] === 'string' ? ephemeralData[targetDateStr] : "";
-    notesArea.value = noteText;
-    
-    const targetDateObj = new Date(targetDateStr);
-    const jsDay = targetDateObj.getDay();
-    
-    const startHour = 7;
-    const totalGridHeight = (24 - startHour) * plannerZoom;
-    
-    mirror.innerHTML = `<div style="height: ${totalGridHeight}px; position: relative;"></div>`;
-    const container = mirror.children[0];
-    
-    for (let h = startHour; h <= 24; h++) {
-        container.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * plannerZoom}px;"></div>`;
-        if (h < 24) container.innerHTML += `<div style="position: absolute; top: ${(h - startHour) * plannerZoom - 7}px; left: 0; font-size: 0.6rem; color: var(--text-dim); background: var(--bg-main); padding-right: 4px; z-index:5;">${h.toString().padStart(2,'0')}:00</div>`;
-    }
-    
-    referenceLayers.forEach(ref => {
-        if (ref && refToggles[ref.id]) {
-            (ref.timeWindows || []).forEach(tw => {
-                if (tw.days && tw.days.includes(jsDay)) {
-                    const top = timeToPx(tw.start); 
-                    const height = Math.max(timeToPx(tw.end) - top, 15);
-                    if (top + height > 0) {
-                        container.innerHTML += `<div class="block-absolute block-ref" style="top:${top}px; height:${height}px; left:40px; right:5px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)};" onmouseenter="showTooltip(event, '${ref.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', 'Ghost Layer')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"></div>`;
-                    }
-                }
-            });
-        }
-    });
-    
-    templates.forEach(t => {
-        if (isTaskActiveOnDate(t, targetDateStr) && t.timeWindows && t.timeWindows.length > 0) {
-            t.timeWindows.forEach(tw => {
-                if (tw.days && tw.days.includes(jsDay)) {
-                    const top = timeToPx(tw.start); 
-                    const height = Math.max(timeToPx(tw.end) - top, 15);
-                    if (top + height > 0) {
-                        container.innerHTML += `<div class="block-absolute block-task" style="top:${top}px; height:${height}px; left:40px; right:5px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};" onmouseenter="showTooltip(event, '${t.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', '${t.category.replace(/'/g, "\\'")}')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>${t.title}</b></div>`;
-                    }
-                }
-            });
-        }
-    });
-    
-    drawCurrentTimeLine();
-}
-
-function removeEphemeralNote(dateStr, timeLabel) { 
-    if(confirm(`Remove note starting at ${timeLabel}?`)) { 
-        ephemeralData[dateStr] = ephemeralData[dateStr].filter(b => b.time !== timeLabel); 
-        saveData(); 
-        renderDailySchedule(); 
-    } 
-}
-
-function addEphemeralNote() { 
-    alert("Use the Daily Timeline! Click and drag down on the hours to create a block."); 
-}
 
 window.shouldScrollPlanner = true; 
-window.shouldScrollDaily = true;
 
 function drawCurrentTimeLine() {
     document.querySelectorAll('.current-time-line').forEach(e => e.remove());
@@ -686,19 +545,6 @@ function drawCurrentTimeLine() {
                     scrollArea.scrollTop = top - (scrollArea.clientHeight / 2); 
                 }
                 window.shouldScrollPlanner = false; 
-            }
-        }
-    }
-    
-    if (currentDailyTab === 'today' && selectedDateStr === todayStr) {
-        const timeline = document.getElementById('daily-timeline');
-        if (timeline && h >= 6) {
-            const top = ((h - 6) + m / 60) * 36; 
-            timeline.innerHTML += `<div class="current-time-line" style="top: ${top}px; left: 45px;"></div>`;
-            
-            if (window.shouldScrollDaily) { 
-                timeline.scrollTop = top - (timeline.clientHeight / 2); 
-                window.shouldScrollDaily = false; 
             }
         }
     }
@@ -927,7 +773,6 @@ renderCalendar();
 renderTracker();
 renderNoteCategories();
 renderWeeklyPlanner();
-switchDailyTab('today');
 
 // --- GLOBAL CLOCK ---
 function updateGlobalClock() {
