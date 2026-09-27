@@ -735,6 +735,11 @@ function switchAppTab(tabId) {
     if (tabId === 'money' && typeof drawSteppedChart === 'function') {
         setTimeout(drawSteppedChart, 10);
     }
+
+    // INIZIALIZZA HEALTH: Disegna dieta e palestra quando apri la scheda
+    if (tabId === 'health' && typeof renderHealthDashboard === 'function') {
+        renderHealthDashboard();
+    }
 }
 
 function initTrackerResizer() {
