@@ -184,8 +184,8 @@ function renderTasks() {
     });
     
     if (!hasAnyTasks) {
-        schedContainer.innerHTML = `<div class="empty-state">Nothing scheduled for this day.</div>`;
-        flexContainer.innerHTML = `<div class="empty-state">No flexible tasks for this day.</div>`;
+        schedContainer.innerHTML = `<div class="empty-state"></div>`;
+        flexContainer.innerHTML = `<div class="empty-state"></div>`;
     }
 }
 
@@ -588,56 +588,6 @@ function switchAppTab(tabId) {
     }
 }
 
-function initTrackerResizer() {
-    const resizer = document.getElementById('tracker-resizer'); 
-    const tracker = document.getElementById('tracker-section'); 
-    if (!resizer || !tracker) return;
-    
-    let isResizing = false; 
-    let startY = 0; 
-    let startHeight = 0;
-    
-    resizer.addEventListener('mousedown', (e) => { 
-        isResizing = true; 
-        startY = e.clientY; 
-        startHeight = tracker.getBoundingClientRect().height; 
-        resizer.classList.add('dragging'); 
-        document.body.style.userSelect = 'none'; 
-        document.body.style.cursor = 'ns-resize'; 
-    });
-    
-    document.addEventListener('mousemove', (e) => { 
-        if (!isResizing) return; 
-        let newHeight = startHeight + (startY - e.clientY); 
-        
-        if (newHeight < 55) { 
-            tracker.classList.add('collapsed'); 
-            tracker.style.height = '0px'; 
-        } else { 
-            tracker.classList.remove('collapsed'); 
-            tracker.style.height = `${Math.min(newHeight, window.innerHeight * 0.65)}px`; 
-        } 
-    });
-    
-    document.addEventListener('mouseup', () => { 
-        if (isResizing) { 
-            isResizing = false; 
-            resizer.classList.remove('dragging'); 
-            document.body.style.userSelect = ''; 
-            document.body.style.cursor = ''; 
-        } 
-    });
-    
-    resizer.addEventListener('dblclick', () => { 
-        if (tracker.classList.contains('collapsed') || tracker.offsetHeight === 0) { 
-            tracker.classList.remove('collapsed'); 
-            tracker.style.height = `350px`; 
-        } else { 
-            tracker.classList.add('collapsed'); 
-            tracker.style.height = '0px'; 
-        } 
-    });
-} 
 
 function initNotesResizer() {
     const resizer = document.getElementById('notes-resizer'); 
@@ -651,7 +601,17 @@ function initNotesResizer() {
     resizer.addEventListener('mousedown', (e) => { 
         isResizing = true; 
         startY = e.clientY; 
-        startHeight = notes.getBoundingClientRect().height; 
+        
+        // Se era completamente invisibile, lo prepariamo per aprirsi
+        if (notes.style.display === 'none') {
+            notes.style.display = 'flex';
+            notes.style.flexDirection = 'column';
+            notes.style.height = '1px';
+            startHeight = 1;
+        } else {
+            startHeight = notes.getBoundingClientRect().height; 
+        }
+        
         resizer.classList.add('dragging'); 
         document.body.style.userSelect = 'none'; 
         document.body.style.cursor = 'ns-resize'; 
@@ -661,12 +621,15 @@ function initNotesResizer() {
         if (!isResizing) return; 
         let newHeight = startHeight + (startY - e.clientY); 
         
-        if (newHeight < 70) { 
+        // Se scende sotto i 40px, scompare del tutto
+        if (newHeight < 40) { 
             notes.classList.add('collapsed'); 
-            notes.style.height = '50px'; 
+            notes.style.display = 'none'; 
         } else { 
             notes.classList.remove('collapsed'); 
-            notes.style.height = `${Math.min(newHeight, window.innerHeight * 0.6)}px`; 
+            notes.style.display = 'flex';
+            notes.style.flexDirection = 'column';
+            notes.style.height = `${Math.min(newHeight, window.innerHeight * 0.6)}px`;
         } 
     });
     
@@ -679,16 +642,19 @@ function initNotesResizer() {
         } 
     });
     
+    // Doppio clic: Alterna tra "Aperto a 250px" e "Completamente invisibile"
     resizer.addEventListener('dblclick', () => { 
-        if (notes.classList.contains('collapsed') || notes.offsetHeight <= 50) { 
+        if (notes.classList.contains('collapsed') || notes.style.display === 'none') { 
             notes.classList.remove('collapsed'); 
-            notes.style.height = `150px`; 
+            notes.style.display = 'flex';
+            notes.style.flexDirection = 'column';
+            notes.style.height = `250px`; 
         } else { 
             notes.classList.add('collapsed'); 
-            notes.style.height = '50px'; 
+            notes.style.display = 'none'; 
         } 
     });
-} 
+}
 
 // --- GESTIONE CATEGORIE NOTE (FUNZIONI MANCANTI) ---
 
@@ -766,7 +732,6 @@ const sliderEl = document.getElementById('bg-opacity-slider');
 if (sliderEl) sliderEl.value = savedOpacity;
 const labelEl = document.getElementById('opacity-val');
 if (labelEl) labelEl.innerText = savedOpacity;
-initTrackerResizer();
 initNotesResizer();
 renderTasks(); 
 renderCalendar();
