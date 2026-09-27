@@ -658,7 +658,18 @@ function initNotesResizer() {
 
 // --- GESTIONE CATEGORIE NOTE (FUNZIONI MANCANTI) ---
 
+// --- GESTIONE CATEGORIE NOTE ---
+
 function renderNoteCategories() {
+    // 1. Forza il caricamento dal disco fisso all'avvio
+    const savedCats = localStorage.getItem('tracker_note_categories');
+    if (savedCats) {
+        noteCategories = JSON.parse(savedCats);
+    }
+    if (!noteCategories || noteCategories.length === 0) {
+        noteCategories = ['General'];
+    }
+
     const select = document.getElementById('note-category');
     const focusSelect = document.getElementById('focus-note-category');
     if (select) select.innerHTML = '';
@@ -675,6 +686,9 @@ function renderNoteCategories() {
         optFocus.innerText = cat;
         if (focusSelect) focusSelect.appendChild(optFocus);
     });
+
+    // 2. Dopo aver caricato le categorie, carica il testo della categoria selezionata
+    refreshNotesView();
 }
 
 function openManageNotesModal() {
@@ -704,7 +718,10 @@ function quickAddNoteCategory(event) {
         const newCat = event.target.value.trim();
         if (newCat && !noteCategories.includes(newCat)) {
             noteCategories.push(newCat);
-            saveData();
+            
+            // Forza il salvataggio su disco
+            localStorage.setItem('tracker_note_categories', JSON.stringify(noteCategories));
+            
             event.target.value = ''; 
             renderNotesManager(); 
         }
@@ -713,9 +730,46 @@ function quickAddNoteCategory(event) {
 
 function removeNoteCategory(cat) {
     noteCategories = noteCategories.filter(c => c !== cat);
-    saveData();
+    if (noteCategories.length === 0) noteCategories = ['General'];
+    
+    // Forza il salvataggio su disco
+    localStorage.setItem('tracker_note_categories', JSON.stringify(noteCategories));
+    
     renderNotesManager();
 }
+
+
+// --- GESTIONE CONTENUTO NOTE ---
+
+function handleNoteInput() {
+    const cat = document.getElementById('note-category').value;
+    const text = document.getElementById('note-text').value;
+    
+    // Recupera il database delle note, aggiorna la categoria corrente e salva
+    let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
+    savedNotes[cat] = text;
+    localStorage.setItem('tracker_notes_content', JSON.stringify(savedNotes));
+}
+
+function refreshNotesView() {
+    const cat = document.getElementById('note-category').value;
+    const textArea = document.getElementById('note-text');
+    
+    if (!cat || !textArea) return;
+    
+    // Recupera il testo salvato per quella specifica categoria e lo stampa
+    let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
+    textArea.value = savedNotes[cat] || '';
+}
+
+function handleNoteKeyDown(event) {
+    // Permette di andare a capo normalmente con Invio, ma salva istantaneamente
+    if (event.key === 'Enter') {
+        handleNoteInput();
+    }
+}
+
+
 // --- INITIALIZATION CALLS ---
 // --- GESTIONE TRASPARENZA (GLASSMORPHISM) ---
 function updateOpacity(val) {
