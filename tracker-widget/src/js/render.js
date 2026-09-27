@@ -741,31 +741,80 @@ function removeNoteCategory(cat) {
 
 // --- GESTIONE CONTENUTO NOTE ---
 
-function handleNoteInput() {
-    const cat = document.getElementById('note-category').value;
-    const text = document.getElementById('note-text').value;
+// --- GESTIONE CONTENUTO NOTE E TOGGLE WRITE/BROWSE ---
+
+function toggleNotesMode() {
+    const isBrowse = document.getElementById('notes-mode-checkbox').checked;
+    const textArea = document.getElementById('note-text');
     
-    // Recupera il database delle note, aggiorna la categoria corrente e salva
-    let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
-    savedNotes[cat] = text;
-    localStorage.setItem('tracker_notes_content', JSON.stringify(savedNotes));
+    if (isBrowse) {
+        // Modalità BROWSE: Carica e mostra l'intero archivio
+        refreshNotesView();
+        textArea.placeholder = "Edit your notes here...";
+    } else {
+        // Modalità WRITE: Svuota la casella per l'input rapido
+        textArea.value = "";
+        textArea.placeholder = "Write your idea and press Enter...";
+    }
 }
 
 function refreshNotesView() {
+    const isBrowse = document.getElementById('notes-mode-checkbox') ? document.getElementById('notes-mode-checkbox').checked : false;
     const cat = document.getElementById('note-category').value;
     const textArea = document.getElementById('note-text');
     
     if (!cat || !textArea) return;
     
-    // Recupera il testo salvato per quella specifica categoria e lo stampa
-    let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
-    textArea.value = savedNotes[cat] || '';
+    if (isBrowse) {
+        // Stampa tutto il testo salvato
+        let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
+        textArea.value = savedNotes[cat] || '';
+    } else {
+        // Lascia vuoto per scrivere al volo
+        textArea.value = '';
+    }
 }
 
 function handleNoteKeyDown(event) {
-    // Permette di andare a capo normalmente con Invio, ma salva istantaneamente
-    if (event.key === 'Enter') {
-        handleNoteInput();
+    const isBrowse = document.getElementById('notes-mode-checkbox').checked;
+    
+    // Agisce solo in modalità WRITE alla pressione di Invio (senza premere Shift)
+    if (!isBrowse && event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault(); // Blocca l'a capo visivo nella casella vuota
+        
+        const cat = document.getElementById('note-category').value;
+        const textArea = document.getElementById('note-text');
+        const textToAdd = textArea.value.trim();
+        
+        if (textToAdd && cat) {
+            // 1. Pesca il testo vecchio
+            let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
+            let currentContent = savedNotes[cat] || '';
+            
+            // 2. Aggiunge la riga nuova formattata (es. "- Nota rapida")
+            let newContent = currentContent ? currentContent + '\n' + textToAdd : '- ' + textToAdd;
+            
+            // 3. Salva sul disco invisibilmente
+            savedNotes[cat] = newContent;
+            localStorage.setItem('tracker_notes_content', JSON.stringify(savedNotes));
+            
+            // 4. Cancella l'area
+            textArea.value = '';
+        }
+    }
+}
+
+function handleNoteInput() {
+    const isBrowse = document.getElementById('notes-mode-checkbox').checked;
+    
+    // Salva ogni lettera digitata in tempo reale SOLO se sei in modalità BROWSE
+    if (isBrowse) {
+        const cat = document.getElementById('note-category').value;
+        const text = document.getElementById('note-text').value;
+        
+        let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
+        savedNotes[cat] = text;
+        localStorage.setItem('tracker_notes_content', JSON.stringify(savedNotes));
     }
 }
 
