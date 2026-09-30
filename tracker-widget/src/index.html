@@ -40,12 +40,13 @@
     <div id="app-content-wrapper" class="layout" style="width: 100%; height: 100%; padding-top: 60px; display: flex;">
         
         <!-- PANE SINISTRO -->
-        <div id="pane-left" class="split-pane" style="width: 50%;">
-            <div class="pane-header">
+        <div id="pane-left" class="split-pane" style="width: 50%; overflow: visible;">
+            <div class="pane-header" style="overflow: visible;">
                 <div class="dropdown">
                     <div class="module-title" onclick="document.getElementById('dropdown-left').classList.toggle('show')">
                         <span id="title-left">DAILY</span> ▼
                     </div>
+                    <!-- Forza l'apertura verso destra (left: 0) ed evita il taglio -->
                     <div id="dropdown-left" class="dropdown-content" style="left: 0; right: auto;"></div>
                 </div>
             </div>
@@ -197,11 +198,11 @@
                 </svg>
             </div>
             
-            <!-- NUOVO LAYOUT: Incubatore sopra, History & Recurring sotto -->
-            <div style="flex: 1; display: flex; flex-direction: column; gap: 20px; min-height: 0;">
+            <!-- NUOVO LAYOUT: Contenitore unico scrollabile globale -->
+            <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-right: 10px;">
                 
-                <!-- PIANO SUPERIORE: Ideas Incubator (100% width) -->
-                <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
+                <!-- PIANO SUPERIORE: Ideas Incubator (Espande la sua altezza in base alle n-idee) -->
+                <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
                         <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Ideas Incubator</h3>
                         <button class="icon-btn" onclick="openWishlistModal()">+</button>
@@ -209,10 +210,10 @@
                     <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
 
-                <!-- PIANO INFERIORE: Recurring & History (50/50) -->
-                <div style="flex: 1; display: flex; flex-direction: row; gap: 20px; min-height: 0;">
+                <!-- PIANO INFERIORE: Recurring & History (Partono esattamente sotto l'ultima idea) -->
+                <div style="display: flex; flex-direction: row; gap: 20px; flex: 0 0 auto;">
                     
-                    <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 5px;">
+                    <div style="flex: 1; display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
                             <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recurring Payments</h3>
                             <button class="icon-btn" onclick="openRecurringModal()">+</button>
@@ -220,7 +221,7 @@
                         <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
                     </div>
 
-                    <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 5px;">
+                    <div style="flex: 1; display: flex; flex-direction: column;">
                         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
                             <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recent History</h3>
                         </div>

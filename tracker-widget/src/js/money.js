@@ -72,13 +72,13 @@ function renderMoneyDashboard() {
     histCont.innerHTML = '';
     mTransactions.slice(0, 15).forEach(t => { 
         const isOut = t.type === 'out';
-        const absAmount = Math.abs(parseFloat(t.amount)).toFixed(2); // Valore assoluto senza segni
+        const absAmount = Math.abs(parseFloat(t.amount)).toFixed(2);
         
         histCont.innerHTML += `
-            <div class="m-item-row">
+            <div class="m-item-row ${isOut ? 'out' : 'in'}">
                 <div><div class="m-title">${t.desc}</div><div class="m-sub">${t.date}</div></div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="m-amt" style="color: ${isOut ? '#ff6666' : 'var(--text-main)'}; font-family: monospace; font-weight: bold;">€${absAmount}</div>
+                    <div class="m-amt ${isOut ? 'neg' : 'pos'}" style="font-family: monospace; font-weight: bold;">€${absAmount}</div>
                     <button class="icon-btn delete" style="opacity: 1; visibility: visible;" onclick="deleteTransaction('${t.id}')">×</button>
                 </div>
             </div>`;
@@ -87,13 +87,13 @@ function renderMoneyDashboard() {
     const recCont = document.getElementById('m-recurring-container');
     recCont.innerHTML = '';
     mRecurring.forEach(r => {
-        const absAmount = Math.abs(parseFloat(r.amount)).toFixed(2); // Valore assoluto
+        const absAmount = Math.abs(parseFloat(r.amount)).toFixed(2);
         
         recCont.innerHTML += `
             <div class="m-item-row" style="border-left-color: #888;">
                 <div><div class="m-title">${r.title}</div><div class="m-sub">Day ${r.dayOfMonth} | Ends: ${r.endDate || 'Never'}</div></div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="m-amt" style="color: #ff6666; font-family: monospace; font-weight: bold;">€${absAmount}</div>
+                    <div class="m-amt neg" style="font-family: monospace; font-weight: bold;">€${absAmount}</div>
                     <button class="icon-btn delete" style="opacity: 1; visibility: visible;" onclick="deleteRecurring('${r.id}')">×</button>
                 </div>
             </div>`;
