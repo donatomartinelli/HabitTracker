@@ -265,3 +265,85 @@
 .dropdown-content.show {
     display: block;
 }
+
+/* --- MODULAR DASHBOARD (NEW) --- */
+.split-pane {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-width: 350px; 
+    overflow: hidden;
+}
+
+.pane-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 25px;
+    background: rgba(0,0,0,0.3);
+    border-bottom: 1px solid var(--border-color);
+    height: 45px;
+    flex-shrink: 0;
+}
+
+.pane-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+}
+
+.module-container {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+}
+
+.resizer-vertical {
+    width: 10px;
+    background-color: rgba(0, 0, 0, 0.2);
+    border-left: 1px dashed var(--border-color);
+    cursor: ew-resize;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.resizer-vertical::after {
+    content: "";
+    height: 36px;
+    width: 2px;
+    background-color: var(--text-dim);
+    transition: 0.15s ease;
+}
+
+.resizer-vertical:hover, .resizer-vertical.dragging {
+    background-color: rgba(255, 255, 255, 0.06);
+    border-left-style: solid;
+    border-color: var(--text-main);
+}
+
+.resizer-vertical:hover::after, .resizer-vertical.dragging::after {
+    background-color: var(--text-main);
+    height: 48px;
+}
+
+.module-title {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.module-title:hover { color: var(--text-main); }

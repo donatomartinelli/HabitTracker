@@ -553,38 +553,14 @@ function drawCurrentTimeLine() {
 setInterval(drawCurrentTimeLine, 60000);
 
 window.onclick = function(event) {
-    if (!event.target.matches('.dropdown-btn')) { 
+    // Chiude i dropdown se si clicca fuori
+    if (!event.target.matches('.dropdown-btn') && !event.target.closest('.module-title')) { 
         const dropdowns = document.getElementsByClassName("dropdown-content"); 
         for (let i = 0; i < dropdowns.length; i++) {
             if (dropdowns[i].classList.contains('show')) {
                 dropdowns[i].classList.remove('show');
             }
         }
-    }
-}
-
-function switchAppTab(tabId) {
-    ['overview', 'health', 'money'].forEach(id => {
-        const tabEl = document.getElementById(`tab-nav-${id}`); 
-        if(tabEl) { 
-            tabEl.classList.toggle('active', id === tabId); 
-            tabEl.classList.toggle('inactive', id !== tabId); 
-        }
-        
-        const screenEl = document.getElementById(`screen-${id}`); 
-        if(screenEl) {
-            screenEl.style.display = (id === tabId) ? 'flex' : 'none';
-        }
-    });
-
-    // FIX GRAFICO: Ridisegna il grafico un istante dopo che la scheda diventa "flex" e l'SVG ottiene i suoi pixel reali
-    if (tabId === 'money' && typeof drawSteppedChart === 'function') {
-        setTimeout(drawSteppedChart, 10);
-    }
-
-    // INIZIALIZZA HEALTH: Disegna dieta e palestra quando apri la scheda
-    if (tabId === 'health' && typeof renderHealthDashboard === 'function') {
-        renderHealthDashboard();
     }
 }
 
@@ -819,6 +795,129 @@ function handleNoteInput() {
 }
 
 
+// --- MODULAR DASHBOARD SYSTEM ---
+const dashboardModules = {
+    'daily': { name: 'Daily / Notes', id: 'module-daily' },
+    'planner': { name: 'Weekly Planner', id: 'module-planner' },
+    'health': { name: 'Health', id: 'module-health' },
+    'money': { name: 'Money', id: 'module-money' }
+};
+
+let activeLeft = localStorage.getItem('tracker_mod_left') || 'daily';
+let activeRight = localStorage.getItem('tracker_mod_right') || 'planner';
+
+function initDashboard() {
+    // Ripristina la larghezza salvata o 50/50 di default
+    const savedWidth = localStorage.getItem('tracker_pane_left_width') || '50%';
+    document.getElementById('pane-left').style.width = savedWidth;
+    document.getElementById('pane-right').style.width = `calc(100% - ${savedWidth} - 10px)`;
+    
+    mountModule('left', activeLeft);
+    mountModule('right', activeRight);
+    initVerticalResizer();
+}
+
+function mountModule(side, modKey) {
+    // Salva lo stato in memoria e aggiorna il titolo della tendina
+    if(side === 'left') {
+        activeLeft = modKey;
+        localStorage.setItem('tracker_mod_left', modKey);
+        document.getElementById('title-left').innerText = dashboardModules[modKey].name;
+    } else {
+        activeRight = modKey;
+        localStorage.setItem('tracker_mod_right', modKey);
+        document.getElementById('title-right').innerText = dashboardModules[modKey].name;
+    }
+
+    const contentContainer = document.getElementById(`content-${side}`);
+    const modElement = document.getElementById(dashboardModules[modKey].id);
+    
+    // 1. Se c'è già un modulo qui, lo rimetto invisibile nel magazzino
+    if(contentContainer.children.length > 0) {
+        document.getElementById('module-registry').appendChild(contentContainer.children[0]);
+    }
+    // 2. Prelevo il modulo nuovo dal magazzino e lo piazzo nello schermo
+    contentContainer.appendChild(modElement);
+    
+    updateDropdownMenus();
+    
+    // Inizializza o ridisegna la grafica del modulo inserito
+    if (modKey === 'money' && typeof drawSteppedChart === 'function') setTimeout(drawSteppedChart, 10);
+    if (modKey === 'health' && typeof renderHealthDashboard === 'function') renderHealthDashboard();
+    if (modKey === 'planner') renderWeeklyPlanner();
+}
+
+function switchModule(side, newModKey) {
+    // Esclusione reciproca: Se scegli a Sinistra un modulo che è già a Destra, scambiali di posto (Swap)
+    if (side === 'left' && newModKey === activeRight) {
+        mountModule('right', activeLeft);
+    } else if (side === 'right' && newModKey === activeLeft) {
+        mountModule('left', activeRight);
+    }
+    mountModule(side, newModKey);
+}
+
+function updateDropdownMenus() {
+    const buildMenu = (side) => {
+        let html = '';
+        for(const [key, mod] of Object.entries(dashboardModules)) {
+            // Nascondi dalla lista quello che è GIA' attivo su quel lato
+            if((side === 'left' && key === activeLeft) || (side === 'right' && key === activeRight)) continue;
+            
+            // Se è attivo dall'altra parte, mostra l'icona di "Swap"
+            const isOther = (side === 'left' && key === activeRight) || (side === 'right' && key === activeLeft);
+            html += `<div style="padding: 10px 15px; cursor: pointer; color: white; border-bottom: 1px solid #333; font-size: 0.85rem;" onclick="switchModule('${side}', '${key}')" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='white'">${mod.name} ${isOther ? ' ⇄' : ''}</div>`;
+        }
+        return html;
+    };
+    document.getElementById('dropdown-left').innerHTML = buildMenu('left');
+    document.getElementById('dropdown-right').innerHTML = buildMenu('right');
+}
+
+function initVerticalResizer() {
+    const resizer = document.getElementById('main-resizer');
+    const leftPane = document.getElementById('pane-left');
+    const rightPane = document.getElementById('pane-right');
+    if (!resizer || !leftPane || !rightPane) return;
+    
+    let isResizing = false;
+    
+    resizer.addEventListener('mousedown', (e) => {
+        isResizing = true;
+        resizer.classList.add('dragging');
+        document.body.style.userSelect = 'none';
+        document.body.style.cursor = 'ew-resize';
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+        if (!isResizing) return;
+        const containerWidth = document.getElementById('app-content-wrapper').clientWidth;
+        let newLeftPercent = (e.clientX / containerWidth) * 100;
+        
+        // Limita il trascinamento per non sfanculare il layout (min 30%, max 70%)
+        if (newLeftPercent < 30) newLeftPercent = 30;
+        if (newLeftPercent > 70) newLeftPercent = 70;
+        
+        leftPane.style.width = `${newLeftPercent}%`;
+        rightPane.style.width = `calc(${100 - newLeftPercent}% - 10px)`;
+    });
+    
+    document.addEventListener('mouseup', () => {
+        if (isResizing) {
+            isResizing = false;
+            resizer.classList.remove('dragging');
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            
+            // Salva le dimensioni esatte per la prossima volta
+            localStorage.setItem('tracker_pane_left_width', leftPane.style.width);
+            renderWeeklyPlanner(); // Ricalibra la grafica del planner
+            if (activeLeft === 'money' || activeRight === 'money') { if(typeof drawSteppedChart === 'function') setTimeout(drawSteppedChart, 10); }
+        }
+    });
+}
+
+
 // --- INITIALIZATION CALLS ---
 // --- GESTIONE TRASPARENZA (GLASSMORPHISM) ---
 function updateOpacity(val) {
@@ -862,3 +961,4 @@ function updateGlobalClock() {
 
 setInterval(updateGlobalClock, 1000);
 updateGlobalClock();
+initDashboard();
