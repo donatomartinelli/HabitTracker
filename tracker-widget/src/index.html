@@ -15,7 +15,8 @@
 <body>
 
     <!-- DRAG REGION GLOBALE & CONTROLLI FINESTRA -->
-    <div data-tauri-drag-region style="position: absolute; top: 0; left: 0; width: calc(100% - 80px); height: 40px; z-index: 900; cursor: grab; background: transparent;"></div>
+    <!-- Altezza ridotta a 15px: si può grabbare solo l'estremo bordo superiore dello schermo -->
+    <div data-tauri-drag-region style="position: absolute; top: 0; left: 0; width: calc(100% - 80px); height: 15px; z-index: 9999; cursor: grab; background: transparent;"></div>
     
     <div style="position: absolute; top: 10px; right: 20px; z-index: 1000; display: flex; gap: 15px;">
         <button id="btn-close-app" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem;">✕</button>
@@ -25,7 +26,7 @@
     <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 25px 15px 25px; position: absolute; top: 0; left: 0; width: 100%; z-index: 100; box-sizing: border-box; padding-right: 90px; border-bottom: 1px solid rgba(255,255,255,0.05);">
         
         <!-- PARTE SINISTRA E CENTRALE -->
-        <div style="display: flex; gap: 20px; align-items: center; flex: 1;">
+        <div style="display: flex; gap: 20px; align-items: center;">
             
             <!-- Orologio -->
             <div style="display: flex; gap: 15px; align-items: baseline;">
@@ -49,9 +50,11 @@
                     <div id="dropdown-right" class="dropdown-content" style="left: 0; right: auto;"></div>
                 </div>
             </div>
+        </div>
 
-            <!-- Consistency Tracker (Spostato qui in alto) -->
-            <div id="tracker-strip-1d" class="tracker-strip-1d" style="cursor: pointer; display: flex; margin-left: 15px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 20px; height: 12px;" onclick="openTrackerModal()" title="View full history"></div>
+        <!-- Consistency Tracker (Isolato al centro con molto margine a destra) -->
+        <div style="flex: 1; display: flex; padding-left: 30px; margin-right: 40px;">
+            <div id="tracker-strip-1d" class="tracker-strip-1d" style="cursor: pointer; display: flex; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 20px; height: 12px;" onclick="openTrackerModal()" title="View full history"></div>
         </div>
 
         <!-- PARTE DESTRA -->
