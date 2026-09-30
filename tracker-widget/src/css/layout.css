@@ -284,6 +284,8 @@
     border-bottom: 1px solid var(--border-color);
     height: 45px;
     flex-shrink: 0;
+    position: relative; /* Fondamentale per far galleggiare la tendina */
+    z-index: 50; /* Impedisce che venga tagliata dai layer inferiori */
 }
 
 .pane-content {
@@ -305,7 +307,9 @@
 .resizer-vertical {
     width: 10px;
     background-color: rgba(0, 0, 0, 0.2);
+    /* Doppia linea tratteggiata simmetrica */
     border-left: 1px dashed var(--border-color);
+    border-right: 1px dashed var(--border-color);
     cursor: ew-resize;
     z-index: 20;
     display: flex;
@@ -325,7 +329,9 @@
 
 .resizer-vertical:hover, .resizer-vertical.dragging {
     background-color: rgba(255, 255, 255, 0.06);
+    /* Diventano entrambe linee continue bianche */
     border-left-style: solid;
+    border-right-style: solid;
     border-color: var(--text-main);
 }
 

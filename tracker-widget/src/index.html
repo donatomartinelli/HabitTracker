@@ -180,6 +180,8 @@
 
         <!-- MODULO: MONEY -->
         <div id="module-money" class="module-container" style="padding: 10px 30px 20px; gap: 25px;">
+            
+            <!-- Bilancio e Grafico (Invariati) -->
             <div style="flex: 0 0 auto;">
                 <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold; margin-bottom: 5px;">Total Balance</div>
                 <h1 style="font-size: 3rem; margin: 0; color: white;">€ <span id="m-balance-display">0.00</span></h1>
@@ -194,26 +196,37 @@
                     <polyline id="m-chart-line" fill="none" stroke="var(--text-main)" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
                 </svg>
             </div>
-            <div style="flex: 1; display: flex; flex-direction: row; gap: 20px; min-height: 0;">
-                <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 5px;">
+            
+            <!-- NUOVO LAYOUT: Incubatore sopra, History & Recurring sotto -->
+            <div style="flex: 1; display: flex; flex-direction: column; gap: 20px; min-height: 0;">
+                
+                <!-- PIANO SUPERIORE: Ideas Incubator (100% width) -->
+                <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto;">
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
-                        <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Purchase Ideas</h3>
+                        <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Ideas Incubator</h3>
                         <button class="icon-btn" onclick="openWishlistModal()">+</button>
                     </div>
                     <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
                 </div>
-                <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 5px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
-                        <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recurring Payments</h3>
-                        <button class="icon-btn" onclick="openRecurringModal()">+</button>
+
+                <!-- PIANO INFERIORE: Recurring & History (50/50) -->
+                <div style="flex: 1; display: flex; flex-direction: row; gap: 20px; min-height: 0;">
+                    
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 5px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
+                            <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recurring Payments</h3>
+                            <button class="icon-btn" onclick="openRecurringModal()">+</button>
+                        </div>
+                        <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
                     </div>
-                    <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
-                </div>
-                <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 5px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
-                        <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recent History</h3>
+
+                    <div style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; padding-right: 5px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 5px; margin-bottom: 10px;">
+                            <h3 style="font-size: 0.75rem; color: var(--text-dim); margin: 0; text-transform: uppercase;">Recent History</h3>
+                        </div>
+                        <div id="m-history-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
                     </div>
-                    <div id="m-history-container" style="display: flex; flex-direction: column; gap: 8px;"></div>
+
                 </div>
             </div>
         </div>

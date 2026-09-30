@@ -72,12 +72,14 @@ function renderMoneyDashboard() {
     histCont.innerHTML = '';
     mTransactions.slice(0, 15).forEach(t => { 
         const isOut = t.type === 'out';
+        const absAmount = Math.abs(parseFloat(t.amount)).toFixed(2); // Valore assoluto senza segni
+        
         histCont.innerHTML += `
-            <div class="m-item-row ${isOut ? 'out' : 'in'}">
+            <div class="m-item-row">
                 <div><div class="m-title">${t.desc}</div><div class="m-sub">${t.date}</div></div>
-                <div style="display:flex; align-items:center; gap:15px;">
-                    <div class="m-amt ${isOut ? 'neg' : 'pos'}">${isOut ? '-' : '+'}€${parseFloat(t.amount).toFixed(2)}</div>
-                    <button class="icon-btn delete" onclick="deleteTransaction('${t.id}')">×</button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="m-amt" style="color: ${isOut ? '#ff6666' : 'var(--text-main)'}; font-family: monospace; font-weight: bold;">€${absAmount}</div>
+                    <button class="icon-btn delete" style="opacity: 1; visibility: visible;" onclick="deleteTransaction('${t.id}')">×</button>
                 </div>
             </div>`;
     });
@@ -85,12 +87,14 @@ function renderMoneyDashboard() {
     const recCont = document.getElementById('m-recurring-container');
     recCont.innerHTML = '';
     mRecurring.forEach(r => {
+        const absAmount = Math.abs(parseFloat(r.amount)).toFixed(2); // Valore assoluto
+        
         recCont.innerHTML += `
             <div class="m-item-row" style="border-left-color: #888;">
                 <div><div class="m-title">${r.title}</div><div class="m-sub">Day ${r.dayOfMonth} | Ends: ${r.endDate || 'Never'}</div></div>
-                <div style="display:flex; align-items:center; gap:15px;">
-                    <div class="m-amt neg">-€${parseFloat(r.amount).toFixed(2)}</div>
-                    <button class="icon-btn delete" onclick="deleteRecurring('${r.id}')">×</button>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="m-amt" style="color: #ff6666; font-family: monospace; font-weight: bold;">€${absAmount}</div>
+                    <button class="icon-btn delete" style="opacity: 1; visibility: visible;" onclick="deleteRecurring('${r.id}')">×</button>
                 </div>
             </div>`;
     });
@@ -98,7 +102,8 @@ function renderMoneyDashboard() {
     const wishCont = document.getElementById('m-wishlist-container');
     wishCont.innerHTML = '';
     mWishlist.forEach((w, i) => {
-        const canAfford = mBalance >= w.cost;
+        const absAmount = Math.abs(parseFloat(w.cost)).toFixed(2);
+        
         wishCont.innerHTML += `
             <div class="m-item-row idea">
                 <div style="display:flex; gap:10px; align-items:center;">
@@ -106,14 +111,11 @@ function renderMoneyDashboard() {
                         <button class="icon-btn" style="font-size:0.6rem; padding:0;" onclick="moveWish(${i}, -1)">▲</button>
                         <button class="icon-btn" style="font-size:0.6rem; padding:0;" onclick="moveWish(${i}, 1)">▼</button>
                     </div>
-                    <div><div class="m-title" style="${canAfford ? 'color:white;' : 'color:#666;'}">${w.title}</div></div>
+                    <div><div class="m-title" style="color:white;">${w.title}</div></div>
                 </div>
-                <div style="display:flex; align-items:center; gap:15px;">
-                    <div class="m-amt" style="color: ${canAfford ? '#b08d43' : '#666'}">€${parseFloat(w.cost).toFixed(2)}</div>
-                    <div class="m-actions">
-                        <button class="btn" style="font-size:0.6rem; padding:4px 8px;" onclick="purchaseIdea('${w.id}')">Buy</button>
-                        <button class="icon-btn delete" onclick="deleteWish('${w.id}')">×</button>
-                    </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div class="m-amt" style="color: var(--text-dim); font-family: monospace; font-weight: bold;">€${absAmount}</div>
+                    <button class="icon-btn delete" style="opacity: 1; visibility: visible; color: #ff6666;" onclick="deleteWish('${w.id}')">×</button>
                 </div>
             </div>`;
     });
