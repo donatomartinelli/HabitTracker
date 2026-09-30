@@ -158,40 +158,49 @@
         <div id="screen-health" class="layout" style="display: none; height: calc(100% + 60px); margin-top: -60px;">
             <div style="display: flex; width: 100%; height: 100%;">
                 
-                <!-- LATO SINISTRO: DIETA (50%) -->
-                <div class="left-pane" style="flex: 1; padding: 70px 30px 20px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column;">
-                    <h2 style="margin: 0 0 20px 0; color: white;">Dieta</h2>
+                <!-- LATO SINISTRO (50%): DIETA (sopra) e PALESTRA (sotto, in due colonne) -->
+                <div class="left-pane" style="flex: 1; padding: 70px 30px 20px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; gap: 30px;">
                     
-                    <div id="diet-main-content" style="flex: 1; overflow-y: auto; padding-right: 10px;">
-                        <!-- Griglia generata da JS -->
-                    </div>
-                    
-                    <!-- Regole Fisse in basso, font piccolo -->
-                    <div id="diet-rules" style="margin-top: 15px; font-size: 0.7rem; color: var(--text-dim); line-height: 1.5; border-top: 1px solid var(--border-color); padding-top: 15px;">
-                        <span style="color:#aaa; font-weight:bold;">COLAZIONE:</span> 200g Latte + 20g Biscotti + 10g Cioccolato Fondente <span style="margin: 0 10px;">|</span>
-                        <span style="color:#aaa; font-weight:bold;">CONDIMENTO:</span> 15g Olio EVO (Pranzo, Cena) <span style="margin: 0 10px;">|</span>
-                        <span style="color:#aaa; font-weight:bold;">ACQUA:</span> Min 3L / Die
-                    </div>
-                </div>
-
-                <!-- LATO DESTRO: PALESTRA (50%) -->
-                <div class="right-pane" style="flex: 1; padding: 70px 30px 20px; display: flex; flex-direction: column;">
-                    
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                        <h2 style="margin: 0; color: white;">Palestra</h2>
-                        <div style="display: flex; gap: 10px; font-size: 0.75rem; align-items: center;">
-                            <span style="color: var(--text-dim);">INIZIO:</span> 
-                            <input type="date" id="gym-start-date" class="form-control" style="padding: 2px 5px; font-size: 0.75rem;" onchange="updateGymDates()">
-                            <span style="color: var(--text-dim); margin-left: 5px;">FINE:</span> 
-                            <input type="date" id="gym-end-date" class="form-control" style="padding: 2px 5px; font-size: 0.75rem;" onchange="updateGymDates()">
+                    <!-- PARTE SUPERIORE: DIETA -->
+                    <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
+                        <h2 style="margin: 0 0 15px 0; color: white;">Dieta</h2>
+                        
+                        <div id="diet-main-content" style="width: 100%;">
+                            <!-- Griglia generata da JS -->
+                        </div>
+                        
+                        <!-- Regole Fisse -->
+                        <div id="diet-rules" style="margin-top: 15px; font-size: 0.7rem; color: var(--text-dim); line-height: 1.5; border-top: 1px solid var(--border-color); padding-top: 15px;">
+                            <span style="color:#aaa; font-weight:bold;">COLAZIONE:</span> 200g Latte + 20g Biscotti + 10g Cioccolato Fondente <span style="margin: 0 10px;">|</span>
+                            <span style="color:#aaa; font-weight:bold;">CONDIMENTO:</span> 15g Olio EVO (Pranzo, Cena) <span style="margin: 0 10px;">|</span>
+                            <span style="color:#aaa; font-weight:bold;">ACQUA:</span> Min 3L / Die
                         </div>
                     </div>
 
-                    <div id="gym-main-content" style="flex: 1; display: flex; flex-direction: column; gap: 15px; overflow: hidden;">
-                        <!-- Giorno 1 e Giorno 2 impilati generati da JS -->
-                    </div>
+                    <!-- PARTE INFERIORE: PALESTRA -->
+                    <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                            <h2 style="margin: 0; color: white;">Palestra</h2>
+                            <div style="display: flex; gap: 10px; font-size: 0.75rem; align-items: center;">
+                                <span style="color: var(--text-dim);">INIZIO:</span> 
+                                <input type="date" id="gym-start-date" class="form-control" style="padding: 2px 5px; font-size: 0.75rem;" onchange="updateGymDates()">
+                                <span style="color: var(--text-dim); margin-left: 5px;">FINE:</span> 
+                                <input type="date" id="gym-end-date" class="form-control" style="padding: 2px 5px; font-size: 0.75rem;" onchange="updateGymDates()">
+                            </div>
+                        </div>
 
+                        <!-- Giorno 1 a Sinistra, Giorno 2 a Destra -->
+                        <div id="gym-main-content" style="flex: 1; display: flex; flex-direction: row; gap: 20px; overflow: hidden;">
+                            <!-- Generati da JS -->
+                        </div>
+                    </div>
                 </div>
+
+                <!-- LATO DESTRO (50%): VUOTO -->
+                <div class="right-pane" style="flex: 1; padding: 70px 30px 20px; display: flex; flex-direction: column;">
+                    <!-- Spazio vuoto a disposizione -->
+                </div>
+
             </div>
         </div>
 
