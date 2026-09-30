@@ -21,35 +21,53 @@
         <button id="btn-close-app" style="background: transparent; border: none; color: var(--text-dim); cursor: pointer; font-size: 1.2rem;">✕</button>
     </div>
 
-    <!-- HEADER GLOBALE FLUTTUANTE -->
-    <div style="display: flex; justify-content: space-between; align-items: baseline; padding: 25px 25px 10px 25px; position: absolute; top: 0; left: 0; width: 100%; z-index: 50; box-sizing: border-box; padding-right: 90px;">
-        <div style="display: flex; gap: 15px; align-items: baseline;">
-            <h1 id="global-clock" style="margin: 0; color: var(--text-main); font-variant-numeric: tabular-nums; white-space: nowrap;">00:00 DAY 00</h1>
-            <span style="color: var(--text-dim); font-size: 1.5rem; font-weight: 300;">|</span>
-        </div>
+    <!-- HEADER GLOBALE FLUTTUANTE UNIFICATO -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding: 20px 25px 15px 25px; position: absolute; top: 0; left: 0; width: 100%; z-index: 100; box-sizing: border-box; padding-right: 90px; border-bottom: 1px solid rgba(255,255,255,0.05);">
         
-        <!-- I bottoni globali sono stati spostati qui -->
-        <div class="header-buttons" style="display: flex; gap: 25px; align-items: center;">
+        <!-- PARTE SINISTRA E CENTRALE -->
+        <div style="display: flex; gap: 20px; align-items: center; flex: 1;">
+            
+            <!-- Orologio -->
+            <div style="display: flex; gap: 15px; align-items: baseline;">
+                <h1 id="global-clock" style="margin: 0; color: var(--text-main); font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 1.5rem;">00:00 DAY 00</h1>
+                <span style="color: var(--text-dim); font-size: 1.5rem; font-weight: 300;">|</span>
+            </div>
+            
+            <!-- Toggle Moduli (Sx / Dx) -->
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="dropdown">
+                    <div class="module-title" style="font-size: 0.85rem;" onclick="document.getElementById('dropdown-left').classList.toggle('show')">
+                        <span id="title-left">DAILY</span> ▼
+                    </div>
+                    <div id="dropdown-left" class="dropdown-content" style="left: 0; right: auto;"></div>
+                </div>
+                <span style="color: var(--text-dim); font-size: 0.8rem;">/</span>
+                <div class="dropdown">
+                    <div class="module-title" style="font-size: 0.85rem;" onclick="document.getElementById('dropdown-right').classList.toggle('show')">
+                        <span id="title-right">PLANNER</span> ▼
+                    </div>
+                    <div id="dropdown-right" class="dropdown-content" style="left: 0; right: auto;"></div>
+                </div>
+            </div>
+
+            <!-- Consistency Tracker (Spostato qui in alto) -->
+            <div id="tracker-strip-1d" class="tracker-strip-1d" style="cursor: pointer; display: flex; margin-left: 15px; border-left: 1px solid rgba(255,255,255,0.1); padding-left: 20px; height: 12px;" onclick="openTrackerModal()" title="View full history"></div>
+        </div>
+
+        <!-- PARTE DESTRA -->
+        <div class="header-buttons" style="display: flex; gap: 25px; align-items: center; flex-shrink: 0;">
             <button class="icon-btn" style="font-size: 1.3rem; color: var(--text-main);" onclick="openTimerModal()" title="Focus">▶</button>
             <button class="icon-btn" style="font-size: 1.8rem; line-height: 0.8; color: var(--text-main);" onclick="openCreationModal()" title="Add New">+</button>
             <button class="icon-btn" style="font-size: 1.4rem; color: var(--text-main);" onclick="openManagerModal()" title="Manage">⚙</button>
         </div>
     </div>
 
+
     <!-- WRAPPER MODULARE DELLA DASHBOARD -->
-    <div id="app-content-wrapper" class="layout" style="width: 100%; height: 100%; padding-top: 60px; display: flex;">
+    <div id="app-content-wrapper" class="layout" style="width: 100%; height: 100%; padding-top: 80px; display: flex;">
         
         <!-- PANE SINISTRO -->
-        <div id="pane-left" class="split-pane" style="width: 50%; overflow: visible;">
-            <div class="pane-header" style="overflow: visible;">
-                <div class="dropdown">
-                    <div class="module-title" onclick="document.getElementById('dropdown-left').classList.toggle('show')">
-                        <span id="title-left">DAILY</span> ▼
-                    </div>
-                    <!-- Forza l'apertura verso destra (left: 0) ed evita il taglio -->
-                    <div id="dropdown-left" class="dropdown-content" style="left: 0; right: auto;"></div>
-                </div>
-            </div>
+        <div id="pane-left" class="split-pane" style="width: 50%;">
             <div id="content-left" class="pane-content"></div>
         </div>
 
@@ -58,14 +76,6 @@
 
         <!-- PANE DESTRO -->
         <div id="pane-right" class="split-pane" style="width: 50%;">
-            <div class="pane-header">
-                <div class="dropdown">
-                    <div class="module-title" onclick="document.getElementById('dropdown-right').classList.toggle('show')">
-                        <span id="title-right">PLANNER</span> ▼
-                    </div>
-                    <div id="dropdown-right" class="dropdown-content"></div>
-                </div>
-            </div>
             <div id="content-right" class="pane-content"></div>
         </div>
     </div>
@@ -119,26 +129,23 @@
             </div>
         </div>
 
-        <!-- MODULO: PLANNER -->
+<!-- MODULO: PLANNER -->
         <div id="module-planner" class="module-container">
-            <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 15px 40px 10px;">
-                <div style="margin-bottom: 15px; flex-shrink: 0;">
-                    <div id="tracker-strip-1d" class="tracker-strip-1d" style="cursor: pointer; display: flex; justify-content: flex-start;" onclick="openTrackerModal()" title="View full history"></div>
-                </div>
+            <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 20px 40px 10px;">
                 <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 10px;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
                         <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Weekly Planner</div>
                         <div style="display: flex; gap: 10px; align-items: center; position: relative;">
                             <div class="dropdown">
                                 <button class="btn dropdown-btn" onclick="document.getElementById('tasks-dropdown').classList.toggle('show')">Tasks ▼</button>
-                                <div id="tasks-dropdown" class="dropdown-content" style="padding: 15px; min-width: 160px;">
+                                <div id="tasks-dropdown" class="dropdown-content" style="padding: 15px; min-width: 160px; right: 0;">
                                     <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 8px; margin-bottom: 12px; font-size: 0.8rem;"><input type="checkbox" id="toggle-fixed-tasks" checked onchange="renderWeeklyPlanner()" style="accent-color: var(--text-main);"> Show Fixed</label>
                                     <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 8px; font-size: 0.8rem;"><input type="checkbox" id="toggle-flexible-tasks" checked onchange="renderWeeklyPlanner()" style="accent-color: var(--text-main);"> Show Flexible</label>
                                 </div>
                             </div>
                             <div class="dropdown">
                                 <button class="btn dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">Ghost Layers ▼</button>
-                                <div id="ghost-dropdown" class="dropdown-content">
+                                <div id="ghost-dropdown" class="dropdown-content" style="right: 0;">
                                     <div id="reference-toggles-list" style="max-height: 200px; overflow-y: auto; padding: 5px;"></div>
                                     <button class="btn" style="width: calc(100% - 10px); margin: 5px; border-style: dashed;" onclick="openReferenceModal()">+ New Layer</button>
                                 </div>
@@ -157,7 +164,7 @@
         </div>
 
         <!-- MODULO: HEALTH -->
-        <div id="module-health" class="module-container" style="padding: 10px 30px 20px; gap: 30px;">
+        <div id="module-health" class="module-container" style="padding: 10px 30px 20px; gap: 30px; overflow-y: auto;">
             <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
                 <h2 style="margin: 0 0 15px 0; color: white;">Dieta</h2>
                 <div id="diet-main-content" style="width: 100%;"></div>

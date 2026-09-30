@@ -961,4 +961,7 @@ function updateGlobalClock() {
 
 setInterval(updateGlobalClock, 1000);
 updateGlobalClock();
-initDashboard();
+// Aspetta che tutti i file (inclusi money.js e health.js) siano stati caricati prima di avviare
+window.addEventListener('DOMContentLoaded', () => {
+    initDashboard();
+});
