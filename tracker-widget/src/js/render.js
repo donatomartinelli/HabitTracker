@@ -401,27 +401,25 @@ function renderWeeklyPlanner() {
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
-            // --- GIORNI NELLA TENDINA (DROP ZONE + BADGE) ---
+            // --- GIORNI NELLA TENDINA (DROP ZONE PICCOLE) ---
             if (drawerDaysRow) {
                 const dropZone = document.createElement('div');
                 dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-                dropZone.style.border = '1px solid rgba(255,255,255,0.05)';
+                
+                // Bordo tratteggiato fisso per far capire che è un "contenitore" dove rilasciare
+                dropZone.style.border = '1px dashed rgba(255,255,255,0.15)'; 
                 dropZone.style.background = 'rgba(255,255,255,0.01)';
                 dropZone.style.minHeight = '100px';
-                
-                dropZone.ondragover = (e) => e.preventDefault();
-                dropZone.ondrop = (e) => dropWeeklyTask(e, loopDateStr, jsDay);
-                
+                dropZone.style.transition = 'background 0.2s ease'; // Transizione fluida
+
                 dropZone.innerHTML = `<div class="day-title" style="font-size:0.65rem;">${days[i]}</div>`;
                 
                 let flexibleCategories = new Set();
                 
-                // MOSTRA SEMPRE GLI EVENTI (Senza l'if showFixed)
                 specificEvents.forEach(e => { 
                     if (e && e.date === loopDateStr) dropZone.innerHTML += `<div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">★ ${e.title}</div>`; 
                 });
                 
-                // MOSTRA SEMPRE LE TASK (Senza l'if showFlexible)
                 templates.forEach(t => { 
                     if (t && isTaskActiveOnDate(t, loopDateStr)) {
                         if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) flexibleCategories.add(t.category); 
@@ -431,6 +429,32 @@ function renderWeeklyPlanner() {
                 flexibleCategories.forEach(cat => {
                     dropZone.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
                 }); 
+
+                // --- LA MAGIA DEL DRAG & DROP (Sblocco totale + Effetto visivo) ---
+                
+                // 1. Quando entri nel quadratino con la task: rimuove il divieto e lo illumina
+                dropZone.addEventListener('dragenter', (e) => { 
+                    e.preventDefault(); 
+                    dropZone.style.background = 'rgba(255,255,255,0.1)'; 
+                });
+                
+                // 2. Quando esci dal quadratino: torna scuro
+                dropZone.addEventListener('dragleave', (e) => { 
+                    dropZone.style.background = 'rgba(255,255,255,0.01)'; 
+                });
+                
+                // 3. Mentre ci sei sopra: forziamo il browser a mostrare l'icona di "Spostamento"
+                dropZone.addEventListener('dragover', (e) => { 
+                    e.preventDefault(); 
+                    e.dataTransfer.dropEffect = 'move'; 
+                });
+                
+                // 4. Quando rilasci il click del mouse
+                dropZone.addEventListener('drop', (e) => { 
+                    e.preventDefault();
+                    dropZone.style.background = 'rgba(255,255,255,0.01)'; // Spegne la luce
+                    dropWeeklyTask(e, loopDateStr, jsDay); // Assegna la task
+                });
                 
                 drawerDaysRow.appendChild(dropZone);
             }
