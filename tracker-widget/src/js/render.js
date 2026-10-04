@@ -368,13 +368,13 @@ function renderWeeklyPlanner() {
         
         const PIXELS_PER_HOUR = 40; 
         const startHour = 7; 
-        const totalGridHeight = (24 - startHour) * PIXELS_PER_HOUR;
+        const totalGridHeight = (24 - startHour) * plannerZoom;
         
         timeLabels.innerHTML = ''; 
         timeLabels.style.height = `${totalGridHeight}px`;
         
         for (let h = startHour; h <= 24; h++) {
-            if (h < 24) timeLabels.innerHTML += `<div class="time-label" style="top: ${(h - startHour) * PIXELS_PER_HOUR}px;">${h.toString().padStart(2, '0')}:00</div>`;
+            if (h < 24) timeLabels.innerHTML += `<div class="time-label" style="top: ${(h - startHour) * plannerZoom}px;">${h.toString().padStart(2, '0')}:00</div>`;
         }
 
         headerRow.innerHTML = ''; 
@@ -466,6 +466,57 @@ function renderWeeklyPlanner() {
             });
             
             grid.appendChild(dayCol);
+        }
+
+        // --- RIPRISTINO HOVER LINE E ZOOM ---
+        const scrollArea = document.getElementById('planner-scroll');
+        if (scrollArea) {
+            if (!document.getElementById('planner-hover-line')) {
+                const hl = document.createElement('div');
+                hl.id = 'planner-hover-line';
+                hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px dashed rgba(255,255,255,0.3); pointer-events:none; z-index:50;';
+                hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:4px; top:-9px; width:36px; text-align:center; background:#1a1a1a; color:#ccc; font-size:0.65rem; padding:2px 0; border-radius:3px; letter-spacing:1px; border: 1px solid #333; z-index:100;"></div>';
+                scrollArea.appendChild(hl);
+                
+                // Hover logic
+                scrollArea.addEventListener('mousemove', function(e) {
+                    const rect = scrollArea.getBoundingClientRect();
+                    const y = e.clientY - rect.top + scrollArea.scrollTop;
+                    
+                    const gridOffset = 30; // Offset CSS
+                    const relativeY = y - gridOffset;
+                    
+                    // Usa plannerZoom corretto
+                    const hoursDec = (relativeY / plannerZoom) + 7;
+                    
+                    if (hoursDec >= 7 && hoursDec <= 24 && relativeY >= 0) {
+                        const h = Math.floor(hoursDec);
+                        const m = Math.floor((hoursDec - h) * 60);
+                        document.getElementById('planner-hover-time').innerText = `${h.toString().padStart(2,'0')}:${m.toString().padStart(2,'0')}`;
+                        hl.style.display = 'block';
+                        hl.style.top = `${y}px`; 
+                    } else {
+                        hl.style.display = 'none';
+                    }
+                });
+                
+                scrollArea.addEventListener('mouseleave', () => hl.style.display = 'none');
+                
+                // Mouse Wheel Zoom logic (Ctrl + Scroll)
+                scrollArea.addEventListener('wheel', function(e) {
+                    if (e.ctrlKey) {
+                        e.preventDefault();
+                        plannerZoom += e.deltaY > 0 ? -4 : 4;
+                        plannerZoom = Math.max(20, Math.min(120, plannerZoom)); 
+                        renderWeeklyPlanner();
+                        // Sincronizza anche eventuale mirror giornaliero se esiste
+                        if (typeof renderDailySchedule === 'function') renderDailySchedule(); 
+                    }
+                }, { passive: false });
+            } else {
+                // Mantiene la linea in cima ri-appendendola
+                scrollArea.appendChild(document.getElementById('planner-hover-line'));
+            }
         }
         
         drawCurrentTimeLine(); 
@@ -565,19 +616,29 @@ function dropWeeklyTask(e, targetDateStr, targetDayIndex) {
 window.shouldScrollPlanner = true; 
 
 function drawCurrentTimeLine() {
+    // Elimina la vecchia linea
     document.querySelectorAll('.current-time-line').forEach(e => e.remove());
+    
     const now = getNow(); 
     const h = now.getHours(); 
     const m = now.getMinutes();
 
     const weekStart = getWeekStart(selectedDateStr);
+    // Calcola il giorno della settimana corrente
     const daysDiff = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24));
     
     if (daysDiff >= 0 && daysDiff < 7) {
         const cols = document.querySelectorAll('.planner-col-absolute');
         if (cols[daysDiff] && h >= 7) {
-            const top = ((h - 7) + m / 60) * 40; 
-            cols[daysDiff].innerHTML += `<div class="current-time-line" style="top: ${top}px;"></div>`;
+            // Usa plannerZoom (variabile globale) per calcolare la posizione esatta in pixel
+            const top = ((h - 7) + m / 60) * plannerZoom; 
+            
+            // Crea la riga come elemento nativo per non rompere il Drag&Drop
+            const line = document.createElement('div');
+            line.className = 'current-time-line';
+            line.style.top = `${top}px`;
+            
+            cols[daysDiff].appendChild(line);
             
             if (window.shouldScrollPlanner) { 
                 const scrollArea = document.getElementById('planner-scroll'); 
@@ -961,6 +1022,7 @@ function initVerticalResizer() {
 function initWeeklyResizer() {
     const resizer = document.getElementById('weekly-resizer'); 
     const drawer = document.getElementById('weekly-drawer'); 
+    const inboxList = document.getElementById('weekly-inbox-list');
     if (!resizer || !drawer) return;
     
     let isResizing = false; 
@@ -989,14 +1051,10 @@ function initWeeklyResizer() {
         if (!isResizing) return; 
         let newHeight = startHeight + (startY - e.clientY); 
         
-        // --- IL "MURO DI GOMMA" (Opzione 2B) ---
-        // Calcola l'altezza massima dinamica:
-        // ~170px di interfaccia base (Header, Input, e i 7 Quadrati dei giorni)
-        // + 35px per ogni riga di task presente (limitato a 6 righe di task massime per non sfasare il layout)
-        let simulatedTaskRows = Math.min(weeklyInbox.length + 1, 6); 
-        let dynamicMaxHeight = 170 + (simulatedTaskRows * 35);
+        // Calcolo perfetto: 230px di interfaccia (box giorni, titoli, padding) + l'altezza reale delle task a schermo
+        let listHeight = inboxList ? inboxList.scrollHeight : 0;
+        let dynamicMaxHeight = 230 + listHeight;
         
-        // Impedisce alla tendina di andare oltre l'altezza massima necessaria
         newHeight = Math.min(newHeight, dynamicMaxHeight);
         
         if (newHeight < 40) { 
@@ -1024,8 +1082,8 @@ function initWeeklyResizer() {
             drawer.classList.remove('collapsed'); 
             drawer.style.display = 'flex';
             drawer.style.flexDirection = 'column';
-            let simulatedTaskRows = Math.min(weeklyInbox.length + 1, 6); 
-            drawer.style.height = `${170 + (simulatedTaskRows * 35)}px`; 
+            let listHeight = inboxList ? inboxList.scrollHeight : 0;
+            drawer.style.height = `${230 + listHeight}px`; 
         } else { 
             drawer.classList.add('collapsed'); 
             drawer.style.display = 'none'; 
