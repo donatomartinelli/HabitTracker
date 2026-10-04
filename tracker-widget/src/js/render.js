@@ -393,7 +393,11 @@ function renderWeeklyPlanner() {
             
             // --- HEADER PRINCIPALE (SOLO IL NOME DEL GIORNO) ---
             const headerCell = document.createElement('div'); 
-            headerCell.className = `planner-header-day ${isToday ? 'today-col' : ''}`; 
+            headerCell.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
+
+            // AGGIUNGI QUESTA RIGA: Separa i giorni in alto con linea tratteggiata
+            headerCell.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
+            
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
@@ -435,8 +439,14 @@ function renderWeeklyPlanner() {
             const dayCol = document.createElement('div'); 
             dayCol.className = 'planner-col-absolute'; 
             dayCol.style.height = `${totalGridHeight}px`; 
+            
+            // AGGIUNGI QUESTA RIGA PER AZZERARE LO SPAZIO CSS:
+            dayCol.style.marginTop = '0px'; 
+            
+            dayCol.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
+            
             for (let h = startHour; h <= 24; h++) {
-                dayCol.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * PIXELS_PER_HOUR}px;"></div>`;
+                dayCol.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * plannerZoom}px;"></div>`;
             }
 
             // Ghost Layers (Mostrati sempre se la loro toggle globale in sidebar è attiva)
@@ -483,7 +493,7 @@ function renderWeeklyPlanner() {
                     const rect = scrollArea.getBoundingClientRect();
                     const y = e.clientY - rect.top + scrollArea.scrollTop;
                     
-                    const gridOffset = 30; // Offset CSS
+                    const gridOffset = 8; // Nuovo offset allineato al padding della griglia
                     const relativeY = y - gridOffset;
                     
                     // Usa plannerZoom corretto

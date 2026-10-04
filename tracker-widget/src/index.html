@@ -134,14 +134,13 @@
 
 <!-- MODULO: PLANNER -->
 <div id="module-planner" class="module-container">
-    <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 20px 40px 10px;">
-        <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 0;"> <!-- Tolto gap superfluo -->
+    <!-- PADDING-BOTTOM AZZERATO per incollare la griglia al resizer -->
+    <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 20px 40px 0px;">
+        <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 0;">
             
-            <!-- HEADER TITOLO SENZA BORDO INFERIORE -->
             <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; padding-bottom: 15px;">
                 <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Weekly Planner</div>
                 <div style="display: flex; gap: 10px; align-items: center; position: relative;">
-                    <!-- PULSANTE TASKS RIMOSSO (Opzione 3A) -->
                     <div class="dropdown">
                         <button class="btn dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">Ghost Layers ▼</button>
                         <div id="ghost-dropdown" class="dropdown-content" style="right: 0;">
@@ -152,19 +151,23 @@
                 </div>
             </div>
             
-            <!-- CONTENITORE PLANNER CON BORDI ESTERNI RIMOSSI -->
-            <div class="planner-main-wrapper" style="border-left: 1px solid var(--border-color); border-right: 1px solid var(--border-color);">
-                <!-- L'UNICA LINEA ORIZZONTALE DI SEPARAZIONE (Opzione 1B) -->
-                <div class="planner-header-row" id="planner-header" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.5); padding-bottom: 8px;"></div>
-                <div class="planner-scroll-area" id="planner-scroll">
-                    <div class="planner-time-labels" id="planner-time-labels"></div>
+            <!-- ELIMINATI I BORDI LATERALI -->
+            <div class="planner-main-wrapper" style="border: none;">
+                
+                <!-- FORZIAMO BORDER-BOTTOM: NONE per rimuovere definitivamente la riga sotto i giorni -->
+                <div class="planner-header-row" id="planner-header" style="margin-bottom: 0; padding-bottom: 0; border-bottom: none;"></div>
+                
+                <!-- PADDING TOP DI SOLI 8px: Il minimo vitale per non tagliare le 07:00 -->
+                <div class="planner-scroll-area" id="planner-scroll" style="padding-top: 8px;">
+                    
+                    <!-- AZZERIAMO IL MARGIN-TOP DI 15PX DEL CSS ORIGINALE -->
+                    <div class="planner-time-labels" id="planner-time-labels" style="border-right: 1px dotted rgba(255,255,255,0.15); margin-top: 0;"></div>
                     <div class="planner-grid-absolute" id="planner-grid"></div>
                 </div>
             </div>
         </div>
     </div>
     
-    <!-- TENDINA TASK SETTIMANALI (Stessa di prima) -->
     <div id="weekly-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
     <div id="weekly-drawer" class="notes-section collapsed" style="display: none; padding: 15px 40px; background-color: rgba(5,5,5,0.95);">
         <div style="display: flex; flex-direction: column; height: 100%; gap: 15px;">
