@@ -171,10 +171,13 @@
     <div id="weekly-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
     <div id="weekly-drawer" class="notes-section collapsed" style="display: none; padding: 15px 40px; background-color: rgba(5,5,5,0.95);">
         <div style="display: flex; flex-direction: column; height: 100%; gap: 15px;">
-            <div id="drawer-days-row" style="display: flex; gap: 5px; flex: 1; overflow-y: auto;"></div>
+            <!-- ALLINEAMENTO PERFETTO: Tolto il gap, aggiunto il margine di 45px per la colonna delle ore -->
+            <div id="drawer-days-row" style="display: flex; padding-left: 45px; flex: 1; overflow-y: auto;"></div>
+            
             <div style="border-top: 1px dashed #333; padding-top: 15px; flex-shrink: 0;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <h3 style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin: 0; font-weight: bold;">Weekly Inbox</h3>
+                    <!-- RINOMINATO IN "GENERAL TO-DO" -->
+                    <h3 style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin: 0; font-weight: bold;">General To-Do</h3>
                 </div>
                 <div style="display: flex; gap: 10px; margin-bottom: 10px;">
                     <input type="text" id="new-weekly-task" class="form-control" placeholder="Type a task and press Enter..." onkeypress="addWeeklyTask(event)" style="padding: 6px 12px; font-size: 0.8rem;">

@@ -365,8 +365,7 @@ function renderWeeklyPlanner() {
                 </div>
             `;
         });
-        
-        const PIXELS_PER_HOUR = 40; 
+
         const startHour = 7; 
         const totalGridHeight = (24 - startHour) * plannerZoom;
         
@@ -404,15 +403,18 @@ function renderWeeklyPlanner() {
             // --- GIORNI NELLA TENDINA (DROP ZONE PICCOLE) ---
             if (drawerDaysRow) {
                 const dropZone = document.createElement('div');
+                // Sfrutta la stessa esatta classe della griglia sopra per un allineamento perfetto
                 dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
                 
-                // Bordo tratteggiato fisso per far capire che è un "contenitore" dove rilasciare
-                dropZone.style.border = '1px dashed rgba(255,255,255,0.15)'; 
+                // Tratteggio identico alla griglia verticale per dare continuità visiva
+                dropZone.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
+                dropZone.style.borderTop = '1px dashed rgba(255,255,255,0.15)'; 
                 dropZone.style.background = 'rgba(255,255,255,0.01)';
                 dropZone.style.minHeight = '100px';
-                dropZone.style.transition = 'background 0.2s ease'; // Transizione fluida
+                dropZone.style.transition = 'background 0.2s ease'; 
+                dropZone.style.padding = '5px'; // Margine interno per non incollare i badge ai bordi
 
-                dropZone.innerHTML = `<div class="day-title" style="font-size:0.65rem;">${days[i]}</div>`;
+                dropZone.innerHTML = `<div class="day-title" style="font-size:0.65rem; border-bottom:none;">${days[i]}</div>`;
                 
                 let flexibleCategories = new Set();
                 
@@ -430,30 +432,26 @@ function renderWeeklyPlanner() {
                     dropZone.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
                 }); 
 
-                // --- LA MAGIA DEL DRAG & DROP (Sblocco totale + Effetto visivo) ---
-                
-                // 1. Quando entri nel quadratino con la task: rimuove il divieto e lo illumina
+                // --- FIX EVENTI DRAG & DROP PER DESKTOP ---
                 dropZone.addEventListener('dragenter', (e) => { 
                     e.preventDefault(); 
+                    e.dataTransfer.dropEffect = 'move'; // Spegne il segnale di "Divieto"
                     dropZone.style.background = 'rgba(255,255,255,0.1)'; 
                 });
                 
-                // 2. Quando esci dal quadratino: torna scuro
+                dropZone.addEventListener('dragover', (e) => { 
+                    e.preventDefault(); 
+                    e.dataTransfer.dropEffect = 'move'; // Obbligatorio per permettere il 'drop' in HTML5
+                });
+                
                 dropZone.addEventListener('dragleave', (e) => { 
                     dropZone.style.background = 'rgba(255,255,255,0.01)'; 
                 });
                 
-                // 3. Mentre ci sei sopra: forziamo il browser a mostrare l'icona di "Spostamento"
-                dropZone.addEventListener('dragover', (e) => { 
-                    e.preventDefault(); 
-                    e.dataTransfer.dropEffect = 'move'; 
-                });
-                
-                // 4. Quando rilasci il click del mouse
                 dropZone.addEventListener('drop', (e) => { 
                     e.preventDefault();
-                    dropZone.style.background = 'rgba(255,255,255,0.01)'; // Spegne la luce
-                    dropWeeklyTask(e, loopDateStr, jsDay); // Assegna la task
+                    dropZone.style.background = 'rgba(255,255,255,0.01)';
+                    dropWeeklyTask(e, loopDateStr, jsDay); 
                 });
                 
                 drawerDaysRow.appendChild(dropZone);
@@ -564,6 +562,7 @@ function renderWeeklyPlanner() {
 // ==========================================
 // NUOVE FUNZIONI: INBOX E DRAG & DROP
 // ==========================================
+// La funzione manterrà il nome interno per non perdere i dati che hai già salvato, ma in UI è "General To-Do"
 function renderWeeklyInbox() {
     const container = document.getElementById('weekly-inbox-list');
     if (!container) return;
@@ -579,15 +578,25 @@ function renderWeeklyInbox() {
         el.style.display = 'flex';
         el.style.alignItems = 'center';
         el.style.gap = '8px';
-        el.draggable = true;
         
-        el.innerHTML = `<span>:: ${task.title}</span> <button class="icon-btn delete" style="font-size:0.8rem; margin:0; padding:0;" onclick="deleteWeeklyTask('${task.id}')">×</button>`;
+        // --- FIX PER TAURI E DESKTOP APP ---
+        // Impedisce che il browser creda che tu stia "selezionando il testo" invece di trascinare il blocco
+        el.style.userSelect = 'none';
+        el.style.webkitUserSelect = 'none'; 
+        el.setAttribute('draggable', 'true');
         
-        el.ondragstart = (e) => {
+        // Il pointer-events:none sul testo garantisce che il drag parta sempre dal contenitore
+        el.innerHTML = `<span style="pointer-events:none;">:: ${task.title}</span> <button class="icon-btn delete" style="font-size:0.8rem; margin:0; padding:0; z-index: 10;" onclick="deleteWeeklyTask('${task.id}')">×</button>`;
+        
+        el.addEventListener('dragstart', (e) => {
+            e.dataTransfer.effectAllowed = 'move'; // Obbliga il S.O. a permettere lo spostamento
             e.dataTransfer.setData('text/plain', task.id);
-            el.style.opacity = '0.5';
-        };
-        el.ondragend = (e) => el.style.opacity = '1';
+            setTimeout(() => { el.style.opacity = '0.4'; }, 10);
+        });
+        
+        el.addEventListener('dragend', (e) => {
+            el.style.opacity = '1';
+        });
         
         container.appendChild(el);
     });
