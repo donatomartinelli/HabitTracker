@@ -403,56 +403,50 @@ function renderWeeklyPlanner() {
             // --- GIORNI NELLA TENDINA (DROP ZONE PICCOLE) ---
             if (drawerDaysRow) {
                 const dropZone = document.createElement('div');
-                // Sfrutta la stessa esatta classe della griglia sopra per un allineamento perfetto
                 dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-                
-                // Tratteggio identico alla griglia verticale per dare continuità visiva
                 dropZone.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
                 dropZone.style.borderTop = '1px dashed rgba(255,255,255,0.15)'; 
                 dropZone.style.background = 'rgba(255,255,255,0.01)';
                 dropZone.style.minHeight = '100px';
                 dropZone.style.transition = 'background 0.2s ease'; 
-                dropZone.style.padding = '5px'; // Margine interno per non incollare i badge ai bordi
+                dropZone.style.padding = '5px';
 
                 dropZone.innerHTML = `<div class="day-title" style="font-size:0.65rem; border-bottom:none;">${days[i]}</div>`;
                 
                 let flexibleCategories = new Set();
-                
                 specificEvents.forEach(e => { 
                     if (e && e.date === loopDateStr) dropZone.innerHTML += `<div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">★ ${e.title}</div>`; 
                 });
-                
                 templates.forEach(t => { 
                     if (t && isTaskActiveOnDate(t, loopDateStr)) {
                         if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) flexibleCategories.add(t.category); 
                     }
                 }); 
-                
                 flexibleCategories.forEach(cat => {
                     dropZone.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
                 }); 
 
-                // --- FIX EVENTI DRAG & DROP PER DESKTOP ---
-                dropZone.addEventListener('dragenter', (e) => { 
+                // --- FIX EVENTI DROP PER DESKTOP (Uso delle proprietà dirette) ---
+                dropZone.ondragenter = (e) => { 
                     e.preventDefault(); 
-                    e.dataTransfer.dropEffect = 'move'; // Spegne il segnale di "Divieto"
+                    e.dataTransfer.dropEffect = 'move'; 
                     dropZone.style.background = 'rgba(255,255,255,0.1)'; 
-                });
+                };
                 
-                dropZone.addEventListener('dragover', (e) => { 
-                    e.preventDefault(); 
-                    e.dataTransfer.dropEffect = 'move'; // Obbligatorio per permettere il 'drop' in HTML5
-                });
+                dropZone.ondragover = (e) => { 
+                    e.preventDefault(); // Questo spegne l'icona di divieto 🚫
+                    e.dataTransfer.dropEffect = 'move'; 
+                };
                 
-                dropZone.addEventListener('dragleave', (e) => { 
+                dropZone.ondragleave = (e) => { 
                     dropZone.style.background = 'rgba(255,255,255,0.01)'; 
-                });
+                };
                 
-                dropZone.addEventListener('drop', (e) => { 
+                dropZone.ondrop = (e) => { 
                     e.preventDefault();
                     dropZone.style.background = 'rgba(255,255,255,0.01)';
                     dropWeeklyTask(e, loopDateStr, jsDay); 
-                });
+                };
                 
                 drawerDaysRow.appendChild(dropZone);
             }
@@ -579,24 +573,25 @@ function renderWeeklyInbox() {
         el.style.alignItems = 'center';
         el.style.gap = '8px';
         
-        // --- FIX PER TAURI E DESKTOP APP ---
-        // Impedisce che il browser creda che tu stia "selezionando il testo" invece di trascinare il blocco
-        el.style.userSelect = 'none';
-        el.style.webkitUserSelect = 'none'; 
+        // --- FIX CRITICI PER TAURI / WEBKIT ---
         el.setAttribute('draggable', 'true');
+        el.style.webkitUserDrag = 'element'; // Sblocca il drag nativo su desktop
+        el.style.userSelect = 'none';
         
-        // Il pointer-events:none sul testo garantisce che il drag parta sempre dal contenitore
+        // pointer-events: none sul testo impedisce di selezionarlo per sbaglio
         el.innerHTML = `<span style="pointer-events:none;">:: ${task.title}</span> <button class="icon-btn delete" style="font-size:0.8rem; margin:0; padding:0; z-index: 10;" onclick="deleteWeeklyTask('${task.id}')">×</button>`;
         
-        el.addEventListener('dragstart', (e) => {
-            e.dataTransfer.effectAllowed = 'move'; // Obbliga il S.O. a permettere lo spostamento
+        el.ondragstart = (e) => {
+            e.dataTransfer.effectAllowed = 'move';
+            // Doppio formato per massima compatibilità desktop
             e.dataTransfer.setData('text/plain', task.id);
+            e.dataTransfer.setData('text', task.id); 
             setTimeout(() => { el.style.opacity = '0.4'; }, 10);
-        });
+        };
         
-        el.addEventListener('dragend', (e) => {
+        el.ondragend = (e) => {
             el.style.opacity = '1';
-        });
+        };
         
         container.appendChild(el);
     });
@@ -621,20 +616,23 @@ function deleteWeeklyTask(id) {
 
 function dropWeeklyTask(e, targetDateStr, targetDayIndex) {
     e.preventDefault();
-    const taskId = e.dataTransfer.getData('text/plain');
+    
+    // Legge entrambi i formati di dati, garantendo la compatibilità
+    const taskId = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
+    
+    if (!taskId) return; // Se il dato si è perso, si ferma
+
     const taskIndex = weeklyInbox.findIndex(t => t.id === taskId);
     if (taskIndex === -1) return;
 
     const task = weeklyInbox[taskIndex];
     weeklyInbox.splice(taskIndex, 1); // Rimuove dall'inbox
 
-    // Categoria di default
     const catName = 'Weekly To-Do';
     if (!categoryOrder.includes(catName)) {
         categoryOrder.push(catName);
     }
 
-    // CREA UN TEMPLATE STANDARD ANCORATO A QUEL SINGOLO GIORNO
     templates.push({
         id: 't_' + Date.now(),
         category: catName,
@@ -644,7 +642,7 @@ function dropWeeklyTask(e, targetDateStr, targetDayIndex) {
         frequency: 'specific',
         daysOfWeek: [targetDayIndex],
         startDate: targetDateStr,
-        endDate: targetDateStr, // La magia: scade lo stesso giorno in cui inizia!
+        endDate: targetDateStr, 
         color: '#ffffff',
         type: 'untimed',
         timeWindows: []
@@ -652,7 +650,7 @@ function dropWeeklyTask(e, targetDateStr, targetDayIndex) {
 
     saveData();
     renderWeeklyPlanner();
-    renderTasks(); // Aggiorna istantaneamente il pannello Daily/Flexible tasks a sinistra
+    renderTasks();
 }
 
 
