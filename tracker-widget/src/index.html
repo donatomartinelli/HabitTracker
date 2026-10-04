@@ -133,38 +133,60 @@
         </div>
 
 <!-- MODULO: PLANNER -->
-        <div id="module-planner" class="module-container">
-            <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 20px 40px 10px;">
-                <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 10px;">
-                    <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                        <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Weekly Planner</div>
-                        <div style="display: flex; gap: 10px; align-items: center; position: relative;">
-                            <div class="dropdown">
-                                <button class="btn dropdown-btn" onclick="document.getElementById('tasks-dropdown').classList.toggle('show')">Tasks ▼</button>
-                                <div id="tasks-dropdown" class="dropdown-content" style="padding: 15px; min-width: 160px; right: 0;">
-                                    <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 8px; margin-bottom: 12px; font-size: 0.8rem;"><input type="checkbox" id="toggle-fixed-tasks" checked onchange="renderWeeklyPlanner()" style="accent-color: var(--text-main);"> Show Fixed</label>
-                                    <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 8px; font-size: 0.8rem;"><input type="checkbox" id="toggle-flexible-tasks" checked onchange="renderWeeklyPlanner()" style="accent-color: var(--text-main);"> Show Flexible</label>
-                                </div>
-                            </div>
-                            <div class="dropdown">
-                                <button class="btn dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">Ghost Layers ▼</button>
-                                <div id="ghost-dropdown" class="dropdown-content" style="right: 0;">
-                                    <div id="reference-toggles-list" style="max-height: 200px; overflow-y: auto; padding: 5px;"></div>
-                                    <button class="btn" style="width: calc(100% - 10px); margin: 5px; border-style: dashed;" onclick="openReferenceModal()">+ New Layer</button>
-                                </div>
-                            </div>
+        <!-- MODULO: PLANNER -->
+<div id="module-planner" class="module-container">
+    <div class="agenda-section" style="display: flex; flex-direction: column; overflow: hidden; padding: 20px 40px 10px;">
+        <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 10px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-shrink: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <div style="font-size: 0.85rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Weekly Planner</div>
+                <div style="display: flex; gap: 10px; align-items: center; position: relative;">
+                    <!-- I filtri Tasks e Ghost Layer rimangono uguali -->
+                    <div class="dropdown">
+                        <button class="btn dropdown-btn" onclick="document.getElementById('tasks-dropdown').classList.toggle('show')">Tasks ▼</button>
+                        <div id="tasks-dropdown" class="dropdown-content" style="padding: 15px; min-width: 160px; right: 0;">
+                            <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 8px; margin-bottom: 12px; font-size: 0.8rem;"><input type="checkbox" id="toggle-fixed-tasks" checked onchange="renderWeeklyPlanner()" style="accent-color: var(--text-main);"> Show Fixed</label>
+                            <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 8px; font-size: 0.8rem;"><input type="checkbox" id="toggle-flexible-tasks" checked onchange="renderWeeklyPlanner()" style="accent-color: var(--text-main);"> Show Flexible</label>
                         </div>
                     </div>
-                    <div class="planner-main-wrapper" style="border: 1px solid var(--border-color);">
-                        <div class="planner-header-row" id="planner-header" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.5);"></div>
-                        <div class="planner-scroll-area" id="planner-scroll">
-                            <div class="planner-time-labels" id="planner-time-labels"></div>
-                            <div class="planner-grid-absolute" id="planner-grid"></div>
+                    <div class="dropdown">
+                        <button class="btn dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">Ghost Layers ▼</button>
+                        <div id="ghost-dropdown" class="dropdown-content" style="right: 0;">
+                            <div id="reference-toggles-list" style="max-height: 200px; overflow-y: auto; padding: 5px;"></div>
+                            <button class="btn" style="width: calc(100% - 10px); margin: 5px; border-style: dashed;" onclick="openReferenceModal()">+ New Layer</button>
                         </div>
                     </div>
                 </div>
             </div>
+            <div class="planner-main-wrapper" style="border: 1px solid var(--border-color);">
+                <div class="planner-header-row" id="planner-header" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.5);"></div>
+                <div class="planner-scroll-area" id="planner-scroll">
+                    <div class="planner-time-labels" id="planner-time-labels"></div>
+                    <div class="planner-grid-absolute" id="planner-grid"></div>
+                </div>
+            </div>
         </div>
+    </div>
+    
+    <!-- NUOVO: RESIZER E TENDINA TASK SETTIMANALI -->
+    <div id="weekly-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
+    <div id="weekly-drawer" class="notes-section collapsed" style="display: none; padding: 15px 40px; background-color: rgba(5,5,5,0.95);">
+        <div style="display: flex; flex-direction: column; height: 100%; gap: 15px;">
+            <!-- DROP ZONES (I 7 Giorni dove trascinare i task) -->
+            <div id="drawer-days-row" style="display: flex; gap: 5px; flex: 1; overflow-y: auto;"></div>
+            
+            <!-- INBOX -->
+            <div style="border-top: 1px dashed #333; padding-top: 15px; flex-shrink: 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin: 0; font-weight: bold;">Weekly Inbox</h3>
+                </div>
+                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
+                    <input type="text" id="new-weekly-task" class="form-control" placeholder="Type a task and press Enter..." onkeypress="addWeeklyTask(event)" style="padding: 6px 12px; font-size: 0.8rem;">
+                </div>
+                <div id="weekly-inbox-list" style="display: flex; flex-wrap: wrap; gap: 8px; max-height: 80px; overflow-y: auto;"></div>
+            </div>
+        </div>
+    </div>
+</div>
 
         <!-- MODULO: HEALTH -->
         <div id="module-health" class="module-container" style="padding: 10px 30px 20px; gap: 30px; overflow-y: auto;">
