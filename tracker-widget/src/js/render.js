@@ -346,14 +346,12 @@ function renderWeeklyPlanner() {
         const headerRow = document.getElementById('planner-header'); 
         const timeLabels = document.getElementById('planner-time-labels'); 
         const grid = document.getElementById('planner-grid');
-        const drawerDaysRow = document.getElementById('drawer-days-row'); // Tendina in basso
+        const drawerDaysRow = document.getElementById('drawer-days-row'); 
         
         if (!sidebar || !headerRow || !timeLabels || !grid) return;
         
-        const showFixed = document.getElementById('toggle-fixed-tasks') ? document.getElementById('toggle-fixed-tasks').checked : true;
-        const showFlexible = document.getElementById('toggle-flexible-tasks') ? document.getElementById('toggle-flexible-tasks').checked : true;
+        // --- RIGHE ELIMINATE QUI --- (Niente più const showFixed e showFlexible)
         
-        // Sidebar Ghost Layers...
         sidebar.innerHTML = ''; 
         referenceLayers.forEach(ref => {
             if (!ref || !ref.id) return; 
@@ -381,7 +379,7 @@ function renderWeeklyPlanner() {
 
         headerRow.innerHTML = ''; 
         grid.innerHTML = ''; 
-        if (drawerDaysRow) drawerDaysRow.innerHTML = ''; // Svuota i giorni della tendina
+        if (drawerDaysRow) drawerDaysRow.innerHTML = ''; 
 
         const weekStart = getWeekStart(selectedDateStr); 
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -407,34 +405,33 @@ function renderWeeklyPlanner() {
                 dropZone.style.background = 'rgba(255,255,255,0.01)';
                 dropZone.style.minHeight = '100px';
                 
-                // Configura Drag & Drop
                 dropZone.ondragover = (e) => e.preventDefault();
                 dropZone.ondrop = (e) => dropWeeklyTask(e, loopDateStr, jsDay);
                 
                 dropZone.innerHTML = `<div class="day-title" style="font-size:0.65rem;">${days[i]}</div>`;
                 
-                // Calcola le categorie e i badge per questo giorno
                 let flexibleCategories = new Set();
-                if (showFixed) {
-                    specificEvents.forEach(e => { 
-                        if (e && e.date === loopDateStr) dropZone.innerHTML += `<div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">★ ${e.title}</div>`; 
-                    });
-                }
                 
-                if (showFlexible) { 
-                    templates.forEach(t => { 
-                        if (t && isTaskActiveOnDate(t, loopDateStr)) {
-                            if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) flexibleCategories.add(t.category); 
-                        }
-                    }); 
-                    flexibleCategories.forEach(cat => {
-                        dropZone.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
-                    }); 
-                }
+                // MOSTRA SEMPRE GLI EVENTI (Senza l'if showFixed)
+                specificEvents.forEach(e => { 
+                    if (e && e.date === loopDateStr) dropZone.innerHTML += `<div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">★ ${e.title}</div>`; 
+                });
+                
+                // MOSTRA SEMPRE LE TASK (Senza l'if showFlexible)
+                templates.forEach(t => { 
+                    if (t && isTaskActiveOnDate(t, loopDateStr)) {
+                        if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) flexibleCategories.add(t.category); 
+                    }
+                }); 
+                
+                flexibleCategories.forEach(cat => {
+                    dropZone.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
+                }); 
+                
                 drawerDaysRow.appendChild(dropZone);
             }
 
-            // --- GRIGLIA ORARIA (Invariata) ---
+            // --- GRIGLIA ORARIA ---
             const dayCol = document.createElement('div'); 
             dayCol.className = 'planner-col-absolute'; 
             dayCol.style.height = `${totalGridHeight}px`; 
@@ -442,7 +439,7 @@ function renderWeeklyPlanner() {
                 dayCol.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * PIXELS_PER_HOUR}px;"></div>`;
             }
 
-            // Ghost Layers e Tasks a orario
+            // Ghost Layers (Mostrati sempre se la loro toggle globale in sidebar è attiva)
             referenceLayers.forEach(ref => {
                 if (ref && refToggles[ref.id]) {
                     (ref.timeWindows || []).forEach(tw => {
@@ -455,24 +452,24 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            if (showFixed) {
-                templates.forEach(t => {
-                    if (t && isTaskActiveOnDate(t, loopDateStr) && t.timeWindows && t.timeWindows.length > 0) {
-                        t.timeWindows.forEach(tw => {
-                            if (tw.days && tw.days.includes(jsDay)) {
-                                const top = timeToPx(tw.start); 
-                                const height = Math.max(timeToPx(tw.end) - top, 15);
-                                if (top + height > 0) dayCol.innerHTML += `<div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};" onmouseenter="showTooltip(event, '${t.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', '${t.category.replace(/'/g, "\\'")}')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>${t.title}</b></div>`;
-                            }
-                        });
-                    }
-                });
-            }
+            // MOSTRA SEMPRE LE TASK A ORARIO (Senza l'if showFixed)
+            templates.forEach(t => {
+                if (t && isTaskActiveOnDate(t, loopDateStr) && t.timeWindows && t.timeWindows.length > 0) {
+                    t.timeWindows.forEach(tw => {
+                        if (tw.days && tw.days.includes(jsDay)) {
+                            const top = timeToPx(tw.start); 
+                            const height = Math.max(timeToPx(tw.end) - top, 15);
+                            if (top + height > 0) dayCol.innerHTML += `<div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};" onmouseenter="showTooltip(event, '${t.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', '${t.category.replace(/'/g, "\\'")}')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>${t.title}</b></div>`;
+                        }
+                    });
+                }
+            });
+            
             grid.appendChild(dayCol);
         }
         
         drawCurrentTimeLine(); 
-        renderWeeklyInbox(); // Renderizza la lista dei task in attesa
+        if (typeof renderWeeklyInbox === 'function') renderWeeklyInbox(); 
         
     } catch (error) { 
         console.error("Crash evitato in renderWeeklyPlanner:", error); 
@@ -992,6 +989,16 @@ function initWeeklyResizer() {
         if (!isResizing) return; 
         let newHeight = startHeight + (startY - e.clientY); 
         
+        // --- IL "MURO DI GOMMA" (Opzione 2B) ---
+        // Calcola l'altezza massima dinamica:
+        // ~170px di interfaccia base (Header, Input, e i 7 Quadrati dei giorni)
+        // + 35px per ogni riga di task presente (limitato a 6 righe di task massime per non sfasare il layout)
+        let simulatedTaskRows = Math.min(weeklyInbox.length + 1, 6); 
+        let dynamicMaxHeight = 170 + (simulatedTaskRows * 35);
+        
+        // Impedisce alla tendina di andare oltre l'altezza massima necessaria
+        newHeight = Math.min(newHeight, dynamicMaxHeight);
+        
         if (newHeight < 40) { 
             drawer.classList.add('collapsed'); 
             drawer.style.display = 'none'; 
@@ -999,7 +1006,7 @@ function initWeeklyResizer() {
             drawer.classList.remove('collapsed'); 
             drawer.style.display = 'flex';
             drawer.style.flexDirection = 'column';
-            drawer.style.height = `${Math.min(newHeight, window.innerHeight * 0.8)}px`;
+            drawer.style.height = `${newHeight}px`;
         } 
     });
     
@@ -1017,7 +1024,8 @@ function initWeeklyResizer() {
             drawer.classList.remove('collapsed'); 
             drawer.style.display = 'flex';
             drawer.style.flexDirection = 'column';
-            drawer.style.height = `300px`; 
+            let simulatedTaskRows = Math.min(weeklyInbox.length + 1, 6); 
+            drawer.style.height = `${170 + (simulatedTaskRows * 35)}px`; 
         } else { 
             drawer.classList.add('collapsed'); 
             drawer.style.display = 'none'; 
