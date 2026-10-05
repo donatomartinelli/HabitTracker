@@ -1273,8 +1273,6 @@ function updateGlobalClock() {
 setInterval(updateGlobalClock, 1000);
 updateGlobalClock();
 
-
-// ASSICURATI DI AVVIARLA! Cerca window.addEventListener('DOMContentLoaded', ...) alla fine del file e aggiungila lì:
 window.addEventListener('DOMContentLoaded', () => {
     initDashboard();
     renderGeneralTodos();
