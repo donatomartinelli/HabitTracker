@@ -57,7 +57,7 @@ function saveData() {
     localStorage.setItem('tracker_references', JSON.stringify(referenceLayers));
     localStorage.setItem('ref_toggles', JSON.stringify(refToggles));
     localStorage.setItem('tracker_ephemeral', JSON.stringify(ephemeralData));
-    localStorage.setItem('tracker_general_todo', JSON.stringify(generalTodos)); // NUOVO
+    localStorage.setItem('tracker_general_todo', JSON.stringify(generalTodos)); 
 }
 
 function getNow() { 

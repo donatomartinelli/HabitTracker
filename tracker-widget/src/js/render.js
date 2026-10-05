@@ -1236,13 +1236,14 @@ function updateOpacity(val) {
     localStorage.setItem('tracker_opacity', val);
 }
 
-// Carica la trasparenza salvata all'avvio
+// --- INITIALIZATION CALLS ---
 const savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
 document.documentElement.style.setProperty('--bg-opacity', savedOpacity);
 const sliderEl = document.getElementById('bg-opacity-slider');
 if (sliderEl) sliderEl.value = savedOpacity;
 const labelEl = document.getElementById('opacity-val');
 if (labelEl) labelEl.innerText = savedOpacity;
+
 initNotesResizer();
 renderTasks(); 
 renderCalendar();
@@ -1276,5 +1277,5 @@ updateGlobalClock();
 // ASSICURATI DI AVVIARLA! Cerca window.addEventListener('DOMContentLoaded', ...) alla fine del file e aggiungila lì:
 window.addEventListener('DOMContentLoaded', () => {
     initDashboard();
-    initWeeklyResizer(); // <- AGGIUNGI QUESTA
+    renderGeneralTodos();
 });
