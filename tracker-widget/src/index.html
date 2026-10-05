@@ -88,13 +88,33 @@
         
         <!-- MODULO: DAILY -->
         <div id="module-daily" class="module-container">
-            <div class="calendar-section" style="flex: 0 0 auto; height: max-content !important; overflow: hidden !important; padding-top: 10px; padding-bottom: 15px;" title="Double click a day to open the Journal">
+            <div class="calendar-section" style="flex: 0 0 auto; height: max-content !important; overflow: hidden !important; padding-top: 10px; padding-bottom: 15px;">
                 <div class="calendar-header">
                     <button class="nav-btn" onclick="changeMonth(-1)">&#8592;</button>
                     <span id="calendar-month-name">Month Year</span>
                     <button class="nav-btn" onclick="changeMonth(1)">&#8594;</button>
                 </div>
                 <div class="month-grid" id="calendar-grid"></div>
+            </div>
+
+            <!-- NUOVO: GENERAL TO-DO (Compatto con Tendina) -->
+            <div id="general-todo-section" style="flex: 0 0 auto; padding: 10px 25px 15px; border-bottom: 1px dashed rgba(255,255,255,0.1); background: rgba(0,0,0,0.2); overflow: visible;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                    <h3 style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin: 0; font-weight: bold;">General To-Do</h3>
+                </div>
+                <!-- Struttura Dropdown -->
+                <div class="dropdown" style="display: flex; align-items: center; gap: 5px; width: 100%;">
+                    <input type="text" id="new-g-todo" class="form-control" placeholder="Type task and press Enter..." onkeydown="addGeneralTask(event)" style="flex: 1; padding: 6px 12px; font-size: 0.8rem;">
+                    
+                    <!-- FRECCETTA BIANCA PURA (Usa la classe dropdown-btn per aprire la tendina) -->
+                    <button class="icon-btn dropdown-btn" style="color: white; font-size: 1.2rem; background: transparent; border: none; margin: 0; padding: 0 5px;" onclick="document.getElementById('todo-dropdown-content').classList.toggle('show')">➔</button>
+                    
+                    <!-- LA TENDINA A COMPARSA CON LA LISTA -->
+                    <div id="todo-dropdown-content" class="dropdown-content" style="right: 0; top: 100%; width: 300px; padding: 15px; z-index: 200; background: rgba(15,15,15,0.95);" onclick="event.stopPropagation()">
+                        <div id="general-todo-list" style="display: flex; flex-direction: column; gap: 5px; max-height: 250px; overflow-y: auto; margin-bottom: 15px;"></div>
+                        <button class="btn btn-primary" style="width: 100%; font-size: 0.8rem;" onclick="openAssignModal()">Assign Selected</button>
+                    </div>
+                </div>
             </div>
 
             <div id="left-daily-tasks" style="flex: 1 1 auto; overflow-y: auto; padding: 10px 25px; display: flex; flex-direction: column; min-height: 0;">
@@ -168,23 +188,10 @@
         </div>
     </div>
     
+<!-- TENDINA SETTIMANALE: SOLO VISUALIZZAZIONE DEI GIORNI -->
     <div id="weekly-resizer" class="resizer-horizontal" title="Drag to resize / Double-click to toggle"></div>
     <div id="weekly-drawer" class="notes-section collapsed" style="display: none; padding: 15px 40px; background-color: rgba(5,5,5,0.95);">
-        <div style="display: flex; flex-direction: column; height: 100%; gap: 15px;">
-            <!-- ALLINEAMENTO PERFETTO: Tolto il gap, aggiunto il margine di 45px per la colonna delle ore -->
-            <div id="drawer-days-row" style="display: flex; padding-left: 45px; flex: 1; overflow-y: auto;"></div>
-            
-            <div style="border-top: 1px dashed #333; padding-top: 15px; flex-shrink: 0;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                    <!-- RINOMINATO IN "GENERAL TO-DO" -->
-                    <h3 style="font-size: 0.75rem; color: #aaa; text-transform: uppercase; margin: 0; font-weight: bold;">General To-Do</h3>
-                </div>
-                <div style="display: flex; gap: 10px; margin-bottom: 10px;">
-                    <input type="text" id="new-weekly-task" class="form-control" placeholder="Type a task and press Enter..." onkeypress="addWeeklyTask(event)" style="padding: 6px 12px; font-size: 0.8rem;">
-                </div>
-                <div id="weekly-inbox-list" style="display: flex; flex-wrap: wrap; gap: 8px; overflow-y: visible;"></div>
-            </div>
-        </div>
+        <div id="drawer-days-row" style="display: flex; gap: 5px; padding-left: 45px; flex: 1; overflow-y: auto;"></div>
     </div>
 </div>
 
@@ -589,6 +596,23 @@
             <div class="modal-actions">
                 <button class="btn" onclick="closeModals()">Cancel</button>
             </div>
+        </div>
+    </div>
+
+    <div id="assignModal" class="modal-overlay">
+        <div class="modal-content" style="width: 400px;">
+            <h2>Assign Tasks</h2>
+            <p style="color: var(--text-dim); margin-bottom: 15px; font-size: 0.8rem;">Select a date to schedule the selected tasks.</p>
+            <form id="assignForm">
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="assign-date" class="form-control" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm</button>
+                </div>
+            </form>
         </div>
     </div>
 

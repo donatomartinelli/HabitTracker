@@ -42,13 +42,13 @@ let referenceLayers = JSON.parse(localStorage.getItem('tracker_references')) || 
 let refToggles = JSON.parse(localStorage.getItem('ref_toggles')) || {};
 let ephemeralData = JSON.parse(localStorage.getItem('tracker_ephemeral')) || {};
 
-// Aggiungi questo blocco sotto let ephemeralData = ...
-if (!localStorage.getItem('tracker_weekly_inbox')) {
-    localStorage.setItem('tracker_weekly_inbox', JSON.stringify([]));
+if (!localStorage.getItem('tracker_general_todo')) {
+    localStorage.setItem('tracker_general_todo', JSON.stringify([]));
 }
-let weeklyInbox = JSON.parse(localStorage.getItem('tracker_weekly_inbox')) || [];
+let generalTodos = JSON.parse(localStorage.getItem('tracker_general_todo')) || [];
+let selectedTodos = new Set(); // Variabile temporanea, non si salva su disco
 
-// Modifica la funzione saveData() esistente per includere l'inbox:
+// Modifica la funzione saveData() esistente per includere il nuovo array:
 function saveData() {
     localStorage.setItem('tracker_templates', JSON.stringify(templates));
     localStorage.setItem('tracker_logs', JSON.stringify(logs));
@@ -57,7 +57,7 @@ function saveData() {
     localStorage.setItem('tracker_references', JSON.stringify(referenceLayers));
     localStorage.setItem('ref_toggles', JSON.stringify(refToggles));
     localStorage.setItem('tracker_ephemeral', JSON.stringify(ephemeralData));
-    localStorage.setItem('tracker_weekly_inbox', JSON.stringify(weeklyInbox)); // NUOVO
+    localStorage.setItem('tracker_general_todo', JSON.stringify(generalTodos)); // NUOVO
 }
 
 function getNow() { 

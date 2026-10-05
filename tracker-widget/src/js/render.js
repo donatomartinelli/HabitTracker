@@ -400,7 +400,7 @@ function renderWeeklyPlanner() {
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
-            // --- GIORNI NELLA TENDINA (DROP ZONE PICCOLE) ---
+            // --- GIORNI NELLA TENDINA (SOLO VISUALIZZAZIONE) ---
             if (drawerDaysRow) {
                 const dropZone = document.createElement('div');
                 dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
@@ -408,45 +408,25 @@ function renderWeeklyPlanner() {
                 dropZone.style.borderTop = '1px dashed rgba(255,255,255,0.15)'; 
                 dropZone.style.background = 'rgba(255,255,255,0.01)';
                 dropZone.style.minHeight = '100px';
-                dropZone.style.transition = 'background 0.2s ease'; 
                 dropZone.style.padding = '5px';
 
                 dropZone.innerHTML = `<div class="day-title" style="font-size:0.65rem; border-bottom:none;">${days[i]}</div>`;
                 
                 let flexibleCategories = new Set();
+                
                 specificEvents.forEach(e => { 
                     if (e && e.date === loopDateStr) dropZone.innerHTML += `<div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">★ ${e.title}</div>`; 
                 });
+                
                 templates.forEach(t => { 
                     if (t && isTaskActiveOnDate(t, loopDateStr)) {
                         if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) flexibleCategories.add(t.category); 
                     }
                 }); 
+                
                 flexibleCategories.forEach(cat => {
                     dropZone.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
                 }); 
-
-                // --- FIX EVENTI DROP PER DESKTOP (Uso delle proprietà dirette) ---
-                dropZone.ondragenter = (e) => { 
-                    e.preventDefault(); 
-                    e.dataTransfer.dropEffect = 'move'; 
-                    dropZone.style.background = 'rgba(255,255,255,0.1)'; 
-                };
-                
-                dropZone.ondragover = (e) => { 
-                    e.preventDefault(); // Questo spegne l'icona di divieto 🚫
-                    e.dataTransfer.dropEffect = 'move'; 
-                };
-                
-                dropZone.ondragleave = (e) => { 
-                    dropZone.style.background = 'rgba(255,255,255,0.01)'; 
-                };
-                
-                dropZone.ondrop = (e) => { 
-                    e.preventDefault();
-                    dropZone.style.background = 'rgba(255,255,255,0.01)';
-                    dropWeeklyTask(e, loopDateStr, jsDay); 
-                };
                 
                 drawerDaysRow.appendChild(dropZone);
             }
@@ -1059,6 +1039,119 @@ function initVerticalResizer() {
     });
 }
 
+// --- LOGICA GENERAL TO-DO ---
+
+function addGeneralTask(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const title = e.target.value.trim();
+        if (title) {
+            generalTodos.push({ id: 'todo_' + Date.now(), title: title });
+            saveData();
+            renderGeneralTodos();
+            e.target.value = '';
+        }
+    }
+}
+
+function toggleTodoSelection(id) {
+    if (selectedTodos.has(id)) selectedTodos.delete(id);
+    else selectedTodos.add(id);
+    renderGeneralTodos();
+}
+
+function deleteGeneralTodo(id) {
+    generalTodos = generalTodos.filter(t => t.id !== id);
+    selectedTodos.delete(id);
+    saveData();
+    renderGeneralTodos();
+}
+
+function renderGeneralTodos() {
+    const container = document.getElementById('general-todo-list');
+    if(!container) return;
+    container.innerHTML = '';
+    
+    if(generalTodos.length === 0) {
+        container.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">No general tasks pending.</span>';
+        return;
+    }
+    
+    generalTodos.forEach(t => {
+        const isSelected = selectedTodos.has(t.id);
+        container.innerHTML += `
+            <div class="task-item" style="padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid ${isSelected ? 'var(--text-main)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: 0.2s;" onclick="toggleTodoSelection('${t.id}')">
+                <div class="task-left">
+                    <div class="check-box ${isSelected ? 'checked' : ''}" style="margin-right: 10px;"></div>
+                    <span style="font-size: 0.8rem; color: ${isSelected ? '#fff' : '#ccc'};">${t.title}</span>
+                </div>
+                <button class="icon-btn delete" onclick="event.stopPropagation(); deleteGeneralTodo('${t.id}')">×</button>
+            </div>
+        `;
+    });
+}
+
+function openAssignModal() {
+    if (selectedTodos.size === 0) {
+        alert("Please select at least one task!");
+        return;
+    }
+    
+    // Prepara il modale: seleziona il giorno visualizzato nel calendario, min = oggi
+    const dateInput = document.getElementById('assign-date');
+    dateInput.value = selectedDateStr; 
+    dateInput.min = todayStr; 
+    
+    // Chiude la tendina
+    document.getElementById('todo-dropdown-content').classList.remove('show');
+    
+    closeModals();
+    document.getElementById('assignModal').style.display = 'flex';
+}
+
+// Quando confermi il form del Modale
+document.getElementById('assignForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const dateStr = document.getElementById('assign-date').value;
+    const targetDateObj = new Date(dateStr);
+    const dayIndex = targetDateObj.getDay();
+
+    const catName = 'General To-Do';
+    if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+
+    // Converte ogni task selezionata in un vero Habit "untimed" bloccato al giorno scelto
+    selectedTodos.forEach(id => {
+        const task = generalTodos.find(t => t.id === id);
+        if (task) {
+            templates.push({
+                id: 't_' + Date.now() + Math.random(),
+                category: catName,
+                title: task.title,
+                instances: 1,
+                timerMinutes: 25,
+                frequency: 'specific',
+                daysOfWeek: [dayIndex],
+                startDate: dateStr,
+                endDate: dateStr, // Scade lo stesso giorno in cui inizia!
+                color: '#ffffff',
+                type: 'untimed',
+                timeWindows: []
+            });
+        }
+    });
+
+    // Rimuove le task assegnate dalla lista Generale
+    generalTodos = generalTodos.filter(t => !selectedTodos.has(t.id));
+    selectedTodos.clear();
+    saveData();
+    closeModals();
+    
+    // Ridisegna l'interfaccia
+    renderGeneralTodos();
+    renderTasks();
+    renderWeeklyPlanner();
+});
+
 // Aggiungi questo blocco in fondo a render.js
 function initWeeklyResizer() {
     const resizer = document.getElementById('weekly-resizer'); 
@@ -1156,6 +1249,7 @@ renderCalendar();
 renderTracker();
 renderNoteCategories();
 renderWeeklyPlanner();
+renderGeneralTodos();
 
 // --- GLOBAL CLOCK ---
 function updateGlobalClock() {
@@ -1177,6 +1271,7 @@ function updateGlobalClock() {
 
 setInterval(updateGlobalClock, 1000);
 updateGlobalClock();
+
 
 // ASSICURATI DI AVVIARLA! Cerca window.addEventListener('DOMContentLoaded', ...) alla fine del file e aggiungila lì:
 window.addEventListener('DOMContentLoaded', () => {
