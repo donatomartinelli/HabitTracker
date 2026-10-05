@@ -98,16 +98,6 @@ function syncCategoryOrder() {
 
 syncCategoryOrder();
 
-function saveData() {
-    localStorage.setItem('tracker_templates', JSON.stringify(templates));
-    localStorage.setItem('tracker_logs', JSON.stringify(logs));
-    localStorage.setItem('tracker_events', JSON.stringify(specificEvents));
-    localStorage.setItem('tracker_category_order', JSON.stringify(categoryOrder));
-    localStorage.setItem('tracker_references', JSON.stringify(referenceLayers));
-    localStorage.setItem('ref_toggles', JSON.stringify(refToggles));
-    localStorage.setItem('tracker_ephemeral', JSON.stringify(ephemeralData));
-}
-
 function isTaskActiveOnDate(template, dateStr) {
     if (template.exceptions && template.exceptions.includes(dateStr)) {
         return false;
