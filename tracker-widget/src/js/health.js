@@ -35,15 +35,58 @@ const gymPlan = {
 let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next')) || 1;
 let savedGymWeights = JSON.parse(localStorage.getItem('tracker_gym_weights')) || {};
 
-// Inizializzazione Globale Health
 function renderHealthDashboard() {
     renderDiet();
+    renderMeds(); // INIEZIONE STAMPA FARMACI
     
     // Carica le date salvate
     document.getElementById('gym-start-date').value = localStorage.getItem('gym_start_date') || "";
     document.getElementById('gym-end-date').value = localStorage.getItem('gym_end_date') || "";
     
     renderGym();
+}
+
+function renderMeds() {
+    let container = document.getElementById('meds-main-content');
+    
+    // Crea il contenitore la prima volta incastrandolo sotto la Dieta
+    if (!container) {
+        const dietDiv = document.getElementById('diet-main-content').parentElement;
+        container = document.createElement('div');
+        container.id = 'meds-main-content';
+        container.style.flex = '0 0 auto';
+        container.style.padding = '8px 15px';
+        container.style.margin = '15px 0 0 0';
+        container.style.background = 'rgba(255,255,255,0.02)';
+        container.style.border = '1px dashed #333';
+        dietDiv.insertAdjacentElement('afterend', container);
+    }
+
+    const meds = templates.filter(t => t.type === 'medicine');
+    if (meds.length === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'block';
+    let html = `<div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; font-size:0.75rem; text-transform:uppercase;">`;
+    
+    meds.forEach(m => {
+        // Diventa rosso se lo stock scende sotto la soglia di allarme
+        const isLow = m.stock <= (m.alertDays * m.instances);
+        const color = isLow ? '#ff6666' : 'var(--text-dim)';
+        const iconColor = isLow ? '#ff6666' : '#4c5b73';
+        
+        html += `
+            <span style="color:${color}; display:flex; align-items:center; gap:5px;">
+                <strong style="color:${iconColor}; font-size:1rem; margin-top:-2px;">💊</strong> 
+                <span style="color:white; font-weight:bold;">${m.title}</span> 
+                (${m.instances}/die) <span style="margin:0 5px;">|</span> Stock: <b>${m.stock}</b>
+            </span>`;
+    });
+    
+    html += `</div>`;
+    container.innerHTML = html;
 }
 
 function renderDiet() {

@@ -435,11 +435,11 @@ function renderWeeklyPlanner() {
             const dayCol = document.createElement('div'); 
             dayCol.className = 'planner-col-absolute'; 
             dayCol.style.height = `${totalGridHeight}px`; 
-            
-            // AGGIUNGI QUESTA RIGA PER AZZERARE LO SPAZIO CSS:
             dayCol.style.marginTop = '0px'; 
-            
             dayCol.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
+            
+            // AGGIUNTO: Tasto destro sul vuoto ripristina le lezioni nascoste!
+            dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
             
             for (let h = startHour; h <= 24; h++) {
                 dayCol.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * plannerZoom}px;"></div>`;
@@ -458,14 +458,26 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            // MOSTRA SEMPRE LE TASK A ORARIO (Senza l'if showFixed)
+            // MOSTRA SEMPRE LE TASK A ORARIO (Con logica per saltare le eccezioni)
             templates.forEach(t => {
                 if (t && isTaskActiveOnDate(t, loopDateStr) && t.timeWindows && t.timeWindows.length > 0) {
                     t.timeWindows.forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
+                            
+                            // CHECK BUCO: Se esiste l'eccezione, salta il render del blocco
+                            let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
+                            if (plannerExceptions[`${t.id}_${loopDateStr}_${tw.start}`]) return;
+
                             const top = timeToPx(tw.start); 
                             const height = Math.max(timeToPx(tw.end) - top, 15);
-                            if (top + height > 0) dayCol.innerHTML += `<div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};" onmouseenter="showTooltip(event, '${t.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', '${t.category.replace(/'/g, "\\'")}')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"><b>${t.title}</b></div>`;
+                            if (top + height > 0) {
+                                // AGGIUNTO: oncontextmenu per nascondere il blocco
+                                dayCol.innerHTML += `<div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};" 
+                                onmouseenter="showTooltip(event, '${t.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', '${t.category.replace(/'/g, "\\'")}')" 
+                                onmousemove="moveTooltip(event)" 
+                                onmouseleave="hideTooltip()" 
+                                oncontextmenu="hidePlannerInstance(event, '${t.id}', '${loopDateStr}', '${tw.start}')"><b>${t.title}</b></div>`;
+                            }
                         }
                     });
                 }
@@ -592,6 +604,40 @@ function deleteWeeklyTask(id) {
     weeklyInbox = weeklyInbox.filter(t => t.id !== id);
     saveData();
     renderWeeklyInbox();
+}
+
+// Nasconde il blocco e blocca il click per non farlo sentire al giorno sotto
+function hidePlannerInstance(e, taskId, dateStr, startTime) {
+    e.preventDefault(); 
+    e.stopPropagation(); 
+    
+    const exceptionKey = `${taskId}_${dateStr}_${startTime}`;
+    let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
+    
+    plannerExceptions[exceptionKey] = true;
+    localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
+    renderWeeklyPlanner();
+}
+
+// Ripristina tutte le task nascoste in una data specifica
+function restorePlannerInstances(e, dateStr) {
+    e.preventDefault(); 
+    
+    let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
+    let changed = false;
+    
+    // Cerca le eccezioni che contengono la data cliccata
+    for (let key in plannerExceptions) {
+        if (key.includes(`_${dateStr}_`)) {
+            delete plannerExceptions[key];
+            changed = true;
+        }
+    }
+    
+    if (changed) {
+        localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
+        renderWeeklyPlanner();
+    }
 }
 
 function dropWeeklyTask(e, targetDateStr, targetDayIndex) {

@@ -372,6 +372,10 @@
                 <label class="type-radio">
                     <input type="radio" name="creation-type" value="event" onchange="toggleCreationType()"> Single Event
                 </label>
+                <!-- NUOVO PULSANTE -->
+                <label class="type-radio">
+                    <input type="radio" name="creation-type" value="medicine" onchange="toggleCreationType()"> Medicine
+                </label>
             </div>
 
             <!-- FORM HABIT -->
@@ -500,6 +504,41 @@
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save Event</button>
+                </div>
+            </form>
+
+            <!-- FORM MEDICINE -->
+            <form id="medicineForm" style="display: none;">
+                <div class="form-group">
+                    <label>Medicine Name</label>
+                    <input type="text" id="med-title" class="form-control" placeholder="e.g. Minoxidil" required>
+                </div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Times per day</label>
+                        <input type="number" id="med-instances" class="form-control no-spinners" value="1" min="1" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Current Stock (Pills/Doses)</label>
+                        <input type="number" id="med-stock" class="form-control no-spinners" placeholder="e.g. 30" required>
+                    </div>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Start Date</label>
+                        <input type="date" id="med-startdate" class="form-control" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Alert Days Before</label>
+                        <input type="number" id="med-alert" class="form-control no-spinners" value="7" min="1" required>
+                    </div>
+                </div>
+                
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Medicine</button>
                 </div>
             </form>
         </div>

@@ -9,11 +9,66 @@ function toggleTask(templateId, instanceIndex) {
         logs[selectedDateStr][templateId] = Array(templates.find(x => x.id === templateId).instances).fill(false);
     }
     
+    // Inverte lo stato della spunta
     logs[selectedDateStr][templateId][instanceIndex] = !logs[selectedDateStr][templateId][instanceIndex];
+    const isChecked = logs[selectedDateStr][templateId][instanceIndex];
+    
+    // LOGICA MEDICINE: Scala o ripristina lo stock
+    const t = templates.find(x => x.id === templateId);
+    if (t && t.type === 'medicine') {
+        if (isChecked) {
+            t.stock = Math.max(0, (t.stock || 0) - 1);
+        } else {
+            t.stock = (t.stock || 0) + 1;
+        }
+        recalculateMedicineAlerts(t);
+    }
     
     saveData(); 
     renderTasks(); 
     renderTracker();
+    if (typeof renderMeds === 'function') renderMeds(); // Aggiorna la striscia visiva
+}
+
+// NUOVA FUNZIONE: Genera automaticamente gli eventi sul calendario in base allo stock
+function recalculateMedicineAlerts(t) {
+    // 1. Elimina i vecchi avvisi per questo farmaco
+    specificEvents = specificEvents.filter(e => e.parentId !== t.id);
+    
+    if (t.stock <= 0) return; // Finito, nessun evento futuro
+    
+    // 2. Calcola i giorni residui in base alla frequenza giornaliera
+    const daysLeft = Math.floor(t.stock / t.instances);
+    
+    // 3. Data Esaurimento
+    let runOutDateObj = new Date(); 
+    runOutDateObj.setDate(runOutDateObj.getDate() + daysLeft);
+    const runOutDateStr = formatDate(runOutDateObj);
+    
+    // 4. Data Avviso (es. 7 giorni prima)
+    let alertDateObj = new Date(runOutDateObj);
+    alertDateObj.setDate(alertDateObj.getDate() - (t.alertDays || 7));
+    const alertDateStr = formatDate(alertDateObj);
+    
+    // 5. Crea l'evento di Esaurimento
+    specificEvents.push({
+        id: 'e_runout_' + t.id + '_' + Date.now(),
+        parentId: t.id,
+        title: `⚠️ ${t.title} FINITO`,
+        date: runOutDateStr,
+        color: '#4c5b73' // Blu scuro
+    });
+    
+    // 6. Crea l'evento di Avviso (solo se cade da oggi in poi)
+    if (alertDateStr >= todayStr && t.alertDays > 0) {
+        specificEvents.push({
+            id: 'e_warn_' + t.id + '_' + Date.now(),
+            parentId: t.id,
+            title: `💊 Comprare ${t.title}`,
+            date: alertDateStr,
+            color: '#4c5b73' // Blu scuro
+        });
+    }
 }
 
 function quickAddTask(event, categoryName) {
@@ -439,6 +494,7 @@ function toggleCreationType() {
     const type = document.querySelector('input[name="creation-type"]:checked').value;
     document.getElementById('habitForm').style.display = type === 'habit' ? 'block' : 'none';
     document.getElementById('eventForm').style.display = type === 'event' ? 'block' : 'none';
+    document.getElementById('medicineForm').style.display = type === 'medicine' ? 'block' : 'none';
 }
 
 function openCreationModal() { 
@@ -596,6 +652,39 @@ document.getElementById('eventForm').addEventListener('submit', function(e) {
     renderTasks(); 
     renderCalendar(); 
     renderWeeklyPlanner(); 
+});
+
+// Listener Modale Medicine
+document.getElementById('medicineForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const catName = 'Medicine';
+    if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+
+    const med = {
+        id: 'm_' + Date.now(),
+        category: catName,
+        title: document.getElementById('med-title').value.trim(),
+        instances: parseInt(document.getElementById('med-instances').value, 10),
+        stock: parseInt(document.getElementById('med-stock').value, 10),
+        alertDays: parseInt(document.getElementById('med-alert').value, 10),
+        startDate: document.getElementById('med-startdate').value,
+        endDate: null, 
+        color: '#4c5b73', 
+        type: 'medicine',
+        frequency: 'all', 
+        timeWindows: [],
+        daysOfWeek: []
+    };
+    
+    templates.push(med);
+    recalculateMedicineAlerts(med); // Genera subito gli avvisi
+    
+    saveData();
+    closeModals();
+    renderTasks();
+    renderCalendar();
+    if (typeof renderMeds === 'function') renderMeds();
 });
 
 const btnClose = document.getElementById('btn-close-app'); 
