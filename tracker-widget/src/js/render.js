@@ -208,7 +208,8 @@ function renderCalendar() {
     
     for (let i = 1; i <= lastDay.getDate(); i++) {
         const cellDateStr = formatDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), i)); 
-        const stats = getStatsForDate(cellDateStr); 
+        
+        // Ho rimosso "const stats = getStatsForDate(cellDateStr);" perché non ci serve più calcolare la mole di lavoro
         const dayEvents = specificEvents.filter(e => e.date === cellDateStr);
         
         const dayCell = document.createElement('div'); 
@@ -220,24 +221,15 @@ function renderCalendar() {
         dayCell.innerText = i;
         
         let barsHTML = ''; 
-        const whiteBarsCount = stats.categories.length;
         
-        if (whiteBarsCount > 0) { 
-            const maxBars = Math.min(whiteBarsCount, 3); 
-            for(let k = 0; k < maxBars; k++) {
-                barsHTML += `<div class="bar" style="background-color: var(--text-main);"></div>`;
-            }
-            if (whiteBarsCount > 3) {
-                barsHTML += `<div style="font-size: 10px; color: var(--text-main); font-weight: bold; margin-left: 2px;">+</div>`;
-            }
-        }
-        
+        // MOSTRA SOLO GLI EVENTI COLORATI (Quadratini 6x6 stile brutalista)
         dayEvents.forEach(e => {
-            barsHTML += `<div class="bar" style="background-color: ${e.color};"></div>`;
+            barsHTML += `<div class="bar" style="background-color: ${e.color}; width: 6px; height: 6px;"></div>`;
         });
         
         if (barsHTML !== '') {
-            dayCell.innerHTML += `<div class="bars-container">${barsHTML}</div>`;
+            // Aggiunto gap, flex-wrap e center per impaginarli elegantemente se ci sono più avvisi
+            dayCell.innerHTML += `<div class="bars-container" style="gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 4px;">${barsHTML}</div>`;
         }
         
         dayCell.onclick = () => selectDate(cellDateStr); 
@@ -395,7 +387,7 @@ function renderWeeklyPlanner() {
             headerCell.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
 
             // AGGIUNGI QUESTA RIGA: Separa i giorni in alto con linea tratteggiata
-            headerCell.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
+            headerCell.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
             
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
@@ -404,8 +396,8 @@ function renderWeeklyPlanner() {
             if (drawerDaysRow) {
                 const dropZone = document.createElement('div');
                 dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-                dropZone.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
-                dropZone.style.borderTop = '1px dashed rgba(255,255,255,0.15)'; 
+                dropZone.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
+                dropZone.style.borderTop = '1px solidrgba(255,255,255,0.15)'; 
                 dropZone.style.background = 'rgba(255,255,255,0.01)';
                 dropZone.style.minHeight = '100px';
                 dropZone.style.padding = '5px';
@@ -436,7 +428,7 @@ function renderWeeklyPlanner() {
             dayCol.className = 'planner-col-absolute'; 
             dayCol.style.height = `${totalGridHeight}px`; 
             dayCol.style.marginTop = '0px'; 
-            dayCol.style.borderRight = i < 6 ? '1px dotted rgba(255,255,255,0.15)' : 'none';
+            dayCol.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
             
             // AGGIUNTO: Tasto destro sul vuoto ripristina le lezioni nascoste!
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
@@ -492,7 +484,7 @@ function renderWeeklyPlanner() {
             if (!document.getElementById('planner-hover-line')) {
                 const hl = document.createElement('div');
                 hl.id = 'planner-hover-line';
-                hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px dashed rgba(255,255,255,0.3); pointer-events:none; z-index:50;';
+                hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px solidrgba(255,255,255,0.3); pointer-events:none; z-index:50;';
                 hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:4px; top:-9px; width:36px; text-align:center; background:#1a1a1a; color:#ccc; font-size:0.65rem; padding:2px 0; border-radius:3px; letter-spacing:1px; border: 1px solid #333; z-index:100;"></div>';
                 scrollArea.appendChild(hl);
                 
@@ -1091,12 +1083,31 @@ function addGeneralTask(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         const title = e.target.value.trim();
-        if (title) {
-            generalTodos.push({ id: 'todo_' + Date.now(), title: title });
-            saveData();
-            renderGeneralTodos();
+        if (!title) return;
+
+        // COMMAND PARSER: Intercetta il comando "comprare" (case-insensitive)
+        if (title.toLowerCase().startsWith('comprare ')) {
+            const ideaName = title.substring(9).trim(); // Taglia via "comprare "
+            
+            // Inietta direttamente nell'incubatore del Modulo Money
+            mWishlist.push({
+                id: 'mw_' + Date.now(),
+                title: ideaName,
+                cost: "", // Lascia il costo vuoto!
+                order: mWishlist.length
+            });
+            saveMoneyData();
+            if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
+            
             e.target.value = '';
+            return; // Esce senza salvare la task nel General To-Do
         }
+
+        // Flusso normale per tutte le altre task
+        generalTodos.push({ id: 'todo_' + Date.now(), title: title });
+        saveData();
+        renderGeneralTodos();
+        e.target.value = '';
     }
 }
 
@@ -1202,7 +1213,6 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
 function initWeeklyResizer() {
     const resizer = document.getElementById('weekly-resizer'); 
     const drawer = document.getElementById('weekly-drawer'); 
-    const inboxList = document.getElementById('weekly-inbox-list');
     if (!resizer || !drawer) return;
     
     let isResizing = false; 
@@ -1231,12 +1241,6 @@ function initWeeklyResizer() {
         if (!isResizing) return; 
         let newHeight = startHeight + (startY - e.clientY); 
         
-        // Calcolo perfetto: 230px di interfaccia (box giorni, titoli, padding) + l'altezza reale delle task a schermo
-        let listHeight = inboxList ? inboxList.scrollHeight : 0;
-        let dynamicMaxHeight = 230 + listHeight;
-        
-        newHeight = Math.min(newHeight, dynamicMaxHeight);
-        
         if (newHeight < 40) { 
             drawer.classList.add('collapsed'); 
             drawer.style.display = 'none'; 
@@ -1244,7 +1248,8 @@ function initWeeklyResizer() {
             drawer.classList.remove('collapsed'); 
             drawer.style.display = 'flex';
             drawer.style.flexDirection = 'column';
-            drawer.style.height = `${newHeight}px`;
+            // Usa il limite infallibile del 60% dello schermo, fluido e senza blocchi
+            drawer.style.height = `${Math.min(newHeight, window.innerHeight * 0.6)}px`;
         } 
     });
     
@@ -1262,8 +1267,7 @@ function initWeeklyResizer() {
             drawer.classList.remove('collapsed'); 
             drawer.style.display = 'flex';
             drawer.style.flexDirection = 'column';
-            let listHeight = inboxList ? inboxList.scrollHeight : 0;
-            drawer.style.height = `${230 + listHeight}px`; 
+            drawer.style.height = `200px`; // Altezza standard pulita al doppio clic
         } else { 
             drawer.classList.add('collapsed'); 
             drawer.style.display = 'none'; 
@@ -1291,6 +1295,7 @@ const labelEl = document.getElementById('opacity-val');
 if (labelEl) labelEl.innerText = savedOpacity;
 
 initNotesResizer();
+initWeeklyResizer();
 renderTasks(); 
 renderCalendar();
 renderTracker();

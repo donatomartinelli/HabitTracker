@@ -78,6 +78,8 @@ function renderAvailableTasksForFocus() {
     const cats = {};
     
     templates.forEach(t => {
+        if (t.type === 'medicine') return; 
+
         if (isTaskActiveOnDate(t, selectedDateStr)) {
             const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
             const maxAvailable = currentLog.filter(x => !x).length;

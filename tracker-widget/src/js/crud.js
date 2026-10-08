@@ -681,6 +681,7 @@ document.getElementById('medicineForm').addEventListener('submit', function(e) {
     recalculateMedicineAlerts(med); // Genera subito gli avvisi
     
     saveData();
+    document.getElementById('medicineForm').reset(); // SVUOTA I CAMPI PER LA PROSSIMA VOLTA
     closeModals();
     renderTasks();
     renderCalendar();

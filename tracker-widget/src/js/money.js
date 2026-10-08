@@ -102,8 +102,9 @@ function renderMoneyDashboard() {
     const wishCont = document.getElementById('m-wishlist-container');
     wishCont.innerHTML = '';
     mWishlist.forEach((w, i) => {
-        const absAmount = Math.abs(parseFloat(w.cost)).toFixed(2);
-        
+        const costDisplay = (w.cost && parseFloat(w.cost) > 0) ? `€${Math.abs(parseFloat(w.cost)).toFixed(2)}` : '';
+        const badgeHtml = costDisplay ? `<div class="m-amt" style="color: var(--text-dim); font-weight: bold;">${costDisplay}</div>` : '';
+
         wishCont.innerHTML += `
             <div class="m-item-row idea">
                 <div style="display:flex; gap:10px; align-items:center;">
@@ -114,7 +115,7 @@ function renderMoneyDashboard() {
                     <div><div class="m-title" style="color:white;">${w.title}</div></div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="m-amt" style="color: var(--text-dim); font-family: monospace; font-weight: bold;">€${absAmount}</div>
+                    ${badgeHtml}
                     <button class="icon-btn delete" style="opacity: 1; visibility: visible; color: #ff6666;" onclick="deleteWish('${w.id}')">×</button>
                 </div>
             </div>`;
