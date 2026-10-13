@@ -1,0 +1,29 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: sans-serif;
+}
+
+.app-container {
+    display: flex;
+    height: 100vh;
+    width: 100vw;
+    background-color: #0f0f0f;
+    color: #e0e0e0;
+}
+
+.left-pane {
+    width: 300px;
+    background-color: #1a1a1a;
+    border-right: 1px solid #333;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+}
+
+.right-pane {
+    flex: 1;
+    padding: 20px;
+    overflow-y: auto;
+}

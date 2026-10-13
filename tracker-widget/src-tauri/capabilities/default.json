@@ -2,13 +2,12 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "Capability for the main window",
-  "windows": [
-    "main"
-  ],
+  "windows": ["*"],
   "permissions": [
     "core:default",
-    "core:window:allow-close",
-    "core:window:allow-start-dragging",
-    "core:event:default"
+    {
+      "identifier": "sql:default",
+      "allow": [{ "db": "sqlite:tracker.db" }]
+    }
   ]
 }

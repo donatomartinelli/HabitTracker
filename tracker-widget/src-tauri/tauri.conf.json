@@ -4,23 +4,27 @@
   "version": "0.1.0",
   "identifier": "com.donat.tracker-widget",
   "build": {
-    "frontendDist": "../src"
-  },
+  "beforeDevCommand": "npm run dev --prefix frontend",
+  "beforeBuildCommand": "npm run build --prefix frontend",
+  "devUrl": "http://localhost:5173",
+  "frontendDist": "../frontend/dist"
+},
   "app": {
     "withGlobalTauri": true,
     "windows": [
-      {
-        "title": "Minimal Tracker",
-        "width": 1100,
-        "height": 620,
-        "decorations": false,
-        "transparent": true,
-        "skipTaskbar": false,
-        "center": true,
-        "resizable": true,
-        "visible": true
-      }
-    ],
+  {
+    "label": "main",
+    "title": "Minimal Tracker",
+    "width": 1100,
+    "height": 620,
+    "decorations": false,
+    "transparent": true,
+    "skipTaskbar": false,
+    "center": true,
+    "resizable": true,
+    "visible": true
+  }
+],
     "security": {
       "csp": null
     }

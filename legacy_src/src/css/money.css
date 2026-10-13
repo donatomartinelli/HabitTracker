@@ -1,0 +1,26 @@
+/* MONEY DASHBOARD STYLES */
+.m-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.02);
+    border: 1px solid var(--border-color);
+    padding: 10px 15px;
+    border-left: 3px solid #666;
+    transition: 0.2s;
+}
+
+.m-item-row:hover { background: rgba(255,255,255,0.05); }
+
+.m-item-row.out { border-left-color: #ff6666; }
+.m-item-row.in { border-left-color: #5f7a61; }
+.m-item-row.idea { border-left-color: #b08d43; }
+
+.m-title { font-weight: bold; font-size: 0.9rem; color: #ddd; }
+.m-sub { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; text-transform: uppercase;}
+.m-amt { font-family: inherit; font-size: 1rem; font-weight: bold; }
+.m-amt.pos { color: #5f7a61; }
+.m-amt.neg { color: #ff6666; }
+
+.m-actions { display: flex; gap: 8px; align-items: center; opacity: 0; transition: 0.2s; }
+.m-item-row:hover .m-actions { opacity: 1; }
