@@ -9,11 +9,9 @@ function toggleTask(templateId, instanceIndex) {
         logs[selectedDateStr][templateId] = Array(templates.find(x => x.id === templateId).instances).fill(false);
     }
     
-    // Inverte lo stato della spunta
     logs[selectedDateStr][templateId][instanceIndex] = !logs[selectedDateStr][templateId][instanceIndex];
     const isChecked = logs[selectedDateStr][templateId][instanceIndex];
     
-    // LOGICA MEDICINE: Scala o ripristina lo stock
     const t = templates.find(x => x.id === templateId);
     if (t && t.type === 'medicine') {
         if (isChecked) {
@@ -27,46 +25,39 @@ function toggleTask(templateId, instanceIndex) {
     saveData(); 
     renderTasks(); 
     renderTracker();
-    if (typeof renderMeds === 'function') renderMeds(); // Aggiorna la striscia visiva
+    if (typeof renderMeds === 'function') renderMeds();
 }
 
-// NUOVA FUNZIONE: Genera automaticamente gli eventi sul calendario in base allo stock
 function recalculateMedicineAlerts(t) {
-    // 1. Elimina i vecchi avvisi per questo farmaco
     specificEvents = specificEvents.filter(e => e.parentId !== t.id);
     
-    if (t.stock <= 0) return; // Finito, nessun evento futuro
+    if (t.stock <= 0) return;
     
-    // 2. Calcola i giorni residui in base alla frequenza giornaliera
     const daysLeft = Math.floor(t.stock / t.instances);
     
-    // 3. Data Esaurimento
     let runOutDateObj = new Date(); 
     runOutDateObj.setDate(runOutDateObj.getDate() + daysLeft);
     const runOutDateStr = formatDate(runOutDateObj);
     
-    // 4. Data Avviso (es. 7 giorni prima)
     let alertDateObj = new Date(runOutDateObj);
     alertDateObj.setDate(alertDateObj.getDate() - (t.alertDays || 7));
     const alertDateStr = formatDate(alertDateObj);
     
-    // 5. Crea l'evento di Esaurimento
     specificEvents.push({
         id: 'e_runout_' + t.id + '_' + Date.now(),
         parentId: t.id,
         title: `⚠️ ${t.title} FINITO`,
         date: runOutDateStr,
-        color: '#4c5b73' // Blu scuro
+        color: '#4c5b73'
     });
     
-    // 6. Crea l'evento di Avviso (solo se cade da oggi in poi)
     if (alertDateStr >= todayStr && t.alertDays > 0) {
         specificEvents.push({
             id: 'e_warn_' + t.id + '_' + Date.now(),
             parentId: t.id,
             title: `💊 Comprare ${t.title}`,
             date: alertDateStr,
-            color: '#4c5b73' // Blu scuro
+            color: '#4c5b73'
         });
     }
 }
@@ -165,7 +156,7 @@ function editTask(id) {
         
         if (t.frequency === 'specific') {
             document.querySelectorAll('#h-days-container input').forEach(cb => {
-                cb.checked = t.daysOfWeek && t.daysOfWeek.includes(parseInt(cb.value));
+                cb.checked = t.daysOfWeek && t.daysOfWeek.includes(parseInt(cb.value, 10));
             });
         }
     }
@@ -291,51 +282,51 @@ function selectDate(dateStr) {
     renderWeeklyPlanner(); 
 }
 
-// --- GESTIONE NOTES (Local Storage, Write/Browse, Autosave) ---
-let notesContent = JSON.parse(localStorage.getItem('tracker_notes')) || {};
+// --- GESTIONE UNIFICATA NOTES (Write/Browse & Autosave) ---
 let currentNoteMode = 'write';
 let notesAutosaveTimer;
 
 function toggleNotesMode() {
-    currentNoteMode = document.getElementById('notes-mode-checkbox').checked ? 'browse' : 'write';
+    const checkbox = document.getElementById('notes-mode-checkbox');
+    currentNoteMode = (checkbox && checkbox.checked) ? 'browse' : 'write';
     refreshNotesView();
 }
 
 function refreshNotesView() {
-    const cat = document.getElementById('note-category').value;
+    const checkbox = document.getElementById('notes-mode-checkbox');
+    currentNoteMode = (checkbox && checkbox.checked) ? 'browse' : 'write';
+
+    const catEl = document.getElementById('note-category');
     const textEl = document.getElementById('note-text');
-    
+    if (!catEl || !textEl) return;
+
+    const cat = catEl.value;
     if (currentNoteMode === 'write') {
         textEl.value = '';
         textEl.placeholder = "Write your idea and press Enter...";
     } else {
-        // Modalità Browse: carica l'archivio della categoria (Hot-Swap)
         textEl.value = notesContent[cat] || '';
-        textEl.placeholder = "";
+        textEl.placeholder = "Edit your notes here...";
     }
 }
 
 function handleNoteKeyDown(event) { 
-    // Intercetta l'Invio SOLO se siamo in modalità Write
     if (currentNoteMode === 'write' && event.key === 'Enter' && !event.shiftKey) { 
         event.preventDefault(); 
         saveNote(); 
     } 
-    // In modalità Browse l'Invio si comporta normalmente mandando a capo
 }
 
 function saveNote() {
     const cat = document.getElementById('note-category').value; 
     const textEl = document.getElementById('note-text'); 
     const text = textEl.value.trim(); 
-    if (!text) return;
+    if (!text || !cat) return;
 
     if (!notesContent[cat]) notesContent[cat] = "";
-    // Appende la nuova idea a fine documento, lasciando uno spazio vuoto (\n\n)
     notesContent[cat] += (notesContent[cat] === "" ? "" : "\n\n") + text;
-    localStorage.setItem('tracker_notes', JSON.stringify(notesContent));
+    saveData();
     
-    // Feedback visivo
     textEl.value = ''; 
     textEl.placeholder = "✓ Idea saved!"; 
     setTimeout(() => { 
@@ -344,23 +335,23 @@ function saveNote() {
 }
 
 function handleNoteInput() {
-    // Autosave attivato ogni volta che scrivi in modalità Browse
     if (currentNoteMode === 'browse') {
         clearTimeout(notesAutosaveTimer);
         notesAutosaveTimer = setTimeout(() => {
             const cat = document.getElementById('note-category').value;
             const textEl = document.getElementById('note-text');
-            notesContent[cat] = textEl.value; // Sovrascrive il documento
-            localStorage.setItem('tracker_notes', JSON.stringify(notesContent));
-        }, 800); // Salva 800ms dopo che smetti di digitare
+            if (cat && textEl) {
+                notesContent[cat] = textEl.value;
+                saveData();
+            }
+        }, 500);
     }
 }
 
+// --- DIARIO (JOURNAL) ---
 function openJournal(dateStr) {
     document.getElementById('journal-title').innerText = `Journal - ${dateStr}`;
     document.getElementById('journal-date-hidden').value = dateStr;
-    
-    let journals = JSON.parse(localStorage.getItem('tracker_journal')) || {};
     document.getElementById('journal-text').value = journals[dateStr] || '';
     
     closeModals(); 
@@ -370,11 +361,9 @@ function openJournal(dateStr) {
 function saveJournal() {
     const dateStr = document.getElementById('journal-date-hidden').value; 
     const text = document.getElementById('journal-text').value;
-    let journals = JSON.parse(localStorage.getItem('tracker_journal')) || {}; 
     
     journals[dateStr] = text; 
-    localStorage.setItem('tracker_journal', JSON.stringify(journals)); 
-    
+    saveData(); 
     closeModals();
 }
 
@@ -391,7 +380,7 @@ function addRefTimeWindow(start = '', end = '', days = []) {
     const dayVals = [1, 2, 3, 4, 5, 6, 0]; 
     let checksHtml = '';
     
-    for(let i=0; i<7; i++) {
+    for (let i = 0; i < 7; i++) {
         checksHtml += `<label class="day-check"><input type="checkbox" value="${dayVals[i]}" class="tw-day-check" ${days.includes(dayVals[i]) ? 'checked' : ''}> ${dayLabels[i]}</label>`;
     }
     
@@ -435,7 +424,7 @@ document.getElementById('referenceForm').addEventListener('submit', function(e) 
         const end = row.querySelector('.ref-end').value; 
         let days = []; 
         
-        row.querySelectorAll('.tw-day-check:checked').forEach(cb => days.push(parseInt(cb.value))); 
+        row.querySelectorAll('.tw-day-check:checked').forEach(cb => days.push(parseInt(cb.value, 10))); 
         
         if (start && end && days.length > 0) {
             timeWindows.push({ start: start, end: end, days: days }); 
@@ -498,7 +487,6 @@ function toggleCreationType() {
 }
 
 function openCreationModal() { 
-    // Resetta e prepara la sezione Habit
     document.getElementById('habitForm').reset(); 
     document.getElementById('h-id').value = ""; 
     document.getElementById('h-startdate').value = selectedDateStr; 
@@ -511,13 +499,11 @@ function openCreationModal() {
     addHabitTimeWindow(); 
     toggleDays(); 
 
-    // Resetta e prepara la sezione Event
     document.getElementById('eventForm').reset(); 
     document.getElementById('e-date').value = selectedDateStr; 
     document.getElementById('e-color').value = '#b84b4b'; 
     updateCustomColor(document.getElementById('e-color'), 'e-color'); 
     
-    // Imposta di default la vista su "Habit" e apri il modale
     document.querySelector('input[name="creation-type"][value="habit"]').checked = true;
     toggleCreationType();
     
@@ -566,9 +552,9 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
             let days = []; 
             
             row.querySelectorAll('.tw-day-check:checked').forEach(cb => { 
-                days.push(parseInt(cb.value)); 
-                if (!daysOfWeek.includes(parseInt(cb.value))) {
-                    daysOfWeek.push(parseInt(cb.value));
+                days.push(parseInt(cb.value, 10)); 
+                if (!daysOfWeek.includes(parseInt(cb.value, 10))) {
+                    daysOfWeek.push(parseInt(cb.value, 10));
                 }
             }); 
             
@@ -588,7 +574,7 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
         
         if (frequency === 'specific') { 
             document.querySelectorAll('#h-days-container input:checked').forEach(cb => {
-                daysOfWeek.push(parseInt(cb.value));
+                daysOfWeek.push(parseInt(cb.value, 10));
             }); 
             if (daysOfWeek.length === 0) { 
                 alert("Please select at least one day!"); 
@@ -654,7 +640,6 @@ document.getElementById('eventForm').addEventListener('submit', function(e) {
     renderWeeklyPlanner(); 
 });
 
-// Listener Modale Medicine
 document.getElementById('medicineForm').addEventListener('submit', function(e) {
     e.preventDefault();
     
@@ -678,10 +663,10 @@ document.getElementById('medicineForm').addEventListener('submit', function(e) {
     };
     
     templates.push(med);
-    recalculateMedicineAlerts(med); // Genera subito gli avvisi
+    recalculateMedicineAlerts(med);
     
     saveData();
-    document.getElementById('medicineForm').reset(); // SVUOTA I CAMPI PER LA PROSSIMA VOLTA
+    document.getElementById('medicineForm').reset();
     closeModals();
     renderTasks();
     renderCalendar();
@@ -698,8 +683,6 @@ if (btnClose) {
         }
     });
 }
-
-// --- FUNZIONE MANCANTE: Crea la finestra degli orari per le Habit ---
 
 function addHabitTimeWindow(start = '', end = '', days = []) {
     const container = document.getElementById('h-time-windows-container'); 

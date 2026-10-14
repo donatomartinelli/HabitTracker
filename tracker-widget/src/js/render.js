@@ -1,8 +1,7 @@
 // --- 4. RENDER & UI UPDATES ---
 
-let plannerZoom = 40; // Zoom base
+let plannerZoom = 40;
 
-// Utility per convertire l'HEX in RGBA per i ghost layer
 function hexToRgba(hex, alpha) {
     let r = parseInt(hex.slice(1, 3), 16),
         g = parseInt(hex.slice(3, 5), 16),
@@ -10,22 +9,26 @@ function hexToRgba(hex, alpha) {
     return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
-// Funzioni per il Tooltip
 function showTooltip(e, title, timeStr, category) {
     const tooltip = document.getElementById('planner-tooltip');
-    if(!tooltip) return;
+    if (!tooltip) return;
     tooltip.innerHTML = `<strong style="display:block; margin-bottom:4px; font-size:0.85rem;">${title}</strong><span style="color:#aaa;">${timeStr}</span><br><span style="color:#888; margin-top:2px; display:inline-block;">${category}</span>`;
     tooltip.style.display = 'block';
     tooltip.style.left = (e.clientX + 15) + 'px';
     tooltip.style.top = (e.clientY + 15) + 'px';
 }
+
 function moveTooltip(e) {
     const tooltip = document.getElementById('planner-tooltip');
-    if(tooltip) { tooltip.style.left = (e.clientX + 15) + 'px'; tooltip.style.top = (e.clientY + 15) + 'px'; }
+    if (tooltip) { 
+        tooltip.style.left = (e.clientX + 15) + 'px'; 
+        tooltip.style.top = (e.clientY + 15) + 'px'; 
+    }
 }
+
 function hideTooltip() {
     const tooltip = document.getElementById('planner-tooltip');
-    if(tooltip) tooltip.style.display = 'none';
+    if (tooltip) tooltip.style.display = 'none';
 }
 
 function selectColor(element, inputId) { 
@@ -51,6 +54,21 @@ function updateCustomColor(input, inputId) {
     } 
     
     document.getElementById(inputId).value = input.value; 
+}
+
+function moveCategory(catName, direction) {
+    const idx = categoryOrder.indexOf(catName);
+    if (idx === -1) return;
+    const newIdx = idx + direction;
+    if (newIdx < 0 || newIdx >= categoryOrder.length) return;
+    
+    const temp = categoryOrder[idx];
+    categoryOrder[idx] = categoryOrder[newIdx];
+    categoryOrder[newIdx] = temp;
+    
+    saveData();
+    renderManager();
+    renderTasks();
 }
 
 function renderManager() {
@@ -143,7 +161,7 @@ function renderTasks() {
                 </div>
             `; 
         }); 
-        schedContainer.appendChild(eventGroup); // Gli eventi vanno sempre nei programmati
+        schedContainer.appendChild(eventGroup);
     }
     
     syncCategoryOrder();
@@ -208,8 +226,6 @@ function renderCalendar() {
     
     for (let i = 1; i <= lastDay.getDate(); i++) {
         const cellDateStr = formatDate(new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), i)); 
-        
-        // Ho rimosso "const stats = getStatsForDate(cellDateStr);" perché non ci serve più calcolare la mole di lavoro
         const dayEvents = specificEvents.filter(e => e.date === cellDateStr);
         
         const dayCell = document.createElement('div'); 
@@ -221,14 +237,11 @@ function renderCalendar() {
         dayCell.innerText = i;
         
         let barsHTML = ''; 
-        
-        // MOSTRA SOLO GLI EVENTI COLORATI (Quadratini 6x6 stile brutalista)
         dayEvents.forEach(e => {
             barsHTML += `<div class="bar" style="background-color: ${e.color}; width: 6px; height: 6px;"></div>`;
         });
         
         if (barsHTML !== '') {
-            // Aggiunto gap, flex-wrap e center per impaginarli elegantemente se ci sono più avvisi
             dayCell.innerHTML += `<div class="bars-container" style="gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 4px;">${barsHTML}</div>`;
         }
         
@@ -328,10 +341,9 @@ function getWeekStart(dateStr) {
 function timeToPx(timeStr) { 
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0; 
     const [h, m] = timeStr.split(':').map(Number); 
-    return ((h - 7) + m/60) * plannerZoom; 
+    return ((h - 7) + m / 60) * plannerZoom; 
 }
 
-// --- SOSTITUISCI LA FUNZIONE renderWeeklyPlanner ESISTENTE CON QUESTA ---
 function renderWeeklyPlanner() {
     try {
         const sidebar = document.getElementById('reference-toggles-list'); 
@@ -341,8 +353,6 @@ function renderWeeklyPlanner() {
         const drawerDaysRow = document.getElementById('drawer-days-row'); 
         
         if (!sidebar || !headerRow || !timeLabels || !grid) return;
-        
-        // --- RIGHE ELIMINATE QUI --- (Niente più const showFixed e showFlexible)
         
         sidebar.innerHTML = ''; 
         referenceLayers.forEach(ref => {
@@ -382,22 +392,17 @@ function renderWeeklyPlanner() {
             const jsDay = currentD.getDay(); 
             const isToday = loopDateStr === selectedDateStr;
             
-            // --- HEADER PRINCIPALE (SOLO IL NOME DEL GIORNO) ---
             const headerCell = document.createElement('div'); 
             headerCell.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-
-            // AGGIUNGI QUESTA RIGA: Separa i giorni in alto con linea tratteggiata
             headerCell.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
-            
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
-            // --- GIORNI NELLA TENDINA (SOLO VISUALIZZAZIONE) ---
             if (drawerDaysRow) {
                 const dropZone = document.createElement('div');
                 dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
                 dropZone.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
-                dropZone.style.borderTop = '1px solidrgba(255,255,255,0.15)'; 
+                dropZone.style.borderTop = '1px solid rgba(255,255,255,0.15)'; 
                 dropZone.style.background = 'rgba(255,255,255,0.01)';
                 dropZone.style.minHeight = '100px';
                 dropZone.style.padding = '5px';
@@ -423,21 +428,18 @@ function renderWeeklyPlanner() {
                 drawerDaysRow.appendChild(dropZone);
             }
 
-            // --- GRIGLIA ORARIA ---
             const dayCol = document.createElement('div'); 
             dayCol.className = 'planner-col-absolute'; 
             dayCol.style.height = `${totalGridHeight}px`; 
             dayCol.style.marginTop = '0px'; 
             dayCol.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
             
-            // AGGIUNTO: Tasto destro sul vuoto ripristina le lezioni nascoste!
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
             
             for (let h = startHour; h <= 24; h++) {
                 dayCol.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * plannerZoom}px;"></div>`;
             }
 
-            // Ghost Layers (Mostrati sempre se la loro toggle globale in sidebar è attiva)
             referenceLayers.forEach(ref => {
                 if (ref && refToggles[ref.id]) {
                     (ref.timeWindows || []).forEach(tw => {
@@ -450,20 +452,15 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            // MOSTRA SEMPRE LE TASK A ORARIO (Con logica per saltare le eccezioni)
             templates.forEach(t => {
                 if (t && isTaskActiveOnDate(t, loopDateStr) && t.timeWindows && t.timeWindows.length > 0) {
                     t.timeWindows.forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
-                            
-                            // CHECK BUCO: Se esiste l'eccezione, salta il render del blocco
-                            let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
                             if (plannerExceptions[`${t.id}_${loopDateStr}_${tw.start}`]) return;
 
                             const top = timeToPx(tw.start); 
                             const height = Math.max(timeToPx(tw.end) - top, 15);
                             if (top + height > 0) {
-                                // AGGIUNTO: oncontextmenu per nascondere il blocco
                                 dayCol.innerHTML += `<div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};" 
                                 onmouseenter="showTooltip(event, '${t.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', '${t.category.replace(/'/g, "\\'")}')" 
                                 onmousemove="moveTooltip(event)" 
@@ -478,25 +475,20 @@ function renderWeeklyPlanner() {
             grid.appendChild(dayCol);
         }
 
-        // --- RIPRISTINO HOVER LINE E ZOOM ---
         const scrollArea = document.getElementById('planner-scroll');
         if (scrollArea) {
             if (!document.getElementById('planner-hover-line')) {
                 const hl = document.createElement('div');
                 hl.id = 'planner-hover-line';
-                hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px solidrgba(255,255,255,0.3); pointer-events:none; z-index:50;';
+                hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px solid rgba(255,255,255,0.3); pointer-events:none; z-index:50;';
                 hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:4px; top:-9px; width:36px; text-align:center; background:#1a1a1a; color:#ccc; font-size:0.65rem; padding:2px 0; border-radius:3px; letter-spacing:1px; border: 1px solid #333; z-index:100;"></div>';
                 scrollArea.appendChild(hl);
                 
-                // Hover logic
                 scrollArea.addEventListener('mousemove', function(e) {
                     const rect = scrollArea.getBoundingClientRect();
                     const y = e.clientY - rect.top + scrollArea.scrollTop;
-                    
-                    const gridOffset = 8; // Nuovo offset allineato al padding della griglia
+                    const gridOffset = 8;
                     const relativeY = y - gridOffset;
-                    
-                    // Usa plannerZoom corretto
                     const hoursDec = (relativeY / plannerZoom) + 7;
                     
                     if (hoursDec >= 7 && hoursDec <= 24 && relativeY >= 0) {
@@ -512,113 +504,40 @@ function renderWeeklyPlanner() {
                 
                 scrollArea.addEventListener('mouseleave', () => hl.style.display = 'none');
                 
-                // Mouse Wheel Zoom logic (Ctrl + Scroll)
                 scrollArea.addEventListener('wheel', function(e) {
                     if (e.ctrlKey) {
                         e.preventDefault();
                         plannerZoom += e.deltaY > 0 ? -4 : 4;
                         plannerZoom = Math.max(20, Math.min(120, plannerZoom)); 
                         renderWeeklyPlanner();
-                        // Sincronizza anche eventuale mirror giornaliero se esiste
-                        if (typeof renderDailySchedule === 'function') renderDailySchedule(); 
                     }
                 }, { passive: false });
             } else {
-                // Mantiene la linea in cima ri-appendendola
                 scrollArea.appendChild(document.getElementById('planner-hover-line'));
             }
         }
         
         drawCurrentTimeLine(); 
-        if (typeof renderWeeklyInbox === 'function') renderWeeklyInbox(); 
         
     } catch (error) { 
         console.error("Crash evitato in renderWeeklyPlanner:", error); 
     }
 }
 
-// ==========================================
-// NUOVE FUNZIONI: INBOX E DRAG & DROP
-// ==========================================
-// La funzione manterrà il nome interno per non perdere i dati che hai già salvato, ma in UI è "General To-Do"
-function renderWeeklyInbox() {
-    const container = document.getElementById('weekly-inbox-list');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    weeklyInbox.forEach(task => {
-        const el = document.createElement('div');
-        el.className = 'flexible-task-badge draggable-task';
-        el.style.cursor = 'grab';
-        el.style.border = '1px solid rgba(255,255,255,0.2)';
-        el.style.fontSize = '0.75rem';
-        el.style.padding = '6px 10px';
-        el.style.display = 'flex';
-        el.style.alignItems = 'center';
-        el.style.gap = '8px';
-        
-        // --- FIX CRITICI PER TAURI / WEBKIT ---
-        el.setAttribute('draggable', 'true');
-        el.style.webkitUserDrag = 'element'; // Sblocca il drag nativo su desktop
-        el.style.userSelect = 'none';
-        
-        // pointer-events: none sul testo impedisce di selezionarlo per sbaglio
-        el.innerHTML = `<span style="pointer-events:none;">:: ${task.title}</span> <button class="icon-btn delete" style="font-size:0.8rem; margin:0; padding:0; z-index: 10;" onclick="deleteWeeklyTask('${task.id}')">×</button>`;
-        
-        el.ondragstart = (e) => {
-            e.dataTransfer.effectAllowed = 'move';
-            // Doppio formato per massima compatibilità desktop
-            e.dataTransfer.setData('text/plain', task.id);
-            e.dataTransfer.setData('text', task.id); 
-            setTimeout(() => { el.style.opacity = '0.4'; }, 10);
-        };
-        
-        el.ondragend = (e) => {
-            el.style.opacity = '1';
-        };
-        
-        container.appendChild(el);
-    });
-}
-
-function addWeeklyTask(event) {
-    if (event.key === 'Enter') {
-        const title = event.target.value.trim();
-        if (!title) return;
-        weeklyInbox.push({ id: 'w_' + Date.now(), title: title });
-        saveData();
-        renderWeeklyInbox();
-        event.target.value = '';
-    }
-}
-
-function deleteWeeklyTask(id) {
-    weeklyInbox = weeklyInbox.filter(t => t.id !== id);
-    saveData();
-    renderWeeklyInbox();
-}
-
-// Nasconde il blocco e blocca il click per non farlo sentire al giorno sotto
 function hidePlannerInstance(e, taskId, dateStr, startTime) {
     e.preventDefault(); 
     e.stopPropagation(); 
     
     const exceptionKey = `${taskId}_${dateStr}_${startTime}`;
-    let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
-    
     plannerExceptions[exceptionKey] = true;
-    localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
+    saveData();
     renderWeeklyPlanner();
 }
 
-// Ripristina tutte le task nascoste in una data specifica
 function restorePlannerInstances(e, dateStr) {
     e.preventDefault(); 
     
-    let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
     let changed = false;
-    
-    // Cerca le eccezioni che contengono la data cliccata
     for (let key in plannerExceptions) {
         if (key.includes(`_${dateStr}_`)) {
             delete plannerExceptions[key];
@@ -627,55 +546,14 @@ function restorePlannerInstances(e, dateStr) {
     }
     
     if (changed) {
-        localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
+        saveData();
         renderWeeklyPlanner();
     }
 }
 
-function dropWeeklyTask(e, targetDateStr, targetDayIndex) {
-    e.preventDefault();
-    
-    // Legge entrambi i formati di dati, garantendo la compatibilità
-    const taskId = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text');
-    
-    if (!taskId) return; // Se il dato si è perso, si ferma
-
-    const taskIndex = weeklyInbox.findIndex(t => t.id === taskId);
-    if (taskIndex === -1) return;
-
-    const task = weeklyInbox[taskIndex];
-    weeklyInbox.splice(taskIndex, 1); // Rimuove dall'inbox
-
-    const catName = 'Weekly To-Do';
-    if (!categoryOrder.includes(catName)) {
-        categoryOrder.push(catName);
-    }
-
-    templates.push({
-        id: 't_' + Date.now(),
-        category: catName,
-        title: task.title,
-        instances: 1,
-        timerMinutes: 25,
-        frequency: 'specific',
-        daysOfWeek: [targetDayIndex],
-        startDate: targetDateStr,
-        endDate: targetDateStr, 
-        color: '#ffffff',
-        type: 'untimed',
-        timeWindows: []
-    });
-
-    saveData();
-    renderWeeklyPlanner();
-    renderTasks();
-}
-
-
 window.shouldScrollPlanner = true; 
 
 function drawCurrentTimeLine() {
-    // Elimina la vecchia linea
     document.querySelectorAll('.current-time-line').forEach(e => e.remove());
     
     const now = getNow(); 
@@ -683,16 +561,13 @@ function drawCurrentTimeLine() {
     const m = now.getMinutes();
 
     const weekStart = getWeekStart(selectedDateStr);
-    // Calcola il giorno della settimana corrente
     const daysDiff = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24));
     
     if (daysDiff >= 0 && daysDiff < 7) {
         const cols = document.querySelectorAll('.planner-col-absolute');
         if (cols[daysDiff] && h >= 7) {
-            // Usa plannerZoom (variabile globale) per calcolare la posizione esatta in pixel
             const top = ((h - 7) + m / 60) * plannerZoom; 
             
-            // Crea la riga come elemento nativo per non rompere il Drag&Drop
             const line = document.createElement('div');
             line.className = 'current-time-line';
             line.style.top = `${top}px`;
@@ -713,7 +588,6 @@ function drawCurrentTimeLine() {
 setInterval(drawCurrentTimeLine, 60000);
 
 window.onclick = function(event) {
-    // Chiude i dropdown se si clicca fuori
     if (!event.target.matches('.dropdown-btn') && !event.target.closest('.module-title')) { 
         const dropdowns = document.getElementsByClassName("dropdown-content"); 
         for (let i = 0; i < dropdowns.length; i++) {
@@ -722,8 +596,7 @@ window.onclick = function(event) {
             }
         }
     }
-}
-
+};
 
 function initNotesResizer() {
     const resizer = document.getElementById('notes-resizer'); 
@@ -738,7 +611,6 @@ function initNotesResizer() {
         isResizing = true; 
         startY = e.clientY; 
         
-        // Se era completamente invisibile, lo prepariamo per aprirsi
         if (notes.style.display === 'none') {
             notes.style.display = 'flex';
             notes.style.flexDirection = 'column';
@@ -757,7 +629,6 @@ function initNotesResizer() {
         if (!isResizing) return; 
         let newHeight = startHeight + (startY - e.clientY); 
         
-        // Se scende sotto i 40px, scompare del tutto
         if (newHeight < 40) { 
             notes.classList.add('collapsed'); 
             notes.style.display = 'none'; 
@@ -778,7 +649,6 @@ function initNotesResizer() {
         } 
     });
     
-    // Doppio clic: Alterna tra "Aperto a 250px" e "Completamente invisibile"
     resizer.addEventListener('dblclick', () => { 
         if (notes.classList.contains('collapsed') || notes.style.display === 'none') { 
             notes.classList.remove('collapsed'); 
@@ -792,23 +662,17 @@ function initNotesResizer() {
     });
 }
 
-// --- GESTIONE CATEGORIE NOTE (FUNZIONI MANCANTI) ---
-
 // --- GESTIONE CATEGORIE NOTE ---
-
 function renderNoteCategories() {
-    // 1. Forza il caricamento dal disco fisso all'avvio
-    const savedCats = localStorage.getItem('tracker_note_categories');
-    if (savedCats) {
-        noteCategories = JSON.parse(savedCats);
-    }
     if (!noteCategories || noteCategories.length === 0) {
         noteCategories = ['General'];
+        saveData();
     }
 
     const select = document.getElementById('note-category');
     const focusSelect = document.getElementById('focus-note-category');
     if (select) select.innerHTML = '';
+    if (focusSelect) focusSelect.appendChild;
     if (focusSelect) focusSelect.innerHTML = '';
     
     noteCategories.forEach(cat => {
@@ -823,7 +687,6 @@ function renderNoteCategories() {
         if (focusSelect) focusSelect.appendChild(optFocus);
     });
 
-    // 2. Dopo aver caricato le categorie, carica il testo della categoria selezionata
     refreshNotesView();
 }
 
@@ -854,10 +717,7 @@ function quickAddNoteCategory(event) {
         const newCat = event.target.value.trim();
         if (newCat && !noteCategories.includes(newCat)) {
             noteCategories.push(newCat);
-            
-            // Forza il salvataggio su disco
-            localStorage.setItem('tracker_note_categories', JSON.stringify(noteCategories));
-            
+            saveData();
             event.target.value = ''; 
             renderNotesManager(); 
         }
@@ -867,93 +727,9 @@ function quickAddNoteCategory(event) {
 function removeNoteCategory(cat) {
     noteCategories = noteCategories.filter(c => c !== cat);
     if (noteCategories.length === 0) noteCategories = ['General'];
-    
-    // Forza il salvataggio su disco
-    localStorage.setItem('tracker_note_categories', JSON.stringify(noteCategories));
-    
+    saveData();
     renderNotesManager();
 }
-
-
-// --- GESTIONE CONTENUTO NOTE ---
-
-// --- GESTIONE CONTENUTO NOTE E TOGGLE WRITE/BROWSE ---
-
-function toggleNotesMode() {
-    const isBrowse = document.getElementById('notes-mode-checkbox').checked;
-    const textArea = document.getElementById('note-text');
-    
-    if (isBrowse) {
-        // Modalità BROWSE: Carica e mostra l'intero archivio
-        refreshNotesView();
-        textArea.placeholder = "Edit your notes here...";
-    } else {
-        // Modalità WRITE: Svuota la casella per l'input rapido
-        textArea.value = "";
-        textArea.placeholder = "Write your idea and press Enter...";
-    }
-}
-
-function refreshNotesView() {
-    const isBrowse = document.getElementById('notes-mode-checkbox') ? document.getElementById('notes-mode-checkbox').checked : false;
-    const cat = document.getElementById('note-category').value;
-    const textArea = document.getElementById('note-text');
-    
-    if (!cat || !textArea) return;
-    
-    if (isBrowse) {
-        // Stampa tutto il testo salvato
-        let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
-        textArea.value = savedNotes[cat] || '';
-    } else {
-        // Lascia vuoto per scrivere al volo
-        textArea.value = '';
-    }
-}
-
-function handleNoteKeyDown(event) {
-    const isBrowse = document.getElementById('notes-mode-checkbox').checked;
-    
-    // Agisce solo in modalità WRITE alla pressione di Invio (senza premere Shift)
-    if (!isBrowse && event.key === 'Enter' && !event.shiftKey) {
-        event.preventDefault(); // Blocca l'a capo visivo nella casella vuota
-        
-        const cat = document.getElementById('note-category').value;
-        const textArea = document.getElementById('note-text');
-        const textToAdd = textArea.value.trim();
-        
-        if (textToAdd && cat) {
-            // 1. Pesca il testo vecchio
-            let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
-            let currentContent = savedNotes[cat] || '';
-            
-            // 2. Aggiunge la riga nuova formattata (es. "- Nota rapida")
-            let newContent = currentContent ? currentContent + '\n' + textToAdd : '- ' + textToAdd;
-            
-            // 3. Salva sul disco invisibilmente
-            savedNotes[cat] = newContent;
-            localStorage.setItem('tracker_notes_content', JSON.stringify(savedNotes));
-            
-            // 4. Cancella l'area
-            textArea.value = '';
-        }
-    }
-}
-
-function handleNoteInput() {
-    const isBrowse = document.getElementById('notes-mode-checkbox').checked;
-    
-    // Salva ogni lettera digitata in tempo reale SOLO se sei in modalità BROWSE
-    if (isBrowse) {
-        const cat = document.getElementById('note-category').value;
-        const text = document.getElementById('note-text').value;
-        
-        let savedNotes = JSON.parse(localStorage.getItem('tracker_notes_content')) || {};
-        savedNotes[cat] = text;
-        localStorage.setItem('tracker_notes_content', JSON.stringify(savedNotes));
-    }
-}
-
 
 // --- MODULAR DASHBOARD SYSTEM ---
 const dashboardModules = {
@@ -963,11 +739,7 @@ const dashboardModules = {
     'money': { name: 'Money', id: 'module-money' }
 };
 
-let activeLeft = localStorage.getItem('tracker_mod_left') || 'daily';
-let activeRight = localStorage.getItem('tracker_mod_right') || 'planner';
-
 function initDashboard() {
-    // Ripristina la larghezza salvata o 50/50 di default
     const savedWidth = localStorage.getItem('tracker_pane_left_width') || '50%';
     document.getElementById('pane-left').style.width = savedWidth;
     document.getElementById('pane-right').style.width = `calc(100% - ${savedWidth} - 10px)`;
@@ -978,8 +750,7 @@ function initDashboard() {
 }
 
 function mountModule(side, modKey) {
-    // Salva lo stato in memoria e aggiorna il titolo della tendina
-    if(side === 'left') {
+    if (side === 'left') {
         activeLeft = modKey;
         localStorage.setItem('tracker_mod_left', modKey);
         document.getElementById('title-left').innerText = dashboardModules[modKey].name;
@@ -992,23 +763,19 @@ function mountModule(side, modKey) {
     const contentContainer = document.getElementById(`content-${side}`);
     const modElement = document.getElementById(dashboardModules[modKey].id);
     
-    // 1. Se c'è già un modulo qui, lo rimetto invisibile nel magazzino
-    if(contentContainer.children.length > 0) {
+    if (contentContainer.children.length > 0) {
         document.getElementById('module-registry').appendChild(contentContainer.children[0]);
     }
-    // 2. Prelevo il modulo nuovo dal magazzino e lo piazzo nello schermo
     contentContainer.appendChild(modElement);
     
     updateDropdownMenus();
     
-    // Inizializza o ridisegna la grafica del modulo inserito
     if (modKey === 'money' && typeof drawSteppedChart === 'function') setTimeout(drawSteppedChart, 10);
     if (modKey === 'health' && typeof renderHealthDashboard === 'function') renderHealthDashboard();
     if (modKey === 'planner') renderWeeklyPlanner();
 }
 
 function switchModule(side, newModKey) {
-    // Esclusione reciproca: Se scegli a Sinistra un modulo che è già a Destra, scambiali di posto (Swap)
     if (side === 'left' && newModKey === activeRight) {
         mountModule('right', activeLeft);
     } else if (side === 'right' && newModKey === activeLeft) {
@@ -1020,11 +787,9 @@ function switchModule(side, newModKey) {
 function updateDropdownMenus() {
     const buildMenu = (side) => {
         let html = '';
-        for(const [key, mod] of Object.entries(dashboardModules)) {
-            // Nascondi dalla lista quello che è GIA' attivo su quel lato
-            if((side === 'left' && key === activeLeft) || (side === 'right' && key === activeRight)) continue;
+        for (const [key, mod] of Object.entries(dashboardModules)) {
+            if ((side === 'left' && key === activeLeft) || (side === 'right' && key === activeRight)) continue;
             
-            // Se è attivo dall'altra parte, mostra l'icona di "Swap"
             const isOther = (side === 'left' && key === activeRight) || (side === 'right' && key === activeLeft);
             html += `<div style="padding: 10px 15px; cursor: pointer; color: white; border-bottom: 1px solid #333; font-size: 0.85rem;" onclick="switchModule('${side}', '${key}')" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='white'">${mod.name} ${isOther ? ' ⇄' : ''}</div>`;
         }
@@ -1054,7 +819,6 @@ function initVerticalResizer() {
         const containerWidth = document.getElementById('app-content-wrapper').clientWidth;
         let newLeftPercent = (e.clientX / containerWidth) * 100;
         
-        // Limita il trascinamento per non sfanculare il layout (min 30%, max 70%)
         if (newLeftPercent < 30) newLeftPercent = 30;
         if (newLeftPercent > 70) newLeftPercent = 70;
         
@@ -1069,41 +833,38 @@ function initVerticalResizer() {
             document.body.style.userSelect = '';
             document.body.style.cursor = '';
             
-            // Salva le dimensioni esatte per la prossima volta
             localStorage.setItem('tracker_pane_left_width', leftPane.style.width);
-            renderWeeklyPlanner(); // Ricalibra la grafica del planner
-            if (activeLeft === 'money' || activeRight === 'money') { if(typeof drawSteppedChart === 'function') setTimeout(drawSteppedChart, 10); }
+            renderWeeklyPlanner();
+            if (activeLeft === 'money' || activeRight === 'money') { 
+                if (typeof drawSteppedChart === 'function') setTimeout(drawSteppedChart, 10); 
+            }
         }
     });
 }
 
 // --- LOGICA GENERAL TO-DO ---
-
 function addGeneralTask(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
         const title = e.target.value.trim();
         if (!title) return;
 
-        // COMMAND PARSER: Intercetta il comando "comprare" (case-insensitive)
         if (title.toLowerCase().startsWith('comprare ')) {
-            const ideaName = title.substring(9).trim(); // Taglia via "comprare "
+            const ideaName = title.substring(9).trim();
             
-            // Inietta direttamente nell'incubatore del Modulo Money
             mWishlist.push({
                 id: 'mw_' + Date.now(),
                 title: ideaName,
-                cost: "", // Lascia il costo vuoto!
+                cost: "",
                 order: mWishlist.length
             });
             saveMoneyData();
             if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
             
             e.target.value = '';
-            return; // Esce senza salvare la task nel General To-Do
+            return;
         }
 
-        // Flusso normale per tutte le altre task
         generalTodos.push({ id: 'todo_' + Date.now(), title: title });
         saveData();
         renderGeneralTodos();
@@ -1126,10 +887,10 @@ function deleteGeneralTodo(id) {
 
 function renderGeneralTodos() {
     const container = document.getElementById('general-todo-list');
-    if(!container) return;
+    if (!container) return;
     container.innerHTML = '';
     
-    if(generalTodos.length === 0) {
+    if (generalTodos.length === 0) {
         container.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">No general tasks pending.</span>';
         return;
     }
@@ -1154,19 +915,16 @@ function openAssignModal() {
         return;
     }
     
-    // Prepara il modale: seleziona il giorno visualizzato nel calendario, min = oggi
     const dateInput = document.getElementById('assign-date');
     dateInput.value = selectedDateStr; 
     dateInput.min = todayStr; 
     
-    // Chiude la tendina
     document.getElementById('todo-dropdown-content').classList.remove('show');
     
     closeModals();
     document.getElementById('assignModal').style.display = 'flex';
 }
 
-// Quando confermi il form del Modale
 document.getElementById('assignForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const dateStr = document.getElementById('assign-date').value;
@@ -1176,7 +934,6 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
     const catName = 'General To-Do';
     if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
 
-    // Converte ogni task selezionata in un vero Habit "untimed" bloccato al giorno scelto
     selectedTodos.forEach(id => {
         const task = generalTodos.find(t => t.id === id);
         if (task) {
@@ -1189,7 +946,7 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
                 frequency: 'specific',
                 daysOfWeek: [dayIndex],
                 startDate: dateStr,
-                endDate: dateStr, // Scade lo stesso giorno in cui inizia!
+                endDate: dateStr,
                 color: '#ffffff',
                 type: 'untimed',
                 timeWindows: []
@@ -1197,19 +954,16 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
         }
     });
 
-    // Rimuove le task assegnate dalla lista Generale
     generalTodos = generalTodos.filter(t => !selectedTodos.has(t.id));
     selectedTodos.clear();
     saveData();
     closeModals();
     
-    // Ridisegna l'interfaccia
     renderGeneralTodos();
     renderTasks();
     renderWeeklyPlanner();
 });
 
-// Aggiungi questo blocco in fondo a render.js
 function initWeeklyResizer() {
     const resizer = document.getElementById('weekly-resizer'); 
     const drawer = document.getElementById('weekly-drawer'); 
@@ -1248,7 +1002,6 @@ function initWeeklyResizer() {
             drawer.classList.remove('collapsed'); 
             drawer.style.display = 'flex';
             drawer.style.flexDirection = 'column';
-            // Usa il limite infallibile del 60% dello schermo, fluido e senza blocchi
             drawer.style.height = `${Math.min(newHeight, window.innerHeight * 0.6)}px`;
         } 
     });
@@ -1267,7 +1020,7 @@ function initWeeklyResizer() {
             drawer.classList.remove('collapsed'); 
             drawer.style.display = 'flex';
             drawer.style.flexDirection = 'column';
-            drawer.style.height = `200px`; // Altezza standard pulita al doppio clic
+            drawer.style.height = `200px`;
         } else { 
             drawer.classList.add('collapsed'); 
             drawer.style.display = 'none'; 
@@ -1275,11 +1028,9 @@ function initWeeklyResizer() {
     });
 }
 
-
-
-// --- INITIALIZATION CALLS ---
-// --- GESTIONE TRASPARENZA (GLASSMORPHISM) ---
+// --- GESTIONE TRASPARENZA ---
 function updateOpacity(val) {
+    savedOpacity = val;
     document.documentElement.style.setProperty('--bg-opacity', val);
     const label = document.getElementById('opacity-val');
     if (label) label.innerText = val;
@@ -1287,7 +1038,6 @@ function updateOpacity(val) {
 }
 
 // --- INITIALIZATION CALLS ---
-const savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
 document.documentElement.style.setProperty('--bg-opacity', savedOpacity);
 const sliderEl = document.getElementById('bg-opacity-slider');
 if (sliderEl) sliderEl.value = savedOpacity;
@@ -1309,11 +1059,7 @@ function updateGlobalClock() {
     if (!clockEl) return;
     
     const now = getNow();
-    
-    // Formato HH:MM
     const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    
-    // Formato SUNDAY 27
     const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
     const dayName = days[now.getDay()];
     const dayNum = now.getDate().toString().padStart(2, '0');

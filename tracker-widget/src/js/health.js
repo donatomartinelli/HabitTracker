@@ -31,17 +31,12 @@ const gymPlan = {
     ]
 };
 
-// Variabili di stato salvate
-let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next')) || 1;
-let savedGymWeights = JSON.parse(localStorage.getItem('tracker_gym_weights')) || {};
-
 function renderHealthDashboard() {
     renderDiet();
-    renderMeds(); // INIEZIONE STAMPA FARMACI
+    renderMeds();
     
-    // Carica le date salvate
-    document.getElementById('gym-start-date').value = localStorage.getItem('gym_start_date') || "";
-    document.getElementById('gym-end-date').value = localStorage.getItem('gym_end_date') || "";
+    document.getElementById('gym-start-date').value = gymStartDate;
+    document.getElementById('gym-end-date').value = gymEndDate;
     
     renderGym();
 }
@@ -49,7 +44,6 @@ function renderHealthDashboard() {
 function renderMeds() {
     let container = document.getElementById('meds-main-content');
     
-    // Crea il contenitore la prima volta incastrandolo sotto la Dieta
     if (!container) {
         const dietDiv = document.getElementById('diet-main-content').parentElement;
         container = document.createElement('div');
@@ -72,7 +66,6 @@ function renderMeds() {
     let html = `<div style="display:flex; align-items:center; gap:20px; flex-wrap:wrap; font-size:0.75rem; text-transform:uppercase;">`;
     
     meds.forEach(m => {
-        // Diventa rosso se lo stock scende sotto la soglia di allarme
         const isLow = m.stock <= (m.alertDays * m.instances);
         const color = isLow ? '#ff6666' : 'var(--text-dim)';
         const iconColor = isLow ? '#ff6666' : '#4c5b73';
@@ -162,9 +155,7 @@ function renderGym() {
     mainArea.innerHTML = html;
 }
 
-// Azione "DONE": Salva i pesi, slitta il giorno e ricarica
 function completeWorkout(dayNum) {
-    // 1. Memorizza i pesi inseriti
     gymPlan[dayNum].forEach(ex => {
         if (ex.sets > 0) {
             for (let i = 0; i < ex.sets; i++) {
@@ -174,36 +165,26 @@ function completeWorkout(dayNum) {
             }
         }
     });
-    localStorage.setItem('tracker_gym_weights', JSON.stringify(savedGymWeights));
 
-    // 2. Inverte il giorno attivo
     nextWorkoutDay = nextWorkoutDay === 1 ? 2 : 1;
-    localStorage.setItem('tracker_gym_next', nextWorkoutDay);
-
-    // 3. Ridisegna
+    saveHealthData();
     renderGym();
 }
 
-// Aggiorna le date e le inietta nel calendario di Overview
 function updateGymDates() {
-    const start = document.getElementById('gym-start-date').value;
-    const end = document.getElementById('gym-end-date').value;
-    
-    localStorage.setItem('gym_start_date', start);
-    localStorage.setItem('gym_end_date', end);
+    gymStartDate = document.getElementById('gym-start-date').value;
+    gymEndDate = document.getElementById('gym-end-date').value;
+    saveHealthData();
 
-    // Sincronizza con tracker_events (CRUD)
-    let events = JSON.parse(localStorage.getItem('tracker_events')) || [];
-    // Pulisce i vecchi
-    events = events.filter(e => e.id !== 'gym_start_evt' && e.id !== 'gym_end_evt');
+    // Aggiorna direttamente l'array globale specificEvents senza sovrascrivere a vuoto
+    specificEvents = specificEvents.filter(e => e.id !== 'gym_start_evt' && e.id !== 'gym_end_evt');
     
-    // Aggiunge i nuovi come puntini
-    if (start) events.push({ id: 'gym_start_evt', date: start, title: 'Inizio Scheda', category: 'Health', color: '#5f7a61' });
-    if (end) events.push({ id: 'gym_end_evt', date: end, title: 'Scadenza Scheda', category: 'Health', color: '#ff6666' });
+    if (gymStartDate) specificEvents.push({ id: 'gym_start_evt', date: gymStartDate, title: 'Inizio Scheda', category: 'Health', color: '#5f7a61' });
+    if (gymEndDate) specificEvents.push({ id: 'gym_end_evt', date: gymEndDate, title: 'Scadenza Scheda', category: 'Health', color: '#ff6666' });
     
-    localStorage.setItem('tracker_events', JSON.stringify(events));
+    saveData();
     
-    // Aggiorna i render esterni se le funzioni esistono nello scope globale
     if (typeof renderCalendar === 'function') renderCalendar();
     if (typeof renderTasks === 'function') renderTasks();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }

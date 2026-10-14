@@ -1,27 +1,27 @@
 :root {
-    --bg-opacity: 1; /* Niente più effetto vetro morbido */
-    --bg-main: #000000; /* Nero assoluto */
+    --bg-opacity: 0.92;
+    --bg-main: #000000;
     --bg-sec: #0a0a0a;
     --text-main: #ffffff;
-    --text-dim: #777777; /* Grigio leggermente più chiaro per contrasto */
-    --border-color: #333333; /* Bordo solido senza trasparenze */
+    --text-dim: #777777;
+    --border-color: #333333;
 }
 
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    border-radius: 0 !important; /* Zero rotondità, brutale e squadrato */
+    border-radius: 0 !important;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
 }
 
 body {
-    background-color: var(--bg-main);
+    background-color: rgba(0, 0, 0, var(--bg-opacity));
     color: var(--text-main);
     display: flex;
     height: 100vh;
     overflow: hidden;
-    font-size: 13px; /* Leggermente più piccolo per stile terminale */
+    font-size: 13px;
     letter-spacing: -0.2px;
 }
 

@@ -1,65 +1,141 @@
-// --- 1. DATA MANAGEMENT & GLOBALS ---
+// --- 1. DATA MANAGEMENT, MIGRATION & GLOBALS ---
 
-function initData() {
-    if (!localStorage.getItem('tracker_templates')) {
-        localStorage.setItem('tracker_templates', JSON.stringify([]));
+// Funzione di migrazione: unisce i vecchi "cassetti" duplicati senza perdere dati
+function migrateAndInitData() {
+    // 1. Unificazione Categorie Note (tracker_note_categories -> tracker_note_cats)
+    const oldCats = localStorage.getItem('tracker_note_categories');
+    const currentCats = localStorage.getItem('tracker_note_cats');
+    if (oldCats) {
+        if (!currentCats) {
+            localStorage.setItem('tracker_note_cats', oldCats);
+        } else {
+            const parsedOld = JSON.parse(oldCats) || [];
+            const parsedCur = JSON.parse(currentCats) || [];
+            const mergedCats = Array.from(new Set([...parsedCur, ...parsedOld]));
+            localStorage.setItem('tracker_note_cats', JSON.stringify(mergedCats));
+        }
+        localStorage.removeItem('tracker_note_categories');
     }
-    if (!localStorage.getItem('tracker_logs')) {
-        localStorage.setItem('tracker_logs', JSON.stringify({}));
+
+    // 2. Unificazione Contenuto Note (tracker_notes_content -> tracker_notes)
+    const oldNotes = localStorage.getItem('tracker_notes_content');
+    const currentNotes = localStorage.getItem('tracker_notes');
+    if (oldNotes) {
+        const parsedOld = JSON.parse(oldNotes) || {};
+        const parsedCur = currentNotes ? (JSON.parse(currentNotes) || {}) : {};
+        for (let cat in parsedOld) {
+            if (!parsedCur[cat]) {
+                parsedCur[cat] = parsedOld[cat];
+            } else if (parsedCur[cat] !== parsedOld[cat] && !parsedCur[cat].includes(parsedOld[cat])) {
+                parsedCur[cat] = parsedOld[cat] + "\n\n" + parsedCur[cat];
+            }
+        }
+        localStorage.setItem('tracker_notes', JSON.stringify(parsedCur));
+        localStorage.removeItem('tracker_notes_content');
     }
-    if (!localStorage.getItem('tracker_events')) {
-        localStorage.setItem('tracker_events', JSON.stringify([]));
-    }
-    if (!localStorage.getItem('tracker_note_cats')) {
-        localStorage.setItem('tracker_note_cats', JSON.stringify(["General", "Productivity", "Math", "Ideas"]));
-    }
-    if (!localStorage.getItem('tracker_category_order')) {
-        localStorage.setItem('tracker_category_order', JSON.stringify([]));
-    }
-    if (!localStorage.getItem('tracker_references')) {
-        localStorage.setItem('tracker_references', JSON.stringify([]));
-    }
-    if (!localStorage.getItem('ref_toggles')) {
-        localStorage.setItem('ref_toggles', JSON.stringify({}));
-    }
-    if (!localStorage.getItem('tracker_ephemeral')) {
-        localStorage.setItem('tracker_ephemeral', JSON.stringify({}));
-    }
-    if (!localStorage.getItem('tracker_journal')) {
-        localStorage.setItem('tracker_journal', JSON.stringify({}));
+
+    // 3. Inizializzazione valori di default per tutte le chiavi dell'app
+    const defaults = {
+        'tracker_templates': [],
+        'tracker_logs': {},
+        'tracker_events': [],
+        'tracker_note_cats': ["General", "Productivity", "Math", "Ideas"],
+        'tracker_notes': {},
+        'tracker_category_order': [],
+        'tracker_references': [],
+        'ref_toggles': {},
+        'tracker_ephemeral': {},
+        'tracker_journal': {},
+        'tracker_general_todo': [],
+        'tracker_planner_exceptions': {},
+        'm_balance': 0.0,
+        'm_trans': [],
+        'm_rec': [],
+        'm_wish': [],
+        'tracker_gym_next': 1,
+        'tracker_gym_weights': {},
+        'gym_start_date': "",
+        'gym_end_date': "",
+        'tracker_opacity': "0.92",
+        'tracker_mod_left': "daily",
+        'tracker_mod_right': "planner",
+        'tracker_pane_left_width': "50%"
+    };
+
+    for (let key in defaults) {
+        if (localStorage.getItem(key) === null) {
+            const val = typeof defaults[key] === 'string' ? defaults[key] : JSON.stringify(defaults[key]);
+            localStorage.setItem(key, val);
+        }
     }
 }
 
-initData();
+migrateAndInitData();
 
-// Global State Arrays
+// --- STATO GLOBALE UNIFICATO ---
+// Daily, Planner & Notes
 let templates = JSON.parse(localStorage.getItem('tracker_templates')) || [];
 let logs = JSON.parse(localStorage.getItem('tracker_logs')) || {};
 let specificEvents = JSON.parse(localStorage.getItem('tracker_events')) || [];
-let noteCategories = JSON.parse(localStorage.getItem('tracker_note_cats')) || [];
+let noteCategories = JSON.parse(localStorage.getItem('tracker_note_cats')) || ["General"];
+let notesContent = JSON.parse(localStorage.getItem('tracker_notes')) || {};
+let journals = JSON.parse(localStorage.getItem('tracker_journal')) || {};
 let categoryOrder = JSON.parse(localStorage.getItem('tracker_category_order')) || [];
 let referenceLayers = JSON.parse(localStorage.getItem('tracker_references')) || [];
 let refToggles = JSON.parse(localStorage.getItem('ref_toggles')) || {};
 let ephemeralData = JSON.parse(localStorage.getItem('tracker_ephemeral')) || {};
-
-if (!localStorage.getItem('tracker_general_todo')) {
-    localStorage.setItem('tracker_general_todo', JSON.stringify([]));
-}
 let generalTodos = JSON.parse(localStorage.getItem('tracker_general_todo')) || [];
-let selectedTodos = new Set(); // Variabile temporanea, non si salva su disco
+let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
+let selectedTodos = new Set();
 
-// Modifica la funzione saveData() esistente per includere il nuovo array:
+// Money
+let mBalance = parseFloat(localStorage.getItem('m_balance')) || 0.0;
+let mTransactions = JSON.parse(localStorage.getItem('m_trans')) || [];
+let mRecurring = JSON.parse(localStorage.getItem('m_rec')) || [];
+let mWishlist = JSON.parse(localStorage.getItem('m_wish')) || [];
+
+// Health
+let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next'), 10) || 1;
+let savedGymWeights = JSON.parse(localStorage.getItem('tracker_gym_weights')) || {};
+let gymStartDate = localStorage.getItem('gym_start_date') || "";
+let gymEndDate = localStorage.getItem('gym_end_date') || "";
+
+// Layout & UI
+let activeLeft = localStorage.getItem('tracker_mod_left') || 'daily';
+let activeRight = localStorage.getItem('tracker_mod_right') || 'planner';
+let savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
+
+// --- FUNZIONI DI SALVATAGGIO CENTRALIZZATE ---
 function saveData() {
     localStorage.setItem('tracker_templates', JSON.stringify(templates));
     localStorage.setItem('tracker_logs', JSON.stringify(logs));
     localStorage.setItem('tracker_events', JSON.stringify(specificEvents));
+    localStorage.setItem('tracker_note_cats', JSON.stringify(noteCategories));
+    localStorage.setItem('tracker_notes', JSON.stringify(notesContent));
+    localStorage.setItem('tracker_journal', JSON.stringify(journals));
     localStorage.setItem('tracker_category_order', JSON.stringify(categoryOrder));
     localStorage.setItem('tracker_references', JSON.stringify(referenceLayers));
     localStorage.setItem('ref_toggles', JSON.stringify(refToggles));
     localStorage.setItem('tracker_ephemeral', JSON.stringify(ephemeralData));
-    localStorage.setItem('tracker_general_todo', JSON.stringify(generalTodos)); 
+    localStorage.setItem('tracker_general_todo', JSON.stringify(generalTodos));
+    localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
 }
 
+function saveMoneyData() {
+    localStorage.setItem('m_balance', mBalance.toString());
+    localStorage.setItem('m_trans', JSON.stringify(mTransactions));
+    localStorage.setItem('m_rec', JSON.stringify(mRecurring));
+    localStorage.setItem('m_wish', JSON.stringify(mWishlist));
+}
+
+function saveHealthData() {
+    localStorage.setItem('tracker_gym_next', nextWorkoutDay.toString());
+    localStorage.setItem('tracker_gym_weights', JSON.stringify(savedGymWeights));
+    localStorage.setItem('gym_start_date', gymStartDate);
+    localStorage.setItem('gym_end_date', gymEndDate);
+}
+
+// --- GESTIONE DATE E CALCOLO STATISTICHE ---
 function getNow() { 
     return new Date(); 
 }
@@ -80,18 +156,14 @@ const tomorrowStr = formatDate(tomorrowObj);
 
 let selectedDateStr = todayStr;
 let currentCalendarDate = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1);
-let currentDailyTab = 'today';
-let dragStartH = null;
 
 function syncCategoryOrder() {
     const existingCats = new Set(templates.map(t => t.category));
-    
     existingCats.forEach(c => { 
         if (!categoryOrder.includes(c)) {
             categoryOrder.push(c);
         }
     });
-    
     categoryOrder = categoryOrder.filter(c => existingCats.has(c));
     localStorage.setItem('tracker_category_order', JSON.stringify(categoryOrder));
 }
@@ -99,45 +171,26 @@ function syncCategoryOrder() {
 syncCategoryOrder();
 
 function isTaskActiveOnDate(template, dateStr) {
-    if (template.exceptions && template.exceptions.includes(dateStr)) {
-        return false;
-    }
-    if (dateStr < template.startDate) {
-        return false;
-    }
-    if (template.endDate && dateStr > template.endDate) {
-        return false;
-    }
+    if (template.exceptions && template.exceptions.includes(dateStr)) return false;
+    if (dateStr < template.startDate) return false;
+    if (template.endDate && dateStr > template.endDate) return false;
     
     const dateObj = new Date(dateStr); 
     const dayOfWeek = dateObj.getDay();
     
     if (template.type === 'timed' || (template.timeWindows && template.timeWindows.length > 0)) {
-        let inTimeWindowDays = false;
-        
         if (template.timeWindows && template.timeWindows.length > 0) {
             for (let tw of template.timeWindows) {
-                if (tw.days && tw.days.includes(dayOfWeek)) { 
-                    inTimeWindowDays = true; 
-                    break; 
-                }
+                if (tw.days && tw.days.includes(dayOfWeek)) return true;
             }
         }
-        return inTimeWindowDays;
+        return false;
     }
     
-    if (template.frequency === 'all') {
-        return true;
-    }
-    if (template.frequency === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) {
-        return true;
-    }
-    if (template.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) {
-        return true;
-    }
-    if (template.frequency === 'specific' && template.daysOfWeek && template.daysOfWeek.includes(dayOfWeek)) {
-        return true;
-    }
+    if (template.frequency === 'all') return true;
+    if (template.frequency === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) return true;
+    if (template.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) return true;
+    if (template.frequency === 'specific' && template.daysOfWeek && template.daysOfWeek.includes(dayOfWeek)) return true;
     
     return false;
 }
@@ -151,7 +204,6 @@ function getStatsForDate(dateStr) {
         if (isTaskActiveOnDate(t, dateStr)) {
             total += t.instances; 
             activeCategories.add(t.category);
-            
             if (logs[dateStr] && logs[dateStr][t.id]) {
                 completed += logs[dateStr][t.id].filter(Boolean).length;
             }
@@ -165,27 +217,30 @@ function getStatsForDate(dateStr) {
     };
 }
 
-// --- BACKUP & RESTORE (OFFLINE JSON) ---
+// --- BACKUP & RESTORE COMPLETO (TUTTI I MODULI) ---
+const ALL_STORAGE_KEYS = [
+    'tracker_templates', 'tracker_logs', 'tracker_events',
+    'tracker_note_cats', 'tracker_notes', 'tracker_journal',
+    'tracker_category_order', 'tracker_references', 'ref_toggles',
+    'tracker_ephemeral', 'tracker_general_todo', 'tracker_planner_exceptions',
+    'm_balance', 'm_trans', 'm_rec', 'm_wish',
+    'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
+    'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
+];
 
 function exportData() {
-    const backup = {
-        tracker_templates: localStorage.getItem('tracker_templates'),
-        tracker_logs: localStorage.getItem('tracker_logs'),
-        tracker_events: localStorage.getItem('tracker_events'),
-        tracker_note_cats: localStorage.getItem('tracker_note_cats'),
-        tracker_category_order: localStorage.getItem('tracker_category_order'),
-        tracker_references: localStorage.getItem('tracker_references'),
-        ref_toggles: localStorage.getItem('ref_toggles'),
-        tracker_ephemeral: localStorage.getItem('tracker_ephemeral'),
-        tracker_journal: localStorage.getItem('tracker_journal'),
-        tracker_opacity: localStorage.getItem('tracker_opacity')
-    };
+    saveData();
+    saveMoneyData();
+    saveHealthData();
 
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup));
+    const backup = {};
+    ALL_STORAGE_KEYS.forEach(key => {
+        backup[key] = localStorage.getItem(key);
+    });
+
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);
-    
-    // Nomi dei file dinamici: es. minimal_backup_2026-09-18.json
     downloadAnchorNode.setAttribute("download", "minimal_backup_" + formatDate(new Date()) + ".json");
     
     document.body.appendChild(downloadAnchorNode); 
@@ -201,17 +256,13 @@ function importData(event) {
     reader.onload = function(e) {
         try {
             const data = JSON.parse(e.target.result);
-            
-            // Controlla e ripristina ogni chiave
             for (let key in data) {
                 if (data[key] !== null && data[key] !== undefined) {
                     localStorage.setItem(key, data[key]);
                 }
             }
-            
             alert("Backup restored successfully! The app will now reload.");
-            location.reload(); // Forza il riavvio per caricare i nuovi dati
-            
+            location.reload();
         } catch (err) {
             alert("Error reading backup file. Make sure it's a valid JSON from this app.");
         }

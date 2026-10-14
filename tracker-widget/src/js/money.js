@@ -1,16 +1,3 @@
-// --- DATI MONEY ---
-let mBalance = parseFloat(localStorage.getItem('m_balance')) || 0.0;
-let mTransactions = JSON.parse(localStorage.getItem('m_trans')) || [];
-let mRecurring = JSON.parse(localStorage.getItem('m_rec')) || [];
-let mWishlist = JSON.parse(localStorage.getItem('m_wish')) || [];
-
-function saveMoneyData() {
-    localStorage.setItem('m_balance', mBalance.toString());
-    localStorage.setItem('m_trans', JSON.stringify(mTransactions));
-    localStorage.setItem('m_rec', JSON.stringify(mRecurring));
-    localStorage.setItem('m_wish', JSON.stringify(mWishlist));
-}
-
 // --- AUTOMAZIONE PAGAMENTI RICORRENTI ALL'AVVIO ---
 function processRecurringPayments() {
     const today = getNow();

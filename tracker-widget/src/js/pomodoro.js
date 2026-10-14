@@ -308,11 +308,12 @@ function saveFocusNote() {
     const cat = document.getElementById('focus-note-category').value; 
     const textEl = document.getElementById('focus-note-text'); 
     const text = textEl.value.trim(); 
-    if (!text) return;
+    if (!text || !cat) return;
     
     if (!notesContent[cat]) notesContent[cat] = "";
     notesContent[cat] += (notesContent[cat] === "" ? "" : "\n\n") + text;
-    localStorage.setItem('tracker_notes', JSON.stringify(notesContent));
+    saveData();
+    if (typeof refreshNotesView === 'function') refreshNotesView();
     
     textEl.value = ''; 
     textEl.placeholder = "✓ Idea saved!"; 
