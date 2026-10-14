@@ -1,8 +1,9 @@
-// --- 4. RENDER & UI UPDATES ---
+// --- 4. RENDER & UI UPDATES (SAFE DOM & FRAGMENTS) ---
 
 let plannerZoom = 40;
 
 function hexToRgba(hex, alpha) {
+    if (!hex || typeof hex !== 'string' || hex.length < 7) return `rgba(255, 255, 255, ${alpha})`;
     let r = parseInt(hex.slice(1, 3), 16),
         g = parseInt(hex.slice(3, 5), 16),
         b = parseInt(hex.slice(5, 7), 16);
@@ -12,7 +13,7 @@ function hexToRgba(hex, alpha) {
 function showTooltip(e, title, timeStr, category) {
     const tooltip = document.getElementById('planner-tooltip');
     if (!tooltip) return;
-    tooltip.innerHTML = `<strong style="display:block; margin-bottom:4px; font-size:0.85rem;">${title}</strong><span style="color:#aaa;">${timeStr}</span><br><span style="color:#888; margin-top:2px; display:inline-block;">${category}</span>`;
+    tooltip.innerHTML = `<strong style="display:block; margin-bottom:4px; font-size:0.85rem;">${escapeHtml(title)}</strong><span style="color:#aaa;">${escapeHtml(timeStr)}</span><br><span style="color:#888; margin-top:2px; display:inline-block;">${escapeHtml(category)}</span>`;
     tooltip.style.display = 'block';
     tooltip.style.left = (e.clientX + 15) + 'px';
     tooltip.style.top = (e.clientY + 15) + 'px';
@@ -73,13 +74,13 @@ function moveCategory(catName, direction) {
 
 function renderManager() {
     const container = document.getElementById('manager-list'); 
+    if (!container) return;
     container.innerHTML = ''; 
+    const frag = document.createDocumentFragment();
     const cats = {};
     
     templates.forEach(t => { 
-        if (!cats[t.category]) {
-            cats[t.category] = []; 
-        }
+        if (!cats[t.category]) cats[t.category] = []; 
         cats[t.category].push(t); 
     }); 
     
@@ -88,47 +89,109 @@ function renderManager() {
     categoryOrder.forEach(cat => {
         if (!cats[cat]) return; 
         
-        let html = `
-            <div class="manager-category">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div style="display:flex; align-items:center; gap: 10px;">
-                        <div style="display:flex; flex-direction:column; gap:2px;">
-                            <button class="icon-btn reorder" onclick="moveCategory('${cat}', -1)">▲</button>
-                            <button class="icon-btn reorder" onclick="moveCategory('${cat}', 1)">▼</button>
-                        </div>
-                        <h3 style="margin:0; border:none; padding:0;">${cat}</h3>
-                    </div>
-                    <div class="action-btns" style="display:flex; margin-bottom:10px;">
-                        <button class="icon-btn" onclick="openRenameModal('${cat}')">✎</button>
-                        <button class="icon-btn delete" onclick="deleteCategory('${cat}')">×</button>
-                    </div>
-                </div>
-                <div style="border-top: 1px solid #333; margin-top: 5px; padding-top: 10px;">
-        `;
-        
-        cats[cat].forEach(t => { 
-            html += `
-                <div class="manager-task">
-                    <span>${t.title} (${t.instances}x)</span>
-                    <div class="action-btns" style="display:flex;">
-                        <button class="icon-btn" onclick="editTask('${t.id}')">✎</button>
-                        <button class="icon-btn delete" onclick="deleteTask('${t.id}')">×</button>
-                    </div>
-                </div>
-            `; 
+        const catDiv = document.createElement('div');
+        catDiv.className = 'manager-category';
+
+        const headerRow = document.createElement('div');
+        headerRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+
+        const leftPart = document.createElement('div');
+        leftPart.style.cssText = 'display:flex; align-items:center; gap: 10px;';
+
+        const arrowsCol = document.createElement('div');
+        arrowsCol.style.cssText = 'display:flex; flex-direction:column; gap:2px;';
+
+        const btnUp = document.createElement('button');
+        btnUp.className = 'icon-btn reorder';
+        btnUp.textContent = '▲';
+        btnUp.onclick = () => moveCategory(cat, -1);
+
+        const btnDown = document.createElement('button');
+        btnDown.className = 'icon-btn reorder';
+        btnDown.textContent = '▼';
+        btnDown.onclick = () => moveCategory(cat, 1);
+
+        arrowsCol.appendChild(btnUp);
+        arrowsCol.appendChild(btnDown);
+
+        const titleEl = document.createElement('h3');
+        titleEl.style.cssText = 'margin:0; border:none; padding:0;';
+        titleEl.textContent = cat;
+
+        leftPart.appendChild(arrowsCol);
+        leftPart.appendChild(titleEl);
+
+        const rightActions = document.createElement('div');
+        rightActions.className = 'action-btns';
+        rightActions.style.cssText = 'display:flex; margin-bottom:10px;';
+
+        const btnRename = document.createElement('button');
+        btnRename.className = 'icon-btn';
+        btnRename.textContent = '✎';
+        btnRename.onclick = () => openRenameModal(cat);
+
+        const btnDelCat = document.createElement('button');
+        btnDelCat.className = 'icon-btn delete';
+        btnDelCat.textContent = '×';
+        btnDelCat.onclick = () => deleteCategory(cat);
+
+        rightActions.appendChild(btnRename);
+        rightActions.appendChild(btnDelCat);
+
+        headerRow.appendChild(leftPart);
+        headerRow.appendChild(rightActions);
+        catDiv.appendChild(headerRow);
+
+        const tasksWrap = document.createElement('div');
+        tasksWrap.style.cssText = 'border-top: 1px solid #333; margin-top: 5px; padding-top: 10px;';
+
+        cats[cat].forEach(t => {
+            const taskRow = document.createElement('div');
+            taskRow.className = 'manager-task';
+
+            const spanTitle = document.createElement('span');
+            spanTitle.textContent = `${t.title} (${t.instances || 1}x)`;
+
+            const taskActions = document.createElement('div');
+            taskActions.className = 'action-btns';
+            taskActions.style.display = 'flex';
+
+            const btnEdit = document.createElement('button');
+            btnEdit.className = 'icon-btn';
+            btnEdit.textContent = '✎';
+            btnEdit.onclick = () => editTask(t.id);
+
+            const btnDel = document.createElement('button');
+            btnDel.className = 'icon-btn delete';
+            btnDel.textContent = '×';
+            btnDel.onclick = () => deleteTask(t.id);
+
+            taskActions.appendChild(btnEdit);
+            taskActions.appendChild(btnDel);
+
+            taskRow.appendChild(spanTitle);
+            taskRow.appendChild(taskActions);
+            tasksWrap.appendChild(taskRow);
         });
-        
-        html += `
-                    <div class="quick-add-task">
-                        <span>+</span>
-                        <input type="text" placeholder="Add task to ${cat}..." onkeypress="quickAddTask(event, '${cat}')">
-                    </div>
-                </div>
-            </div>
-        `; 
-        
-        container.innerHTML += html;
+
+        const quickAddDiv = document.createElement('div');
+        quickAddDiv.className = 'quick-add-task';
+        const plusSpan = document.createElement('span');
+        plusSpan.textContent = '+';
+        const inputQuick = document.createElement('input');
+        inputQuick.type = 'text';
+        inputQuick.placeholder = `Add task to ${cat}...`;
+        inputQuick.onkeypress = (e) => quickAddTask(e, cat);
+
+        quickAddDiv.appendChild(plusSpan);
+        quickAddDiv.appendChild(inputQuick);
+        tasksWrap.appendChild(quickAddDiv);
+
+        catDiv.appendChild(tasksWrap);
+        frag.appendChild(catDiv);
     });
+
+    container.appendChild(frag);
 }
 
 function renderTasks() {
@@ -139,6 +202,8 @@ function renderTasks() {
     
     schedContainer.innerHTML = ''; 
     flexContainer.innerHTML = ''; 
+    const schedFrag = document.createDocumentFragment();
+    const flexFrag = document.createDocumentFragment();
     let hasAnyTasks = false;
     
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
@@ -150,18 +215,34 @@ function renderTasks() {
         eventGroup.innerHTML = `<div class="category-header-wrap" style="border-bottom-color: #333;"><div class="category-title" style="color: #888;">Events</div></div>`;
         
         dayEvents.forEach(e => { 
-            eventGroup.innerHTML += `
-                <div class="task-item" style="border-left: 4px solid ${e.color}; padding-left: 15px;">
-                    <div class="task-left">
-                        <div class="task-title" style="color: ${e.color}; font-weight: bold;">${e.title}</div>
-                        <div class="action-btns" style="display:flex;">
-                            <button class="icon-btn delete" onclick="deleteEvent('${e.id}')">×</button>
-                        </div>
-                    </div>
-                </div>
-            `; 
+            const item = document.createElement('div');
+            item.className = 'task-item';
+            item.style.cssText = `border-left: 4px solid ${e.color}; padding-left: 15px;`;
+
+            const left = document.createElement('div');
+            left.className = 'task-left';
+
+            const title = document.createElement('div');
+            title.className = 'task-title';
+            title.style.cssText = `color: ${e.color}; font-weight: bold;`;
+            title.textContent = e.title;
+
+            const actions = document.createElement('div');
+            actions.className = 'action-btns';
+            actions.style.display = 'flex';
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'icon-btn delete';
+            delBtn.textContent = '×';
+            delBtn.onclick = () => deleteEvent(e.id);
+
+            actions.appendChild(delBtn);
+            left.appendChild(title);
+            left.appendChild(actions);
+            item.appendChild(left);
+            eventGroup.appendChild(item);
         }); 
-        schedContainer.appendChild(eventGroup);
+        schedFrag.appendChild(eventGroup);
     }
     
     syncCategoryOrder();
@@ -178,42 +259,75 @@ function renderTasks() {
             const createGroup = (tasks) => {
                 const groupDiv = document.createElement('div'); 
                 groupDiv.className = 'category-group'; 
-                groupDiv.innerHTML = `<div class="category-header-wrap"><div class="category-title">${cat}</div></div>`;
+                
+                const headerWrap = document.createElement('div');
+                headerWrap.className = 'category-header-wrap';
+                const catTitle = document.createElement('div');
+                catTitle.className = 'category-title';
+                catTitle.textContent = cat;
+                headerWrap.appendChild(catTitle);
+                groupDiv.appendChild(headerWrap);
                 
                 tasks.forEach(t => {
                     const taskItem = document.createElement('div'); 
                     taskItem.className = 'task-item'; 
-                    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false);
+                    const instancesCount = t.instances || 1;
+                    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(instancesCount).fill(false);
                     
-                    let checkboxesHTML = ''; 
-                    for (let i = 0; i < t.instances; i++) {
-                        checkboxesHTML += `<div class="check-box ${currentLog[i] ? 'checked' : ''}" onclick="toggleTask('${t.id}', ${i})"></div>`;
+                    const leftDiv = document.createElement('div');
+                    leftDiv.className = 'task-left';
+                    const titleDiv = document.createElement('div');
+                    titleDiv.className = 'task-title';
+                    titleDiv.textContent = t.title;
+                    leftDiv.appendChild(titleDiv);
+
+                    const instContainer = document.createElement('div');
+                    instContainer.className = 'instances-container';
+
+                    for (let i = 0; i < instancesCount; i++) {
+                        const cb = document.createElement('div');
+                        cb.className = `check-box ${currentLog[i] ? 'checked' : ''}`;
+                        cb.onclick = () => toggleTask(t.id, i);
+                        instContainer.appendChild(cb);
                     }
                     
-                    taskItem.innerHTML = `<div class="task-left"><div class="task-title">${t.title}</div></div><div class="instances-container">${checkboxesHTML}</div>`; 
+                    taskItem.appendChild(leftDiv);
+                    taskItem.appendChild(instContainer);
                     groupDiv.appendChild(taskItem);
                 }); 
                 return groupDiv;
             };
 
-            if (schedTasks.length > 0) schedContainer.appendChild(createGroup(schedTasks));
-            if (flexTasks.length > 0) flexContainer.appendChild(createGroup(flexTasks));
+            if (schedTasks.length > 0) schedFrag.appendChild(createGroup(schedTasks));
+            if (flexTasks.length > 0) flexFrag.appendChild(createGroup(flexTasks));
         }
     });
     
     if (!hasAnyTasks) {
         schedContainer.innerHTML = `<div class="empty-state"></div>`;
         flexContainer.innerHTML = `<div class="empty-state"></div>`;
+    } else {
+        schedContainer.appendChild(schedFrag);
+        flexContainer.appendChild(flexFrag);
     }
 }
 
 function renderCalendar() {
     const grid = document.getElementById('calendar-grid'); 
+    if (!grid) return;
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     
     document.getElementById('calendar-month-name').innerText = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
     
-    grid.innerHTML = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map(d => `<div class="day-label">${d}</div>`).join('');
+    grid.innerHTML = '';
+    const frag = document.createDocumentFragment();
+
+    ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].forEach(d => {
+        const lbl = document.createElement('div');
+        lbl.className = 'day-label';
+        lbl.textContent = d;
+        frag.appendChild(lbl);
+    });
 
     const firstDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth(), 1); 
     const lastDay = new Date(currentCalendarDate.getFullYear(), currentCalendarDate.getMonth() + 1, 0);
@@ -221,7 +335,7 @@ function renderCalendar() {
     let startOffset = firstDay.getDay() === 0 ? 6 : firstDay.getDay() - 1;
     
     for (let i = 0; i < startOffset; i++) {
-        grid.innerHTML += `<div></div>`; 
+        frag.appendChild(document.createElement('div')); 
     }
     
     for (let i = 1; i <= lastDay.getDate(); i++) {
@@ -234,22 +348,28 @@ function renderCalendar() {
         if (cellDateStr === todayStr) dayCell.classList.add('today'); 
         if (cellDateStr === selectedDateStr) dayCell.classList.add('selected'); 
         
-        dayCell.innerText = i;
+        dayCell.textContent = i;
         
-        let barsHTML = ''; 
-        dayEvents.forEach(e => {
-            barsHTML += `<div class="bar" style="background-color: ${e.color}; width: 6px; height: 6px;"></div>`;
-        });
-        
-        if (barsHTML !== '') {
-            dayCell.innerHTML += `<div class="bars-container" style="gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 4px;">${barsHTML}</div>`;
+        if (dayEvents.length > 0) {
+            const barsContainer = document.createElement('div');
+            barsContainer.className = 'bars-container';
+            barsContainer.style.cssText = 'gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 4px;';
+            dayEvents.forEach(e => {
+                const bar = document.createElement('div');
+                bar.className = 'bar';
+                bar.style.cssText = `background-color: ${e.color}; width: 6px; height: 6px;`;
+                barsContainer.appendChild(bar);
+            });
+            dayCell.appendChild(barsContainer);
         }
         
         dayCell.onclick = () => selectDate(cellDateStr); 
         dayCell.ondblclick = () => openJournal(cellDateStr); 
         
-        grid.appendChild(dayCell);
+        frag.appendChild(dayCell);
     }
+
+    grid.appendChild(frag);
 }
 
 function changeMonth(dir) {
@@ -260,13 +380,17 @@ function changeMonth(dir) {
 function renderTracker() {
     const tracker2D = document.getElementById('github-tracker'); 
     const strip1D = document.getElementById('tracker-strip-1d');
+    if (!tracker2D || !strip1D) return;
     
     tracker2D.innerHTML = ''; 
     strip1D.innerHTML = '';
+
+    const frag2D = document.createDocumentFragment();
+    const frag1D = document.createDocumentFragment();
     
     let earliestDate = todayStr; 
     templates.forEach(t => { 
-        if (t.startDate < earliestDate) earliestDate = t.startDate; 
+        if (t.startDate && t.startDate < earliestDate) earliestDate = t.startDate; 
     });
     
     const start = new Date(earliestDate); 
@@ -298,7 +422,7 @@ function renderTracker() {
         } 
         
         cell.classList.add(lvlClass); 
-        tracker2D.appendChild(cell);
+        frag2D.appendChild(cell);
     }
 
     const daysToRender1D = Math.min(45, diffDays + 1); 
@@ -327,8 +451,11 @@ function renderTracker() {
         } 
         
         cell.classList.add(lvlClass); 
-        strip1D.appendChild(cell);
+        frag1D.appendChild(cell);
     }
+
+    tracker2D.appendChild(frag2D);
+    strip1D.appendChild(frag1D);
 }
 
 function getWeekStart(dateStr) { 
@@ -357,15 +484,32 @@ function renderWeeklyPlanner() {
         sidebar.innerHTML = ''; 
         referenceLayers.forEach(ref => {
             if (!ref || !ref.id) return; 
-            const isChecked = refToggles[ref.id] ? 'checked' : '';
-            sidebar.innerHTML += `
-                <div class="ref-toggle-wrap" style="border-left: 2px solid ${ref.color}; margin-bottom: 5px;">
-                    <label style="display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 5px; flex: 1;">
-                        <input type="checkbox" onchange="toggleReference('${ref.id}', this.checked)" ${isChecked}> ${ref.title}
-                    </label>
-                    <button class="ref-del-btn" onclick="deleteReference('${ref.id}')">×</button>
-                </div>
-            `;
+            const wrap = document.createElement('div');
+            wrap.className = 'ref-toggle-wrap';
+            wrap.style.cssText = `border-left: 2px solid ${ref.color}; margin-bottom: 5px;`;
+
+            const lbl = document.createElement('label');
+            lbl.style.cssText = 'display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 5px; flex: 1;';
+
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.checked = !!refToggles[ref.id];
+            cb.onchange = () => toggleReference(ref.id, cb.checked);
+
+            const spanTxt = document.createElement('span');
+            spanTxt.textContent = ref.title;
+
+            lbl.appendChild(cb);
+            lbl.appendChild(spanTxt);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'ref-del-btn';
+            delBtn.textContent = '×';
+            delBtn.onclick = () => deleteReference(ref.id);
+
+            wrap.appendChild(lbl);
+            wrap.appendChild(delBtn);
+            sidebar.appendChild(wrap);
         });
 
         const startHour = 7; 
@@ -374,8 +518,12 @@ function renderWeeklyPlanner() {
         timeLabels.innerHTML = ''; 
         timeLabels.style.height = `${totalGridHeight}px`;
         
-        for (let h = startHour; h <= 24; h++) {
-            if (h < 24) timeLabels.innerHTML += `<div class="time-label" style="top: ${(h - startHour) * plannerZoom}px;">${h.toString().padStart(2, '0')}:00</div>`;
+        for (let h = startHour; h < 24; h++) {
+            const tl = document.createElement('div');
+            tl.className = 'time-label';
+            tl.style.top = `${(h - startHour) * plannerZoom}px`;
+            tl.textContent = `${h.toString().padStart(2, '0')}:00`;
+            timeLabels.appendChild(tl);
         }
 
         headerRow.innerHTML = ''; 
@@ -412,17 +560,28 @@ function renderWeeklyPlanner() {
                 let flexibleCategories = new Set();
                 
                 specificEvents.forEach(e => { 
-                    if (e && e.date === loopDateStr) dropZone.innerHTML += `<div class="flexible-task-badge" style="border-left: 2px solid ${e.color};">★ ${e.title}</div>`; 
+                    if (e && e.date === loopDateStr) {
+                        const badge = document.createElement('div');
+                        badge.className = 'flexible-task-badge';
+                        badge.style.borderLeft = `2px solid ${e.color}`;
+                        badge.textContent = `★ ${e.title}`;
+                        dropZone.appendChild(badge);
+                    }
                 });
                 
                 templates.forEach(t => { 
                     if (t && isTaskActiveOnDate(t, loopDateStr)) {
-                        if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) flexibleCategories.add(t.category); 
+                        if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) {
+                            flexibleCategories.add(t.category);
+                        }
                     }
                 }); 
                 
                 flexibleCategories.forEach(cat => {
-                    dropZone.innerHTML += `<div class="flexible-task-badge">${cat}</div>`;
+                    const badge = document.createElement('div');
+                    badge.className = 'flexible-task-badge';
+                    badge.textContent = cat;
+                    dropZone.appendChild(badge);
                 }); 
                 
                 drawerDaysRow.appendChild(dropZone);
@@ -437,7 +596,10 @@ function renderWeeklyPlanner() {
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
             
             for (let h = startHour; h <= 24; h++) {
-                dayCol.innerHTML += `<div class="grid-line-abs" style="top: ${(h - startHour) * plannerZoom}px;"></div>`;
+                const line = document.createElement('div');
+                line.className = 'grid-line-abs';
+                line.style.top = `${(h - startHour) * plannerZoom}px`;
+                dayCol.appendChild(line);
             }
 
             referenceLayers.forEach(ref => {
@@ -446,7 +608,15 @@ function renderWeeklyPlanner() {
                         if (tw.days && tw.days.includes(jsDay)) {
                             const top = timeToPx(tw.start); 
                             const height = Math.max(timeToPx(tw.end) - top, 15);
-                            if (top + height > 0) dayCol.innerHTML += `<div class="block-absolute block-ref" style="top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)};" onmouseenter="showTooltip(event, '${ref.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', 'Ghost Layer')" onmousemove="moveTooltip(event)" onmouseleave="hideTooltip()"></div>`;
+                            if (top + height > 0) {
+                                const block = document.createElement('div');
+                                block.className = 'block-absolute block-ref';
+                                block.style.cssText = `top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)};`;
+                                block.onmouseenter = (ev) => showTooltip(ev, ref.title, `${tw.start} - ${tw.end}`, 'Ghost Layer');
+                                block.onmousemove = moveTooltip;
+                                block.onmouseleave = hideTooltip;
+                                dayCol.appendChild(block);
+                            }
                         }
                     });
                 }
@@ -461,11 +631,18 @@ function renderWeeklyPlanner() {
                             const top = timeToPx(tw.start); 
                             const height = Math.max(timeToPx(tw.end) - top, 15);
                             if (top + height > 0) {
-                                dayCol.innerHTML += `<div class="block-absolute block-task" style="top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};" 
-                                onmouseenter="showTooltip(event, '${t.title.replace(/'/g, "\\'")}', '${tw.start} - ${tw.end}', '${t.category.replace(/'/g, "\\'")}')" 
-                                onmousemove="moveTooltip(event)" 
-                                onmouseleave="hideTooltip()" 
-                                oncontextmenu="hidePlannerInstance(event, '${t.id}', '${loopDateStr}', '${tw.start}')"><b>${t.title}</b></div>`;
+                                const block = document.createElement('div');
+                                block.className = 'block-absolute block-task';
+                                block.style.cssText = `top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};`;
+                                const bTag = document.createElement('b');
+                                bTag.textContent = t.title;
+                                block.appendChild(bTag);
+
+                                block.onmouseenter = (ev) => showTooltip(ev, t.title, `${tw.start} - ${tw.end}`, t.category);
+                                block.onmousemove = moveTooltip;
+                                block.onmouseleave = hideTooltip;
+                                block.oncontextmenu = (ev) => hidePlannerInstance(ev, t.id, loopDateStr, tw.start);
+                                dayCol.appendChild(block);
                             }
                         }
                     });
@@ -671,21 +848,26 @@ function renderNoteCategories() {
 
     const select = document.getElementById('note-category');
     const focusSelect = document.getElementById('focus-note-category');
+    const prevVal = select ? select.value : null;
+
     if (select) select.innerHTML = '';
-    if (focusSelect) focusSelect.appendChild;
     if (focusSelect) focusSelect.innerHTML = '';
     
     noteCategories.forEach(cat => {
         const opt = document.createElement('option');
         opt.value = cat; 
-        opt.innerText = cat;
+        opt.textContent = cat;
         if (select) select.appendChild(opt);
         
         const optFocus = document.createElement('option');
         optFocus.value = cat; 
-        optFocus.innerText = cat;
+        optFocus.textContent = cat;
         if (focusSelect) focusSelect.appendChild(optFocus);
     });
+
+    if (select && prevVal && noteCategories.includes(prevVal)) {
+        select.value = prevVal;
+    }
 
     refreshNotesView();
 }
@@ -698,17 +880,29 @@ function openManageNotesModal() {
 
 function renderNotesManager() {
     const container = document.getElementById('notes-manager-list');
+    if (!container) return;
     container.innerHTML = '';
     
     noteCategories.forEach(cat => {
-        container.innerHTML += `
-            <div class="manager-task">
-                <span>${cat}</span>
-                <div class="action-btns" style="display:flex;">
-                    <button class="icon-btn delete" onclick="removeNoteCategory('${cat}')">×</button>
-                </div>
-            </div>
-        `;
+        const row = document.createElement('div');
+        row.className = 'manager-task';
+
+        const span = document.createElement('span');
+        span.textContent = cat;
+
+        const actions = document.createElement('div');
+        actions.className = 'action-btns';
+        actions.style.display = 'flex';
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn delete';
+        delBtn.textContent = '×';
+        delBtn.onclick = () => removeNoteCategory(cat);
+
+        actions.appendChild(delBtn);
+        row.appendChild(span);
+        row.appendChild(actions);
+        container.appendChild(row);
     });
 }
 
@@ -720,6 +914,7 @@ function quickAddNoteCategory(event) {
             saveData();
             event.target.value = ''; 
             renderNotesManager(); 
+            renderNoteCategories();
         }
     }
 }
@@ -729,6 +924,7 @@ function removeNoteCategory(cat) {
     if (noteCategories.length === 0) noteCategories = ['General'];
     saveData();
     renderNotesManager();
+    renderNoteCategories();
 }
 
 // --- MODULAR DASHBOARD SYSTEM ---
@@ -895,18 +1091,41 @@ function renderGeneralTodos() {
         return;
     }
     
+    const frag = document.createDocumentFragment();
     generalTodos.forEach(t => {
         const isSelected = selectedTodos.has(t.id);
-        container.innerHTML += `
-            <div class="task-item" style="padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid ${isSelected ? 'var(--text-main)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: 0.2s;" onclick="toggleTodoSelection('${t.id}')">
-                <div class="task-left">
-                    <div class="check-box ${isSelected ? 'checked' : ''}" style="margin-right: 10px;"></div>
-                    <span style="font-size: 0.8rem; color: ${isSelected ? '#fff' : '#ccc'};">${t.title}</span>
-                </div>
-                <button class="icon-btn delete" onclick="event.stopPropagation(); deleteGeneralTodo('${t.id}')">×</button>
-            </div>
-        `;
+        const item = document.createElement('div');
+        item.className = 'task-item';
+        item.style.cssText = `padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid ${isSelected ? 'var(--text-main)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: 0.2s;`;
+        item.onclick = () => toggleTodoSelection(t.id);
+
+        const left = document.createElement('div');
+        left.className = 'task-left';
+
+        const cb = document.createElement('div');
+        cb.className = `check-box ${isSelected ? 'checked' : ''}`;
+        cb.style.marginRight = '10px';
+
+        const span = document.createElement('span');
+        span.style.cssText = `font-size: 0.8rem; color: ${isSelected ? '#fff' : '#ccc'};`;
+        span.textContent = t.title;
+
+        left.appendChild(cb);
+        left.appendChild(span);
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn delete';
+        delBtn.textContent = '×';
+        delBtn.onclick = (ev) => {
+            ev.stopPropagation();
+            deleteGeneralTodo(t.id);
+        };
+
+        item.appendChild(left);
+        item.appendChild(delBtn);
+        frag.appendChild(item);
     });
+    container.appendChild(frag);
 }
 
 function openAssignModal() {
@@ -938,7 +1157,7 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
         const task = generalTodos.find(t => t.id === id);
         if (task) {
             templates.push({
-                id: 't_' + Date.now() + Math.random(),
+                id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                 category: catName,
                 title: task.title,
                 instances: 1,

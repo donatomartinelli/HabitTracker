@@ -1,32 +1,32 @@
 // --- AUTOMAZIONE PAGAMENTI RICORRENTI ALL'AVVIO ---
 function processRecurringPayments() {
     const today = getNow();
-    today.setHours(0,0,0,0);
+    today.setHours(0, 0, 0, 0);
 
     let madeChanges = false;
 
     mRecurring.forEach(rec => {
         let lastProc = rec.lastProcessed ? new Date(rec.lastProcessed) : new Date(rec.startDate);
-        lastProc.setHours(0,0,0,0);
+        lastProc.setHours(0, 0, 0, 0);
         
-        let startD = new Date(rec.startDate); startD.setHours(0,0,0,0);
-        let endD = rec.endDate ? new Date(rec.endDate) : new Date("2099-12-31"); endD.setHours(0,0,0,0);
+        let startD = new Date(rec.startDate); 
+        startD.setHours(0, 0, 0, 0);
+        let endD = rec.endDate ? new Date(rec.endDate) : new Date("2099-12-31"); 
+        endD.setHours(0, 0, 0, 0);
 
-        // Se oggi è dentro il range temporale della rata
         if (today >= startD && today <= endD) {
-            // Controlla ogni giorno tra l'ultima volta elaborata e oggi
             let checkDate = new Date(lastProc);
-            checkDate.setDate(checkDate.getDate() + 1); // Parti dal giorno successivo all'ultima volta
+            checkDate.setDate(checkDate.getDate() + 1);
 
             while (checkDate <= today) {
-                if (checkDate.getDate() === parseInt(rec.dayOfMonth)) {
-                    // È IL GIORNO DELLA RATA! Scala i soldi.
-                    mBalance -= parseFloat(rec.amount);
+                if (checkDate.getDate() === parseInt(rec.dayOfMonth, 10)) {
+                    const amt = roundCurrency(rec.amount);
+                    mBalance = roundCurrency(mBalance - amt);
                     mTransactions.push({
-                        id: 'mt_' + Date.now() + Math.random(),
+                        id: 'mt_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
                         date: formatDate(checkDate),
                         desc: `(Auto) ${rec.title}`,
-                        amount: parseFloat(rec.amount),
+                        amount: amt,
                         type: 'out'
                     });
                     rec.lastProcessed = formatDate(checkDate);
@@ -42,122 +42,177 @@ function processRecurringPayments() {
     }
 }
 
-// --- RENDER DASHBOARD ---
+// --- RENDER DASHBOARD SICURO E VELOCIZZATO ---
 function renderMoneyDashboard() {
-    document.getElementById('m-balance-display').innerText = mBalance.toFixed(2);
+    const balEl = document.getElementById('m-balance-display');
+    if (balEl) balEl.innerText = mBalance.toFixed(2);
     
-    // ORDINAMENTO CRONOLOGICO ASSOLUTO (Al millisecondo, sfruttando l'ID)
-    mTransactions.sort((a,b) => {
-        let timeA = parseInt(a.id.split('_')[1]) || new Date(a.date).getTime();
-        let timeB = parseInt(b.id.split('_')[1]) || new Date(b.date).getTime();
-        return timeB - timeA; // I più recenti in alto
+    mTransactions.sort((a, b) => {
+        let timeA = parseInt(a.id.split('_')[1], 10) || new Date(a.date).getTime();
+        let timeB = parseInt(b.id.split('_')[1], 10) || new Date(b.date).getTime();
+        return timeB - timeA;
     });
     
-    mWishlist.sort((a,b) => a.order - b.order);
+    mWishlist.sort((a, b) => a.order - b.order);
 
+    // 1. Recent History
     const histCont = document.getElementById('m-history-container');
-    histCont.innerHTML = '';
-    mTransactions.slice(0, 15).forEach(t => { 
-        const isOut = t.type === 'out';
-        const absAmount = Math.abs(parseFloat(t.amount)).toFixed(2);
-        
-        histCont.innerHTML += `
-            <div class="m-item-row ${isOut ? 'out' : 'in'}">
-                <div><div class="m-title">${t.desc}</div><div class="m-sub">${t.date}</div></div>
+    if (histCont) {
+        histCont.innerHTML = '';
+        const histFrag = document.createDocumentFragment();
+
+        mTransactions.slice(0, 15).forEach(t => { 
+            const isOut = t.type === 'out';
+            const absAmount = Math.abs(parseFloat(t.amount)).toFixed(2);
+            
+            const row = document.createElement('div');
+            row.className = `m-item-row ${isOut ? 'out' : 'in'}`;
+            row.innerHTML = `
+                <div>
+                    <div class="m-title">${escapeHtml(t.desc)}</div>
+                    <div class="m-sub">${escapeHtml(t.date)}</div>
+                </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div class="m-amt ${isOut ? 'neg' : 'pos'}" style="font-family: monospace; font-weight: bold;">€${absAmount}</div>
-                    <button class="icon-btn delete" style="opacity: 1; visibility: visible;" onclick="deleteTransaction('${t.id}')">×</button>
                 </div>
-            </div>`;
-    });
+            `;
+            const delBtn = document.createElement('button');
+            delBtn.className = 'icon-btn delete';
+            delBtn.style.cssText = 'opacity: 1; visibility: visible;';
+            delBtn.textContent = '×';
+            delBtn.onclick = () => deleteTransaction(t.id);
+            row.lastElementChild.appendChild(delBtn);
 
+            histFrag.appendChild(row);
+        });
+        histCont.appendChild(histFrag);
+    }
+
+    // 2. Recurring Payments
     const recCont = document.getElementById('m-recurring-container');
-    recCont.innerHTML = '';
-    mRecurring.forEach(r => {
-        const absAmount = Math.abs(parseFloat(r.amount)).toFixed(2);
-        
-        recCont.innerHTML += `
-            <div class="m-item-row" style="border-left-color: #888;">
-                <div><div class="m-title">${r.title}</div><div class="m-sub">Day ${r.dayOfMonth} | Ends: ${r.endDate || 'Never'}</div></div>
+    if (recCont) {
+        recCont.innerHTML = '';
+        const recFrag = document.createDocumentFragment();
+
+        mRecurring.forEach(r => {
+            const absAmount = Math.abs(parseFloat(r.amount)).toFixed(2);
+            const row = document.createElement('div');
+            row.className = 'm-item-row';
+            row.style.borderLeftColor = '#888';
+            row.innerHTML = `
+                <div>
+                    <div class="m-title">${escapeHtml(r.title)}</div>
+                    <div class="m-sub">Day ${escapeHtml(r.dayOfMonth)} | Ends: ${escapeHtml(r.endDate || 'Never')}</div>
+                </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     <div class="m-amt neg" style="font-family: monospace; font-weight: bold;">€${absAmount}</div>
-                    <button class="icon-btn delete" style="opacity: 1; visibility: visible;" onclick="deleteRecurring('${r.id}')">×</button>
                 </div>
-            </div>`;
-    });
+            `;
+            const delBtn = document.createElement('button');
+            delBtn.className = 'icon-btn delete';
+            delBtn.style.cssText = 'opacity: 1; visibility: visible;';
+            delBtn.textContent = '×';
+            delBtn.onclick = () => deleteRecurring(r.id);
+            row.lastElementChild.appendChild(delBtn);
 
+            recFrag.appendChild(row);
+        });
+        recCont.appendChild(recFrag);
+    }
+
+    // 3. Ideas Incubator (Wishlist)
     const wishCont = document.getElementById('m-wishlist-container');
-    wishCont.innerHTML = '';
-    mWishlist.forEach((w, i) => {
-        const costDisplay = (w.cost && parseFloat(w.cost) > 0) ? `€${Math.abs(parseFloat(w.cost)).toFixed(2)}` : '';
-        const badgeHtml = costDisplay ? `<div class="m-amt" style="color: var(--text-dim); font-weight: bold;">${costDisplay}</div>` : '';
+    if (wishCont) {
+        wishCont.innerHTML = '';
+        const wishFrag = document.createDocumentFragment();
 
-        wishCont.innerHTML += `
-            <div class="m-item-row idea">
+        mWishlist.forEach((w, i) => {
+            const costDisplay = (w.cost && parseFloat(w.cost) > 0) ? `€${Math.abs(parseFloat(w.cost)).toFixed(2)}` : '';
+            const badgeHtml = costDisplay ? `<div class="m-amt" style="color: var(--text-dim); font-weight: bold;">${costDisplay}</div>` : '';
+
+            const row = document.createElement('div');
+            row.className = 'm-item-row idea';
+            row.innerHTML = `
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <div style="display:flex; flex-direction:column;">
-                        <button class="icon-btn" style="font-size:0.6rem; padding:0;" onclick="moveWish(${i}, -1)">▲</button>
-                        <button class="icon-btn" style="font-size:0.6rem; padding:0;" onclick="moveWish(${i}, 1)">▼</button>
-                    </div>
-                    <div><div class="m-title" style="color:white;">${w.title}</div></div>
+                    <div class="wish-arrows" style="display:flex; flex-direction:column;"></div>
+                    <div><div class="m-title" style="color:white;">${escapeHtml(w.title)}</div></div>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div class="wish-actions" style="display:flex; align-items:center; gap:10px;">
                     ${badgeHtml}
-                    <button class="icon-btn delete" style="opacity: 1; visibility: visible; color: #ff6666;" onclick="deleteWish('${w.id}')">×</button>
                 </div>
-            </div>`;
-    });
+            `;
+
+            const arrowsBox = row.querySelector('.wish-arrows');
+            const upBtn = document.createElement('button');
+            upBtn.className = 'icon-btn';
+            upBtn.style.cssText = 'font-size:0.6rem; padding:0;';
+            upBtn.textContent = '▲';
+            upBtn.onclick = () => moveWish(i, -1);
+
+            const downBtn = document.createElement('button');
+            downBtn.className = 'icon-btn';
+            downBtn.style.cssText = 'font-size:0.6rem; padding:0;';
+            downBtn.textContent = '▼';
+            downBtn.onclick = () => moveWish(i, 1);
+
+            arrowsBox.appendChild(upBtn);
+            arrowsBox.appendChild(downBtn);
+
+            const delBtn = document.createElement('button');
+            delBtn.className = 'icon-btn delete';
+            delBtn.style.cssText = 'opacity: 1; visibility: visible; color: #ff6666;';
+            delBtn.textContent = '×';
+            delBtn.onclick = () => deleteWish(w.id);
+            row.querySelector('.wish-actions').appendChild(delBtn);
+
+            wishFrag.appendChild(row);
+        });
+        wishCont.appendChild(wishFrag);
+    }
 
     drawSteppedChart();
 }
 
-// --- GRAFICO A SCALINI (Dominio discreto, finestra fissa 30, padding dinamico) ---
-// --- GRAFICO A SCALINI (Ancorato a destra, Griglia Fissa 30, Caso A) ---
+// --- GRAFICO A SCALINI ---
 function drawSteppedChart() {
     const svg = document.getElementById('m-chart-svg');
     const polyline = document.getElementById('m-chart-line');
     if (!svg || !polyline) return;
     
-    // ViewBox fisso 1000x1000 per svincolarsi dalle dimensioni CSS del contenitore
     svg.setAttribute('viewBox', '0 0 1000 1000');
     svg.setAttribute('preserveAspectRatio', 'none');
 
-    // 1. Ordiniamo cronologicamente (dal passato al presente)
     let sortedT = [...mTransactions].sort((a, b) => {
-        let timeA = parseInt(a.id.split('_')[1]) || new Date(a.date).getTime();
-        let timeB = parseInt(b.id.split('_')[1]) || new Date(b.date).getTime();
+        let timeA = parseInt(a.id.split('_')[1], 10) || new Date(a.date).getTime();
+        let timeB = parseInt(b.id.split('_')[1], 10) || new Date(b.date).getTime();
         return timeA - timeB; 
     });
     
-    // 2. Finestra logica: massimo 30 transazioni
     const maxTrans = 30;
     let displayTrans = sortedT.slice(-maxTrans);
     
-    // 3. Calcolo del punto Iniziale (S_0): il saldo originario a ritroso
     let startBal = mBalance;
     for (let i = displayTrans.length - 1; i >= 0; i--) {
         let t = displayTrans[i];
-        if(t.type === 'in') startBal -= parseFloat(t.amount);
-        else startBal += parseFloat(t.amount);
+        if (t.type === 'in') startBal = roundCurrency(startBal - parseFloat(t.amount));
+        else startBal = roundCurrency(startBal + parseFloat(t.amount));
     }
 
-    // Costruiamo la successione completa dei valori
     let historyPoints = [];
     let currentBal = startBal;
-    historyPoints.push(currentBal); // Inseriamo S_0
+    historyPoints.push(currentBal);
 
     displayTrans.forEach(t => {
-        if(t.type === 'in') currentBal += parseFloat(t.amount);
-        else currentBal -= parseFloat(t.amount);
+        if (t.type === 'in') currentBal = roundCurrency(currentBal + parseFloat(t.amount));
+        else currentBal = roundCurrency(currentBal - parseFloat(t.amount));
         historyPoints.push(currentBal);
     });
 
-    // 4. Intorno (Padding dinamico sulle Y): Calcoliamo min/max e aggiungiamo il 5% di respiro
     const maxBal = Math.max(...historyPoints);
     const minBal = Math.min(...historyPoints);
     
     let rawRange = maxBal - minBal;
-    if (rawRange === 0) rawRange = 1; // Evita la divisione per 0 in caso di saldo piatto
+    if (rawRange === 0) rawRange = 1;
     
     const padding = rawRange * 0.05; 
     const paddedMax = maxBal + padding;
@@ -168,8 +223,6 @@ function drawSteppedChart() {
     const width = 1000;
     const height = 1000;
 
-    // 5. Tracciamento ancorato a DESTRA e geometria a gradino
-    // Calcoliamo l'offset iniziale affinché l'ULTIMO punto tocchi esattamente il bordo destro
     const stepWidth = width / maxTrans; 
     const xOffset = width - ((historyPoints.length - 1) * stepWidth);
 
@@ -180,8 +233,7 @@ function drawSteppedChart() {
         if (i === 0) {
             pointsStr += `${x},${y} `;
         } else {
-            // Gradino A: mantiene il livello Y orizzontalmente fino alla nuova X, poi scatto verticale
-            let prevY = height - (((historyPoints[i-1] - paddedMin) / paddedRange) * height);
+            let prevY = height - (((historyPoints[i - 1] - paddedMin) / paddedRange) * height);
             pointsStr += `${x},${prevY} `; 
             pointsStr += `${x},${y} `;     
         }
@@ -217,8 +269,9 @@ function openWishlistModal() {
 document.getElementById('mTransactionForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const type = document.getElementById('m-trans-type').value;
-    const amount = parseFloat(document.getElementById('m-trans-amount').value);
-    if(type === 'in') mBalance += amount; else mBalance -= amount;
+    const amount = roundCurrency(document.getElementById('m-trans-amount').value);
+    if (type === 'in') mBalance = roundCurrency(mBalance + amount); 
+    else mBalance = roundCurrency(mBalance - amount);
     
     mTransactions.push({
         id: 'mt_' + Date.now(),
@@ -227,7 +280,9 @@ document.getElementById('mTransactionForm').addEventListener('submit', (e) => {
         desc: document.getElementById('m-trans-desc').value.trim(),
         date: document.getElementById('m-trans-date').value
     });
-    saveMoneyData(); closeModals(); renderMoneyDashboard();
+    saveMoneyData(); 
+    closeModals(); 
+    renderMoneyDashboard();
 });
 
 document.getElementById('mRecurringForm').addEventListener('submit', (e) => {
@@ -235,54 +290,77 @@ document.getElementById('mRecurringForm').addEventListener('submit', (e) => {
     mRecurring.push({
         id: 'mr_' + Date.now(),
         title: document.getElementById('m-rec-title').value.trim(),
-        amount: document.getElementById('m-rec-amount').value,
+        amount: roundCurrency(document.getElementById('m-rec-amount').value),
         dayOfMonth: document.getElementById('m-rec-day').value,
         startDate: document.getElementById('m-rec-start').value,
         endDate: document.getElementById('m-rec-end').value || null,
         lastProcessed: null
     });
-    saveMoneyData(); closeModals(); renderMoneyDashboard();
+    saveMoneyData(); 
+    closeModals(); 
+    renderMoneyDashboard();
 });
 
 document.getElementById('mWishlistForm').addEventListener('submit', (e) => {
     e.preventDefault();
+    const rawCost = document.getElementById('m-wish-cost').value;
     mWishlist.push({
         id: 'mw_' + Date.now(),
         title: document.getElementById('m-wish-title').value.trim(),
-        cost: document.getElementById('m-wish-cost').value,
+        cost: rawCost ? roundCurrency(rawCost) : "",
         order: mWishlist.length
     });
-    saveMoneyData(); closeModals(); renderMoneyDashboard();
+    saveMoneyData(); 
+    closeModals(); 
+    renderMoneyDashboard();
 });
 
 // --- ELIMINAZIONI E ACQUISTI ---
 function deleteTransaction(id) {
     const t = mTransactions.find(x => x.id === id);
-    if(!t) return;
-    if(t.type === 'in') mBalance -= t.amount; else mBalance += t.amount;
+    if (!t) return;
+    if (t.type === 'in') mBalance = roundCurrency(mBalance - parseFloat(t.amount)); 
+    else mBalance = roundCurrency(mBalance + parseFloat(t.amount));
     mTransactions = mTransactions.filter(x => x.id !== id);
-    saveMoneyData(); renderMoneyDashboard();
+    saveMoneyData(); 
+    renderMoneyDashboard();
 }
 
-function deleteRecurring(id) { mRecurring = mRecurring.filter(x => x.id !== id); saveMoneyData(); renderMoneyDashboard(); }
-function deleteWish(id) { mWishlist = mWishlist.filter(x => x.id !== id); saveMoneyData(); renderMoneyDashboard(); }
+function deleteRecurring(id) { 
+    mRecurring = mRecurring.filter(x => x.id !== id); 
+    saveMoneyData(); 
+    renderMoneyDashboard(); 
+}
+
+function deleteWish(id) { 
+    mWishlist = mWishlist.filter(x => x.id !== id); 
+    saveMoneyData(); 
+    renderMoneyDashboard(); 
+}
 
 function purchaseIdea(id) {
     const w = mWishlist.find(x => x.id === id);
-    if(!w) return;
-    mBalance -= parseFloat(w.cost);
-    mTransactions.push({ id: 'mt_' + Date.now(), type: 'out', amount: w.cost, desc: `(Wishlist) ${w.title}`, date: todayStr });
-    deleteWish(id); // Salva e renderizza in automatico
+    if (!w) return;
+    const cost = roundCurrency(w.cost);
+    mBalance = roundCurrency(mBalance - cost);
+    mTransactions.push({ 
+        id: 'mt_' + Date.now(), 
+        type: 'out', 
+        amount: cost, 
+        desc: `(Wishlist) ${w.title}`, 
+        date: todayStr 
+    });
+    deleteWish(id);
 }
 
 function moveWish(index, dir) {
-    if(index + dir < 0 || index + dir >= mWishlist.length) return;
+    if (index + dir < 0 || index + dir >= mWishlist.length) return;
     const temp = mWishlist[index].order;
     mWishlist[index].order = mWishlist[index + dir].order;
     mWishlist[index + dir].order = temp;
-    saveMoneyData(); renderMoneyDashboard();
+    saveMoneyData(); 
+    renderMoneyDashboard();
 }
 
-// INIZIALIZZAZIONE MONEY ALL'AVVIO
 processRecurringPayments();
 renderMoneyDashboard();

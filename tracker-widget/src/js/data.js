@@ -1,8 +1,24 @@
-// --- 1. DATA MANAGEMENT, MIGRATION & GLOBALS ---
+// --- 1. DATA MANAGEMENT, MIGRATION & SECURITY HELPERS ---
 
-// Funzione di migrazione: unisce i vecchi "cassetti" duplicati senza perdere dati
+// Filtro di sicurezza: trasforma simboli speciali (<, >, &, ", ') in testo puro inoffensivo
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Arrotondamento matematico al centesimo per evitare errori tipo 13.29999999999999
+function roundCurrency(val) {
+    const num = parseFloat(val) || 0;
+    return Math.round((num + Number.EPSILON) * 100) / 100;
+}
+
 function migrateAndInitData() {
-    // 1. Unificazione Categorie Note (tracker_note_categories -> tracker_note_cats)
+    // 1. Unificazione Categorie Note
     const oldCats = localStorage.getItem('tracker_note_categories');
     const currentCats = localStorage.getItem('tracker_note_cats');
     if (oldCats) {
@@ -17,7 +33,7 @@ function migrateAndInitData() {
         localStorage.removeItem('tracker_note_categories');
     }
 
-    // 2. Unificazione Contenuto Note (tracker_notes_content -> tracker_notes)
+    // 2. Unificazione Contenuto Note
     const oldNotes = localStorage.getItem('tracker_notes_content');
     const currentNotes = localStorage.getItem('tracker_notes');
     if (oldNotes) {
@@ -34,7 +50,7 @@ function migrateAndInitData() {
         localStorage.removeItem('tracker_notes_content');
     }
 
-    // 3. Inizializzazione valori di default per tutte le chiavi dell'app
+    // 3. Inizializzazione valori di default
     const defaults = {
         'tracker_templates': [],
         'tracker_logs': {},
@@ -68,12 +84,53 @@ function migrateAndInitData() {
             localStorage.setItem(key, val);
         }
     }
+
+    // 4. Recupero categorie note "orfane" (es. "Mathematics" presente nelle note ma non nel menu)
+    try {
+        const notesObj = JSON.parse(localStorage.getItem('tracker_notes')) || {};
+        const catsArr = JSON.parse(localStorage.getItem('tracker_note_cats')) || ["General"];
+        let catsUpdated = false;
+        for (let key in notesObj) {
+            if (notesObj[key] && notesObj[key].trim() !== '' && !catsArr.includes(key)) {
+                catsArr.push(key);
+                catsUpdated = true;
+            }
+        }
+        if (catsUpdated) {
+            localStorage.setItem('tracker_note_cats', JSON.stringify(catsArr));
+        }
+    } catch (e) {}
+
+    // 5. Pulizia saldo decimale e riparazione ID transazioni corrotte (es. mt_17911400356510.963...)
+    try {
+        const rawBal = localStorage.getItem('m_balance');
+        if (rawBal !== null) {
+            localStorage.setItem('m_balance', roundCurrency(rawBal).toString());
+        }
+        const transArr = JSON.parse(localStorage.getItem('m_trans')) || [];
+        let transFixed = false;
+        transArr.forEach(t => {
+            if (t.id && t.id.includes('.')) {
+                const parts = t.id.split('.');
+                // Se lo 0 di Math.random() si è incollato al timestamp rendendolo di 14 cifre, rimuove l'ultimo 0
+                let mainPart = parts[0];
+                if (mainPart.length > 16) {
+                    mainPart = mainPart.slice(0, 16);
+                }
+                t.id = `${mainPart}_${parts[1].slice(0, 4)}`;
+                transFixed = true;
+            }
+            t.amount = roundCurrency(t.amount);
+        });
+        if (transFixed) {
+            localStorage.setItem('m_trans', JSON.stringify(transArr));
+        }
+    } catch (e) {}
 }
 
 migrateAndInitData();
 
 // --- STATO GLOBALE UNIFICATO ---
-// Daily, Planner & Notes
 let templates = JSON.parse(localStorage.getItem('tracker_templates')) || [];
 let logs = JSON.parse(localStorage.getItem('tracker_logs')) || {};
 let specificEvents = JSON.parse(localStorage.getItem('tracker_events')) || [];
@@ -89,7 +146,7 @@ let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_excepti
 let selectedTodos = new Set();
 
 // Money
-let mBalance = parseFloat(localStorage.getItem('m_balance')) || 0.0;
+let mBalance = roundCurrency(localStorage.getItem('m_balance'));
 let mTransactions = JSON.parse(localStorage.getItem('m_trans')) || [];
 let mRecurring = JSON.parse(localStorage.getItem('m_rec')) || [];
 let mWishlist = JSON.parse(localStorage.getItem('m_wish')) || [];
@@ -122,6 +179,7 @@ function saveData() {
 }
 
 function saveMoneyData() {
+    mBalance = roundCurrency(mBalance);
     localStorage.setItem('m_balance', mBalance.toString());
     localStorage.setItem('m_trans', JSON.stringify(mTransactions));
     localStorage.setItem('m_rec', JSON.stringify(mRecurring));
@@ -217,7 +275,7 @@ function getStatsForDate(dateStr) {
     };
 }
 
-// --- BACKUP & RESTORE COMPLETO (TUTTI I MODULI) ---
+// --- BACKUP & RESTORE COMPLETO ---
 const ALL_STORAGE_KEYS = [
     'tracker_templates', 'tracker_logs', 'tracker_events',
     'tracker_note_cats', 'tracker_notes', 'tracker_journal',
@@ -258,7 +316,8 @@ function importData(event) {
             const data = JSON.parse(e.target.result);
             for (let key in data) {
                 if (data[key] !== null && data[key] !== undefined) {
-                    localStorage.setItem(key, data[key]);
+                    const val = typeof data[key] === 'string' ? data[key] : JSON.stringify(data[key]);
+                    localStorage.setItem(key, val);
                 }
             }
             alert("Backup restored successfully! The app will now reload.");
