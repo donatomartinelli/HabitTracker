@@ -5,27 +5,49 @@ function toggleTask(templateId, instanceIndex) {
         logs[selectedDateStr] = {};
     }
     
+    const targetTemplate = templates.find(x => x.id === templateId);
+    if (!targetTemplate) return;
+
     if (!logs[selectedDateStr][templateId]) {
-        logs[selectedDateStr][templateId] = Array(templates.find(x => x.id === templateId).instances).fill(false);
+        logs[selectedDateStr][templateId] = Array(targetTemplate.instances || 1).fill(false);
     }
     
     logs[selectedDateStr][templateId][instanceIndex] = !logs[selectedDateStr][templateId][instanceIndex];
     const isChecked = logs[selectedDateStr][templateId][instanceIndex];
     
-    const t = templates.find(x => x.id === templateId);
-    if (t && t.type === 'medicine') {
+    if (targetTemplate.type === 'medicine') {
         if (isChecked) {
-            t.stock = Math.max(0, (t.stock || 0) - 1);
+            targetTemplate.stock = Math.max(0, (targetTemplate.stock || 0) - 1);
         } else {
-            t.stock = (t.stock || 0) + 1;
+            targetTemplate.stock = (targetTemplate.stock || 0) + 1;
         }
-        recalculateMedicineAlerts(t);
+        recalculateMedicineAlerts(targetTemplate);
     }
     
     saveData(); 
     renderTasks(); 
     renderTracker();
     if (typeof renderMeds === 'function') renderMeds();
+}
+
+// Avvia il Pomodoro direttamente su una task specifica dalla lista giornaliera
+function quickStartTaskFocus(templateId) {
+    const t = templates.find(x => x.id === templateId);
+    if (!t) return;
+
+    focusPlaylist = [{
+        type: 'task',
+        id: t.id,
+        title: t.title,
+        duration: t.timerMinutes || 25,
+        color: t.color || '#ffffff',
+        isPartial: false
+    }];
+    currentPlaylistIndex = 0;
+    startCurrentPlaylistPhase();
+    if (typeof showToast === 'function') {
+        showToast(`[FOCUS] Started ${t.timerMinutes || 25}m: ${t.title}`);
+    }
 }
 
 function recalculateMedicineAlerts(t) {
@@ -46,16 +68,16 @@ function recalculateMedicineAlerts(t) {
     specificEvents.push({
         id: 'e_runout_' + t.id + '_' + Date.now(),
         parentId: t.id,
-        title: `⚠️ ${t.title} FINITO`,
+        title: `[!] ${t.title} OUT OF STOCK`,
         date: runOutDateStr,
-        color: '#4c5b73'
+        color: '#b84b4b'
     });
     
     if (alertDateStr >= todayStr && t.alertDays > 0) {
         specificEvents.push({
             id: 'e_warn_' + t.id + '_' + Date.now(),
             parentId: t.id,
-            title: `💊 Comprare ${t.title}`,
+            title: `[MED] Restock ${t.title}`,
             date: alertDateStr,
             color: '#4c5b73'
         });
@@ -221,7 +243,7 @@ document.getElementById('renameForm').addEventListener('submit', function(e) {
 function deleteCategory(catName) {
     deleteTargetType = 'category'; 
     deleteTargetId = catName; 
-    document.getElementById('delete-target-name').innerText = `the "${catName}" calendar`;
+    document.getElementById('delete-target-name').innerText = `category "${catName}"`;
     document.getElementById('btn-del-single').style.display = 'block'; 
     document.getElementById('btn-del-future').style.display = 'block';
     
@@ -236,13 +258,15 @@ function confirmDelete(mode) {
     
     if (deleteTargetType === 'task') {
         const t = templates.find(x => x.id === deleteTargetId);
-        if (mode === 'single') { 
-            if (!t.exceptions) t.exceptions = []; 
-            t.exceptions.push(selectedDateStr); 
-        } else if (mode === 'future') {
-            t.endDate = yesterdayStr;
-        } else if (mode === 'all') {
-            templates = templates.filter(x => x.id !== deleteTargetId);
+        if (t) {
+            if (mode === 'single') { 
+                if (!t.exceptions) t.exceptions = []; 
+                t.exceptions.push(selectedDateStr); 
+            } else if (mode === 'future') {
+                t.endDate = yesterdayStr;
+            } else if (mode === 'all') {
+                templates = templates.filter(x => x.id !== deleteTargetId);
+            }
         }
     } else if (deleteTargetType === 'category') {
         if (mode === 'single') {
@@ -283,7 +307,7 @@ function selectDate(dateStr) {
     if (typeof renderDiet === 'function') renderDiet();
 }
 
-// --- GESTIONE UNIFICATA NOTES (Write/Browse & Autosave) ---
+// --- GESTIONE UNIFICATA NOTES ---
 let currentNoteMode = 'write';
 let notesAutosaveTimer;
 
@@ -329,7 +353,7 @@ function saveNote() {
     saveData();
     
     textEl.value = ''; 
-    textEl.placeholder = "✓ Idea saved!"; 
+    textEl.placeholder = "[OK] Idea saved!"; 
     setTimeout(() => { 
         if (currentNoteMode === 'write') textEl.placeholder = "Write your idea and press Enter..."; 
     }, 1500); 
@@ -351,7 +375,7 @@ function handleNoteInput() {
 
 // --- DIARIO (JOURNAL) ---
 function openJournal(dateStr) {
-    document.getElementById('journal-title').innerText = `Journal - ${dateStr}`;
+    document.getElementById('journal-title').innerText = `Journal // ${dateStr}`;
     document.getElementById('journal-date-hidden').value = dateStr;
     document.getElementById('journal-text').value = journals[dateStr] || '';
     
@@ -366,6 +390,7 @@ function saveJournal() {
     journals[dateStr] = text; 
     saveData(); 
     closeModals();
+    if (typeof showToast === 'function') showToast(`[JOURNAL] Saved entry for ${dateStr}`);
 }
 
 function addRefTimeWindow(start = '', end = '', days = []) {
@@ -395,7 +420,7 @@ function addRefTimeWindow(start = '', end = '', days = []) {
                 <label>End</label>
                 <input type="time" class="form-control ref-end" required value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">[X]</button>
         </div>
         <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
     `;
@@ -504,6 +529,9 @@ function openCreationModal() {
     document.getElementById('e-date').value = selectedDateStr; 
     document.getElementById('e-color').value = '#b84b4b'; 
     updateCustomColor(document.getElementById('e-color'), 'e-color'); 
+
+    const medStart = document.getElementById('med-startdate');
+    if (medStart) medStart.value = selectedDateStr;
     
     document.querySelector('input[name="creation-type"][value="habit"]').checked = true;
     toggleCreationType();
@@ -541,7 +569,7 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
     const type = document.querySelector('input[name="h-type"]:checked').value;
     
     let instances = 1; 
-    let timerMins = 0; 
+    let timerMins = 25; 
     let frequency = 'specific'; 
     let daysOfWeek = []; 
     let timeWindows = [];
@@ -627,10 +655,15 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
 document.getElementById('eventForm').addEventListener('submit', function(e) { 
     e.preventDefault(); 
     
+    const startVal = document.getElementById('e-start') ? document.getElementById('e-start').value : '';
+    const endVal = document.getElementById('e-end') ? document.getElementById('e-end').value : '';
+
     specificEvents.push({ 
         id: 'e_' + Date.now(), 
         title: document.getElementById('e-title').value.trim(), 
         date: document.getElementById('e-date').value, 
+        start: startVal || null,
+        end: endVal || null,
         color: document.getElementById('e-color').value 
     }); 
     
@@ -717,7 +750,7 @@ function addHabitTimeWindow(start = '', end = '', days = []) {
                 <label>End</label>
                 <input type="time" class="form-control h-end" value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">[X]</button>
         </div>
         <div class="days-checkboxes" style="display: flex; gap: 10px;">
             ${checksHtml}

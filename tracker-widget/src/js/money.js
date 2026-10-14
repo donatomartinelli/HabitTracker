@@ -1,4 +1,7 @@
-// --- AUTOMAZIONE PAGAMENTI RICORRENTI ALL'AVVIO ---
+// --- MONEY MODULE: RECURRING ENGINE, WISHLIST BUY & INTERACTIVE CHART ---
+
+let currentChartStepData = [];
+
 function processRecurringPayments() {
     const today = getNow();
     today.setHours(0, 0, 0, 0);
@@ -42,7 +45,6 @@ function processRecurringPayments() {
     }
 }
 
-// --- RENDER DASHBOARD SICURO E VELOCIZZATO ---
 function renderMoneyDashboard() {
     const balEl = document.getElementById('m-balance-display');
     if (balEl) balEl.innerText = mBalance.toFixed(2);
@@ -59,121 +61,136 @@ function renderMoneyDashboard() {
     const histCont = document.getElementById('m-history-container');
     if (histCont) {
         histCont.innerHTML = '';
-        const histFrag = document.createDocumentFragment();
+        if (mTransactions.length === 0) {
+            histCont.innerHTML = '<div class="empty-state">[ NO TRANSACTIONS ]</div>';
+        } else {
+            const histFrag = document.createDocumentFragment();
+            mTransactions.slice(0, 15).forEach(t => { 
+                const isOut = t.type === 'out';
+                const absAmount = Math.abs(parseFloat(t.amount)).toFixed(2);
+                
+                const row = document.createElement('div');
+                row.className = `m-item-row ${isOut ? 'out' : 'in'}`;
+                row.innerHTML = `
+                    <div>
+                        <div class="m-title">${escapeHtml(t.desc)}</div>
+                        <div class="m-sub">${escapeHtml(t.date)}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="m-amt ${isOut ? 'neg' : 'pos'}">${isOut ? '-' : '+'}€${absAmount}</div>
+                    </div>
+                `;
+                const delBtn = document.createElement('button');
+                delBtn.className = 'icon-btn delete';
+                delBtn.textContent = '[X]';
+                delBtn.onclick = () => deleteTransaction(t.id);
+                row.lastElementChild.appendChild(delBtn);
 
-        mTransactions.slice(0, 15).forEach(t => { 
-            const isOut = t.type === 'out';
-            const absAmount = Math.abs(parseFloat(t.amount)).toFixed(2);
-            
-            const row = document.createElement('div');
-            row.className = `m-item-row ${isOut ? 'out' : 'in'}`;
-            row.innerHTML = `
-                <div>
-                    <div class="m-title">${escapeHtml(t.desc)}</div>
-                    <div class="m-sub">${escapeHtml(t.date)}</div>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="m-amt ${isOut ? 'neg' : 'pos'}" style="font-family: monospace; font-weight: bold;">€${absAmount}</div>
-                </div>
-            `;
-            const delBtn = document.createElement('button');
-            delBtn.className = 'icon-btn delete';
-            delBtn.style.cssText = 'opacity: 1; visibility: visible;';
-            delBtn.textContent = '×';
-            delBtn.onclick = () => deleteTransaction(t.id);
-            row.lastElementChild.appendChild(delBtn);
-
-            histFrag.appendChild(row);
-        });
-        histCont.appendChild(histFrag);
+                histFrag.appendChild(row);
+            });
+            histCont.appendChild(histFrag);
+        }
     }
 
     // 2. Recurring Payments
     const recCont = document.getElementById('m-recurring-container');
     if (recCont) {
         recCont.innerHTML = '';
-        const recFrag = document.createDocumentFragment();
+        if (mRecurring.length === 0) {
+            recCont.innerHTML = '<div class="empty-state">[ NONE ]</div>';
+        } else {
+            const recFrag = document.createDocumentFragment();
+            mRecurring.forEach(r => {
+                const absAmount = Math.abs(parseFloat(r.amount)).toFixed(2);
+                const row = document.createElement('div');
+                row.className = 'm-item-row';
+                row.style.borderLeftColor = '#888';
+                row.innerHTML = `
+                    <div>
+                        <div class="m-title">${escapeHtml(r.title)}</div>
+                        <div class="m-sub">DAY ${escapeHtml(r.dayOfMonth)} | END: ${escapeHtml(r.endDate || 'NEVER')}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <div class="m-amt neg">-€${absAmount}</div>
+                    </div>
+                `;
+                const delBtn = document.createElement('button');
+                delBtn.className = 'icon-btn delete';
+                delBtn.textContent = '[X]';
+                delBtn.onclick = () => deleteRecurring(r.id);
+                row.lastElementChild.appendChild(delBtn);
 
-        mRecurring.forEach(r => {
-            const absAmount = Math.abs(parseFloat(r.amount)).toFixed(2);
-            const row = document.createElement('div');
-            row.className = 'm-item-row';
-            row.style.borderLeftColor = '#888';
-            row.innerHTML = `
-                <div>
-                    <div class="m-title">${escapeHtml(r.title)}</div>
-                    <div class="m-sub">Day ${escapeHtml(r.dayOfMonth)} | Ends: ${escapeHtml(r.endDate || 'Never')}</div>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <div class="m-amt neg" style="font-family: monospace; font-weight: bold;">€${absAmount}</div>
-                </div>
-            `;
-            const delBtn = document.createElement('button');
-            delBtn.className = 'icon-btn delete';
-            delBtn.style.cssText = 'opacity: 1; visibility: visible;';
-            delBtn.textContent = '×';
-            delBtn.onclick = () => deleteRecurring(r.id);
-            row.lastElementChild.appendChild(delBtn);
-
-            recFrag.appendChild(row);
-        });
-        recCont.appendChild(recFrag);
+                recFrag.appendChild(row);
+            });
+            recCont.appendChild(recFrag);
+        }
     }
 
-    // 3. Ideas Incubator (Wishlist)
+    // 3. Ideas Incubator (Ora con il pulsante [BUY] funzionante)
     const wishCont = document.getElementById('m-wishlist-container');
     if (wishCont) {
         wishCont.innerHTML = '';
-        const wishFrag = document.createDocumentFragment();
+        if (mWishlist.length === 0) {
+            wishCont.innerHTML = '<div class="empty-state">[ NO IDEAS IN INCUBATOR ]</div>';
+        } else {
+            const wishFrag = document.createDocumentFragment();
+            mWishlist.forEach((w, i) => {
+                const hasCost = w.cost && parseFloat(w.cost) > 0;
+                const costDisplay = hasCost ? `€${Math.abs(parseFloat(w.cost)).toFixed(2)}` : '€--';
 
-        mWishlist.forEach((w, i) => {
-            const costDisplay = (w.cost && parseFloat(w.cost) > 0) ? `€${Math.abs(parseFloat(w.cost)).toFixed(2)}` : '';
-            const badgeHtml = costDisplay ? `<div class="m-amt" style="color: var(--text-dim); font-weight: bold;">${costDisplay}</div>` : '';
+                const row = document.createElement('div');
+                row.className = 'm-item-row idea';
+                row.innerHTML = `
+                    <div style="display:flex; gap:10px; align-items:center;">
+                        <div class="wish-arrows" style="display:flex; flex-direction:column;"></div>
+                        <div><div class="m-title" style="color:white;">${escapeHtml(w.title)}</div></div>
+                    </div>
+                    <div class="wish-actions" style="display:flex; align-items:center; gap:8px;">
+                        <div class="m-amt" style="color: var(--text-dim); margin-right: 4px;">${costDisplay}</div>
+                    </div>
+                `;
 
-            const row = document.createElement('div');
-            row.className = 'm-item-row idea';
-            row.innerHTML = `
-                <div style="display:flex; gap:10px; align-items:center;">
-                    <div class="wish-arrows" style="display:flex; flex-direction:column;"></div>
-                    <div><div class="m-title" style="color:white;">${escapeHtml(w.title)}</div></div>
-                </div>
-                <div class="wish-actions" style="display:flex; align-items:center; gap:10px;">
-                    ${badgeHtml}
-                </div>
-            `;
+                const arrowsBox = row.querySelector('.wish-arrows');
+                const upBtn = document.createElement('button');
+                upBtn.className = 'icon-btn';
+                upBtn.style.cssText = 'font-size:0.6rem; padding:0;';
+                upBtn.textContent = '▲';
+                upBtn.onclick = () => moveWish(i, -1);
 
-            const arrowsBox = row.querySelector('.wish-arrows');
-            const upBtn = document.createElement('button');
-            upBtn.className = 'icon-btn';
-            upBtn.style.cssText = 'font-size:0.6rem; padding:0;';
-            upBtn.textContent = '▲';
-            upBtn.onclick = () => moveWish(i, -1);
+                const downBtn = document.createElement('button');
+                downBtn.className = 'icon-btn';
+                downBtn.style.cssText = 'font-size:0.6rem; padding:0;';
+                downBtn.textContent = '▼';
+                downBtn.onclick = () => moveWish(i, 1);
 
-            const downBtn = document.createElement('button');
-            downBtn.className = 'icon-btn';
-            downBtn.style.cssText = 'font-size:0.6rem; padding:0;';
-            downBtn.textContent = '▼';
-            downBtn.onclick = () => moveWish(i, 1);
+                arrowsBox.appendChild(upBtn);
+                arrowsBox.appendChild(downBtn);
 
-            arrowsBox.appendChild(upBtn);
-            arrowsBox.appendChild(downBtn);
+                const actionsBox = row.querySelector('.wish-actions');
 
-            const delBtn = document.createElement('button');
-            delBtn.className = 'icon-btn delete';
-            delBtn.style.cssText = 'opacity: 1; visibility: visible; color: #ff6666;';
-            delBtn.textContent = '×';
-            delBtn.onclick = () => deleteWish(w.id);
-            row.querySelector('.wish-actions').appendChild(delBtn);
+                const buyBtn = document.createElement('button');
+                buyBtn.className = 'btn btn-sm';
+                buyBtn.textContent = '[BUY]';
+                buyBtn.title = 'Purchase item and deduct from balance';
+                buyBtn.onclick = () => purchaseIdea(w.id);
 
-            wishFrag.appendChild(row);
-        });
-        wishCont.appendChild(wishFrag);
+                const delBtn = document.createElement('button');
+                delBtn.className = 'icon-btn delete';
+                delBtn.textContent = '[X]';
+                delBtn.onclick = () => deleteWish(w.id);
+
+                actionsBox.appendChild(buyBtn);
+                actionsBox.appendChild(delBtn);
+
+                wishFrag.appendChild(row);
+            });
+            wishCont.appendChild(wishFrag);
+        }
     }
 
     drawSteppedChart();
 }
 
-// --- GRAFICO A SCALINI ---
 function drawSteppedChart() {
     const svg = document.getElementById('m-chart-svg');
     const polyline = document.getElementById('m-chart-line');
@@ -199,17 +216,36 @@ function drawSteppedChart() {
     }
 
     let historyPoints = [];
+    currentChartStepData = [];
     let currentBal = startBal;
+
     historyPoints.push(currentBal);
+    currentChartStepData.push({
+        balance: currentBal,
+        label: `INITIAL BALANCE: €${currentBal.toFixed(2)}`
+    });
 
     displayTrans.forEach(t => {
-        if (t.type === 'in') currentBal = roundCurrency(currentBal + parseFloat(t.amount));
-        else currentBal = roundCurrency(currentBal - parseFloat(t.amount));
+        const amt = roundCurrency(t.amount);
+        if (t.type === 'in') currentBal = roundCurrency(currentBal + amt);
+        else currentBal = roundCurrency(currentBal - amt);
         historyPoints.push(currentBal);
+        currentChartStepData.push({
+            balance: currentBal,
+            label: `${t.date} // ${t.desc} (${t.type === 'in' ? '+' : '-'}€${amt.toFixed(2)}) -> €${currentBal.toFixed(2)}`
+        });
     });
 
     const maxBal = Math.max(...historyPoints);
     const minBal = Math.min(...historyPoints);
+
+    // Aggiorna etichette testuali sul grafico
+    const maxEl = document.getElementById('m-chart-max');
+    const minEl = document.getElementById('m-chart-min');
+    const startEl = document.getElementById('m-chart-start');
+    if (maxEl) maxEl.textContent = `MAX: €${maxBal.toFixed(2)}`;
+    if (minEl) minEl.textContent = `MIN: €${minBal.toFixed(2)}`;
+    if (startEl) startEl.textContent = `START: €${startBal.toFixed(2)}`;
     
     let rawRange = maxBal - minBal;
     if (rawRange === 0) rawRange = 1;
@@ -240,9 +276,28 @@ function drawSteppedChart() {
     }
     
     polyline.setAttribute("points", pointsStr);
+
+    // Attiva ispezione interattiva col mouse sul grafico
+    const chartBox = document.getElementById('m-chart-box');
+    const hoverInfo = document.getElementById('m-chart-hover-info');
+    if (chartBox && hoverInfo && !chartBox.dataset.listenerBound) {
+        chartBox.dataset.listenerBound = 'true';
+        chartBox.addEventListener('mousemove', (e) => {
+            if (currentChartStepData.length === 0) return;
+            const rect = chartBox.getBoundingClientRect();
+            const relX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const idx = Math.min(
+                currentChartStepData.length - 1,
+                Math.floor(relX * currentChartStepData.length)
+            );
+            hoverInfo.textContent = currentChartStepData[idx].label;
+        });
+        chartBox.addEventListener('mouseleave', () => {
+            hoverInfo.textContent = '';
+        });
+    }
 }
 
-// --- AZIONI MODALI ---
 function openTransactionModal(type) {
     document.getElementById('mTransactionForm').reset();
     document.getElementById('m-trans-type').value = type;
@@ -265,7 +320,6 @@ function openWishlistModal() {
     document.getElementById('mWishlistModal').style.display = 'flex';
 }
 
-// --- LISTENER FORM ---
 document.getElementById('mTransactionForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const type = document.getElementById('m-trans-type').value;
@@ -315,7 +369,6 @@ document.getElementById('mWishlistForm').addEventListener('submit', (e) => {
     renderMoneyDashboard();
 });
 
-// --- ELIMINAZIONI E ACQUISTI ---
 function deleteTransaction(id) {
     const t = mTransactions.find(x => x.id === id);
     if (!t) return;
@@ -341,16 +394,27 @@ function deleteWish(id) {
 function purchaseIdea(id) {
     const w = mWishlist.find(x => x.id === id);
     if (!w) return;
-    const cost = roundCurrency(w.cost);
+
+    let cost = roundCurrency(w.cost);
+    if (!cost || cost <= 0) {
+        const entered = prompt(`Enter purchase price (€) for "${w.title}":`, "10.00");
+        if (entered === null) return;
+        cost = roundCurrency(entered.replace(',', '.'));
+        if (cost <= 0) return;
+    }
+
     mBalance = roundCurrency(mBalance - cost);
     mTransactions.push({ 
         id: 'mt_' + Date.now(), 
         type: 'out', 
         amount: cost, 
-        desc: `(Wishlist) ${w.title}`, 
+        desc: `[Wish] ${w.title}`, 
         date: todayStr 
     });
     deleteWish(id);
+    if (typeof showToast === 'function') {
+        showToast(`[MONEY] Purchased "${w.title}" (-€${cost.toFixed(2)})`);
+    }
 }
 
 function moveWish(index, dir) {

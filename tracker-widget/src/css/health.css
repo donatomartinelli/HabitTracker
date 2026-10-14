@@ -1,69 +1,154 @@
 /* --- DIETA --- */
-.diet-wrapper { display: flex; flex-direction: column; gap: 1px; }
-.diet-row { display: grid; grid-template-columns: 80px repeat(7, 1fr); gap: 1px; }
-.diet-header {
-    background: transparent; color: var(--text-dim); font-size: 0.65rem;
-    text-transform: uppercase; font-weight: bold; padding: 10px 5px;
-    text-align: center; border-bottom: 1px solid var(--border-color);
+.diet-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    border: 1px solid var(--border-color);
 }
+
+.diet-row {
+    display: grid;
+    grid-template-columns: 85px repeat(7, 1fr);
+    gap: 1px;
+}
+
+.diet-header {
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-dim);
+    font-size: var(--font-xs);
+    text-transform: uppercase;
+    font-weight: bold;
+    padding: 8px 4px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-color);
+}
+
 .diet-cell {
-    background: transparent; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 10px 5px; font-size: 0.7rem; color: #ccc;
-    text-align: center; display: flex; align-items: center; justify-content: center;
-    white-space: pre-line; line-height: 1.4; cursor: pointer;
+    background: transparent;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    padding: 9px 5px;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    white-space: pre-line;
+    line-height: 1.35;
+    cursor: pointer;
     transition: background 0.15s ease;
 }
+
 .diet-cell:hover {
     background: rgba(255, 255, 255, 0.06);
 }
+
 .diet-row-label {
-    color: var(--text-dim); font-weight: bold; text-align: right;
-    padding-right: 10px; border-bottom: none; cursor: default;
+    color: var(--text-dim);
+    font-weight: bold;
+    text-align: right;
+    padding-right: 10px;
+    cursor: default;
+    text-transform: uppercase;
 }
+
 .diet-row-label:hover { background: transparent; }
+
 .diet-col-active {
-    background: rgba(255, 255, 255, 0.04); color: #fff;
-    font-weight: bold; border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+    font-weight: bold;
 }
+
 .diet-inline-editor {
-    width: 100%; height: 100%; min-height: 55px;
-    background: #000; color: #fff; border: 1px solid var(--text-main);
-    font-size: 0.7rem; text-align: center; padding: 4px;
-    resize: none; outline: none; font-family: inherit; line-height: 1.3;
+    width: 100%;
+    height: 100%;
+    min-height: 55px;
+    background: #000;
+    color: #fff;
+    border: 1px solid var(--text-main);
+    font-size: var(--font-xs);
+    text-align: center;
+    padding: 4px;
+    resize: none;
+    outline: none;
+    line-height: 1.3;
+}
+
+.diet-rules-bar {
+    margin-top: 10px;
+    font-size: var(--font-xs);
+    color: var(--text-dim);
+    line-height: 1.5;
+    border: 1px dashed var(--border-color);
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.01);
 }
 
 /* --- PALESTRA --- */
 .gym-day-card {
-    flex: 1; display: flex; flex-direction: column;
-    background: rgba(255,255,255,0.01); border: 1px solid var(--border-color);
-    padding: 15px; transition: opacity 0.3s ease; overflow: hidden;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border-color);
+    padding: 14px;
+    transition: opacity 0.2s ease;
+    overflow: hidden;
 }
-.gym-day-active { opacity: 1; pointer-events: auto; }
-.gym-day-inactive { opacity: 0.3; pointer-events: none; }
-.gym-day-editing { opacity: 1 !important; pointer-events: auto !important; border-color: #666; }
 
-.gym-ex-list { flex: 1; overflow-y: auto; padding-right: 10px; margin-bottom: 10px; }
-.gym-ex-row {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.05); gap: 10px;
+.gym-day-active { opacity: 1; pointer-events: auto; border-color: var(--border-bright); }
+.gym-day-inactive { opacity: 0.35; pointer-events: none; }
+.gym-day-editing { opacity: 1 !important; pointer-events: auto !important; border-color: var(--text-main); }
+
+.gym-ex-list {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 6px;
+    margin-bottom: 8px;
 }
+
+.gym-ex-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.08);
+    gap: 10px;
+}
+
 .gym-ex-row:last-child { border-bottom: none; }
 .gym-ex-info { display: flex; flex-direction: column; flex: 1; }
-.gym-ex-name { color: #eee; font-size: 0.8rem; }
-.gym-ex-reps { color: var(--text-dim); font-size: 0.65rem; margin-top: 2px; }
+.gym-ex-name { color: #eeeeee; font-size: var(--font-sm); }
+.gym-ex-reps { color: var(--text-dim); font-size: var(--font-xs); margin-top: 2px; }
 
 .gym-sets-container { display: flex; gap: 5px; align-items: center; }
+
 .gym-input {
-    width: 40px; background: transparent; border: none; 
+    width: 40px;
+    background: transparent;
+    border: none;
     border-bottom: 1px dashed var(--text-dim);
-    color: white; text-align: center; font-size: 0.75rem; padding: 2px;
-    font-family: inherit; transition: 0.2s;
+    color: white;
+    text-align: center;
+    font-size: var(--font-xs);
+    padding: 2px;
 }
-.gym-input:focus { outline: none; border-bottom: 1px solid white; background: rgba(255,255,255,0.05); }
+
+.gym-input:focus {
+    outline: none;
+    border-bottom: 1px solid white;
+    background: rgba(255, 255, 255, 0.06);
+}
+
 .gym-input::placeholder { color: #333; }
 
 .gym-edit-input {
-    background: rgba(255,255,255,0.05); border: 1px solid #444;
-    color: white; font-size: 0.75rem; padding: 4px 6px; font-family: inherit;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid #444;
+    color: white;
+    font-size: var(--font-xs);
+    padding: 4px 6px;
 }
+
 .gym-edit-input:focus { outline: none; border-color: white; }

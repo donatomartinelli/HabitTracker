@@ -1,4 +1,4 @@
-// --- 4. RENDER & UI UPDATES (SAFE DOM & FRAGMENTS) ---
+// --- 4. RENDER & UI UPDATES (COLLISION-FREE PLANNER & QUICK ACTIONS) ---
 
 let plannerZoom = 40;
 
@@ -13,7 +13,7 @@ function hexToRgba(hex, alpha) {
 function showTooltip(e, title, timeStr, category) {
     const tooltip = document.getElementById('planner-tooltip');
     if (!tooltip) return;
-    tooltip.innerHTML = `<strong style="display:block; margin-bottom:4px; font-size:0.85rem;">${escapeHtml(title)}</strong><span style="color:#aaa;">${escapeHtml(timeStr)}</span><br><span style="color:#888; margin-top:2px; display:inline-block;">${escapeHtml(category)}</span>`;
+    tooltip.innerHTML = `<strong style="display:block; margin-bottom:3px; color:#fff;">${escapeHtml(title)}</strong><span style="color:#aaa;">${escapeHtml(timeStr)}</span><br><span style="color:#666; margin-top:2px; display:inline-block; text-transform:uppercase;">${escapeHtml(category)}</span>`;
     tooltip.style.display = 'block';
     tooltip.style.left = (e.clientX + 15) + 'px';
     tooltip.style.top = (e.clientY + 15) + 'px';
@@ -123,16 +123,16 @@ function renderManager() {
 
         const rightActions = document.createElement('div');
         rightActions.className = 'action-btns';
-        rightActions.style.cssText = 'display:flex; margin-bottom:10px;';
+        rightActions.style.cssText = 'display:flex; margin-bottom:6px;';
 
         const btnRename = document.createElement('button');
         btnRename.className = 'icon-btn';
-        btnRename.textContent = '✎';
+        btnRename.textContent = '[EDIT]';
         btnRename.onclick = () => openRenameModal(cat);
 
         const btnDelCat = document.createElement('button');
         btnDelCat.className = 'icon-btn delete';
-        btnDelCat.textContent = '×';
+        btnDelCat.textContent = '[X]';
         btnDelCat.onclick = () => deleteCategory(cat);
 
         rightActions.appendChild(btnRename);
@@ -158,12 +158,12 @@ function renderManager() {
 
             const btnEdit = document.createElement('button');
             btnEdit.className = 'icon-btn';
-            btnEdit.textContent = '✎';
+            btnEdit.textContent = '[EDIT]';
             btnEdit.onclick = () => editTask(t.id);
 
             const btnDel = document.createElement('button');
             btnDel.className = 'icon-btn delete';
-            btnDel.textContent = '×';
+            btnDel.textContent = '[X]';
             btnDel.onclick = () => deleteTask(t.id);
 
             taskActions.appendChild(btnEdit);
@@ -204,20 +204,22 @@ function renderTasks() {
     flexContainer.innerHTML = ''; 
     const schedFrag = document.createDocumentFragment();
     const flexFrag = document.createDocumentFragment();
-    let hasAnyTasks = false;
+    let hasSched = false;
+    let hasFlex = false;
     
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
+    const selectedDayIdx = new Date(selectedDateStr).getDay();
     
     if (dayEvents.length > 0) {
-        hasAnyTasks = true; 
+        hasSched = true; 
         const eventGroup = document.createElement('div'); 
         eventGroup.className = 'category-group'; 
-        eventGroup.innerHTML = `<div class="category-header-wrap" style="border-bottom-color: #333;"><div class="category-title" style="color: #888;">Events</div></div>`;
+        eventGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title" style="color: var(--text-dim);">Events</div></div>`;
         
         dayEvents.forEach(e => { 
             const item = document.createElement('div');
             item.className = 'task-item';
-            item.style.cssText = `border-left: 4px solid ${e.color}; padding-left: 15px;`;
+            item.style.cssText = `border-left: 3px solid ${e.color}; padding-left: 10px;`;
 
             const left = document.createElement('div');
             left.className = 'task-left';
@@ -225,21 +227,21 @@ function renderTasks() {
             const title = document.createElement('div');
             title.className = 'task-title';
             title.style.cssText = `color: ${e.color}; font-weight: bold;`;
-            title.textContent = e.title;
+            const timeBadge = (e.start && e.end) ? `[${e.start}-${e.end}] ` : '';
+            title.textContent = `${timeBadge}${e.title}`;
 
             const actions = document.createElement('div');
-            actions.className = 'action-btns';
-            actions.style.display = 'flex';
+            actions.className = 'task-quick-actions';
 
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.textContent = '×';
+            delBtn.textContent = '[X]';
             delBtn.onclick = () => deleteEvent(e.id);
 
             actions.appendChild(delBtn);
             left.appendChild(title);
-            left.appendChild(actions);
             item.appendChild(left);
+            item.appendChild(actions);
             eventGroup.appendChild(item);
         }); 
         schedFrag.appendChild(eventGroup);
@@ -251,12 +253,10 @@ function renderTasks() {
         const activeTasks = templates.filter(t => t.category === cat && isTaskActiveOnDate(t, selectedDateStr));
         
         if (activeTasks.length > 0) {
-            hasAnyTasks = true; 
-            
             const schedTasks = activeTasks.filter(t => t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0));
             const flexTasks = activeTasks.filter(t => t.type !== 'timed' && (!t.timeWindows || t.timeWindows.length === 0));
 
-            const createGroup = (tasks) => {
+            const createGroup = (tasks, isScheduledGroup) => {
                 const groupDiv = document.createElement('div'); 
                 groupDiv.className = 'category-group'; 
                 
@@ -276,13 +276,49 @@ function renderTasks() {
                     
                     const leftDiv = document.createElement('div');
                     leftDiv.className = 'task-left';
+
                     const titleDiv = document.createElement('div');
                     titleDiv.className = 'task-title';
-                    titleDiv.textContent = t.title;
+
+                    // Mostra l'orario accanto alle task programmate
+                    let timePrefix = '';
+                    if (isScheduledGroup && t.timeWindows && t.timeWindows.length > 0) {
+                        const matchingTw = t.timeWindows.find(tw => tw.days && tw.days.includes(selectedDayIdx));
+                        if (matchingTw) timePrefix = `[${matchingTw.start}] `;
+                    }
+                    titleDiv.textContent = `${timePrefix}${t.title}`;
                     leftDiv.appendChild(titleDiv);
+
+                    // Azioni rapide al passaggio del mouse (Focus, Edit, Delete)
+                    const quickActions = document.createElement('div');
+                    quickActions.className = 'task-quick-actions';
+
+                    if (t.type !== 'medicine') {
+                        const btnFocus = document.createElement('button');
+                        btnFocus.className = 'icon-btn';
+                        btnFocus.title = 'Start instant Focus timer on this task';
+                        btnFocus.textContent = '[▶]';
+                        btnFocus.onclick = () => quickStartTaskFocus(t.id);
+                        quickActions.appendChild(btnFocus);
+
+                        const btnEdit = document.createElement('button');
+                        btnEdit.className = 'icon-btn';
+                        btnEdit.title = 'Edit task';
+                        btnEdit.textContent = '[✎]';
+                        btnEdit.onclick = () => editTask(t.id);
+                        quickActions.appendChild(btnEdit);
+                    }
+
+                    const btnDel = document.createElement('button');
+                    btnDel.className = 'icon-btn delete';
+                    btnDel.title = 'Delete task';
+                    btnDel.textContent = '[×]';
+                    btnDel.onclick = () => deleteTask(t.id);
+                    quickActions.appendChild(btnDel);
 
                     const instContainer = document.createElement('div');
                     instContainer.className = 'instances-container';
+                    instContainer.appendChild(quickActions);
 
                     for (let i = 0; i < instancesCount; i++) {
                         const cb = document.createElement('div');
@@ -298,18 +334,22 @@ function renderTasks() {
                 return groupDiv;
             };
 
-            if (schedTasks.length > 0) schedFrag.appendChild(createGroup(schedTasks));
-            if (flexTasks.length > 0) flexFrag.appendChild(createGroup(flexTasks));
+            if (schedTasks.length > 0) {
+                hasSched = true;
+                schedFrag.appendChild(createGroup(schedTasks, true));
+            }
+            if (flexTasks.length > 0) {
+                hasFlex = true;
+                flexFrag.appendChild(createGroup(flexTasks, false));
+            }
         }
     });
     
-    if (!hasAnyTasks) {
-        schedContainer.innerHTML = `<div class="empty-state"></div>`;
-        flexContainer.innerHTML = `<div class="empty-state"></div>`;
-    } else {
-        schedContainer.appendChild(schedFrag);
-        flexContainer.appendChild(flexFrag);
-    }
+    if (hasSched) schedContainer.appendChild(schedFrag);
+    else schedContainer.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
+
+    if (hasFlex) flexContainer.appendChild(flexFrag);
+    else flexContainer.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
 }
 
 function renderCalendar() {
@@ -353,11 +393,10 @@ function renderCalendar() {
         if (dayEvents.length > 0) {
             const barsContainer = document.createElement('div');
             barsContainer.className = 'bars-container';
-            barsContainer.style.cssText = 'gap: 3px; flex-wrap: wrap; justify-content: center; margin-top: 4px;';
             dayEvents.forEach(e => {
                 const bar = document.createElement('div');
                 bar.className = 'bar';
-                bar.style.cssText = `background-color: ${e.color}; width: 6px; height: 6px;`;
+                bar.style.backgroundColor = e.color;
                 barsContainer.appendChild(bar);
             });
             dayCell.appendChild(barsContainer);
@@ -380,6 +419,7 @@ function changeMonth(dir) {
 function renderTracker() {
     const tracker2D = document.getElementById('github-tracker'); 
     const strip1D = document.getElementById('tracker-strip-1d');
+    const metricsEl = document.getElementById('tracker-metrics');
     if (!tracker2D || !strip1D) return;
     
     tracker2D.innerHTML = ''; 
@@ -409,8 +449,11 @@ function renderTracker() {
         
         const cell = document.createElement('div'); 
         cell.className = 'cell'; 
-        cell.title = `${dateStr} - ${stats.completed}/${stats.total} completed`; 
-        cell.onclick = () => selectDate(dateStr);
+        cell.title = `${dateStr} // ${stats.completed}/${stats.total} completed`; 
+        cell.onclick = () => {
+            closeModals();
+            selectDate(dateStr);
+        };
         
         let lvlClass = 'lvl-none'; 
         if (stats.total > 0) { 
@@ -425,7 +468,7 @@ function renderTracker() {
         frag2D.appendChild(cell);
     }
 
-    const daysToRender1D = Math.min(45, diffDays + 1); 
+    const daysToRender1D = Math.min(35, diffDays + 1); 
     const startDate1D = new Date(todayObj); 
     startDate1D.setDate(todayObj.getDate() - daysToRender1D + 1);
     
@@ -437,9 +480,9 @@ function renderTracker() {
         
         const cell = document.createElement('div'); 
         cell.className = 'cell'; 
-        cell.style.width = '12px'; 
-        cell.style.height = '12px'; 
-        cell.title = `${dateStr} - ${stats.completed}/${stats.total}`; 
+        cell.style.width = '11px'; 
+        cell.style.height = '11px'; 
+        cell.title = `${dateStr} // ${stats.completed}/${stats.total}`; 
         
         let lvlClass = 'lvl-none'; 
         if (stats.total > 0) { 
@@ -456,6 +499,30 @@ function renderTracker() {
 
     tracker2D.appendChild(frag2D);
     strip1D.appendChild(frag1D);
+
+    // Calcolo TODAY X/Y e STREAK consecutiva
+    if (metricsEl) {
+        const todayStats = getStatsForDate(todayStr);
+        let streak = 0;
+        let checkD = new Date(todayObj);
+
+        // Se oggi non hai ancora spuntato nulla, controlla la serie a partire da ieri
+        if (todayStats.completed === 0) {
+            checkD.setDate(checkD.getDate() - 1);
+        }
+
+        for (let k = 0; k < 365; k++) {
+            const dStr = formatDate(checkD);
+            const st = getStatsForDate(dStr);
+            if (st.total > 0 && st.completed > 0) {
+                streak++;
+                checkD.setDate(checkD.getDate() - 1);
+            } else {
+                break;
+            }
+        }
+        metricsEl.textContent = `TODAY ${todayStats.completed}/${todayStats.total} | STREAK ${streak}D`;
+    }
 }
 
 function getWeekStart(dateStr) { 
@@ -469,6 +536,49 @@ function timeToPx(timeStr) {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0; 
     const [h, m] = timeStr.split(':').map(Number); 
     return ((h - 7) + m / 60) * plannerZoom; 
+}
+
+// Algoritmo che divide in colonne affiancate gli impegni che si sovrappongono nello stesso orario
+function computeOverlapColumns(blocks) {
+    blocks.sort((a, b) => a.top - b.top || (b.bottom - a.bottom));
+    let clusters = [];
+    let currentCluster = [];
+    let clusterEnd = -1;
+
+    blocks.forEach(b => {
+        if (currentCluster.length === 0 || b.top < clusterEnd) {
+            currentCluster.push(b);
+            clusterEnd = Math.max(clusterEnd, b.bottom);
+        } else {
+            clusters.push(currentCluster);
+            currentCluster = [b];
+            clusterEnd = b.bottom;
+        }
+    });
+    if (currentCluster.length > 0) clusters.push(currentCluster);
+
+    clusters.forEach(cluster => {
+        const cols = [];
+        cluster.forEach(b => {
+            let placed = false;
+            for (let c = 0; c < cols.length; c++) {
+                if (cols[c] <= b.top) {
+                    cols[c] = b.bottom;
+                    b.colIndex = c;
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                b.colIndex = cols.length;
+                cols.push(b.bottom);
+            }
+        });
+        const totalCols = cols.length;
+        cluster.forEach(b => {
+            b.totalCols = totalCols;
+        });
+    });
 }
 
 function renderWeeklyPlanner() {
@@ -504,7 +614,7 @@ function renderWeeklyPlanner() {
 
             const delBtn = document.createElement('button');
             delBtn.className = 'ref-del-btn';
-            delBtn.textContent = '×';
+            delBtn.textContent = '[X]';
             delBtn.onclick = () => deleteReference(ref.id);
 
             wrap.appendChild(lbl);
@@ -542,20 +652,16 @@ function renderWeeklyPlanner() {
             
             const headerCell = document.createElement('div'); 
             headerCell.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-            headerCell.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
+            headerCell.style.cursor = 'pointer';
+            headerCell.onclick = () => selectDate(loopDateStr);
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
             if (drawerDaysRow) {
                 const dropZone = document.createElement('div');
                 dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-                dropZone.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
-                dropZone.style.borderTop = '1px solid rgba(255,255,255,0.15)'; 
-                dropZone.style.background = 'rgba(255,255,255,0.01)';
-                dropZone.style.minHeight = '100px';
-                dropZone.style.padding = '5px';
-
-                dropZone.innerHTML = `<div class="day-title" style="font-size:0.65rem; border-bottom:none;">${days[i]}</div>`;
+                dropZone.style.cssText = 'background: rgba(255,255,255,0.01); min-height: 90px; padding: 5px;';
+                dropZone.innerHTML = `<div class="day-title" style="margin-bottom:4px;">${days[i]}</div>`;
                 
                 let flexibleCategories = new Set();
                 
@@ -564,7 +670,7 @@ function renderWeeklyPlanner() {
                         const badge = document.createElement('div');
                         badge.className = 'flexible-task-badge';
                         badge.style.borderLeft = `2px solid ${e.color}`;
-                        badge.textContent = `★ ${e.title}`;
+                        badge.textContent = `[*] ${e.title}`;
                         dropZone.appendChild(badge);
                     }
                 });
@@ -590,9 +696,6 @@ function renderWeeklyPlanner() {
             const dayCol = document.createElement('div'); 
             dayCol.className = 'planner-col-absolute'; 
             dayCol.style.height = `${totalGridHeight}px`; 
-            dayCol.style.marginTop = '0px'; 
-            dayCol.style.borderRight = i < 6 ? '1px solid rgba(255,255,255,0.15)' : 'none';
-            
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
             
             for (let h = startHour; h <= 24; h++) {
@@ -602,6 +705,7 @@ function renderWeeklyPlanner() {
                 dayCol.appendChild(line);
             }
 
+            // 1. Ghost Layers sullo sfondo
             referenceLayers.forEach(ref => {
                 if (ref && refToggles[ref.id]) {
                     (ref.timeWindows || []).forEach(tw => {
@@ -622,31 +726,85 @@ function renderWeeklyPlanner() {
                 }
             });
 
+            // 2. Raccolta di tutti i blocchi orari del giorno (Task + Single Events con orario)
+            const dayBlocks = [];
+
             templates.forEach(t => {
                 if (t && isTaskActiveOnDate(t, loopDateStr) && t.timeWindows && t.timeWindows.length > 0) {
                     t.timeWindows.forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
                             if (plannerExceptions[`${t.id}_${loopDateStr}_${tw.start}`]) return;
-
-                            const top = timeToPx(tw.start); 
-                            const height = Math.max(timeToPx(tw.end) - top, 15);
+                            const top = timeToPx(tw.start);
+                            const height = Math.max(timeToPx(tw.end) - top, 16);
                             if (top + height > 0) {
-                                const block = document.createElement('div');
-                                block.className = 'block-absolute block-task';
-                                block.style.cssText = `top:${top}px; height:${height}px; border-left: 3px solid ${t.color || '#fff'}; color: ${t.color || '#fff'};`;
-                                const bTag = document.createElement('b');
-                                bTag.textContent = t.title;
-                                block.appendChild(bTag);
-
-                                block.onmouseenter = (ev) => showTooltip(ev, t.title, `${tw.start} - ${tw.end}`, t.category);
-                                block.onmousemove = moveTooltip;
-                                block.onmouseleave = hideTooltip;
-                                block.oncontextmenu = (ev) => hidePlannerInstance(ev, t.id, loopDateStr, tw.start);
-                                dayCol.appendChild(block);
+                                dayBlocks.push({
+                                    kind: 'task',
+                                    id: t.id,
+                                    title: t.title,
+                                    category: t.category,
+                                    color: t.color || '#ffffff',
+                                    start: tw.start,
+                                    end: tw.end,
+                                    top: top,
+                                    height: height,
+                                    bottom: top + height
+                                });
                             }
                         }
                     });
                 }
+            });
+
+            specificEvents.forEach(e => {
+                if (e && e.date === loopDateStr && e.start && e.end) {
+                    const top = timeToPx(e.start);
+                    const height = Math.max(timeToPx(e.end) - top, 16);
+                    if (top + height > 0) {
+                        dayBlocks.push({
+                            kind: 'event',
+                            id: e.id,
+                            title: e.title,
+                            category: 'Single Event',
+                            color: e.color || '#b84b4b',
+                            start: e.start,
+                            end: e.end,
+                            top: top,
+                            height: height,
+                            bottom: top + height
+                        });
+                    }
+                }
+            });
+
+            // Calcolo colonne anti-sovrapposizione
+            computeOverlapColumns(dayBlocks);
+
+            dayBlocks.forEach(b => {
+                const block = document.createElement('div');
+                block.className = `block-absolute ${b.kind === 'event' ? 'block-event' : 'block-task'}`;
+                const widthPct = 100 / (b.totalCols || 1);
+                const leftPct = (b.colIndex || 0) * widthPct;
+
+                block.style.cssText = `
+                    top: ${b.top}px;
+                    height: ${b.height}px;
+                    left: calc(${leftPct}% + 1px);
+                    width: calc(${widthPct}% - 2px);
+                    border-left: 3px solid ${b.color};
+                    color: ${b.color};
+                `;
+
+                const bTag = document.createElement('b');
+                bTag.textContent = b.title;
+                block.appendChild(bTag);
+
+                block.onmouseenter = (ev) => showTooltip(ev, b.title, `${b.start} - ${b.end}`, b.category);
+                block.onmousemove = moveTooltip;
+                block.onmouseleave = hideTooltip;
+                if (b.kind === 'task') {
+                    block.oncontextmenu = (ev) => hidePlannerInstance(ev, b.id, loopDateStr, b.start);
+                }
+                dayCol.appendChild(block);
             });
             
             grid.appendChild(dayCol);
@@ -658,7 +816,7 @@ function renderWeeklyPlanner() {
                 const hl = document.createElement('div');
                 hl.id = 'planner-hover-line';
                 hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px solid rgba(255,255,255,0.3); pointer-events:none; z-index:50;';
-                hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:4px; top:-9px; width:36px; text-align:center; background:#1a1a1a; color:#ccc; font-size:0.65rem; padding:2px 0; border-radius:3px; letter-spacing:1px; border: 1px solid #333; z-index:100;"></div>';
+                hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:2px; top:-9px; width:40px; text-align:center; background:#050505; color:#fff; font-size:var(--font-xs); padding:1px 0; border: 1px solid #444; z-index:100;"></div>';
                 scrollArea.appendChild(hl);
                 
                 scrollArea.addEventListener('mousemove', function(e) {
@@ -697,7 +855,7 @@ function renderWeeklyPlanner() {
         drawCurrentTimeLine(); 
         
     } catch (error) { 
-        console.error("Crash evitato in renderWeeklyPlanner:", error); 
+        console.error("Error in renderWeeklyPlanner:", error); 
     }
 }
 
@@ -839,7 +997,6 @@ function initNotesResizer() {
     });
 }
 
-// --- GESTIONE CATEGORIE NOTE ---
 function renderNoteCategories() {
     if (!noteCategories || noteCategories.length === 0) {
         noteCategories = ['General'];
@@ -896,7 +1053,7 @@ function renderNotesManager() {
 
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '×';
+        delBtn.textContent = '[X]';
         delBtn.onclick = () => removeNoteCategory(cat);
 
         actions.appendChild(delBtn);
@@ -927,7 +1084,6 @@ function removeNoteCategory(cat) {
     renderNoteCategories();
 }
 
-// --- MODULAR DASHBOARD SYSTEM ---
 const dashboardModules = {
     'daily': { name: 'Daily / Notes', id: 'module-daily' },
     'planner': { name: 'Weekly Planner', id: 'module-planner' },
@@ -938,7 +1094,7 @@ const dashboardModules = {
 function initDashboard() {
     const savedWidth = localStorage.getItem('tracker_pane_left_width') || '50%';
     document.getElementById('pane-left').style.width = savedWidth;
-    document.getElementById('pane-right').style.width = `calc(100% - ${savedWidth} - 10px)`;
+    document.getElementById('pane-right').style.width = `calc(100% - ${savedWidth} - 8px)`;
     
     mountModule('left', activeLeft);
     mountModule('right', activeRight);
@@ -987,7 +1143,7 @@ function updateDropdownMenus() {
             if ((side === 'left' && key === activeLeft) || (side === 'right' && key === activeRight)) continue;
             
             const isOther = (side === 'left' && key === activeRight) || (side === 'right' && key === activeLeft);
-            html += `<div style="padding: 10px 15px; cursor: pointer; color: white; border-bottom: 1px solid #333; font-size: 0.85rem;" onclick="switchModule('${side}', '${key}')" onmouseover="this.style.color='var(--text-main)'" onmouseout="this.style.color='white'">${mod.name} ${isOther ? ' ⇄' : ''}</div>`;
+            html += `<div style="padding: 9px 14px; cursor: pointer; color: white; border-bottom: 1px solid #222; font-size: var(--font-xs); text-transform: uppercase;" onclick="switchModule('${side}', '${key}')" onmouseover="this.style.background='rgba(255,255,255,0.06)'" onmouseout="this.style.background='transparent'">${mod.name} ${isOther ? ' [SWAP]' : ''}</div>`;
         }
         return html;
     };
@@ -1019,7 +1175,7 @@ function initVerticalResizer() {
         if (newLeftPercent > 70) newLeftPercent = 70;
         
         leftPane.style.width = `${newLeftPercent}%`;
-        rightPane.style.width = `calc(${100 - newLeftPercent}% - 10px)`;
+        rightPane.style.width = `calc(${100 - newLeftPercent}% - 8px)`;
     });
     
     document.addEventListener('mouseup', () => {
@@ -1038,7 +1194,6 @@ function initVerticalResizer() {
     });
 }
 
-// --- LOGICA GENERAL TO-DO ---
 function addGeneralTask(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -1056,6 +1211,7 @@ function addGeneralTask(e) {
             });
             saveMoneyData();
             if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
+            if (typeof showToast === 'function') showToast(`[WISH] Added "${ideaName}" to Incubator`);
             
             e.target.value = '';
             return;
@@ -1064,6 +1220,7 @@ function addGeneralTask(e) {
         generalTodos.push({ id: 'todo_' + Date.now(), title: title });
         saveData();
         renderGeneralTodos();
+        if (typeof showToast === 'function') showToast(`[TODO] Added "${title}"`);
         e.target.value = '';
     }
 }
@@ -1087,7 +1244,7 @@ function renderGeneralTodos() {
     container.innerHTML = '';
     
     if (generalTodos.length === 0) {
-        container.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">No general tasks pending.</span>';
+        container.innerHTML = '<span class="empty-state">[ NO GENERAL TASKS PENDING ]</span>';
         return;
     }
     
@@ -1096,7 +1253,7 @@ function renderGeneralTodos() {
         const isSelected = selectedTodos.has(t.id);
         const item = document.createElement('div');
         item.className = 'task-item';
-        item.style.cssText = `padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid ${isSelected ? 'var(--text-main)' : 'rgba(255,255,255,0.05)'}; cursor: pointer; transition: 0.2s;`;
+        item.style.cssText = `padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid ${isSelected ? 'var(--text-main)' : 'rgba(255,255,255,0.05)'}; cursor: pointer;`;
         item.onclick = () => toggleTodoSelection(t.id);
 
         const left = document.createElement('div');
@@ -1104,10 +1261,10 @@ function renderGeneralTodos() {
 
         const cb = document.createElement('div');
         cb.className = `check-box ${isSelected ? 'checked' : ''}`;
-        cb.style.marginRight = '10px';
+        cb.style.marginRight = '8px';
 
         const span = document.createElement('span');
-        span.style.cssText = `font-size: 0.8rem; color: ${isSelected ? '#fff' : '#ccc'};`;
+        span.style.cssText = `font-size: var(--font-xs); color: ${isSelected ? '#fff' : '#ccc'};`;
         span.textContent = t.title;
 
         left.appendChild(cb);
@@ -1115,7 +1272,7 @@ function renderGeneralTodos() {
 
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '×';
+        delBtn.textContent = '[X]';
         delBtn.onclick = (ev) => {
             ev.stopPropagation();
             deleteGeneralTodo(t.id);
@@ -1247,7 +1404,6 @@ function initWeeklyResizer() {
     });
 }
 
-// --- GESTIONE TRASPARENZA ---
 function updateOpacity(val) {
     savedOpacity = val;
     document.documentElement.style.setProperty('--bg-opacity', val);
@@ -1256,7 +1412,6 @@ function updateOpacity(val) {
     localStorage.setItem('tracker_opacity', val);
 }
 
-// --- INITIALIZATION CALLS ---
 document.documentElement.style.setProperty('--bg-opacity', savedOpacity);
 const sliderEl = document.getElementById('bg-opacity-slider');
 if (sliderEl) sliderEl.value = savedOpacity;
@@ -1272,18 +1427,17 @@ renderNoteCategories();
 renderWeeklyPlanner();
 renderGeneralTodos();
 
-// --- GLOBAL CLOCK ---
 function updateGlobalClock() {
     const clockEl = document.getElementById('global-clock');
     if (!clockEl) return;
     
     const now = getNow();
     const timeStr = now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit' });
-    const days = ["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"];
+    const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const dayName = days[now.getDay()];
     const dayNum = now.getDate().toString().padStart(2, '0');
     
-    clockEl.innerText = `${timeStr} ${dayName} ${dayNum}`;
+    clockEl.innerText = `${timeStr} // ${dayName} ${dayNum}`;
 }
 
 setInterval(updateGlobalClock, 1000);

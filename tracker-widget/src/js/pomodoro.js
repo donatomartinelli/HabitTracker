@@ -7,7 +7,6 @@ let currentPlaylistIndex = 0;
 let timeRemaining = 0; 
 let totalPhaseTime = 0;
 
-// --- AUDIO BEEP GENERATO DAL BROWSER ---
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playBeep(frequency, duration) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -22,7 +21,6 @@ function playBeep(frequency, duration) {
     oscillator.stop(audioCtx.currentTime + duration);
 }
 
-// --- SKIP & RESET ---
 function skipPomodoroPhase() {
     if (focusPlaylist.length === 0 || currentPlaylistIndex >= focusPlaylist.length) return;
     
@@ -49,13 +47,9 @@ function resetPomodoroPhase() {
 
 function splitPlaylistTask(index) {
     const item = focusPlaylist[index];
-    
-    // Se non è una task o dura 2 minuti o meno, ignora il clic
     if (item.type !== 'task' || item.duration <= 2) return;
     
-    // Pausa di default (modificabile poi liberamente nell'interfaccia)
     const breakMins = 3; 
-    
     const half1 = Math.floor(item.duration / 2);
     const half2 = item.duration - half1;
     
@@ -63,11 +57,9 @@ function splitPlaylistTask(index) {
     const breakPart = { type: 'break', duration: breakMins };
     const part2 = { type: 'task', id: item.id, title: item.title + " (Part 2)", duration: half2, color: item.color };
     
-    // Sostituisce la singola task con i tre nuovi pezzi
     focusPlaylist.splice(index, 1, part1, breakPart, part2);
     renderFocusPlaylist();
 }
-
 
 function renderAvailableTasksForFocus() {
     const container = document.getElementById('focus-available-tasks'); 
@@ -95,22 +87,22 @@ function renderAvailableTasksForFocus() {
     });
     
     if (!hasTasks) { 
-        container.innerHTML = '<span style="color: var(--text-dim); font-size: 0.8rem;">No uncompleted tasks for today.</span>'; 
+        container.innerHTML = '<span class="empty-state">[ NO UNCOMPLETED TASKS FOR SELECTED DATE ]</span>'; 
         return; 
     }
     
     for (let cat in cats) {
         if (cats[cat].some(d => d.remaining > 0)) {
             const catTitle = document.createElement('div'); 
-            catTitle.style.cssText = "width: 100%; font-size: 0.75rem; color: #888; font-weight: bold; margin-top: 10px; margin-bottom: 5px; text-transform: uppercase; border-bottom: 1px dotted #333;"; 
-            catTitle.innerText = cat; 
+            catTitle.style.cssText = "width: 100%; font-size: var(--font-xs); color: var(--text-dim); font-weight: bold; margin-top: 8px; margin-bottom: 4px; text-transform: uppercase; border-bottom: 1px dotted #333;"; 
+            catTitle.textContent = cat; 
             container.appendChild(catTitle);
             
             cats[cat].forEach(data => { 
                 if (data.remaining > 0) { 
                     const chip = document.createElement('div'); 
                     chip.className = 'playlist-task-chip'; 
-                    chip.innerHTML = `+ ${data.task.title} <span style="opacity:0.6; margin-left: 8px;">${data.remaining} left</span>`; 
+                    chip.innerHTML = `+ ${escapeHtml(data.task.title)} <span style="opacity:0.6; margin-left: 8px;">[${data.remaining}]</span>`; 
                     chip.onclick = () => addTaskToPlaylist(data.task); 
                     container.appendChild(chip); 
                 } 
@@ -142,7 +134,7 @@ function removePlaylistIndex(index) {
 }
 
 function updatePlaylistDuration(index, value) { 
-    const val = parseInt(value); 
+    const val = parseInt(value, 10); 
     if (!isNaN(val) && val > 0) {
         focusPlaylist[index].duration = val; 
     }
@@ -150,10 +142,11 @@ function updatePlaylistDuration(index, value) {
 
 function renderFocusPlaylist() {
     const container = document.getElementById('focus-playlist'); 
+    if (!container) return;
     container.innerHTML = '';
     
     if (focusPlaylist.length === 0) { 
-        container.innerHTML = '<div style="color: #444; font-size: 0.8rem; text-align: center; margin-top: 30px;">Select a task above to add it here</div>'; 
+        container.innerHTML = '<div class="empty-state" style="text-align: center; margin-top: 25px;">[ SELECT A TASK ABOVE TO BUILD PLAYLIST ]</div>'; 
         document.getElementById('btn-start-playlist').disabled = true; 
         return; 
     }
@@ -165,24 +158,24 @@ function renderFocusPlaylist() {
             container.innerHTML += `
                 <div class="playlist-item" style="border-left: 3px solid ${item.color};">
                     <div>
-                        <strong>${item.title}</strong>
-                        <div style="font-size: 0.7rem; color: var(--text-dim);">Task</div>
+                        <strong>${escapeHtml(item.title)}</strong>
+                        <div style="font-size: var(--font-xs); color: var(--text-dim);">WORK SESSION</div>
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="number" class="form-control no-spinners" style="width: 45px; padding: 4px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> 
-                        <span style="font-size:0.7rem; color:#666;">min</span>
-                        <button type="button" class="btn" style="padding: 2px 6px; font-size: 0.65rem;" onclick="splitPlaylistTask(${index})">SPLIT</button>
-                        <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <input type="number" class="form-control form-control-sm no-spinners" style="width: 48px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> 
+                        <span style="font-size:var(--font-xs); color:var(--text-dim);">MIN</span>
+                        <button type="button" class="btn btn-sm" onclick="splitPlaylistTask(${index})">SPLIT</button>
+                        <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">[X]</button>
                     </div>
                 </div>
             `;
         } else if (item.type === 'break') {
             container.innerHTML += `
                 <div class="playlist-break">
-                    <span style="font-size: 0.7rem; color: var(--text-dim);">PAUSE</span>
-                    <input type="number" class="form-control no-spinners" style="width: 45px; padding: 2px; text-align: center; border-color: #333;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)">
-                    <span style="font-size: 0.7rem; color: var(--text-dim);">MIN</span>
-                    <button type="button" class="icon-btn delete" style="margin-left: 10px;" onclick="removePlaylistIndex(${index})">×</button>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">BREAK</span>
+                    <input type="number" class="form-control form-control-sm no-spinners" style="width: 48px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)">
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">MIN</span>
+                    <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">[X]</button>
                 </div>
             `;
         }
@@ -199,11 +192,11 @@ function openTimerModal() {
 
 document.getElementById('timerSetupForm').addEventListener('submit', function(e) {
     e.preventDefault(); 
-    if(focusPlaylist.length === 0) return; 
+    if (focusPlaylist.length === 0) return; 
     
     closeModals();
     
-    if(focusPlaylist[focusPlaylist.length-1].type === 'break') {
+    if (focusPlaylist[focusPlaylist.length - 1].type === 'break') {
         focusPlaylist.pop();
     }
     
@@ -215,6 +208,7 @@ function startCurrentPlaylistPhase() {
     if (currentPlaylistIndex >= focusPlaylist.length) { 
         resetWidgetMode(); 
         document.getElementById('pomodoroOverlay').style.display = 'none'; 
+        if (typeof showToast === 'function') showToast('[FOCUS] Session playlist completed!');
         return; 
     }
     
@@ -228,11 +222,11 @@ function startCurrentPlaylistPhase() {
     const circle = document.getElementById('pomodoro-circle');
     
     if (phase.type === 'task') { 
-        titleEl.innerText = `Focus: ${phase.title}`; 
+        titleEl.innerText = `FOCUS // ${phase.title}`; 
         circle.setAttribute('stroke', phase.color); 
-        playBeep(800, 0.2); // Beep acuto e breve (Inizio)
+        playBeep(800, 0.2);
     } else { 
-        titleEl.innerText = "Break Time"; 
+        titleEl.innerText = "BREAK TIME"; 
         circle.setAttribute('stroke', '#666666'); 
     }
     
@@ -256,7 +250,7 @@ function runPomodoroTick() {
     const overlay = document.getElementById('pomodoroOverlay'); 
     const isWidget = overlay.classList.contains('widget-mode');
     
-    const radius = isWidget ? 60 : 180; 
+    const radius = isWidget ? 55 : 160; 
     const circumference = 2 * Math.PI * radius; 
     const circle = document.getElementById('pomodoro-circle');
     
@@ -269,7 +263,7 @@ function runPomodoroTick() {
         const phase = focusPlaylist[currentPlaylistIndex];
         
         if (phase.type === 'task') {
-            playBeep(400, 0.5); // Beep più grave e lungo (Fine)
+            playBeep(400, 0.5);
             if (!phase.isPartial) {
                 const t = templates.find(x => x.id === phase.id);
                 if (t) { 
@@ -316,7 +310,7 @@ function saveFocusNote() {
     if (typeof refreshNotesView === 'function') refreshNotesView();
     
     textEl.value = ''; 
-    textEl.placeholder = "✓ Idea saved!"; 
+    textEl.placeholder = "[OK] Idea saved!"; 
     setTimeout(() => { textEl.placeholder = "Write your idea and press Enter..."; }, 1500); 
 }
 
@@ -348,8 +342,8 @@ function toggleWidgetMode() {
     const isWidget = overlay.classList.toggle('widget-mode');
     
     if (isWidget) { 
-        overlay.style.top = '20px'; 
-        overlay.style.right = '30px'; 
+        overlay.style.top = '64px'; 
+        overlay.style.right = '25px'; 
         overlay.style.left = 'auto'; 
         overlay.style.bottom = 'auto'; 
     } else {

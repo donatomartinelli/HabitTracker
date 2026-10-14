@@ -1,4 +1,4 @@
-// --- HEALTH MODULE (DYNAMIC DIET & GYM PLAN) ---
+// --- HEALTH MODULE (DYNAMIC DIET & WORKOUT SPLIT) ---
 
 let isEditingGymPlan = false;
 
@@ -15,7 +15,6 @@ function renderHealthDashboard() {
     renderGym();
 }
 
-// Aggiunge il pulsante "✎ EDIT SCHEDA" accanto alle date della palestra
 function ensureGymEditButton() {
     const startInput = document.getElementById('gym-start-date');
     if (!startInput || document.getElementById('btn-toggle-gym-edit')) return;
@@ -23,9 +22,9 @@ function ensureGymEditButton() {
     const bar = startInput.parentElement;
     const btn = document.createElement('button');
     btn.id = 'btn-toggle-gym-edit';
-    btn.className = 'btn';
-    btn.style.cssText = 'padding: 3px 10px; font-size: 0.7rem; margin-left: 10px;';
-    btn.textContent = '✎ EDIT SCHEDA';
+    btn.className = 'btn btn-sm';
+    btn.style.marginLeft = '8px';
+    btn.textContent = '[EDIT SPLIT]';
     btn.onclick = toggleGymEditMode;
     bar.appendChild(btn);
 }
@@ -34,8 +33,8 @@ function toggleGymEditMode() {
     isEditingGymPlan = !isEditingGymPlan;
     const btn = document.getElementById('btn-toggle-gym-edit');
     if (btn) {
-        btn.textContent = isEditingGymPlan ? '✓ FINE MODIFICA' : '✎ EDIT SCHEDA';
-        btn.className = isEditingGymPlan ? 'btn btn-primary' : 'btn';
+        btn.textContent = isEditingGymPlan ? '[DONE EDIT]' : '[EDIT SPLIT]';
+        btn.className = isEditingGymPlan ? 'btn btn-primary btn-sm' : 'btn btn-sm';
     }
     renderGym();
 }
@@ -48,7 +47,7 @@ function renderMeds() {
         if (!dietDiv || !dietDiv.parentElement) return;
         container = document.createElement('div');
         container.id = 'meds-main-content';
-        container.style.cssText = 'flex: 0 0 auto; padding: 8px 15px; margin: 15px 0 0 0; background: rgba(255,255,255,0.02); border: 1px dashed #333;';
+        container.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; margin: 12px 0 0 0; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color);';
         dietDiv.parentElement.insertAdjacentElement('afterend', container);
     }
 
@@ -61,19 +60,19 @@ function renderMeds() {
     container.style.display = 'block';
     container.innerHTML = '';
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex; align-items:center; gap:20px; flex-wrap:wrap; font-size:0.75rem; text-transform:uppercase;';
+    wrap.style.cssText = 'display:flex; align-items:center; gap:20px; flex-wrap:wrap; font-size:var(--font-xs); text-transform:uppercase;';
     
     meds.forEach(m => {
         const isLow = m.stock <= (m.alertDays * m.instances);
-        const color = isLow ? '#ff6666' : 'var(--text-dim)';
-        const iconColor = isLow ? '#ff6666' : '#4c5b73';
+        const color = isLow ? 'var(--accent-red)' : 'var(--text-dim)';
+        const tagColor = isLow ? 'var(--accent-red)' : '#4c5b73';
         
         const item = document.createElement('span');
-        item.style.cssText = `color:${color}; display:flex; align-items:center; gap:5px;`;
+        item.style.cssText = `color:${color}; display:flex; align-items:center; gap:6px;`;
         item.innerHTML = `
-            <strong style="color:${iconColor}; font-size:1rem; margin-top:-2px;">💊</strong> 
+            <strong style="color:${tagColor};">[MED]</strong> 
             <span style="color:white; font-weight:bold;">${escapeHtml(m.title)}</span> 
-            (${m.instances}/die) <span style="margin:0 5px;">|</span> Stock: <b>${m.stock}</b>
+            (${m.instances}/DAY) <span style="margin:0 4px;">|</span> STOCK: <b>${m.stock}</b>
         `;
         wrap.appendChild(item);
     });
@@ -81,7 +80,6 @@ function renderMeds() {
     container.appendChild(wrap);
 }
 
-// --- DIETA CON INLINE EDITING (DOPPIO CLIC) ---
 function renderDiet() {
     const mainArea = document.getElementById('diet-main-content');
     if (!mainArea) return;
@@ -89,18 +87,17 @@ function renderDiet() {
 
     const todayJS = new Date(selectedDateStr).getDay();
     const dayOrder = [1, 2, 3, 4, 5, 6, 0];
-    const dayLabels = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
+    const dayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 
     const wrapper = document.createElement('div');
     wrapper.className = 'diet-wrapper';
 
-    // 1. Riga Intestazione Giorni
     const headerRow = document.createElement('div');
     headerRow.className = 'diet-row';
 
     const emptyCorner = document.createElement('div');
     emptyCorner.className = 'diet-header';
-    emptyCorner.style.border = 'none';
+    emptyCorner.textContent = 'MEAL';
     headerRow.appendChild(emptyCorner);
 
     dayOrder.forEach((dVal, idx) => {
@@ -111,7 +108,6 @@ function renderDiet() {
     });
     wrapper.appendChild(headerRow);
 
-    // 2. Righe Pasti (Doppio clic su ogni cella per modificare)
     dietData.forEach((rowObj, rowIdx) => {
         const rowEl = document.createElement('div');
         rowEl.className = 'diet-row';
@@ -136,7 +132,6 @@ function renderDiet() {
 
     mainArea.appendChild(wrapper);
 
-    // 3. Regole Generali Dieta in basso (anch'esse modificabili con doppio clic)
     const rulesEl = document.getElementById('diet-rules');
     if (rulesEl) {
         rulesEl.title = "Double-click to edit diet rules";
@@ -184,8 +179,7 @@ function startDietRulesEdit(rulesEl) {
 
     const inp = document.createElement('input');
     inp.type = 'text';
-    inp.className = 'form-control';
-    inp.style.cssText = 'padding: 6px 10px; font-size: 0.75rem;';
+    inp.className = 'form-control form-control-sm';
     inp.value = currentVal;
 
     const commit = () => {
@@ -210,7 +204,6 @@ function startDietRulesEdit(rulesEl) {
     inp.focus();
 }
 
-// --- PALESTRA (PESI CON AUTOSAVE + MODALITA' EDIT SCHEDA) ---
 function renderGym() {
     const mainArea = document.getElementById('gym-main-content');
     if (!mainArea) return;
@@ -225,14 +218,13 @@ function renderGym() {
         const card = document.createElement('div');
         card.className = `gym-day-card ${cardClass}`;
 
-        // Header Giorno
         const header = document.createElement('div');
         header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;';
 
         const title = document.createElement('h3');
-        title.style.cssText = `margin:0; font-size:0.9rem; color: ${(isActive || isEditingGymPlan) ? 'white' : 'var(--text-dim)'}; cursor: pointer;`;
+        title.style.cssText = `margin:0; font-size:var(--font-sm); color: ${(isActive || isEditingGymPlan) ? 'white' : 'var(--text-dim)'}; cursor: pointer; text-transform: uppercase;`;
         title.title = "Click to set as active workout day";
-        title.textContent = `GIORNO ${dayNum}`;
+        title.textContent = `DAY ${dayNum} ${isActive ? '// ACTIVE' : ''}`;
         title.onclick = () => {
             nextWorkoutDay = dayNum;
             saveHealthData();
@@ -242,16 +234,14 @@ function renderGym() {
 
         if (isActive && !isEditingGymPlan) {
             const doneBtn = document.createElement('button');
-            doneBtn.className = 'btn btn-primary';
-            doneBtn.style.cssText = 'padding: 4px 10px; font-size: 0.7rem;';
-            doneBtn.textContent = '✓ DONE';
+            doneBtn.className = 'btn btn-primary btn-sm';
+            doneBtn.textContent = '[DONE]';
             doneBtn.onclick = () => completeWorkout(dayNum);
             header.appendChild(doneBtn);
         }
 
         card.appendChild(header);
 
-        // Lista Esercizi
         const list = document.createElement('div');
         list.className = 'gym-ex-list';
 
@@ -260,7 +250,6 @@ function renderGym() {
             row.className = 'gym-ex-row';
 
             if (isEditingGymPlan) {
-                // Modalità Modifica Scheda
                 const nameInp = document.createElement('input');
                 nameInp.type = 'text';
                 nameInp.className = 'gym-edit-input';
@@ -298,7 +287,7 @@ function renderGym() {
 
                 const delBtn = document.createElement('button');
                 delBtn.className = 'icon-btn delete';
-                delBtn.textContent = '×';
+                delBtn.textContent = '[X]';
                 delBtn.onclick = () => {
                     gymPlan[dayNum].splice(exIdx, 1);
                     saveHealthData();
@@ -310,7 +299,6 @@ function renderGym() {
                 row.appendChild(setsInp);
                 row.appendChild(delBtn);
             } else {
-                // Modalità Normale Allenamento
                 const info = document.createElement('div');
                 info.className = 'gym-ex-info';
 
@@ -338,7 +326,6 @@ function renderGym() {
                         wInp.id = inputId;
                         wInp.placeholder = 'kg';
                         wInp.value = savedGymWeights[inputId] || '';
-                        // Salvataggio automatico istantaneo mentre digiti i kg
                         wInp.oninput = () => {
                             savedGymWeights[inputId] = wInp.value;
                             saveHealthData();
@@ -347,7 +334,7 @@ function renderGym() {
                     }
                 } else {
                     const bwSpan = document.createElement('span');
-                    bwSpan.style.cssText = 'font-size:0.65rem; color:var(--text-dim);';
+                    bwSpan.style.cssText = 'font-size:var(--font-xs); color:var(--text-dim);';
                     bwSpan.textContent = 'BW';
                     setsCont.appendChild(bwSpan);
                 }
@@ -363,13 +350,13 @@ function renderGym() {
 
         if (isEditingGymPlan) {
             const addBtn = document.createElement('button');
-            addBtn.className = 'btn';
-            addBtn.style.cssText = 'width: 100%; border-style: dashed; font-size: 0.75rem; padding: 6px;';
-            addBtn.textContent = `+ Add Exercise to Giorno ${dayNum}`;
+            addBtn.className = 'btn btn-sm';
+            addBtn.style.cssText = 'width: 100%; border-style: dashed;';
+            addBtn.textContent = `+ Add Exercise to Day ${dayNum}`;
             addBtn.onclick = () => {
                 gymPlan[dayNum].push({
                     id: `g${dayNum}_${Date.now()}`,
-                    name: "Nuovo Esercizio",
+                    name: "New Exercise",
                     repStr: "3x10",
                     sets: 3
                 });
@@ -406,8 +393,8 @@ function updateGymDates() {
 
     specificEvents = specificEvents.filter(e => e.id !== 'gym_start_evt' && e.id !== 'gym_end_evt');
     
-    if (gymStartDate) specificEvents.push({ id: 'gym_start_evt', date: gymStartDate, title: 'Inizio Scheda', category: 'Health', color: '#5f7a61' });
-    if (gymEndDate) specificEvents.push({ id: 'gym_end_evt', date: gymEndDate, title: 'Scadenza Scheda', category: 'Health', color: '#ff6666' });
+    if (gymStartDate) specificEvents.push({ id: 'gym_start_evt', date: gymStartDate, title: 'Workout Split Start', category: 'Health', color: '#5f7a61' });
+    if (gymEndDate) specificEvents.push({ id: 'gym_end_evt', date: gymEndDate, title: 'Workout Split End', category: 'Health', color: '#ff5555' });
     
     saveData();
     
@@ -416,5 +403,4 @@ function updateGymDates() {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }
 
-// Inizializza la dashboard Health all'avvio
 renderHealthDashboard();
