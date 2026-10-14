@@ -1,6 +1,5 @@
-// --- 1. DATA MANAGEMENT, MIGRATION & SECURITY HELPERS ---
+// --- 1. DATA MANAGEMENT, MIGRATION & DISK PERSISTENCE ---
 
-// Filtro di sicurezza: trasforma simboli speciali (<, >, &, ", ') in testo puro inoffensivo
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
     return String(str)
@@ -11,14 +10,47 @@ function escapeHtml(str) {
         .replace(/'/g, '&#39;');
 }
 
-// Arrotondamento matematico al centesimo per evitare errori tipo 13.29999999999999
 function roundCurrency(val) {
     const num = parseFloat(val) || 0;
     return Math.round((num + Number.EPSILON) * 100) / 100;
 }
 
+// Valori iniziali predefiniti per Dieta e Palestra (usati solo al primo avvio assoluto)
+const DEFAULT_DIET_DATA = [
+    { type: 'Spuntino 1', 1: 'MilkPro 200g', 2: 'MilkPro 200g', 3: 'Anacardi 20g', 4: 'MilkPro 200g', 5: 'Anacardi 20g', 6: 'MilkPro 200g', 0: 'Anacardi 20g' },
+    { type: 'Pranzo', 1: 'Soncino 100g\nRiso 160g\nVitellone 200g', 2: 'Rucola 100g\nRiso 160g\nTonno 90g', 3: 'Soncino 100g\nRiso 90g\nCeci 120g\nTonno 100g', 4: 'Rucola 100g\nRiso 160g\nVitellone 200g', 5: 'Soncino 100g\nRiso 90g\nCeci 120g\n2 Uova', 6: 'Rucola 100g\nRiso 160g\nTonno 90g', 0: 'Soncino 100g\nPasta\nVitellone 200g' },
+    { type: 'Spuntino 2', 1: 'MilkPro 150g\nBanana', 2: 'MilkPro 150g\nBanana', 3: 'Kefir 200g\nBanana', 4: 'MilkPro 150g\nBanana', 5: 'Kefir 200g\nBanana', 6: 'MilkPro 150g\nBanana', 0: 'Kefir 200g\nBanana' },
+    { type: 'Cena', 1: 'Spinaci 100g\nMerluzzo 250g\nPane 50g', 2: 'Spinaci 100g\nPollo 200g\nPane 50g', 3: 'Spinaci 100g\nBresaola 100g\nPane 50g', 4: 'Spinaci 100g\nSalmone 100g\nPane 50g', 5: 'Spinaci 100g\nPollo 200g\nPane 50g', 6: '[ PASTO\nLIBERO ]', 0: 'Spinaci 100g\nTonno 70g\nRobiola 30g\nPane 50g' }
+];
+
+const DEFAULT_DIET_RULES = "COLAZIONE: 200g Latte + 20g Biscotti + 10g Cioccolato Fondente  |  CONDIMENTO: 15g Olio EVO (Pranzo, Cena)  |  ACQUA: Min 3L / Die";
+
+const DEFAULT_GYM_PLAN = {
+    1: [
+        { id: "g1_1", name: "Panca Inclinata 2 Manubri", repStr: "4x5-8", sets: 4 },
+        { id: "g1_2", name: "Panca Piana Multipower", repStr: "8-8-6", sets: 3 },
+        { id: "g1_3", name: "Croci in Piedi Cavi Bassi", repStr: "2x12 + 10 parziali", sets: 2 },
+        { id: "g1_4", name: "Shoulder Press", repStr: "3x5-8", sets: 3 },
+        { id: "g1_5", name: "Alzate Laterali Deltoid", repStr: "2x12 + 1xmax - 20%", sets: 2 },
+        { id: "g1_6", name: "Curl Bicheps-Machine", repStr: "10-8-8", sets: 3 },
+        { id: "g1_7", name: "Curl Alt. Seduto Panca Incl.", repStr: "2x12 + 1xmax - 20%", sets: 2 },
+        { id: "g1_8", name: "Crunch Machine", repStr: "3xMax", sets: 0 },
+        { id: "g1_9", name: "Plank Busto Scorrimento", repStr: "3xMax", sets: 0 }
+    ],
+    2: [
+        { id: "g2_1", name: "Lat Machine Avanti", repStr: "4x5-8", sets: 4 },
+        { id: "g2_2", name: "Rematore In Piedi T-Bar", repStr: "8-8-6", sets: 3 },
+        { id: "g2_3", name: "Pull Down Cavo Alto", repStr: "2x12 + 1xmax - 20%", sets: 2 },
+        { id: "g2_4", name: "Push Down Sbarra 2 Maniglie", repStr: "10-8-8", sets: 3 },
+        { id: "g2_5", name: "Kick Back Seduto 1 Manubrio", repStr: "2x12 + 1xmax - 20%", sets: 2 },
+        { id: "g2_6", name: "Leg Press Inclinata", repStr: "3x5-8", sets: 3 },
+        { id: "g2_7", name: "Leg Extension", repStr: "2x12 + 1xmax - 20%", sets: 2 },
+        { id: "g2_8", name: "Leg Curl", repStr: "12-12-10", sets: 3 },
+        { id: "g2_9", name: "Chiusure A Libro Gambe Tese", repStr: "3xMax", sets: 0 }
+    ]
+};
+
 function migrateAndInitData() {
-    // 1. Unificazione Categorie Note
     const oldCats = localStorage.getItem('tracker_note_categories');
     const currentCats = localStorage.getItem('tracker_note_cats');
     if (oldCats) {
@@ -33,7 +65,6 @@ function migrateAndInitData() {
         localStorage.removeItem('tracker_note_categories');
     }
 
-    // 2. Unificazione Contenuto Note
     const oldNotes = localStorage.getItem('tracker_notes_content');
     const currentNotes = localStorage.getItem('tracker_notes');
     if (oldNotes) {
@@ -50,7 +81,6 @@ function migrateAndInitData() {
         localStorage.removeItem('tracker_notes_content');
     }
 
-    // 3. Inizializzazione valori di default
     const defaults = {
         'tracker_templates': [],
         'tracker_logs': {},
@@ -72,6 +102,9 @@ function migrateAndInitData() {
         'tracker_gym_weights': {},
         'gym_start_date': "",
         'gym_end_date': "",
+        'tracker_diet_data': DEFAULT_DIET_DATA,
+        'tracker_diet_rules': DEFAULT_DIET_RULES,
+        'tracker_gym_plan': DEFAULT_GYM_PLAN,
         'tracker_opacity': "0.92",
         'tracker_mod_left': "daily",
         'tracker_mod_right': "planner",
@@ -85,7 +118,6 @@ function migrateAndInitData() {
         }
     }
 
-    // 4. Recupero categorie note "orfane" (es. "Mathematics" presente nelle note ma non nel menu)
     try {
         const notesObj = JSON.parse(localStorage.getItem('tracker_notes')) || {};
         const catsArr = JSON.parse(localStorage.getItem('tracker_note_cats')) || ["General"];
@@ -101,7 +133,6 @@ function migrateAndInitData() {
         }
     } catch (e) {}
 
-    // 5. Pulizia saldo decimale e riparazione ID transazioni corrotte (es. mt_17911400356510.963...)
     try {
         const rawBal = localStorage.getItem('m_balance');
         if (rawBal !== null) {
@@ -112,7 +143,6 @@ function migrateAndInitData() {
         transArr.forEach(t => {
             if (t.id && t.id.includes('.')) {
                 const parts = t.id.split('.');
-                // Se lo 0 di Math.random() si è incollato al timestamp rendendolo di 14 cifre, rimuove l'ultimo 0
                 let mainPart = parts[0];
                 if (mainPart.length > 16) {
                     mainPart = mainPart.slice(0, 16);
@@ -151,16 +181,49 @@ let mTransactions = JSON.parse(localStorage.getItem('m_trans')) || [];
 let mRecurring = JSON.parse(localStorage.getItem('m_rec')) || [];
 let mWishlist = JSON.parse(localStorage.getItem('m_wish')) || [];
 
-// Health
+// Health (Ora interamente dinamici)
 let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next'), 10) || 1;
 let savedGymWeights = JSON.parse(localStorage.getItem('tracker_gym_weights')) || {};
 let gymStartDate = localStorage.getItem('gym_start_date') || "";
 let gymEndDate = localStorage.getItem('gym_end_date') || "";
+let dietData = JSON.parse(localStorage.getItem('tracker_diet_data')) || DEFAULT_DIET_DATA;
+let dietRules = localStorage.getItem('tracker_diet_rules') || DEFAULT_DIET_RULES;
+let gymPlan = JSON.parse(localStorage.getItem('tracker_gym_plan')) || DEFAULT_GYM_PLAN;
 
 // Layout & UI
 let activeLeft = localStorage.getItem('tracker_mod_left') || 'daily';
 let activeRight = localStorage.getItem('tracker_mod_right') || 'planner';
 let savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
+
+// --- LISTA COMPLETA CHIAVI DATABASE ---
+const ALL_STORAGE_KEYS = [
+    'tracker_templates', 'tracker_logs', 'tracker_events',
+    'tracker_note_cats', 'tracker_notes', 'tracker_journal',
+    'tracker_category_order', 'tracker_references', 'ref_toggles',
+    'tracker_ephemeral', 'tracker_general_todo', 'tracker_planner_exceptions',
+    'm_balance', 'm_trans', 'm_rec', 'm_wish',
+    'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
+    'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan',
+    'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
+];
+
+// --- PONTE DISCO FISSO TAURI (Autosave nativo se disponibile) ---
+let diskSyncTimeout;
+function scheduleDiskSync() {
+    clearTimeout(diskSyncTimeout);
+    diskSyncTimeout = setTimeout(async () => {
+        if (window.__TAURI__ && window.__TAURI__.fs && window.__TAURI__.fs.writeTextFile) {
+            try {
+                const payload = buildBackupObject();
+                await window.__TAURI__.fs.writeTextFile('minimal_tracker_db.json', JSON.stringify(payload, null, 2), {
+                    dir: window.__TAURI__.fs.BaseDirectory ? window.__TAURI__.fs.BaseDirectory.AppData : undefined
+                });
+            } catch (e) {
+                // Se i permessi fs non sono attivi in tauri.conf.json, continua silenziosamente su localStorage
+            }
+        }
+    }, 600);
+}
 
 // --- FUNZIONI DI SALVATAGGIO CENTRALIZZATE ---
 function saveData() {
@@ -176,6 +239,7 @@ function saveData() {
     localStorage.setItem('tracker_ephemeral', JSON.stringify(ephemeralData));
     localStorage.setItem('tracker_general_todo', JSON.stringify(generalTodos));
     localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
+    scheduleDiskSync();
 }
 
 function saveMoneyData() {
@@ -184,6 +248,7 @@ function saveMoneyData() {
     localStorage.setItem('m_trans', JSON.stringify(mTransactions));
     localStorage.setItem('m_rec', JSON.stringify(mRecurring));
     localStorage.setItem('m_wish', JSON.stringify(mWishlist));
+    scheduleDiskSync();
 }
 
 function saveHealthData() {
@@ -191,6 +256,10 @@ function saveHealthData() {
     localStorage.setItem('tracker_gym_weights', JSON.stringify(savedGymWeights));
     localStorage.setItem('gym_start_date', gymStartDate);
     localStorage.setItem('gym_end_date', gymEndDate);
+    localStorage.setItem('tracker_diet_data', JSON.stringify(dietData));
+    localStorage.setItem('tracker_diet_rules', dietRules);
+    localStorage.setItem('tracker_gym_plan', JSON.stringify(gymPlan));
+    scheduleDiskSync();
 }
 
 // --- GESTIONE DATE E CALCOLO STATISTICHE ---
@@ -276,26 +345,20 @@ function getStatsForDate(dateStr) {
 }
 
 // --- BACKUP & RESTORE COMPLETO ---
-const ALL_STORAGE_KEYS = [
-    'tracker_templates', 'tracker_logs', 'tracker_events',
-    'tracker_note_cats', 'tracker_notes', 'tracker_journal',
-    'tracker_category_order', 'tracker_references', 'ref_toggles',
-    'tracker_ephemeral', 'tracker_general_todo', 'tracker_planner_exceptions',
-    'm_balance', 'm_trans', 'm_rec', 'm_wish',
-    'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
-    'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
-];
+function buildBackupObject() {
+    const backup = {};
+    ALL_STORAGE_KEYS.forEach(key => {
+        backup[key] = localStorage.getItem(key);
+    });
+    return backup;
+}
 
 function exportData() {
     saveData();
     saveMoneyData();
     saveHealthData();
 
-    const backup = {};
-    ALL_STORAGE_KEYS.forEach(key => {
-        backup[key] = localStorage.getItem(key);
-    });
-
+    const backup = buildBackupObject();
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
     const downloadAnchorNode = document.createElement('a');
     downloadAnchorNode.setAttribute("href", dataStr);

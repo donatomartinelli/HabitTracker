@@ -280,6 +280,7 @@ function selectDate(dateStr) {
     renderCalendar(); 
     renderTasks(); 
     renderWeeklyPlanner(); 
+    if (typeof renderDiet === 'function') renderDiet();
 }
 
 // --- GESTIONE UNIFICATA NOTES (Write/Browse & Autosave) ---

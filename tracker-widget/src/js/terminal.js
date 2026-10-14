@@ -468,6 +468,16 @@ window.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
+        // Ctrl + S: Salva istantaneamente tutto lo stato su disco
+        if (e.ctrlKey && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            saveData();
+            saveMoneyData();
+            saveHealthData();
+            showToast('[SYSTEM] All data saved to storage');
+            return;
+        }
+
         // 2. Tasto ESC: chiude terminale, modali o dropdown
         if (e.key === 'Escape') {
             const termOverlay = document.getElementById('terminalOverlay');
