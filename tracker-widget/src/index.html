@@ -751,6 +751,66 @@
     <!-- Tooltip Globale per il Planner -->
     <div id="planner-tooltip" style="display:none; position:fixed; background:rgba(10,10,10,0.95); border:1px solid var(--border-color); padding:8px 12px; color:white; font-size:0.75rem; z-index:9999; pointer-events:none; border-radius:4px !important; backdrop-filter:blur(4px); box-shadow: 0 4px 12px rgba(0,0,0,0.5);"></div>
 
+    <!-- BARRA DI COMANDO UNIVERSALE (TERMINALE) -->
+    <div id="terminalOverlay" class="terminal-overlay" onclick="if(event.target === this) closeTerminal()">
+        <div class="terminal-box">
+            <div class="terminal-input-wrap">
+                <span class="terminal-prompt">&gt;_</span>
+                <input type="text" id="terminal-input" class="terminal-input" placeholder="Type a command (e.g. out 5.50 cafe, todo math, focus 25, ? for help)..." autocomplete="off">
+            </div>
+            <div class="terminal-hint">
+                <span id="terminal-feedback">Ready. Press [Enter] to execute, [Esc] to close, [?] for manual.</span>
+                <span style="color:#555;">CTRL+SPACE</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODALE MANUALE COMANDI & SCORCIATOIE -->
+    <div id="shortcutsHelpModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 650px; max-height: 85vh;">
+            <h2>Terminal Commands &amp; Shortcuts</h2>
+            
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 4px;">Command Bar (Ctrl + Space / Ctrl + K)</div>
+            <div class="help-grid">
+                <div class="help-key">out [€] [desc]</div><div class="help-desc">Add expense (e.g. <code>out 12.50 pizza</code>)</div>
+                <div class="help-key">in [€] [desc]</div><div class="help-desc">Add income (e.g. <code>in 500 scholarship</code>)</div>
+                <div class="help-key">wish [item] [€]</div><div class="help-desc">Add to purchase incubator (e.g. <code>wish casio 45</code>)</div>
+                <div class="help-key">todo [text]</div><div class="help-desc">Add to General To-Do inbox</div>
+                <div class="help-key">task [text] [@day]</div><div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
+                <div class="help-key">event [@day] [title]</div><div class="help-desc">Add calendar event (e.g. <code>event @2026-10-25 Exam</code>)</div>
+                <div class="help-key">note [cat]: [text]</div><div class="help-desc">Append note directly to category (e.g. <code>note Math: lemma 2</code>)</div>
+                <div class="help-key">focus [min] [title]</div><div class="help-desc">Launch instant Pomodoro timer (e.g. <code>focus 30 Analysis</code>)</div>
+                <div class="help-key">gym done</div><div class="help-desc">Complete active workout day and advance to next</div>
+                <div class="help-key">left / right [mod]</div><div class="help-desc">Mount module: <code>daily</code>, <code>planner</code>, <code>health</code>, <code>money</code></div>
+                <div class="help-key">swap</div><div class="help-desc">Swap left and right dashboard modules</div>
+                <div class="help-key">goto [date]</div><div class="help-desc">Jump to <code>oggi</code>, <code>domani</code>, <code>ieri</code> or <code>YYYY-MM-DD</code></div>
+                <div class="help-key">export</div><div class="help-desc">Download complete JSON backup</div>
+            </div>
+
+            <div style="font-size: 0.75rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 10px; border-bottom: 1px solid #222; padding-bottom: 4px;">Global Keyboard Shortcuts</div>
+            <div class="help-grid" style="margin-bottom: 0;">
+                <div class="help-key">Ctrl + Space / Ctrl + K</div><div class="help-desc">Open / close universal Command Bar</div>
+                <div class="help-key">Esc</div><div class="help-desc">Close any open modal, dropdown or Command Bar</div>
+                <div class="help-key">← / →</div><div class="help-desc">Previous / Next day in calendar</div>
+                <div class="help-key">T</div><div class="help-desc">Jump back to Today</div>
+                <div class="help-key">N</div><div class="help-desc">Toggle Notes drawer and focus input</div>
+                <div class="help-key">W</div><div class="help-desc">Toggle Weekly Planner drawer</div>
+                <div class="help-key">J</div><div class="help-desc">Open Journal for selected date</div>
+                <div class="help-key">S</div><div class="help-desc">Swap Left and Right panes</div>
+                <div class="help-key">1 / 2 / 3 / 4</div><div class="help-desc">Set Left pane (Daily, Planner, Health, Money)</div>
+                <div class="help-key">Shift + 1 / 2 / 3 / 4</div><div class="help-desc">Set Right pane (Daily, Planner, Health, Money)</div>
+                <div class="help-key">?</div><div class="help-desc">Open this manual</div>
+            </div>
+
+            <div class="modal-actions">
+                <button class="btn btn-primary" onclick="closeModals()">Close [Esc]</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NOTIFICA TOAST TERMINALE -->
+    <div id="terminal-toast" class="terminal-toast"></div>
+
     <!-- JS Modulari -->
     <script src="js/data.js"></script>
     <script src="js/crud.js"></script>
@@ -758,5 +818,6 @@
     <script src="js/render.js"></script>
     <script src="js/money.js"></script>
     <script src="js/health.js"></script>
+    <script src="js/terminal.js"></script>
 </body>
 </html>
