@@ -1075,77 +1075,110 @@
         </div>
     </div>
 
-    <!-- 19. Manuale Comandi & Scorciatoie -->
+    <!-- 19. Manuale Comandi, Scorciatoie & Interazioni ( Completo ) -->
     <div id="shortcutsHelpModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 650px; max-height: 85vh;">
-            <h2>Terminal Commands &amp; Shortcuts</h2>
-            
-            <div class="sub-column-header" style="margin-bottom: 10px;">Command Bar (Ctrl + Space / Ctrl + K)</div>
-            <div class="help-grid">
-                <div class="help-key">plan</div>
-                <div class="help-desc">Open Evening Builder to assemble tomorrow's plan</div>
-                <div class="help-key">log [min] [cat]</div>
-                <div class="help-desc">Log real focus minutes manually (e.g. <code>log 45 Studio</code>)</div>
-                <div class="help-key">out [€] [desc]</div>
-                <div class="help-desc">Add expense (e.g. <code>out 12.50 pizza</code>)</div>
-                <div class="help-key">in [€] [desc]</div>
-                <div class="help-desc">Add income (e.g. <code>in 500 scholarship</code>)</div>
-                <div class="help-key">wish [item] [€]</div>
-                <div class="help-desc">Add to purchase incubator (e.g. <code>wish casio 45</code>)</div>
-                <div class="help-key">todo [text]</div>
-                <div class="help-desc">Add to General To-Do inbox</div>
-                <div class="help-key">task [text] [@day]</div>
-                <div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
-                <div class="help-key">event [@day] [title]</div>
-                <div class="help-desc">Add calendar event (e.g. <code>event @2026-10-25 Exam</code>)</div>
-                <div class="help-key">note [cat]: [text]</div>
-                <div class="help-desc">Append note directly to category (e.g. <code>note Math: lemma 2</code>)</div>
-                <div class="help-key">focus [min] [title]</div>
-                <div class="help-desc">Launch instant Pomodoro timer (e.g. <code>focus 30 Analysis</code>)</div>
-                <div class="help-key">gym done</div>
-                <div class="help-desc">Complete active workout day and advance to next</div>
-                <div class="help-key">left / right [mod]</div>
-                <div class="help-desc">Mount module: <code>daily</code>, <code>planner</code>, <code>health</code>, <code>money</code></div>
-                <div class="help-key">swap</div>
-                <div class="help-desc">Swap left and right dashboard modules</div>
-                <div class="help-key">goto [date]</div>
-                <div class="help-desc">Jump to <code>oggi</code>, <code>domani</code>, <code>ieri</code> or <code>YYYY-MM-DD</code></div>
-                <div class="help-key">export</div>
-                <div class="help-desc">Download complete JSON backup</div>
+        <div class="modal-content" style="width: 880px; max-width: 96%; max-height: 90vh;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 16px;">
+                <h2 style="margin: 0; border: none; padding: 0;">System Manual // CLI, Shortcuts &amp; Interactions</h2>
+                <span style="font-size: var(--font-xs); color: var(--text-dim);">OPEN ANYTIME WITH [?] OR [CTRL + SPACE]</span>
             </div>
 
-            <div class="sub-column-header" style="margin-bottom: 10px;">Global Keyboard Shortcuts</div>
-            <div class="help-grid" style="margin-bottom: 0;">
-                <div class="help-key">Ctrl + Space / Ctrl + K</div>
-                <div class="help-desc">Open / close universal Command Bar</div>
-                <div class="help-key">P</div>
-                <div class="help-desc">Open Evening Builder (Plan Tomorrow)</div>
-                <div class="help-key">Ctrl + S</div>
-                <div class="help-desc">Force instant save to storage</div>
-                <div class="help-key">Esc</div>
-                <div class="help-desc">Close any open modal, dropdown or Command Bar</div>
-                <div class="help-key">← / →</div>
-                <div class="help-desc">Previous / Next day in calendar</div>
-                <div class="help-key">T</div>
-                <div class="help-desc">Jump back to Today</div>
-                <div class="help-key">N</div>
-                <div class="help-desc">Toggle Notes drawer and focus input</div>
-                <div class="help-key">W</div>
-                <div class="help-desc">Toggle Weekly Planner drawer</div>
-                <div class="help-key">J</div>
-                <div class="help-desc">Open Journal for selected date</div>
-                <div class="help-key">S</div>
-                <div class="help-desc">Swap Left and Right panes</div>
-                <div class="help-key">1 / 2 / 3 / 4</div>
-                <div class="help-desc">Set Left pane (Daily, Planner, Health, Money)</div>
-                <div class="help-key">Shift + 1 / 2 / 3 / 4</div>
-                <div class="help-desc">Set Right pane (Daily, Planner, Health, Money)</div>
-                <div class="help-key">?</div>
-                <div class="help-desc">Open this manual</div>
+            <div class="help-manual-columns">
+                
+                <!-- 1. CLI: STUDIO, TASK & PIANIFICAZIONE -->
+                <div class="help-section-card">
+                    <div class="help-section-title">1. CLI // Daily, Planner &amp; Focus</div>
+                    <div class="help-grid">
+                        <div class="help-key">plan</div>
+                        <div class="help-desc">Open Evening Builder to assemble tomorrow's schedule</div>
+                        <div class="help-key">todo [text]</div>
+                        <div class="help-desc">Add item to General To-Do inbox</div>
+                        <div class="help-key">task [text] [@day]</div>
+                        <div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
+                        <div class="help-key">event [@day] [title]</div>
+                        <div class="help-desc">Add calendar event (e.g. <code>event @domani Exam</code>)</div>
+                        <div class="help-key">note [cat]: [text]</div>
+                        <div class="help-desc">Append note to category (creates category if new)</div>
+                        <div class="help-key">focus [min] [title]</div>
+                        <div class="help-desc">Start instant Pomodoro (e.g. <code>focus 30 Analysis</code>)</div>
+                        <div class="help-key">log [min] [cat]</div>
+                        <div class="help-desc">Log offline study minutes (e.g. <code>log 45 Studio</code>)</div>
+                        <div class="help-key">ledger</div>
+                        <div class="help-desc">Open Consistency Grid &amp; Real Focus Hours Ledger</div>
+                    </div>
+                </div>
+
+                <!-- 2. CLI: SOLDI, SALVADANAI, DIETA & PALESTRA -->
+                <div class="help-section-card">
+                    <div class="help-section-title">2. CLI // Money &amp; Health</div>
+                    <div class="help-grid">
+                        <div class="help-key">out [€] #[cat] [desc]</div>
+                        <div class="help-desc">Log categorized expense (e.g. <code>out 8.50 #treno A/R</code>)</div>
+                        <div class="help-key">in [€] [desc]</div>
+                        <div class="help-desc">Log income &amp; trigger automatic Vault % rules</div>
+                        <div class="help-key">wish [item] [€]</div>
+                        <div class="help-desc">Add idea to Incubator (e.g. <code>wish casio 45</code>)</div>
+                        <div class="help-key">vault</div>
+                        <div class="help-desc">Open modal to create a new Salvadanaio / Auto-Rule</div>
+                        <div class="help-key">weight [kg] [note]</div>
+                        <div class="help-desc">Log body weight &amp; note (e.g. <code>weight 74.2 morning</code>)</div>
+                        <div class="help-key">gym done</div>
+                        <div class="help-desc">Save weights, complete active workout day &amp; advance</div>
+                        <div class="help-key">food</div>
+                        <div class="help-desc">Open Nutritional Database (Kcal/Macros per 100g)</div>
+                    </div>
+                </div>
+
+                <!-- 3. TASTI RAPIDI GLOBALI -->
+                <div class="help-section-card">
+                    <div class="help-section-title">3. Global Keyboard Shortcuts</div>
+                    <div class="help-grid">
+                        <div class="help-key">Ctrl + Space / K</div>
+                        <div class="help-desc">Open / close universal Command Bar</div>
+                        <div class="help-key">Ctrl + S</div>
+                        <div class="help-desc">Force immediate save of all modules to storage</div>
+                        <div class="help-key">P</div>
+                        <div class="help-desc">Open Evening Builder (<code>[PLAN TOMORROW]</code>)</div>
+                        <div class="help-key">← / →  and  T</div>
+                        <div class="help-desc">Previous / Next day in calendar, <code>T</code> jumps to Today</div>
+                        <div class="help-key">N  and  W</div>
+                        <div class="help-desc">Toggle Notes drawer (<code>N</code>) or Weekly drawer (<code>W</code>)</div>
+                        <div class="help-key">J</div>
+                        <div class="help-desc">Open daily Journal for selected date</div>
+                        <div class="help-key">1 / 2 / 3 / 4</div>
+                        <div class="help-desc">Mount Left pane (Daily, Planner, Health, Money)</div>
+                        <div class="help-key">Shift + 1 / 2 / 3 / 4</div>
+                        <div class="help-desc">Mount Right pane (Daily, Planner, Health, Money)</div>
+                        <div class="help-key">S  and  Esc</div>
+                        <div class="help-desc"><code>S</code> swaps panes; <code>Esc</code> closes any modal/drawer</div>
+                    </div>
+                </div>
+
+                <!-- 4. INTERAZIONI MOUSE & SISTEMA -->
+                <div class="help-section-card">
+                    <div class="help-section-title">4. Direct Mouse &amp; Power Features</div>
+                    <div class="help-grid">
+                        <div class="help-key">Dbl-Click Calendar</div>
+                        <div class="help-desc">Open daily Journal for that specific date</div>
+                        <div class="help-key">Dbl-Click Diet Cell</div>
+                        <div class="help-desc">Edit meal or diet rules inline &amp; auto-recalculate Kcal</div>
+                        <div class="help-key">Right-Click Block</div>
+                        <div class="help-desc">Hide a single timed task instance in Weekly Planner</div>
+                        <div class="help-key">Right-Click Empty</div>
+                        <div class="help-desc">Restore hidden timed tasks on that Planner column</div>
+                        <div class="help-key">Ctrl + Mouse Wheel</div>
+                        <div class="help-desc">Zoom in / out the hourly grid in Weekly Planner</div>
+                        <div class="help-key">"comprare [item]"</div>
+                        <div class="help-desc">Typed in General To-Do sends item straight to Money Wishlist</div>
+                        <div class="help-key">goto / export</div>
+                        <div class="help-desc">CLI: <code>goto YYYY-MM-DD</code> jumps date; <code>export</code> saves JSON</div>
+                    </div>
+                </div>
+
             </div>
 
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="closeModals()">Close [Esc]</button>
+            <div class="modal-actions" style="margin-top: 10px;">
+                <button class="btn btn-primary" onclick="closeModals()">Close Manual [Esc]</button>
             </div>
         </div>
     </div>

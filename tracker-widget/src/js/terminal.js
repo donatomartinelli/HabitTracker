@@ -77,7 +77,7 @@ function shiftSelectedDate(daysOffset) {
 function getCommandPreview(raw) {
     const str = raw.trim();
     if (!str) return 'Ready. Press [Enter] to execute, [Esc] to close, [?] for manual.';
-    if (str === '?' || str.toLowerCase() === 'help') return 'Open Terminal Commands & Shortcuts Manual';
+    if (str === '?' || str.toLowerCase() === 'help') return 'Open System Manual (CLI, Shortcuts & Mouse Actions)';
 
     const parts = str.split(/\s+/);
     const cmd = parts[0].toLowerCase();
@@ -92,17 +92,31 @@ function getCommandPreview(raw) {
             if (!m) return 'Syntax: log [minutes] [category] (e.g. log 45 Studio)';
             return `[FOCUS LEDGER] Record ${m[1]} real minutes in category "${m[2] || 'Studio'}"`;
         }
+        case 'ledger':
+        case 'stats':
+            return `[FOCUS LEDGER] Open Consistency History & Real Focus Hours breakdown`;
+        case 'weight':
+        case 'peso': {
+            const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+            if (!m) return 'Syntax: weight [kg] [optional note] (e.g. weight 74.5 morning)';
+            return `[HEALTH] Log Body Weight: ${parseFloat(m[1].replace(',', '.')).toFixed(1)} kg ${m[2] ? '(' + m[2] + ')' : ''}`;
+        }
+        case 'food':
+        case 'macros':
+            return `[HEALTH] Open Nutritional Database (Kcal & Macros per 100g)`;
+        case 'vault':
+            return `[MONEY] Open modal to create a new Salvadanaio / Automatic Rule`;
         case 'out':
         case '-': {
             const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
-            if (!m) return 'Syntax: out [amount] [description] (e.g. out 4.50 colazione)';
+            if (!m) return 'Syntax: out [amount] #[category] [description] (e.g. out 8.50 #treno A/R)';
             return `[MONEY] Subtract €${parseFloat(m[1].replace(',', '.')).toFixed(2)} — "${m[2] || 'Expense'}"`;
         }
         case 'in':
         case '+': {
             const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
             if (!m) return 'Syntax: in [amount] [description] (e.g. in 500 borsa)';
-            return `[MONEY] Add +€${parseFloat(m[1].replace(',', '.')).toFixed(2)} — "${m[2] || 'Income'}"`;
+            return `[MONEY] Add +€${parseFloat(m[1].replace(',', '.')).toFixed(2)} — "${m[2] || 'Income'}" (triggers Vault rules)`;
         }
         case 'wish':
         case 'comprare': {
@@ -165,7 +179,7 @@ function executeTerminalCommand(raw) {
     const cmd = parts[0].toLowerCase();
     const rest = str.slice(parts[0].length).trim();
 
-    // 0. EVENING BUILDER: plan
+    // 0a. EVENING BUILDER: plan
     if (cmd === 'plan' || cmd === 'tomorrow') {
         closeTerminal();
         openPlanTomorrowModal();
@@ -183,7 +197,14 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 0c. BODY WEIGHT LOG: weight 74.5 [nota opzionale]
+    // 0c. OPEN FOCUS LEDGER: ledger / stats
+    if (cmd === 'ledger' || cmd === 'stats') {
+        closeTerminal();
+        openTrackerModal();
+        return true;
+    }
+
+    // 0d. BODY WEIGHT LOG: weight 74.5 [nota opzionale]
     if (cmd === 'weight' || cmd === 'peso') {
         const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
         if (!m) return false;
@@ -191,6 +212,26 @@ function executeTerminalCommand(raw) {
         const note = m[2].trim();
         if (typeof addBodyMetricLog === 'function') {
             return addBodyMetricLog(w, note);
+        }
+        return false;
+    }
+
+    // 0e. OPEN NUTRITIONAL DB: food / macros
+    if (cmd === 'food' || cmd === 'macros') {
+        if (typeof openFoodDbModal === 'function') {
+            closeTerminal();
+            openFoodDbModal();
+            return true;
+        }
+        return false;
+    }
+
+    // 0f. OPEN NEW VAULT MODAL: vault
+    if (cmd === 'vault') {
+        if (typeof openVaultModal === 'function') {
+            closeTerminal();
+            openVaultModal();
+            return true;
         }
         return false;
     }
@@ -472,7 +513,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const rawVal = termInput.value.trim();
                 const ok = executeTerminalCommand(rawVal);
                 if (ok) {
-                    if (!['?', 'help', 'plan', 'tomorrow'].includes(rawVal.toLowerCase())) {
+                    const modalCommands = ['?', 'help', 'plan', 'tomorrow', 'ledger', 'stats', 'food', 'macros', 'vault'];
+                    if (!modalCommands.includes(rawVal.toLowerCase())) {
                         closeTerminal();
                     }
                 } else if (termFeedback) {

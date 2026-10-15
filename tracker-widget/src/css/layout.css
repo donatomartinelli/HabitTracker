@@ -429,19 +429,56 @@
     transform: translateY(0);
 }
 
+/* --- STRUCTURED HELP MANUAL --- */
+.help-manual-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.help-section-card {
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border-color);
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.help-section-title {
+    font-size: var(--font-xs);
+    color: var(--text-main);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+    margin-bottom: 2px;
+}
+
 .help-grid {
     display: grid;
-    grid-template-columns: 175px 1fr;
-    gap: 7px 15px;
+    grid-template-columns: 145px 1fr;
+    gap: 6px 12px;
     font-size: var(--font-xs);
-    margin-bottom: 18px;
+    align-items: baseline;
 }
 
 .help-key {
     color: var(--text-main);
     font-weight: bold;
+    white-space: nowrap;
 }
 
 .help-desc {
     color: var(--text-dim);
+    line-height: 1.35;
+}
+
+.help-desc code {
+    color: var(--text-muted);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 1px 4px;
+    border: 1px solid #333;
 }
