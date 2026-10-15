@@ -183,43 +183,71 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 1. USCITA MONEY
+    // 0c. BODY WEIGHT LOG: weight 74.5 [nota opzionale]
+    if (cmd === 'weight' || cmd === 'peso') {
+        const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
+        if (!m) return false;
+        const w = parseFloat(m[1].replace(',', '.'));
+        const note = m[2].trim();
+        if (typeof addBodyMetricLog === 'function') {
+            return addBodyMetricLog(w, note);
+        }
+        return false;
+    }
+
+    // 1. USCITA MONEY (Supporta #categoria, es: out 8.50 #treno regionale)
     if (cmd === 'out' || cmd === '-') {
         const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
         if (!m) return false;
         const amt = roundCurrency(m[1].replace(',', '.'));
-        const desc = m[2].trim() || 'Expense';
+        let rawDesc = m[2].trim();
+        let category = 'Generale';
+
+        const catMatch = rawDesc.match(/#([a-zA-Z0-9_À-ÿ]+)/);
+        if (catMatch) {
+            const rawTag = catMatch[1];
+            category = rawTag.charAt(0).toUpperCase() + rawTag.slice(1).toLowerCase();
+            rawDesc = rawDesc.replace(catMatch[0], '').trim();
+            if (!mCategories.includes(category)) mCategories.push(category);
+        }
+
+        const desc = rawDesc || category;
         mBalance = roundCurrency(mBalance - amt);
         mTransactions.push({
             id: 'mt_' + Date.now(),
             type: 'out',
             amount: amt,
+            category: category,
             desc: desc,
             date: todayStr
         });
         saveMoneyData();
         renderMoneyDashboard();
-        showToast(`[MONEY] -€${amt.toFixed(2)} (${desc}) | Bal: €${mBalance.toFixed(2)}`);
+        showToast(`[MONEY] -€${amt.toFixed(2)} [${category}] ${desc}`);
         return true;
     }
 
-    // 2. ENTRATA MONEY
+    // 2. ENTRATA MONEY (Attiva automaticamente le regole % dei Salvadanai)
     if (cmd === 'in' || cmd === '+') {
         const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
         if (!m) return false;
         const amt = roundCurrency(m[1].replace(',', '.'));
         const desc = m[2].trim() || 'Income';
         mBalance = roundCurrency(mBalance + amt);
+        const autoSaved = typeof applyIncomeVaultRules === 'function' ? applyIncomeVaultRules(amt) : 0;
+
         mTransactions.push({
             id: 'mt_' + Date.now(),
             type: 'in',
             amount: amt,
+            category: 'Entrata',
             desc: desc,
             date: todayStr
         });
         saveMoneyData();
         renderMoneyDashboard();
-        showToast(`[MONEY] +€${amt.toFixed(2)} (${desc}) | Bal: €${mBalance.toFixed(2)}`);
+        const vaultMsg = autoSaved > 0 ? ` (Auto-Vault: €${autoSaved.toFixed(2)})` : '';
+        showToast(`[MONEY] +€${amt.toFixed(2)} (${desc})${vaultMsg}`);
         return true;
     }
 

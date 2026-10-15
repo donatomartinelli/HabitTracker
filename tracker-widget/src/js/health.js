@@ -1,10 +1,11 @@
-// --- HEALTH MODULE (DYNAMIC DIET & WORKOUT SPLIT) ---
+// --- HEALTH MODULE: DYNAMIC DIET, AUTO-MACRO PARSER, BODY METRICS & GYM SPLIT ---
 
 let isEditingGymPlan = false;
 
 function renderHealthDashboard() {
     renderDiet();
     renderMeds();
+    renderBodyMetrics();
     
     const startInput = document.getElementById('gym-start-date');
     const endInput = document.getElementById('gym-end-date');
@@ -39,6 +40,274 @@ function toggleGymEditMode() {
     renderGym();
 }
 
+// ============================================================================
+// PARSER NUTRIZIONALE AUTOMATICO (LEGGE GRAMMATURE DALLA TABELLA E DALLE REGOLE)
+// ============================================================================
+
+function parseFoodSegmentMacros(segmentText) {
+    let kcal = 0, p = 0, c = 0, f = 0;
+    if (!segmentText || segmentText.includes('PASTO') || segmentText.includes('LIBERO')) {
+        return { kcal: 0, p: 0, c: 0, f: 0, isFreeMeal: segmentText && segmentText.includes('LIBERO') };
+    }
+
+    const lowerSeg = segmentText.toLowerCase();
+
+    // Ordina gli alimenti dal nome più lungo al più corto per evitare falsi match parziali
+    const sortedFoods = [...foodDb].sort((a, b) => b.name.length - a.name.length);
+
+    for (const item of sortedFoods) {
+        const foodNameLower = item.name.toLowerCase();
+        if (lowerSeg.includes(foodNameLower)) {
+            let grams = item.defaultG || 100;
+
+            // 1. Cerca numero seguito da 'g' (es. "Riso 160g" o "200g Latte")
+            const gramMatch = segmentText.match(/(\d+(?:[.,]\d+)?)\s*g\b/i);
+            if (gramMatch) {
+                grams = parseFloat(gramMatch[1].replace(',', '.'));
+            } else {
+                // 2. Cerca moltiplicatore di unità (es. "2 Uova")
+                const unitMatch = segmentText.match(/(\d+(?:[.,]\d+)?)\s+/);
+                if (unitMatch) {
+                    const count = parseFloat(unitMatch[1].replace(',', '.'));
+                    grams = count * (item.defaultG || 60);
+                }
+            }
+
+            // Se nella regola c'è scritto "(Pranzo, Cena)", raddoppia la dose giornaliera (es. 15g Olio x 2)
+            if (lowerSeg.includes('pranzo') && lowerSeg.includes('cena')) {
+                grams *= 2;
+            }
+
+            const ratio = grams / 100.0;
+            kcal += (parseFloat(item.kcal) || 0) * ratio;
+            p += (parseFloat(item.p) || 0) * ratio;
+            c += (parseFloat(item.c) || 0) * ratio;
+            f += (parseFloat(item.f) || 0) * ratio;
+            break;
+        }
+    }
+
+    return { kcal, p, c, f, isFreeMeal: false };
+}
+
+function calculateDayMacros(dayKey) {
+    let totalKcal = 0, totalP = 0, totalC = 0, totalF = 0;
+    let hasFreeMeal = false;
+
+    // 1. Somma i pasti della colonna del giorno (Spuntino 1, Pranzo, Spuntino 2, Cena)
+    dietData.forEach(rowObj => {
+        const cellText = rowObj[dayKey] || '';
+        const lines = cellText.split(/[\n+]/);
+        lines.forEach(line => {
+            const res = parseFoodSegmentMacros(line.trim());
+            if (res.isFreeMeal) hasFreeMeal = true;
+            totalKcal += res.kcal;
+            totalP += res.p;
+            totalC += res.c;
+            totalF += res.f;
+        });
+    });
+
+    // 2. Somma gli alimenti fissi giornalieri presenti in dietRules (Colazione + Condimento)
+    if (dietRules) {
+        const ruleBlocks = dietRules.split('|');
+        ruleBlocks.forEach(block => {
+            const subItems = block.split('+');
+            subItems.forEach(sub => {
+                const res = parseFoodSegmentMacros(sub.trim());
+                totalKcal += res.kcal;
+                totalP += res.p;
+                totalC += res.c;
+                totalF += res.f;
+            });
+        });
+    }
+
+    return {
+        kcal: Math.round(totalKcal),
+        p: Math.round(totalP),
+        c: Math.round(totalC),
+        f: Math.round(totalF),
+        hasFreeMeal: hasFreeMeal
+    };
+}
+
+// ============================================================================
+// GESTIONE DIZIONARIO NUTRIZIONALE (FOOD DB MODAL)
+// ============================================================================
+
+function openFoodDbModal() {
+    closeModals();
+    renderFoodDbList();
+    document.getElementById('foodDbModal').style.display = 'flex';
+}
+
+function renderFoodDbList() {
+    const list = document.getElementById('food-db-list');
+    if (!list) return;
+    list.innerHTML = '';
+
+    const frag = document.createDocumentFragment();
+    foodDb.forEach((item, idx) => {
+        const row = document.createElement('div');
+        row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; gap: 6px; align-items: center; padding: 5px 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); font-size: var(--font-xs);';
+
+        const makeInp = (val, key, isText = false) => {
+            const inp = document.createElement('input');
+            inp.type = isText ? 'text' : 'number';
+            if (!isText) inp.step = '0.1';
+            inp.className = 'gym-edit-input no-spinners';
+            inp.style.width = '100%';
+            inp.value = val;
+            inp.onchange = () => {
+                foodDb[idx][key] = isText ? inp.value.trim() : (parseFloat(inp.value) || 0);
+                saveHealthData();
+            };
+            return inp;
+        };
+
+        row.appendChild(makeInp(item.name, 'name', true));
+        row.appendChild(makeInp(item.kcal, 'kcal'));
+        row.appendChild(makeInp(item.p, 'p'));
+        row.appendChild(makeInp(item.c, 'c'));
+        row.appendChild(makeInp(item.f, 'f'));
+        row.appendChild(makeInp(item.defaultG || 100, 'defaultG'));
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn delete';
+        delBtn.textContent = '[X]';
+        delBtn.onclick = () => {
+            foodDb.splice(idx, 1);
+            saveHealthData();
+            renderFoodDbList();
+        };
+        row.appendChild(delBtn);
+
+        frag.appendChild(row);
+    });
+
+    list.appendChild(frag);
+}
+
+function addFoodDbItem() {
+    const nameEl = document.getElementById('fdb-name');
+    const kcalEl = document.getElementById('fdb-kcal');
+    const pEl = document.getElementById('fdb-p');
+    const cEl = document.getElementById('fdb-c');
+    const fEl = document.getElementById('fdb-f');
+    const defgEl = document.getElementById('fdb-defg');
+
+    const name = (nameEl.value || '').trim();
+    if (!name) return;
+
+    foodDb.unshift({
+        name: name,
+        kcal: parseFloat(kcalEl.value) || 0,
+        p: parseFloat(pEl.value) || 0,
+        c: parseFloat(cEl.value) || 0,
+        f: parseFloat(fEl.value) || 0,
+        defaultG: parseFloat(defgEl.value) || 100
+    });
+
+    nameEl.value = '';
+    kcalEl.value = '';
+    pEl.value = '';
+    cEl.value = '';
+    fEl.value = '';
+    defgEl.value = '100';
+
+    saveHealthData();
+    renderFoodDbList();
+    renderDiet();
+}
+
+// ============================================================================
+// TRACCIAMENTO PESO E DATI CORPOREI (BODY METRICS)
+// ============================================================================
+
+function addBodyMetricLog(customWeight = null, customNote = null) {
+    const wInp = document.getElementById('body-weight-input');
+    const nInp = document.getElementById('body-note-input');
+
+    const weightVal = customWeight !== null ? parseFloat(customWeight) : parseFloat(wInp ? wInp.value : 0);
+    if (!weightVal || weightVal <= 0) return false;
+
+    const noteVal = customNote !== null ? customNote : (nInp ? nInp.value.trim() : '');
+
+    bodyLogs.push({
+        id: 'bw_' + Date.now(),
+        date: todayStr,
+        weight: Math.round(weightVal * 10) / 10,
+        note: noteVal
+    });
+
+    if (wInp && customWeight === null) wInp.value = '';
+    if (nInp && customNote === null) nInp.value = '';
+
+    saveHealthData();
+    renderBodyMetrics();
+    if (typeof showToast === 'function') {
+        showToast(`[HEALTH] Logged weight: ${weightVal.toFixed(1)} kg`);
+    }
+    return true;
+}
+
+function deleteBodyMetricLog(id) {
+    bodyLogs = bodyLogs.filter(x => x.id !== id);
+    saveHealthData();
+    renderBodyMetrics();
+}
+
+function renderBodyMetrics() {
+    const heroEl = document.getElementById('body-weight-display');
+    const deltaEl = document.getElementById('body-weight-delta');
+    const chipsCont = document.getElementById('body-history-chips');
+    if (!heroEl || !deltaEl || !chipsCont) return;
+
+    chipsCont.innerHTML = '';
+
+    if (bodyLogs.length === 0) {
+        heroEl.textContent = '-- KG';
+        deltaEl.textContent = '[ NO LOGS ]';
+        return;
+    }
+
+    const latest = bodyLogs[bodyLogs.length - 1];
+    heroEl.textContent = `${latest.weight.toFixed(1)} KG`;
+
+    if (bodyLogs.length >= 2) {
+        const prev = bodyLogs[bodyLogs.length - 2];
+        const diff = Math.round((latest.weight - prev.weight) * 10) / 10;
+        const sign = diff > 0 ? '+' : '';
+        deltaEl.textContent = `[${sign}${diff.toFixed(1)} KG vs ${prev.date}]`;
+        deltaEl.style.color = diff === 0 ? 'var(--text-dim)' : (diff > 0 ? 'var(--accent-gold)' : 'var(--accent-green)');
+    } else {
+        deltaEl.textContent = `[LOGGED ${latest.date}]`;
+        deltaEl.style.color = 'var(--text-dim)';
+    }
+
+    // Mostra le ultime 5 pesate come chip compatti
+    [...bodyLogs].reverse().slice(0, 5).forEach(entry => {
+        const chip = document.createElement('div');
+        chip.className = 'body-chip';
+        const noteStr = entry.note ? ` (${entry.note})` : '';
+        chip.innerHTML = `
+            <span><strong style="color:var(--text-main);">${entry.weight.toFixed(1)}kg</strong> <span style="color:var(--text-dim);">${escapeHtml(entry.date.slice(5))}${escapeHtml(noteStr)}</span></span>
+        `;
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn delete';
+        delBtn.style.fontSize = '0.65rem';
+        delBtn.textContent = '×';
+        delBtn.onclick = () => deleteBodyMetricLog(entry.id);
+        chip.appendChild(delBtn);
+        chipsCont.appendChild(chip);
+    });
+}
+
+// ============================================================================
+// RENDER MEDICINE, DIETA CON RIGA MACRO E PALESTRA
+// ============================================================================
+
 function renderMeds() {
     let container = document.getElementById('meds-main-content');
     
@@ -47,7 +316,7 @@ function renderMeds() {
         if (!dietDiv || !dietDiv.parentElement) return;
         container = document.createElement('div');
         container.id = 'meds-main-content';
-        container.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; margin: 12px 0 0 0; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color);';
+        container.style.cssText = 'flex: 0 0 auto; padding: 8px 12px; margin: 10px 0 0 0; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color);';
         dietDiv.parentElement.insertAdjacentElement('afterend', container);
     }
 
@@ -92,6 +361,7 @@ function renderDiet() {
     const wrapper = document.createElement('div');
     wrapper.className = 'diet-wrapper';
 
+    // 1. Intestazione Giorni
     const headerRow = document.createElement('div');
     headerRow.className = 'diet-row';
 
@@ -108,6 +378,7 @@ function renderDiet() {
     });
     wrapper.appendChild(headerRow);
 
+    // 2. Righe Pasti
     dietData.forEach((rowObj, rowIdx) => {
         const rowEl = document.createElement('div');
         rowEl.className = 'diet-row';
@@ -130,11 +401,34 @@ function renderDiet() {
         wrapper.appendChild(rowEl);
     });
 
+    // 3. Riga Automatica Totali Calorie & Macronutrienti (KCAL | P | C | F)
+    const macroRow = document.createElement('div');
+    macroRow.className = 'diet-row';
+
+    const macroLabel = document.createElement('div');
+    macroLabel.className = 'diet-cell diet-row-label';
+    macroLabel.style.borderTop = '1px solid var(--border-color)';
+    macroLabel.style.color = 'var(--text-main)';
+    macroLabel.textContent = 'MACROS';
+    macroRow.appendChild(macroLabel);
+
+    dayOrder.forEach(dVal => {
+        const totals = calculateDayMacros(dVal);
+        const mCell = document.createElement('div');
+        mCell.className = `diet-macro-cell ${todayJS === dVal ? 'diet-col-active' : ''}`;
+        mCell.innerHTML = `
+            <span class="diet-macro-kcal">${totals.kcal} KCAL${totals.hasFreeMeal ? '*' : ''}</span>
+            <span class="diet-macro-sub">P:${totals.p}g C:${totals.c}g F:${totals.f}g</span>
+        `;
+        macroRow.appendChild(mCell);
+    });
+    wrapper.appendChild(macroRow);
+
     mainArea.appendChild(wrapper);
 
     const rulesEl = document.getElementById('diet-rules');
     if (rulesEl) {
-        rulesEl.title = "Double-click to edit diet rules";
+        rulesEl.title = "Double-click to edit diet rules (included in daily macro calculation)";
         rulesEl.style.cursor = 'pointer';
         rulesEl.textContent = dietRules;
         rulesEl.ondblclick = () => startDietRulesEdit(rulesEl);
@@ -154,7 +448,7 @@ function startDietCellEdit(cell, rowIdx, dayKey) {
         dietData[rowIdx][dayKey] = ta.value.trim();
         saveHealthData();
         renderDiet();
-        if (typeof showToast === 'function') showToast('[DIET] Meal updated');
+        if (typeof showToast === 'function') showToast('[DIET] Meal & Macros updated');
     };
 
     ta.onblur = commit;
@@ -186,7 +480,7 @@ function startDietRulesEdit(rulesEl) {
         dietRules = inp.value.trim() || DEFAULT_DIET_RULES;
         saveHealthData();
         renderDiet();
-        if (typeof showToast === 'function') showToast('[DIET] Rules updated');
+        if (typeof showToast === 'function') showToast('[DIET] Rules & Macros updated');
     };
 
     inp.onblur = commit;

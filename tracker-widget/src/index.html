@@ -201,20 +201,40 @@
         <!-- MODULO 3: HEALTH                           -->
         <!-- ========================================== -->
         <div id="module-health" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 24px; overflow-y: auto;">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 18px; overflow-y: auto;">
                 
-                <!-- Sezione Dieta -->
+                <!-- Sezione Dieta & Calcolo Automatico Calorie/Macro -->
                 <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
                     <div class="section-header-row">
-                        <span class="section-label">Weekly Diet Plan</span>
-                        <span class="section-sub-hint">Double-click any cell to edit</span>
+                        <div>
+                            <span class="section-label">Weekly Diet Plan &amp; Auto-Macros</span>
+                            <span class="section-sub-hint" style="margin-left: 10px;">Double-click any cell to edit</span>
+                        </div>
+                        <button class="btn btn-sm" onclick="openFoodDbModal()" title="Edit Nutritional Database (Kcal &amp; Macros per 100g)">[FOOD DB // MACROS]</button>
                     </div>
                     <div id="diet-main-content" style="width: 100%;"></div>
                     <div id="diet-rules" class="diet-rules-bar"></div>
                 </div>
 
+                <!-- Sezione Peso Corporeo & Dati Fisici (Body Metrics) -->
+                <div class="body-metrics-bar">
+                    <div style="display: flex; align-items: baseline; gap: 12px;">
+                        <span class="section-label">Body Weight:</span>
+                        <span id="body-weight-display" class="body-weight-hero">-- KG</span>
+                        <span id="body-weight-delta" style="font-size: var(--font-xs); color: var(--text-dim);"></span>
+                    </div>
+
+                    <div id="body-history-chips" class="body-history-chips"></div>
+
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input type="number" id="body-weight-input" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg (e.g. 74.5)" style="width: 95px;">
+                        <input type="text" id="body-note-input" class="form-control form-control-sm" placeholder="Note / BF% / Waist..." style="width: 135px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBodyMetricLog();}">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="addBodyMetricLog()">[+ LOG]</button>
+                    </div>
+                </div>
+
                 <!-- Sezione Palestra -->
-                <div style="flex: 1; display: flex; flex-direction: column; min-height: 260px;">
+                <div style="flex: 1; display: flex; flex-direction: column; min-height: 250px;">
                     <div class="section-header-row">
                         <span class="section-label">Workout Split</span>
                         <div style="display: flex; gap: 8px; font-size: var(--font-xs); align-items: center;">
@@ -233,38 +253,75 @@
         <!-- MODULO 4: MONEY                            -->
         <!-- ========================================== -->
         <div id="module-money" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 20px; overflow: hidden;">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
                 
-                <!-- Barra Saldo e Azioni -->
+                <!-- Barra Doppio Saldo (Total vs Spendable Reale) e Azioni -->
                 <div class="money-top-bar">
                     <div>
-                        <div class="section-label" style="margin-bottom: 4px;">Total Balance</div>
-                        <div class="hero-balance">€ <span id="m-balance-display">0.00</span></div>
+                        <div class="balance-cards-row">
+                            <div>
+                                <div class="section-label" style="margin-bottom: 4px;">Total Balance</div>
+                                <div class="hero-balance">€ <span id="m-balance-display">0.00</span></div>
+                            </div>
+                            <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
+                                <div class="section-label" style="margin-bottom: 4px; color: var(--accent-green);">Spendable (Real Free)</div>
+                                <div class="spendable-balance">€ <span id="m-spendable-display">0.00</span></div>
+                            </div>
+                        </div>
+                        <div id="m-balance-breakdown" class="balance-sub-breakdown">VAULTS: €0.00 | PENDING BILLS THIS MONTH: €0.00</div>
                     </div>
-                    <div style="display: flex; gap: 10px;">
+                    <div style="display: flex; gap: 8px;">
                         <button class="btn btn-primary" onclick="openTransactionModal('in')">[+ IN]</button>
                         <button class="btn btn-danger" onclick="openTransactionModal('out')">[- OUT]</button>
                     </div>
                 </div>
 
-                <!-- Grafico a Scalini con Asse Min/Max e Hover -->
-                <div class="money-chart-box" id="m-chart-box">
-                    <div class="chart-meta-top">
-                        <span>LAST 30 TRANSACTIONS</span>
-                        <span id="m-chart-hover-info" style="color: var(--text-main); font-weight: bold;"></span>
-                        <span id="m-chart-max">MAX: €0.00</span>
+                <!-- Contenitore Unico Scrollabile -->
+                <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 6px;">
+
+                    <!-- Grafico a Scalini con Asse Min/Max e Hover -->
+                    <div class="money-chart-box" id="m-chart-box">
+                        <div class="chart-meta-top">
+                            <span>LAST 30 TRANSACTIONS</span>
+                            <span id="m-chart-hover-info" style="color: var(--text-main); font-weight: bold;"></span>
+                            <span id="m-chart-max">MAX: €0.00</span>
+                        </div>
+                        <svg id="m-chart-svg" width="100%" height="100%" preserveAspectRatio="none" style="overflow: visible;">
+                            <polyline id="m-chart-line" fill="none" stroke="var(--text-main)" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
+                        </svg>
+                        <div class="chart-meta-bottom">
+                            <span id="m-chart-start">START: €0.00</span>
+                            <span id="m-chart-min">MIN: €0.00</span>
+                        </div>
                     </div>
-                    <svg id="m-chart-svg" width="100%" height="100%" preserveAspectRatio="none" style="overflow: visible;">
-                        <polyline id="m-chart-line" fill="none" stroke="var(--text-main)" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
-                    </svg>
-                    <div class="chart-meta-bottom">
-                        <span id="m-chart-start">START: €0.00</span>
-                        <span id="m-chart-min">MIN: €0.00</span>
+
+                    <!-- STATISTICHE VISIVE: Doppio Grafico a Torta (Spese per Categoria & Allocazione Capitale) -->
+                    <div class="money-analytics-grid">
+                        <div class="pie-card">
+                            <div class="sub-column-header" style="margin-bottom: 2px;">Expenses by Category</div>
+                            <div class="pie-card-body">
+                                <div class="pie-svg-wrap" id="m-pie-expenses"></div>
+                                <div class="pie-legend" id="m-legend-expenses"></div>
+                            </div>
+                        </div>
+
+                        <div class="pie-card">
+                            <div class="sub-column-header" style="margin-bottom: 2px;">Capital Allocation</div>
+                            <div class="pie-card-body">
+                                <div class="pie-svg-wrap" id="m-pie-allocation"></div>
+                                <div class="pie-legend" id="m-legend-allocation"></div>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                
-                <!-- Contenitore Liste Money -->
-                <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-right: 6px;">
+
+                    <!-- SALVADANAI (VAULTS) CON REGOLE AUTOMATICHE -->
+                    <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
+                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Vaults // Salvadanai &amp; Auto-Rules</span>
+                            <button class="btn btn-sm" onclick="openVaultModal()">[+ NEW VAULT]</button>
+                        </div>
+                        <div id="m-vaults-container" class="vaults-grid"></div>
+                    </div>
                     
                     <!-- Ideas Incubator -->
                     <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
@@ -776,15 +833,22 @@
         </div>
     </div>
 
-    <!-- 13. Money Transaction Modal (+ IN / - OUT) -->
+    <!-- 13. Money Transaction Modal (+ IN / - OUT con Categoria) -->
     <div id="mTransactionModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
+        <div class="modal-content" style="width: 420px;">
             <h2 id="m-trans-title">New Transaction</h2>
             <form id="mTransactionForm">
                 <input type="hidden" id="m-trans-type">
-                <div class="form-group">
-                    <label>Amount (€)</label>
-                    <input type="number" id="m-trans-amount" class="form-control no-spinners" step="0.01" required>
+                <div style="display: flex; gap: 12px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Amount (€)</label>
+                        <input type="number" id="m-trans-amount" class="form-control no-spinners" step="0.01" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;" id="m-trans-cat-group">
+                        <label>Category</label>
+                        <input type="text" id="m-trans-cat" list="m-cat-datalist" class="form-control" placeholder="e.g. Treno, Cinema">
+                        <datalist id="m-cat-datalist"></datalist>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label>Description</label>
@@ -797,6 +861,65 @@
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
                     <button type="submit" class="btn btn-primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 13B. Create / Edit Vault Modal (Salvadanaio) -->
+    <div id="mVaultModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 450px;">
+            <h2>Create / Edit Vault (Salvadanaio)</h2>
+            <form id="mVaultForm">
+                <input type="hidden" id="m-vault-id">
+                <div class="form-group">
+                    <label>Vault Name</label>
+                    <input type="text" id="m-vault-name" class="form-control" placeholder="e.g. Fondo Emergenza, Viaggio" required>
+                </div>
+                <div style="display: flex; gap: 12px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Initial Deposit (€)</label>
+                        <input type="number" id="m-vault-balance" class="form-control no-spinners" step="0.01" value="0" min="0" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Target Goal (€, Optional)</label>
+                        <input type="number" id="m-vault-target" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 500">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Automatic Rule</label>
+                    <select id="m-vault-rule-type" class="form-control" onchange="toggleVaultRuleInput()">
+                        <option value="none">Manual only (No automatic rule)</option>
+                        <option value="percent_in">Auto-save % of every Income (+ IN)</option>
+                        <option value="monthly_fixed">Auto-save Fixed € on Day 1 of each Month</option>
+                    </select>
+                </div>
+                <div class="form-group" id="m-vault-rule-val-group" style="display: none;">
+                    <label id="m-vault-rule-val-label">Rule Value</label>
+                    <input type="number" id="m-vault-rule-val" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 15">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Vault</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 13C. Vault Transfer Modal (Versa / Preleva) -->
+    <div id="mVaultTransferModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 380px;">
+            <h2 id="m-vtrans-title">Vault Transfer</h2>
+            <form id="mVaultTransferForm">
+                <input type="hidden" id="m-vtrans-id">
+                <input type="hidden" id="m-vtrans-dir">
+                <div class="form-group">
+                    <label>Amount (€)</label>
+                    <input type="number" id="m-vtrans-amount" class="form-control no-spinners" step="0.01" min="0.01" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Confirm</button>
                 </div>
             </form>
         </div>
@@ -889,6 +1012,49 @@
                     <button type="submit" class="btn btn-primary">Save</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- 16B. Nutritional Database Modal (Valori per 100g) -->
+    <div id="foodDbModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 680px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
+            <h2>Nutritional Database (Values per 100g)</h2>
+            <p class="modal-subtitle">Used to automatically estimate daily Kcal, Proteins (P), Carbs (C) and Fats (F) from your Diet table.</p>
+
+            <!-- Form Aggiunta Rapida Alimento -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; gap: 6px; margin-bottom: 14px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">FOOD NAME</label>
+                    <input type="text" id="fdb-name" class="form-control form-control-sm" placeholder="e.g. Avena">
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">KCAL/100G</label>
+                    <input type="number" id="fdb-kcal" class="form-control form-control-sm no-spinners" placeholder="389">
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">PROT (G)</label>
+                    <input type="number" id="fdb-p" class="form-control form-control-sm no-spinners" step="0.1" placeholder="16.9">
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">CARB (G)</label>
+                    <input type="number" id="fdb-c" class="form-control form-control-sm no-spinners" step="0.1" placeholder="66.3">
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">FAT (G)</label>
+                    <input type="number" id="fdb-f" class="form-control form-control-sm no-spinners" step="0.1" placeholder="6.9">
+                </div>
+                <div>
+                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">STD GRAMS</label>
+                    <input type="number" id="fdb-defg" class="form-control form-control-sm no-spinners" placeholder="100" value="100">
+                </div>
+                <button type="button" class="btn btn-primary btn-sm" style="height: 29px;" onclick="addFoodDbItem()">[+ ADD]</button>
+            </div>
+
+            <div id="food-db-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 6px;"></div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn btn-primary" onclick="closeModals(); renderDiet();">Save &amp; Recalculate</button>
+            </div>
         </div>
     </div>
 

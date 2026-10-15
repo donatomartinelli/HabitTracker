@@ -24,6 +24,33 @@ const DEFAULT_DIET_DATA = [
 
 const DEFAULT_DIET_RULES = "COLAZIONE: 200g Latte + 20g Biscotti + 10g Cioccolato Fondente  |  CONDIMENTO: 15g Olio EVO (Pranzo, Cena)  |  ACQUA: Min 3L / Die";
 
+// Valori nutrizionali medi per 100g di prodotto (e grammatura standard quando non specificata)
+const DEFAULT_FOOD_DB = [
+    { name: "MilkPro", kcal: 51, p: 10.0, c: 2.5, f: 0.1, defaultG: 200 },
+    { name: "Anacardi", kcal: 553, p: 18.2, c: 30.2, f: 43.8, defaultG: 20 },
+    { name: "Soncino", kcal: 21, p: 2.0, c: 3.6, f: 0.4, defaultG: 100 },
+    { name: "Rucola", kcal: 25, p: 2.6, c: 3.7, f: 0.7, defaultG: 100 },
+    { name: "Riso", kcal: 358, p: 7.0, c: 79.0, f: 0.6, defaultG: 100 },
+    { name: "Pasta", kcal: 353, p: 13.0, c: 71.0, f: 1.5, defaultG: 100 },
+    { name: "Vitellone", kcal: 135, p: 21.0, c: 0.0, f: 5.5, defaultG: 200 },
+    { name: "Tonno", kcal: 116, p: 25.5, c: 0.0, f: 1.0, defaultG: 90 },
+    { name: "Ceci", kcal: 120, p: 7.0, c: 18.0, f: 2.0, defaultG: 120 },
+    { name: "Uova", kcal: 143, p: 12.6, c: 0.7, f: 9.5, defaultG: 60 },
+    { name: "Kefir", kcal: 45, p: 3.4, c: 4.0, f: 1.5, defaultG: 200 },
+    { name: "Banana", kcal: 89, p: 1.1, c: 22.8, f: 0.3, defaultG: 120 },
+    { name: "Spinaci", kcal: 23, p: 2.9, c: 3.6, f: 0.4, defaultG: 100 },
+    { name: "Merluzzo", kcal: 82, p: 18.0, c: 0.0, f: 0.7, defaultG: 250 },
+    { name: "Pollo", kcal: 110, p: 23.0, c: 0.0, f: 1.2, defaultG: 200 },
+    { name: "Pane", kcal: 265, p: 8.5, c: 54.0, f: 1.5, defaultG: 50 },
+    { name: "Bresaola", kcal: 151, p: 32.0, c: 0.0, f: 2.6, defaultG: 100 },
+    { name: "Salmone", kcal: 208, p: 20.0, c: 0.0, f: 13.0, defaultG: 100 },
+    { name: "Robiola", kcal: 318, p: 7.5, c: 2.3, f: 31.0, defaultG: 30 },
+    { name: "Latte", kcal: 46, p: 3.3, c: 4.9, f: 1.5, defaultG: 200 },
+    { name: "Biscotti", kcal: 440, p: 7.5, c: 70.0, f: 14.0, defaultG: 20 },
+    { name: "Cioccolato Fondente", kcal: 546, p: 6.0, c: 46.0, f: 35.0, defaultG: 10 },
+    { name: "Olio EVO", kcal: 884, p: 0.0, c: 0.0, f: 100.0, defaultG: 15 }
+];
+
 const DEFAULT_GYM_PLAN = {
     1: [
         { id: "g1_1", name: "Panca Inclinata 2 Manubri", repStr: "4x5-8", sets: 4 },
@@ -48,6 +75,8 @@ const DEFAULT_GYM_PLAN = {
         { id: "g2_9", name: "Chiusure A Libro Gambe Tese", repStr: "3xMax", sets: 0 }
     ]
 };
+
+const DEFAULT_MONEY_CATEGORIES = ["Generale", "Treno", "Cinema", "Cibo", "Studio", "Abbonamenti", "Salute", "Svago"];
 
 function migrateAndInitData() {
     const oldCats = localStorage.getItem('tracker_note_categories');
@@ -99,6 +128,8 @@ function migrateAndInitData() {
         'm_trans': [],
         'm_rec': [],
         'm_wish': [],
+        'm_vaults': [],
+        'm_categories': DEFAULT_MONEY_CATEGORIES,
         'tracker_gym_next': 1,
         'tracker_gym_weights': {},
         'gym_start_date': "",
@@ -106,6 +137,8 @@ function migrateAndInitData() {
         'tracker_diet_data': DEFAULT_DIET_DATA,
         'tracker_diet_rules': DEFAULT_DIET_RULES,
         'tracker_gym_plan': DEFAULT_GYM_PLAN,
+        'tracker_food_db': DEFAULT_FOOD_DB,
+        'tracker_body_logs': [],
         'tracker_opacity': "0.92",
         'tracker_mod_left': "daily",
         'tracker_mod_right': "planner",
@@ -152,6 +185,12 @@ function migrateAndInitData() {
                 transFixed = true;
             }
             t.amount = roundCurrency(t.amount);
+            if (!t.category) {
+                if (t.desc && t.desc.toLowerCase().includes('bigliett')) t.category = 'Treno';
+                else if (t.desc && t.desc.startsWith('(Auto)')) t.category = 'Abbonamenti';
+                else t.category = t.type === 'in' ? 'Entrata' : 'Generale';
+                transFixed = true;
+            }
         });
         if (transFixed) {
             localStorage.setItem('m_trans', JSON.stringify(transArr));
@@ -183,6 +222,8 @@ let mBalance = roundCurrency(localStorage.getItem('m_balance'));
 let mTransactions = JSON.parse(localStorage.getItem('m_trans')) || [];
 let mRecurring = JSON.parse(localStorage.getItem('m_rec')) || [];
 let mWishlist = JSON.parse(localStorage.getItem('m_wish')) || [];
+let mVaults = JSON.parse(localStorage.getItem('m_vaults')) || [];
+let mCategories = JSON.parse(localStorage.getItem('m_categories')) || DEFAULT_MONEY_CATEGORIES;
 
 // Health
 let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next'), 10) || 1;
@@ -192,6 +233,8 @@ let gymEndDate = localStorage.getItem('gym_end_date') || "";
 let dietData = JSON.parse(localStorage.getItem('tracker_diet_data')) || DEFAULT_DIET_DATA;
 let dietRules = localStorage.getItem('tracker_diet_rules') || DEFAULT_DIET_RULES;
 let gymPlan = JSON.parse(localStorage.getItem('tracker_gym_plan')) || DEFAULT_GYM_PLAN;
+let foodDb = JSON.parse(localStorage.getItem('tracker_food_db')) || DEFAULT_FOOD_DB;
+let bodyLogs = JSON.parse(localStorage.getItem('tracker_body_logs')) || [];
 
 // Layout & UI
 let activeLeft = localStorage.getItem('tracker_mod_left') || 'daily';
@@ -205,9 +248,9 @@ const ALL_STORAGE_KEYS = [
     'tracker_category_order', 'tracker_references', 'ref_toggles',
     'tracker_ephemeral', 'tracker_general_todo', 'tracker_planner_exceptions',
     'tracker_focus_logs', 'tracker_daily_priorities',
-    'm_balance', 'm_trans', 'm_rec', 'm_wish',
+    'm_balance', 'm_trans', 'm_rec', 'm_wish', 'm_vaults', 'm_categories',
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
-    'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan',
+    'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_food_db', 'tracker_body_logs',
     'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
 ];
 
@@ -251,6 +294,8 @@ function saveMoneyData() {
     localStorage.setItem('m_trans', JSON.stringify(mTransactions));
     localStorage.setItem('m_rec', JSON.stringify(mRecurring));
     localStorage.setItem('m_wish', JSON.stringify(mWishlist));
+    localStorage.setItem('m_vaults', JSON.stringify(mVaults));
+    localStorage.setItem('m_categories', JSON.stringify(mCategories));
     scheduleDiskSync();
 }
 
@@ -262,10 +307,11 @@ function saveHealthData() {
     localStorage.setItem('tracker_diet_data', JSON.stringify(dietData));
     localStorage.setItem('tracker_diet_rules', dietRules);
     localStorage.setItem('tracker_gym_plan', JSON.stringify(gymPlan));
+    localStorage.setItem('tracker_food_db', JSON.stringify(foodDb));
+    localStorage.setItem('tracker_body_logs', JSON.stringify(bodyLogs));
     scheduleDiskSync();
 }
 
-// Registra i minuti effettivi di studio/lavoro nel Focus Ledger
 function logFocusSession(minutes, category, title, dateStr = todayStr) {
     const mins = Math.round(parseFloat(minutes) || 0);
     if (mins <= 0) return;
@@ -279,7 +325,6 @@ function logFocusSession(minutes, category, title, dateStr = todayStr) {
     saveData();
 }
 
-// --- GESTIONE DATE E CALCOLO STATISTICHE ---
 function getNow() { 
     return new Date(); 
 }
@@ -361,7 +406,6 @@ function getStatsForDate(dateStr) {
     };
 }
 
-// --- BACKUP & RESTORE COMPLETO ---
 function buildBackupObject() {
     const backup = {};
     ALL_STORAGE_KEYS.forEach(key => {

@@ -1,4 +1,4 @@
-/* --- DIETA --- */
+/* --- DIETA & MACROS --- */
 .diet-wrapper {
     display: flex;
     flex-direction: column;
@@ -60,6 +60,28 @@
     font-weight: bold;
 }
 
+.diet-macro-cell {
+    background: rgba(255, 255, 255, 0.025);
+    padding: 8px 4px;
+    font-size: 0.68rem;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    border-top: 1px solid var(--border-color);
+    font-variant-numeric: tabular-nums;
+}
+
+.diet-macro-kcal {
+    color: var(--text-main);
+    font-weight: bold;
+    font-size: var(--font-xs);
+}
+
+.diet-macro-sub {
+    color: var(--text-dim);
+}
+
 .diet-inline-editor {
     width: 100%;
     height: 100%;
@@ -76,13 +98,52 @@
 }
 
 .diet-rules-bar {
-    margin-top: 10px;
+    margin-top: 8px;
     font-size: var(--font-xs);
     color: var(--text-dim);
     line-height: 1.5;
     border: 1px dashed var(--border-color);
-    padding: 8px 12px;
+    padding: 7px 12px;
     background: rgba(255, 255, 255, 0.01);
+}
+
+/* --- BODY METRICS & WEIGHT BAR --- */
+.body-metrics-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 15px;
+    padding: 10px 14px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border-color);
+    flex-wrap: wrap;
+}
+
+.body-weight-hero {
+    font-size: var(--font-md);
+    font-weight: bold;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+}
+
+.body-history-chips {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.body-chip {
+    font-size: var(--font-xs);
+    padding: 3px 8px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
 /* --- PALESTRA --- */
