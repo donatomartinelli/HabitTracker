@@ -24,7 +24,6 @@ const DEFAULT_DIET_DATA = [
 
 const DEFAULT_DIET_RULES = "COLAZIONE: 200g Latte + 20g Biscotti + 10g Cioccolato Fondente  |  CONDIMENTO: 15g Olio EVO (Pranzo, Cena)  |  ACQUA: Min 3L / Die";
 
-// Valori nutrizionali medi per 100g di prodotto (e grammatura standard quando non specificata)
 const DEFAULT_FOOD_DB = [
     { name: "MilkPro", kcal: 51, p: 10.0, c: 2.5, f: 0.1, defaultG: 200 },
     { name: "Anacardi", kcal: 553, p: 18.2, c: 30.2, f: 43.8, defaultG: 20 },
@@ -139,6 +138,7 @@ function migrateAndInitData() {
         'tracker_gym_plan': DEFAULT_GYM_PLAN,
         'tracker_food_db': DEFAULT_FOOD_DB,
         'tracker_body_logs': [],
+        'tracker_gemini_key': "",
         'tracker_opacity': "0.92",
         'tracker_mod_left': "daily",
         'tracker_mod_right': "planner",
@@ -236,7 +236,8 @@ let gymPlan = JSON.parse(localStorage.getItem('tracker_gym_plan')) || DEFAULT_GY
 let foodDb = JSON.parse(localStorage.getItem('tracker_food_db')) || DEFAULT_FOOD_DB;
 let bodyLogs = JSON.parse(localStorage.getItem('tracker_body_logs')) || [];
 
-// Layout & UI
+// AI & Layout
+let geminiApiKey = localStorage.getItem('tracker_gemini_key') || "";
 let activeLeft = localStorage.getItem('tracker_mod_left') || 'daily';
 let activeRight = localStorage.getItem('tracker_mod_right') || 'planner';
 let savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
@@ -251,7 +252,7 @@ const ALL_STORAGE_KEYS = [
     'm_balance', 'm_trans', 'm_rec', 'm_wish', 'm_vaults', 'm_categories',
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
     'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_food_db', 'tracker_body_logs',
-    'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
+    'tracker_gemini_key', 'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
 ];
 
 let diskSyncTimeout;
@@ -309,6 +310,12 @@ function saveHealthData() {
     localStorage.setItem('tracker_gym_plan', JSON.stringify(gymPlan));
     localStorage.setItem('tracker_food_db', JSON.stringify(foodDb));
     localStorage.setItem('tracker_body_logs', JSON.stringify(bodyLogs));
+    scheduleDiskSync();
+}
+
+function saveGeminiKey(val) {
+    geminiApiKey = (val || '').trim();
+    localStorage.setItem('tracker_gemini_key', geminiApiKey);
     scheduleDiskSync();
 }
 
