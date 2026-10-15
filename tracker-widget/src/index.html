@@ -23,6 +23,7 @@
 
     <!-- HEADER GLOBALE UNIFICATO -->
     <header class="app-header">
+        
         <!-- PARTE SINISTRA: Orologio + Selettori Modulo -->
         <div class="header-left">
             <div class="clock-wrap">
@@ -33,14 +34,16 @@
             <div class="module-switchers">
                 <div class="dropdown">
                     <div class="module-title" onclick="document.getElementById('dropdown-left').classList.toggle('show')">
-                        <span id="title-left">DAILY</span> <span class="caret">▼</span>
+                        <span id="title-left">DAILY</span>
+                        <span class="caret">▼</span>
                     </div>
                     <div id="dropdown-left" class="dropdown-content" style="left: 0; right: auto;"></div>
                 </div>
                 <span class="header-slash">/</span>
                 <div class="dropdown">
                     <div class="module-title" onclick="document.getElementById('dropdown-right').classList.toggle('show')">
-                        <span id="title-right">PLANNER</span> <span class="caret">▼</span>
+                        <span id="title-right">PLANNER</span>
+                        <span class="caret">▼</span>
                     </div>
                     <div id="dropdown-right" class="dropdown-content" style="left: 0; right: auto;"></div>
                 </div>
@@ -48,13 +51,14 @@
         </div>
 
         <!-- PARTE CENTRALE: Consistency Strip + Metriche Numeriche -->
-        <div class="header-center" onclick="openTrackerModal()" title="Click to view full consistency history">
+        <div class="header-center" onclick="openTrackerModal()" title="Click to view full consistency history &amp; focus hours">
             <div id="tracker-metrics" class="tracker-metrics">TODAY 0/0 | STREAK 0D</div>
             <div id="tracker-strip-1d" class="tracker-strip-1d"></div>
         </div>
 
         <!-- PARTE DESTRA: Azioni Globali -->
         <div class="header-buttons">
+            <button class="btn btn-sm" onclick="openPlanTomorrowModal()" title="Evening Builder: Plan Tomorrow (Shortcut: P)">[PLAN TOMORROW]</button>
             <button class="btn btn-sm" onclick="openTimerModal()" title="Focus Session Builder">[▶ FOCUS]</button>
             <button class="btn btn-sm" onclick="openCreationModal()" title="Add Habit, Event or Medicine">[+ NEW]</button>
             <button class="btn btn-sm" onclick="openManagerModal()" title="Manage &amp; Backup">[CFG]</button>
@@ -63,22 +67,30 @@
 
     <!-- WRAPPER MODULARE DELLA DASHBOARD -->
     <div id="app-content-wrapper" class="layout">
+        
+        <!-- PANE SINISTRO -->
         <div id="pane-left" class="split-pane" style="width: 50%;">
             <div id="content-left" class="pane-content"></div>
         </div>
 
+        <!-- RESIZER VERTICALE -->
         <div id="main-resizer" class="resizer-vertical" title="Drag to resize"></div>
 
+        <!-- PANE DESTRO -->
         <div id="pane-right" class="split-pane" style="width: 50%;">
             <div id="content-right" class="pane-content"></div>
         </div>
     </div>
 
-    <!-- MAGAZZINO MODULI -->
+    <!-- MAGAZZINO MODULI (Invisibile: Il JS sposta i moduli da qui nei Pane) -->
     <div id="module-registry" style="display: none;">
         
-        <!-- MODULO 1: DAILY -->
+        <!-- ========================================== -->
+        <!-- MODULO 1: DAILY                            -->
+        <!-- ========================================== -->
         <div id="module-daily" class="module-container">
+            
+            <!-- Sezione Calendario Mensile -->
             <div class="module-body-padded" style="flex: 0 0 auto; padding-bottom: 12px;">
                 <div class="calendar-header">
                     <button class="nav-btn" onclick="changeMonth(-1)">[&lt;]</button>
@@ -88,7 +100,7 @@
                 <div class="month-grid" id="calendar-grid"></div>
             </div>
 
-            <!-- GENERAL TO-DO -->
+            <!-- Sezione General To-Do Inbox -->
             <div id="general-todo-section" class="general-todo-bar">
                 <div class="section-label" style="margin-bottom: 8px;">General To-Do Inbox</div>
                 <div class="dropdown" style="display: flex; align-items: center; gap: 8px; width: 100%;">
@@ -102,12 +114,17 @@
                 </div>
             </div>
 
-            <!-- DAILY TASKS -->
+            <!-- Sezione Daily Tasks -->
             <div id="left-daily-tasks" class="module-body-padded" style="flex: 1 1 auto; overflow-y: auto; min-height: 0;">
+                
+                <!-- Banner Priorità del Giorno (Impostato la sera prima con Plan Tomorrow) -->
+                <div id="daily-priority-banner" style="display: none; margin-bottom: 14px; padding: 8px 12px; border: 1px solid var(--text-main); background: rgba(255,255,255,0.03); font-size: var(--font-xs);"></div>
+
                 <div class="section-header-row">
                     <span class="section-label">Daily Tasks</span>
                     <span class="section-sub-hint">Hover task for quick actions</span>
                 </div>
+                
                 <div id="today-tasks" class="daily-columns-wrap">
                     <div id="scheduled-tasks-col" style="flex: 1; min-width: 0;">
                         <div class="sub-column-header">Scheduled</div>
@@ -120,7 +137,7 @@
                 </div>
             </div>
 
-            <!-- CASSETTO NOTE -->
+            <!-- Cassetto Note -->
             <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [N] to toggle"></div>
             <div id="notes-section" class="notes-section collapsed" style="display: none;">
                 <div class="notes-controls">
@@ -128,7 +145,10 @@
                         <span class="section-label" style="color: var(--text-main);">Notes</span>
                         <label class="notes-toggle">
                             <input type="checkbox" id="notes-mode-checkbox" onchange="toggleNotesMode()">
-                            <span class="notes-slider"><span class="t-label write">WRITE</span><span class="t-label browse">BROWSE</span></span>
+                            <span class="notes-slider">
+                                <span class="t-label write">WRITE</span>
+                                <span class="t-label browse">BROWSE</span>
+                            </span>
                         </label>
                     </div>
                     <div style="display: flex; gap: 8px; align-items: center;">
@@ -142,10 +162,13 @@
             </div>
         </div>
 
-        <!-- MODULO 2: PLANNER -->
+        <!-- ========================================== -->
+        <!-- MODULO 2: PLANNER                          -->
+        <!-- ========================================== -->
         <div id="module-planner" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
                 <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 0;">
+                    
                     <div class="section-header-row" style="padding-bottom: 12px;">
                         <span class="section-label">Weekly Planner</span>
                         <div class="dropdown">
@@ -167,15 +190,20 @@
                 </div>
             </div>
             
+            <!-- Cassetto Settimanale -->
             <div id="weekly-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [W] to toggle"></div>
             <div id="weekly-drawer" class="notes-section collapsed" style="display: none;">
                 <div id="drawer-days-row" style="display: flex; gap: 4px; padding-left: 45px; flex: 1; overflow-y: auto;"></div>
             </div>
         </div>
 
-        <!-- MODULO 3: HEALTH -->
+        <!-- ========================================== -->
+        <!-- MODULO 3: HEALTH                           -->
+        <!-- ========================================== -->
         <div id="module-health" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 24px; overflow-y: auto;">
+                
+                <!-- Sezione Dieta -->
                 <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
                     <div class="section-header-row">
                         <span class="section-label">Weekly Diet Plan</span>
@@ -185,6 +213,7 @@
                     <div id="diet-rules" class="diet-rules-bar"></div>
                 </div>
 
+                <!-- Sezione Palestra -->
                 <div style="flex: 1; display: flex; flex-direction: column; min-height: 260px;">
                     <div class="section-header-row">
                         <span class="section-label">Workout Split</span>
@@ -200,9 +229,13 @@
             </div>
         </div>
 
-        <!-- MODULO 4: MONEY -->
+        <!-- ========================================== -->
+        <!-- MODULO 4: MONEY                            -->
+        <!-- ========================================== -->
         <div id="module-money" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 20px; overflow: hidden;">
+                
+                <!-- Barra Saldo e Azioni -->
                 <div class="money-top-bar">
                     <div>
                         <div class="section-label" style="margin-bottom: 4px;">Total Balance</div>
@@ -214,7 +247,7 @@
                     </div>
                 </div>
 
-                <!-- GRAFICO CON ASSE MIN/MAX E HOVER INTERATTIVO -->
+                <!-- Grafico a Scalini con Asse Min/Max e Hover -->
                 <div class="money-chart-box" id="m-chart-box">
                     <div class="chart-meta-top">
                         <span>LAST 30 TRANSACTIONS</span>
@@ -230,8 +263,10 @@
                     </div>
                 </div>
                 
-                <!-- LISTE SCROLLABILI -->
+                <!-- Contenitore Liste Money -->
                 <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 20px; padding-right: 6px;">
+                    
+                    <!-- Ideas Incubator -->
                     <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
                         <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <span>Ideas Incubator</span>
@@ -240,6 +275,7 @@
                         <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                     </div>
 
+                    <!-- Recurring & Recent History -->
                     <div style="display: flex; flex-direction: row; gap: 16px; flex: 0 0 auto;">
                         <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
                             <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -257,11 +293,15 @@
                 </div>
             </div>
         </div>
+
     </div> <!-- FINE MAGAZZINO MODULI -->
 
-    <!-- MODALS & OVERLAYS -->
+
+    <!-- ================================================================= -->
+    <!-- MODALS & OVERLAYS                                                 -->
+    <!-- ================================================================= -->
     
-    <!-- Journal Modal -->
+    <!-- 1. Journal Modal (Diario) -->
     <div id="journalModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 600px; height: 70vh; display: flex; flex-direction: column;">
             <h2 id="journal-title">Journal</h2>
@@ -275,10 +315,10 @@
         </div>
     </div>
 
-    <!-- Pomodoro Timer Overlay -->
+    <!-- 2. Pomodoro Timer Overlay -->
     <div id="pomodoroOverlay" class="pomodoro-overlay">
         <div id="widget-drag-handle">
-            <span style="flex:1; text-align:left;">:: FOCUS WIDGET</span>
+            <span style="flex: 1; text-align: left;">:: FOCUS WIDGET</span>
             <button id="btn-widget-mode-full" class="icon-btn" style="font-size: var(--font-xs); padding-right: 8px;" onclick="toggleWidgetMode()">[+ FULL]</button>
         </div>
         
@@ -313,7 +353,7 @@
         </div>
     </div>
 
-    <!-- Timer Setup Modal -->
+    <!-- 3. Timer Setup Modal -->
     <div id="timerSetupModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 460px;">
             <h2>Focus Session Builder</h2>
@@ -332,7 +372,19 @@
         </div>
     </div>
 
-    <!-- Combined Creation Modal (Habits, Events, Medicines) -->
+    <!-- 4. Timer Complete Modal -->
+    <div id="timerCompleteModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 400px;">
+            <h2>Session Complete</h2>
+            <p class="modal-subtitle">Select a task to check off:</p>
+            <div id="uncompleted-tasks-list" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeModals()">Skip</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Combined Creation Modal (Habits, Events, Medicines) -->
     <div id="creationModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content">
             <h2>Add to Planner</h2>
@@ -448,7 +500,7 @@
                 </div>
             </form>
 
-            <!-- FORM EVENT (Ora con orario opzionale per il Planner) -->
+            <!-- FORM EVENT -->
             <form id="eventForm" style="display: none;">
                 <div class="form-group">
                     <label>Event Name</label>
@@ -526,6 +578,7 @@
         </div>
     </div>
 
+    <!-- 6. Rename Category Modal -->
     <div id="renameModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 400px;">
             <h2>Rename Category</h2>
@@ -543,12 +596,13 @@
         </div>
     </div>
 
+    <!-- 7. Manager & System Config Modal -->
     <div id="managerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content">
             <h2>System Configuration &amp; Habits</h2>
             
             <div class="cfg-box">
-                <label style="display:flex; justify-content:space-between; color:var(--text-dim); font-size:var(--font-xs); text-transform:uppercase; margin-bottom:8px;">
+                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 8px;">
                     <span>Background Opacity</span>
                     <span id="opacity-val">0.92</span>
                 </label>
@@ -579,6 +633,7 @@
         </div>
     </div>
 
+    <!-- 8. Manage Note Categories Modal -->
     <div id="manageNotesModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 420px;">
             <h2>Note Categories</h2>
@@ -595,6 +650,7 @@
         </div>
     </div>
 
+    <!-- 9. Delete Options Modal -->
     <div id="deleteModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 450px;">
             <h2 id="delete-modal-title">Delete Options</h2>
@@ -618,6 +674,7 @@
         </div>
     </div>
 
+    <!-- 10. Assign General To-Do Modal -->
     <div id="assignModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 400px;">
             <h2>Assign Tasks</h2>
@@ -635,65 +692,175 @@
         </div>
     </div>
 
-    <!-- Consistency Tracker Modal -->
+    <!-- 11. Consistency Tracker & Focus Hours Ledger Modal (PASSO 1) -->
     <div id="trackerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: auto; max-width: 850px;">
-            <h2>Consistency History</h2>
-            <div class="tracker-wrapper">
+        <div class="modal-content" style="width: 780px; max-width: 94%;">
+            <h2>Consistency History &amp; Real Focus Ledger</h2>
+            
+            <div class="sub-column-header">Habit Completion Grid</div>
+            <div class="tracker-wrapper" style="margin-bottom: 22px;">
                 <div class="tracker-grid" id="github-tracker" style="margin-top: 5px;"></div>
             </div>
+
+            <!-- CONTACHILOMETRI ORE REALI (FOCUS LEDGER) -->
+            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Real Focus Hours Ledger (Pomodoro &amp; Manual Logs)</span>
+                <span id="focus-ledger-summary" style="color: var(--text-main); font-weight: bold;">TOTAL: 0.0H</span>
+            </div>
+            <div id="focus-ledger-container" style="margin-bottom: 18px;"></div>
+
             <div class="modal-actions">
-                <button class="btn btn-primary" onclick="closeModals()">Close</button>
+                <button class="btn btn-primary" onclick="closeModals()">Close [Esc]</button>
             </div>
         </div>
     </div>
 
-    <!-- Money Transaction Modal -->
+    <!-- 12. Evening Builder: Plan Tomorrow Modal (PASSO 1) -->
+    <div id="planTomorrowModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 820px; max-width: 95%; max-height: 88vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;">
+                <h2 style="margin: 0; border: none; padding: 0;">Evening Builder // Plan Tomorrow</h2>
+                <span id="plan-tmw-date-label" style="font-size: var(--font-sm); color: var(--text-dim); font-weight: bold;">YYYY-MM-DD</span>
+            </div>
+
+            <div style="display: flex; gap: 24px; flex: 1; overflow: hidden; min-height: 360px;">
+                
+                <!-- COLONNA SINISTRA: Fonti Automatiche (Unfinished Today + General To-Do + Constraints) -->
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 6px; border-right: 1px solid var(--border-color);">
+                    
+                    <div>
+                        <div class="sub-column-header">1. Unfinished Today (Rollover to Tomorrow)</div>
+                        <div id="plan-tmw-rollover" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                    </div>
+
+                    <div>
+                        <div class="sub-column-header">2. From General To-Do Inbox</div>
+                        <div id="plan-tmw-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                    </div>
+
+                    <div>
+                        <div class="sub-column-header">3. Fixed Constraints &amp; Active Split</div>
+                        <div id="plan-tmw-constraints" style="font-size: var(--font-xs); color: var(--text-muted); line-height: 1.6;"></div>
+                    </div>
+                </div>
+
+                <!-- COLONNA DESTRA: Scaletta di Domani + Priorità + Aggiunta Rapida -->
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
+                    
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Tomorrow's #1 Priority / Main Objective</label>
+                        <input type="text" id="plan-tmw-priority" class="form-control form-control-sm" placeholder="e.g. Complete Analysis II Chapter 4 proofs..." oninput="saveTomorrowPriority(this.value)">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label>Quick Add Task for Tomorrow</label>
+                        <div style="display: flex; gap: 6px;">
+                            <input type="text" id="plan-tmw-new-title" class="form-control form-control-sm" style="flex: 1;" placeholder="Task title..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addQuickTomorrowTask();}">
+                            <input type="time" id="plan-tmw-new-start" class="form-control form-control-sm" style="width: 92px;" title="Optional start time">
+                            <input type="time" id="plan-tmw-new-end" class="form-control form-control-sm" style="width: 92px;" title="Optional end time">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="addQuickTomorrowTask()">[+ ADD]</button>
+                        </div>
+                    </div>
+
+                    <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                        <div class="sub-column-header">Tomorrow's Complete Lineup</div>
+                        <div id="plan-tmw-lineup" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-actions">
+                <button type="button" class="btn" onclick="closeModals()">Close</button>
+                <button type="button" class="btn btn-primary" onclick="closeModals(); jumpToDate(tomorrowStr);">Lock Plan &amp; View Tomorrow [&gt;]</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 13. Money Transaction Modal (+ IN / - OUT) -->
     <div id="mTransactionModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 400px;">
             <h2 id="m-trans-title">New Transaction</h2>
             <form id="mTransactionForm">
                 <input type="hidden" id="m-trans-type">
-                <div class="form-group"><label>Amount (€)</label><input type="number" id="m-trans-amount" class="form-control no-spinners" step="0.01" required></div>
-                <div class="form-group"><label>Description</label><input type="text" id="m-trans-desc" class="form-control" required></div>
-                <div class="form-group"><label>Date</label><input type="date" id="m-trans-date" class="form-control" required></div>
-                <div class="modal-actions"><button type="button" class="btn" onclick="closeModals()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+                <div class="form-group">
+                    <label>Amount (€)</label>
+                    <input type="number" id="m-trans-amount" class="form-control no-spinners" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <input type="text" id="m-trans-desc" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Date</label>
+                    <input type="date" id="m-trans-date" class="form-control" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Recurring Payment Modal -->
+    <!-- 14. Recurring Payment Modal -->
     <div id="mRecurringModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 450px;">
             <h2>Add Recurring Payment</h2>
             <form id="mRecurringForm">
-                <div class="form-group"><label>Name</label><input type="text" id="m-rec-title" class="form-control" required></div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;"><label>Amount (€)</label><input type="number" id="m-rec-amount" class="form-control no-spinners" step="0.01" required></div>
-                    <div class="form-group" style="flex: 1;"><label>Day of Month (1-31)</label><input type="number" id="m-rec-day" class="form-control no-spinners" min="1" max="31" required></div>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="m-rec-title" class="form-control" required>
                 </div>
                 <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;"><label>Start Date</label><input type="date" id="m-rec-start" class="form-control" required></div>
-                    <div class="form-group" style="flex: 1;"><label>End Date (Optional)</label><input type="date" id="m-rec-end" class="form-control"></div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Amount (€)</label>
+                        <input type="number" id="m-rec-amount" class="form-control no-spinners" step="0.01" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>Day of Month (1-31)</label>
+                        <input type="number" id="m-rec-day" class="form-control no-spinners" min="1" max="31" required>
+                    </div>
                 </div>
-                <div class="modal-actions"><button type="button" class="btn" onclick="closeModals()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Start Date</label>
+                        <input type="date" id="m-rec-start" class="form-control" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>End Date (Optional)</label>
+                        <input type="date" id="m-rec-end" class="form-control">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Purchase Idea Modal -->
+    <!-- 15. Purchase Idea Modal -->
     <div id="mWishlistModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 400px;">
             <h2>Purchase Idea</h2>
             <form id="mWishlistForm">
-                <div class="form-group"><label>Item Name</label><input type="text" id="m-wish-title" class="form-control" required></div>
-                <div class="form-group"><label>Estimated Cost (€, Optional)</label><input type="number" id="m-wish-cost" class="form-control no-spinners" step="0.01"></div>
-                <div class="modal-actions"><button type="button" class="btn" onclick="closeModals()">Cancel</button><button type="submit" class="btn btn-primary">Save</button></div>
+                <div class="form-group">
+                    <label>Item Name</label>
+                    <input type="text" id="m-wish-title" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label>Estimated Cost (€, Optional)</label>
+                    <input type="number" id="m-wish-cost" class="form-control no-spinners" step="0.01">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save</button>
+                </div>
             </form>
         </div>
     </div>
     
-    <!-- Ghost Layer Modal -->
+    <!-- 16. Ghost Layer Modal -->
     <div id="referenceModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 450px;">
             <h2>Add Ghost Layer</h2>
@@ -725,59 +892,90 @@
         </div>
     </div>
 
-    <!-- Tooltip Globale Planner -->
+    <!-- 17. Tooltip Globale Planner -->
     <div id="planner-tooltip" class="planner-tooltip"></div>
 
-    <!-- BARRA DI COMANDO UNIVERSALE (TERMINALE) -->
+    <!-- 18. Barra di Comando Universale (Terminale) -->
     <div id="terminalOverlay" class="terminal-overlay" onclick="if(event.target === this) closeTerminal()">
         <div class="terminal-box">
             <div class="terminal-input-wrap">
                 <span class="terminal-prompt">&gt;_</span>
-                <input type="text" id="terminal-input" class="terminal-input" placeholder="Type command (out 5.50 cafe, todo math, focus 25, ? for help)..." autocomplete="off">
+                <input type="text" id="terminal-input" class="terminal-input" placeholder="Type command (out 5.50 cafe, log 45 Studio, plan, ? for help)..." autocomplete="off">
             </div>
             <div class="terminal-hint">
                 <span id="terminal-feedback">Ready. Press [Enter] to execute, [Esc] to close, [?] for manual.</span>
-                <span style="color:#555;">CTRL+SPACE</span>
+                <span style="color: #555;">CTRL+SPACE</span>
             </div>
         </div>
     </div>
 
-    <!-- MANUALE COMANDI & SCORCIATOIE -->
+    <!-- 19. Manuale Comandi & Scorciatoie -->
     <div id="shortcutsHelpModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 650px; max-height: 85vh;">
             <h2>Terminal Commands &amp; Shortcuts</h2>
             
             <div class="sub-column-header" style="margin-bottom: 10px;">Command Bar (Ctrl + Space / Ctrl + K)</div>
             <div class="help-grid">
-                <div class="help-key">out [€] [desc]</div><div class="help-desc">Add expense (e.g. <code>out 12.50 pizza</code>)</div>
-                <div class="help-key">in [€] [desc]</div><div class="help-desc">Add income (e.g. <code>in 500 scholarship</code>)</div>
-                <div class="help-key">wish [item] [€]</div><div class="help-desc">Add to purchase incubator (e.g. <code>wish casio 45</code>)</div>
-                <div class="help-key">todo [text]</div><div class="help-desc">Add to General To-Do inbox</div>
-                <div class="help-key">task [text] [@day]</div><div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
-                <div class="help-key">event [@day] [title]</div><div class="help-desc">Add calendar event (e.g. <code>event @2026-10-25 Exam</code>)</div>
-                <div class="help-key">note [cat]: [text]</div><div class="help-desc">Append note directly to category (e.g. <code>note Math: lemma 2</code>)</div>
-                <div class="help-key">focus [min] [title]</div><div class="help-desc">Launch instant Pomodoro timer (e.g. <code>focus 30 Analysis</code>)</div>
-                <div class="help-key">gym done</div><div class="help-desc">Complete active workout day and advance to next</div>
-                <div class="help-key">left / right [mod]</div><div class="help-desc">Mount module: <code>daily</code>, <code>planner</code>, <code>health</code>, <code>money</code></div>
-                <div class="help-key">swap</div><div class="help-desc">Swap left and right dashboard modules</div>
-                <div class="help-key">goto [date]</div><div class="help-desc">Jump to <code>oggi</code>, <code>domani</code>, <code>ieri</code> or <code>YYYY-MM-DD</code></div>
-                <div class="help-key">export</div><div class="help-desc">Download complete JSON backup</div>
+                <div class="help-key">plan</div>
+                <div class="help-desc">Open Evening Builder to assemble tomorrow's plan</div>
+                <div class="help-key">log [min] [cat]</div>
+                <div class="help-desc">Log real focus minutes manually (e.g. <code>log 45 Studio</code>)</div>
+                <div class="help-key">out [€] [desc]</div>
+                <div class="help-desc">Add expense (e.g. <code>out 12.50 pizza</code>)</div>
+                <div class="help-key">in [€] [desc]</div>
+                <div class="help-desc">Add income (e.g. <code>in 500 scholarship</code>)</div>
+                <div class="help-key">wish [item] [€]</div>
+                <div class="help-desc">Add to purchase incubator (e.g. <code>wish casio 45</code>)</div>
+                <div class="help-key">todo [text]</div>
+                <div class="help-desc">Add to General To-Do inbox</div>
+                <div class="help-key">task [text] [@day]</div>
+                <div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
+                <div class="help-key">event [@day] [title]</div>
+                <div class="help-desc">Add calendar event (e.g. <code>event @2026-10-25 Exam</code>)</div>
+                <div class="help-key">note [cat]: [text]</div>
+                <div class="help-desc">Append note directly to category (e.g. <code>note Math: lemma 2</code>)</div>
+                <div class="help-key">focus [min] [title]</div>
+                <div class="help-desc">Launch instant Pomodoro timer (e.g. <code>focus 30 Analysis</code>)</div>
+                <div class="help-key">gym done</div>
+                <div class="help-desc">Complete active workout day and advance to next</div>
+                <div class="help-key">left / right [mod]</div>
+                <div class="help-desc">Mount module: <code>daily</code>, <code>planner</code>, <code>health</code>, <code>money</code></div>
+                <div class="help-key">swap</div>
+                <div class="help-desc">Swap left and right dashboard modules</div>
+                <div class="help-key">goto [date]</div>
+                <div class="help-desc">Jump to <code>oggi</code>, <code>domani</code>, <code>ieri</code> or <code>YYYY-MM-DD</code></div>
+                <div class="help-key">export</div>
+                <div class="help-desc">Download complete JSON backup</div>
             </div>
 
             <div class="sub-column-header" style="margin-bottom: 10px;">Global Keyboard Shortcuts</div>
             <div class="help-grid" style="margin-bottom: 0;">
-                <div class="help-key">Ctrl + Space / Ctrl + K</div><div class="help-desc">Open / close universal Command Bar</div>
-                <div class="help-key">Ctrl + S</div><div class="help-desc">Force instant save to storage</div>
-                <div class="help-key">Esc</div><div class="help-desc">Close any open modal, dropdown or Command Bar</div>
-                <div class="help-key">← / →</div><div class="help-desc">Previous / Next day in calendar</div>
-                <div class="help-key">T</div><div class="help-desc">Jump back to Today</div>
-                <div class="help-key">N</div><div class="help-desc">Toggle Notes drawer and focus input</div>
-                <div class="help-key">W</div><div class="help-desc">Toggle Weekly Planner drawer</div>
-                <div class="help-key">J</div><div class="help-desc">Open Journal for selected date</div>
-                <div class="help-key">S</div><div class="help-desc">Swap Left and Right panes</div>
-                <div class="help-key">1 / 2 / 3 / 4</div><div class="help-desc">Set Left pane (Daily, Planner, Health, Money)</div>
-                <div class="help-key">Shift + 1 / 2 / 3 / 4</div><div class="help-desc">Set Right pane (Daily, Planner, Health, Money)</div>
-                <div class="help-key">?</div><div class="help-desc">Open this manual</div>
+                <div class="help-key">Ctrl + Space / Ctrl + K</div>
+                <div class="help-desc">Open / close universal Command Bar</div>
+                <div class="help-key">P</div>
+                <div class="help-desc">Open Evening Builder (Plan Tomorrow)</div>
+                <div class="help-key">Ctrl + S</div>
+                <div class="help-desc">Force instant save to storage</div>
+                <div class="help-key">Esc</div>
+                <div class="help-desc">Close any open modal, dropdown or Command Bar</div>
+                <div class="help-key">← / →</div>
+                <div class="help-desc">Previous / Next day in calendar</div>
+                <div class="help-key">T</div>
+                <div class="help-desc">Jump back to Today</div>
+                <div class="help-key">N</div>
+                <div class="help-desc">Toggle Notes drawer and focus input</div>
+                <div class="help-key">W</div>
+                <div class="help-desc">Toggle Weekly Planner drawer</div>
+                <div class="help-key">J</div>
+                <div class="help-desc">Open Journal for selected date</div>
+                <div class="help-key">S</div>
+                <div class="help-desc">Swap Left and Right panes</div>
+                <div class="help-key">1 / 2 / 3 / 4</div>
+                <div class="help-desc">Set Left pane (Daily, Planner, Health, Money)</div>
+                <div class="help-key">Shift + 1 / 2 / 3 / 4</div>
+                <div class="help-desc">Set Right pane (Daily, Planner, Health, Money)</div>
+                <div class="help-key">?</div>
+                <div class="help-desc">Open this manual</div>
             </div>
 
             <div class="modal-actions">
@@ -786,7 +984,7 @@
         </div>
     </div>
 
-    <!-- NOTIFICA TOAST TERMINALE -->
+    <!-- 20. Notifica Toast Terminale -->
     <div id="terminal-toast" class="terminal-toast"></div>
 
     <!-- JS Modulari -->

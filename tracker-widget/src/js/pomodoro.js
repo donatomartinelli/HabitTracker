@@ -1,4 +1,4 @@
-// --- 3. POMODORO BUILDER & WIDGET LOGIC ---
+// --- 3. POMODORO BUILDER, WIDGET & FOCUS LEDGER AUTO-LOGGER ---
 
 let pomodoroInterval; 
 let focusPlaylist = []; 
@@ -25,9 +25,15 @@ function skipPomodoroPhase() {
     if (focusPlaylist.length === 0 || currentPlaylistIndex >= focusPlaylist.length) return;
     
     const phase = focusPlaylist[currentPlaylistIndex];
-    if (phase.type === 'task' && !phase.isPartial) {
+    if (phase.type === 'task') {
         const t = templates.find(x => x.id === phase.id);
-        if (t) { 
+        const elapsedMins = Math.floor((totalPhaseTime - timeRemaining) / 60);
+        // Se hai lavorato almeno 1 minuto prima di premere Skip, registra i minuti effettivi
+        if (elapsedMins >= 1) {
+            const cat = t ? t.category : (phase.category || 'Focus');
+            logFocusSession(elapsedMins, cat, phase.title, selectedDateStr);
+        }
+        if (!phase.isPartial && t) { 
             const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false); 
             const firstUncheckedIndex = currentLog.indexOf(false); 
             if (firstUncheckedIndex !== -1) toggleTask(t.id, firstUncheckedIndex); 
@@ -53,9 +59,9 @@ function splitPlaylistTask(index) {
     const half1 = Math.floor(item.duration / 2);
     const half2 = item.duration - half1;
     
-    const part1 = { type: 'task', id: item.id, title: item.title + " (Part 1)", duration: half1, color: item.color, isPartial: true };
+    const part1 = { type: 'task', id: item.id, category: item.category, title: item.title + " (Part 1)", duration: half1, color: item.color, isPartial: true };
     const breakPart = { type: 'break', duration: breakMins };
-    const part2 = { type: 'task', id: item.id, title: item.title + " (Part 2)", duration: half2, color: item.color };
+    const part2 = { type: 'task', id: item.id, category: item.category, title: item.title + " (Part 2)", duration: half2, color: item.color };
     
     focusPlaylist.splice(index, 1, part1, breakPart, part2);
     renderFocusPlaylist();
@@ -115,6 +121,7 @@ function addTaskToPlaylist(task) {
     focusPlaylist.push({ 
         type: 'task', 
         id: task.id, 
+        category: task.category,
         title: task.title, 
         duration: task.timerMinutes || 25, 
         color: task.color || '#ffffff' 
@@ -264,13 +271,15 @@ function runPomodoroTick() {
         
         if (phase.type === 'task') {
             playBeep(400, 0.5);
-            if (!phase.isPartial) {
-                const t = templates.find(x => x.id === phase.id);
-                if (t) { 
-                    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false); 
-                    const firstUncheckedIndex = currentLog.indexOf(false); 
-                    if (firstUncheckedIndex !== -1) toggleTask(t.id, firstUncheckedIndex); 
-                }
+            const t = templates.find(x => x.id === phase.id);
+            const cat = t ? t.category : (phase.category || 'Focus');
+            // Salva i minuti completati nel registro perpetuo Focus Ledger
+            logFocusSession(phase.duration, cat, phase.title, selectedDateStr);
+
+            if (!phase.isPartial && t) {
+                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances).fill(false); 
+                const firstUncheckedIndex = currentLog.indexOf(false); 
+                if (firstUncheckedIndex !== -1) toggleTask(t.id, firstUncheckedIndex); 
             }
         }
         

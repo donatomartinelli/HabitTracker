@@ -195,6 +195,7 @@ function renderManager() {
 }
 
 function renderTasks() {
+    if (typeof renderPriorityBanner === 'function') renderPriorityBanner();
     const schedContainer = document.getElementById('scheduled-tasks-list'); 
     const flexContainer = document.getElementById('flexible-tasks-list');
     

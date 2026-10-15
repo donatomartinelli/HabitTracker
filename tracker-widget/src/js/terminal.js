@@ -15,7 +15,6 @@ function showToast(msg) {
     }, 2600);
 }
 
-// --- APERTURA / CHIUSURA BARRA COMANDO ---
 function openTerminal() {
     const overlay = document.getElementById('terminalOverlay');
     const input = document.getElementById('terminal-input');
@@ -46,7 +45,6 @@ function openShortcutsHelp() {
     if (modal) modal.style.display = 'flex';
 }
 
-// --- RISOLUZIONE DATE RAPIDE (@oggi, @domani, @ieri, @YYYY-MM-DD) ---
 function resolveDateToken(token) {
     const clean = token.replace(/^@/, '').toLowerCase();
     const d = new Date(todayObj);
@@ -63,7 +61,6 @@ function resolveDateToken(token) {
     return null;
 }
 
-// Navigazione data con aggiornamento automatico del mese nel calendario
 function jumpToDate(dateStr) {
     const parts = dateStr.split('-').map(Number);
     if (parts.length !== 3 || isNaN(parts[0])) return;
@@ -77,7 +74,6 @@ function shiftSelectedDate(daysOffset) {
     jumpToDate(formatDate(d));
 }
 
-// --- ANTEPRIMA IN TEMPO REALE MENTRE DIGITI ---
 function getCommandPreview(raw) {
     const str = raw.trim();
     if (!str) return 'Ready. Press [Enter] to execute, [Esc] to close, [?] for manual.';
@@ -88,6 +84,14 @@ function getCommandPreview(raw) {
     const rest = str.slice(parts[0].length).trim();
 
     switch (cmd) {
+        case 'plan':
+        case 'tomorrow':
+            return `[EVENING BUILDER] Open interactive workspace to assemble tomorrow's plan`;
+        case 'log': {
+            const m = rest.match(/^(\d+)\s*(.*)$/);
+            if (!m) return 'Syntax: log [minutes] [category] (e.g. log 45 Studio)';
+            return `[FOCUS LEDGER] Record ${m[1]} real minutes in category "${m[2] || 'Studio'}"`;
+        }
         case 'out':
         case '-': {
             const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
@@ -129,7 +133,7 @@ function getCommandPreview(raw) {
         }
         case 'gym':
         case 'workout':
-            return `[HEALTH] Complete active workout (Giorno ${nextWorkoutDay}) and advance`;
+            return `[HEALTH] Complete active workout (Day ${nextWorkoutDay}) and advance`;
         case 'swap':
             return `[LAYOUT] Swap Left (${activeLeft.toUpperCase()}) and Right (${activeRight.toUpperCase()}) panes`;
         case 'left':
@@ -145,7 +149,6 @@ function getCommandPreview(raw) {
     }
 }
 
-// --- ESECUZIONE DEI COMANDI ---
 function executeTerminalCommand(raw) {
     const str = raw.trim();
     if (!str) return false;
@@ -162,7 +165,25 @@ function executeTerminalCommand(raw) {
     const cmd = parts[0].toLowerCase();
     const rest = str.slice(parts[0].length).trim();
 
-    // 1. USCITA MONEY: out 12.50 pizza
+    // 0. EVENING BUILDER: plan
+    if (cmd === 'plan' || cmd === 'tomorrow') {
+        closeTerminal();
+        openPlanTomorrowModal();
+        return true;
+    }
+
+    // 0b. MANUAL FOCUS LOG: log 45 Studio
+    if (cmd === 'log') {
+        const m = rest.match(/^(\d+)\s*(.*)$/);
+        if (!m) return false;
+        const mins = parseInt(m[1], 10);
+        const cat = m[2].trim() || 'Studio';
+        logFocusSession(mins, cat, 'Manual Log', selectedDateStr);
+        showToast(`[LEDGER] Logged ${mins}m in "${cat}"`);
+        return true;
+    }
+
+    // 1. USCITA MONEY
     if (cmd === 'out' || cmd === '-') {
         const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
         if (!m) return false;
@@ -182,7 +203,7 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 2. ENTRATA MONEY: in 500 borsa
+    // 2. ENTRATA MONEY
     if (cmd === 'in' || cmd === '+') {
         const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
         if (!m) return false;
@@ -202,7 +223,7 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 3. WISHLIST: wish orologio 120
+    // 3. WISHLIST
     if (cmd === 'wish' || cmd === 'comprare') {
         if (!rest) return false;
         const m = rest.match(/^(.*?)\s+(\d+(?:[.,]\d+)?)$/);
@@ -224,7 +245,7 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 4. GENERAL TO-DO: todo chiamare segreteria
+    // 4. GENERAL TO-DO
     if (cmd === 'todo') {
         if (!rest) return false;
         generalTodos.push({ id: 'todo_' + Date.now(), title: rest });
@@ -234,7 +255,7 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 5. SCHEDULED SINGLE-DAY TASK: task Studiare Analisi @domani
+    // 5. SCHEDULED TASK
     if (cmd === 'task') {
         if (!rest) return false;
         let targetDate = selectedDateStr;
@@ -277,7 +298,7 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 6. CALENDAR EVENT: event @domani Esame Analisi
+    // 6. CALENDAR EVENT
     if (cmd === 'event') {
         if (!rest) return false;
         const subParts = rest.split(/\s+/);
@@ -305,7 +326,7 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 7. QUICK NOTE: note Math: enunciato teorema
+    // 7. QUICK NOTE
     if (cmd === 'note') {
         if (!rest) return false;
         let targetCat = document.getElementById('note-category') ? document.getElementById('note-category').value : 'General';
@@ -336,7 +357,7 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 8. INSTANT POMODORO: focus 30 Studio Algebra
+    // 8. INSTANT POMODORO
     if (cmd === 'focus' || cmd === 'pomo') {
         const m = rest.match(/^(\d+)\s*(.*)$/);
         if (!m) return false;
@@ -346,6 +367,7 @@ function executeTerminalCommand(raw) {
         focusPlaylist = [{
             type: 'task',
             id: 'custom_' + Date.now(),
+            category: 'Focus',
             title: focusTitle,
             duration: mins,
             color: '#ffffff',
@@ -357,18 +379,18 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // 9. COMPLETE WORKOUT: gym done / workout
+    // 9. COMPLETE WORKOUT
     if (cmd === 'workout' || (cmd === 'gym' && rest.toLowerCase() === 'done')) {
         if (typeof completeWorkout === 'function') {
             const completedDay = nextWorkoutDay;
             completeWorkout(completedDay);
-            showToast(`[HEALTH] Workout Giorno ${completedDay} completed!`);
+            showToast(`[HEALTH] Workout Day ${completedDay} completed!`);
             return true;
         }
         return false;
     }
 
-    // 10. LAYOUT COMMANDS: swap / left [mod] / right [mod]
+    // 10. LAYOUT COMMANDS
     if (cmd === 'swap') {
         switchModule('left', activeRight);
         showToast(`[LAYOUT] Swapped panes`);
@@ -385,7 +407,7 @@ function executeTerminalCommand(raw) {
         return false;
     }
 
-    // 11. GOTO DATE: goto domani / goto 2026-10-20
+    // 11. GOTO DATE
     if (cmd === 'goto') {
         const resolved = resolveDateToken(rest);
         if (!resolved) return false;
@@ -404,7 +426,6 @@ function executeTerminalCommand(raw) {
     return false;
 }
 
-// --- INIZIALIZZAZIONE EVENTI TASTIERA ---
 window.addEventListener('DOMContentLoaded', () => {
     const termInput = document.getElementById('terminal-input');
     const termFeedback = document.getElementById('terminal-feedback');
@@ -420,10 +441,10 @@ window.addEventListener('DOMContentLoaded', () => {
         termInput.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const ok = executeTerminalCommand(termInput.value);
+                const rawVal = termInput.value.trim();
+                const ok = executeTerminalCommand(rawVal);
                 if (ok) {
-                    // Se il comando non era '?' (che apre il manuale), chiude la barra comando
-                    if (termInput.value.trim() !== '?' && termInput.value.trim().toLowerCase() !== 'help') {
+                    if (!['?', 'help', 'plan', 'tomorrow'].includes(rawVal.toLowerCase())) {
                         closeTerminal();
                     }
                 } else if (termFeedback) {
@@ -454,9 +475,7 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Listener Globale Scorciatoie
     document.addEventListener('keydown', (e) => {
-        // 1. Ctrl + Space oppure Ctrl + K apre/chiude sempre la Barra di Comando
         if ((e.ctrlKey && e.code === 'Space') || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
             e.preventDefault();
             const overlay = document.getElementById('terminalOverlay');
@@ -468,7 +487,6 @@ window.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Ctrl + S: Salva istantaneamente tutto lo stato su disco
         if (e.ctrlKey && e.key.toLowerCase() === 's') {
             e.preventDefault();
             saveData();
@@ -478,7 +496,6 @@ window.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // 2. Tasto ESC: chiude terminale, modali o dropdown
         if (e.key === 'Escape') {
             const termOverlay = document.getElementById('terminalOverlay');
             if (termOverlay && termOverlay.style.display === 'flex') {
@@ -493,13 +510,11 @@ window.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        // Se l'utente sta scrivendo dentro un input/textarea, disattiva i tasti singoli
         const activeTag = document.activeElement ? document.activeElement.tagName : '';
         if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || (document.activeElement && document.activeElement.isContentEditable)) {
             return;
         }
 
-        // Se c'è un modale o il Pomodoro a schermo intero aperto, ignora le scorciatoie di navigazione
         const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
         const pomoOverlay = document.getElementById('pomodoroOverlay');
         const fullPomoOpen = pomoOverlay && pomoOverlay.style.display === 'flex' && !pomoOverlay.classList.contains('widget-mode');
@@ -507,7 +522,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
         if (e.ctrlKey || e.altKey || e.metaKey) return;
 
-        // 3. Navigazione rapida da tastiera
         switch (e.key) {
             case 'ArrowLeft':
                 e.preventDefault();
@@ -524,6 +538,11 @@ window.addEventListener('DOMContentLoaded', () => {
                 e.preventDefault();
                 jumpToDate(todayStr);
                 showToast(`Today: ${todayStr}`);
+                break;
+            case 'p':
+            case 'P':
+                e.preventDefault();
+                openPlanTomorrowModal();
                 break;
             case 'j':
             case 'J':

@@ -701,3 +701,108 @@ input:checked + .notes-slider:before {
 
 input:not(:checked) + .notes-slider .t-label.write { color: #000; }
 input:checked + .notes-slider .t-label.browse { color: #000; }
+
+/* --- FOCUS LEDGER (CONTACHILOMETRI ORE REALI) --- */
+.ledger-summary-bar {
+    display: flex;
+    gap: 12px;
+    margin: 20px 0 15px;
+}
+
+.ledger-stat-box {
+    flex: 1;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    padding: 10px 12px;
+}
+
+.ledger-stat-val {
+    font-size: var(--font-lg);
+    font-weight: bold;
+    color: var(--text-main);
+    margin-top: 4px;
+}
+
+.ledger-cat-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+}
+
+.ledger-cat-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.015);
+    border: 1px solid var(--border-color);
+    font-size: var(--font-xs);
+}
+
+.ledger-bar-track {
+    flex: 1;
+    height: 6px;
+    background: #151515;
+    margin: 0 14px;
+    position: relative;
+    overflow: hidden;
+}
+
+.ledger-bar-fill {
+    height: 100%;
+    background: var(--text-main);
+}
+
+/* --- DAILY PRIORITY BANNER (OBIETTIVO DECISO LA SERA PRIMA) --- */
+.daily-priority-banner {
+    margin-bottom: 14px;
+    padding: 9px 12px;
+    border: 1px solid var(--border-bright);
+    border-left: 3px solid var(--text-main);
+    background: rgba(255, 255, 255, 0.03);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+/* --- EVENING PLANNER MODAL ([PLAN TOMORROW]) --- */
+.plan-tomorrow-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    min-height: 420px;
+    max-height: 68vh;
+}
+
+.plan-col {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+    padding-right: 6px;
+}
+
+.plan-box {
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.015);
+    padding: 12px;
+}
+
+.plan-item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.08);
+    font-size: var(--font-xs);
+    gap: 8px;
+}
+
+.plan-item-row:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}

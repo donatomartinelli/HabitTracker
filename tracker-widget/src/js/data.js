@@ -15,7 +15,6 @@ function roundCurrency(val) {
     return Math.round((num + Number.EPSILON) * 100) / 100;
 }
 
-// Valori iniziali predefiniti per Dieta e Palestra (usati solo al primo avvio assoluto)
 const DEFAULT_DIET_DATA = [
     { type: 'Spuntino 1', 1: 'MilkPro 200g', 2: 'MilkPro 200g', 3: 'Anacardi 20g', 4: 'MilkPro 200g', 5: 'Anacardi 20g', 6: 'MilkPro 200g', 0: 'Anacardi 20g' },
     { type: 'Pranzo', 1: 'Soncino 100g\nRiso 160g\nVitellone 200g', 2: 'Rucola 100g\nRiso 160g\nTonno 90g', 3: 'Soncino 100g\nRiso 90g\nCeci 120g\nTonno 100g', 4: 'Rucola 100g\nRiso 160g\nVitellone 200g', 5: 'Soncino 100g\nRiso 90g\nCeci 120g\n2 Uova', 6: 'Rucola 100g\nRiso 160g\nTonno 90g', 0: 'Soncino 100g\nPasta\nVitellone 200g' },
@@ -94,6 +93,8 @@ function migrateAndInitData() {
         'tracker_journal': {},
         'tracker_general_todo': [],
         'tracker_planner_exceptions': {},
+        'tracker_focus_logs': [],
+        'tracker_daily_priorities': {},
         'm_balance': 0.0,
         'm_trans': [],
         'm_rec': [],
@@ -173,6 +174,8 @@ let refToggles = JSON.parse(localStorage.getItem('ref_toggles')) || {};
 let ephemeralData = JSON.parse(localStorage.getItem('tracker_ephemeral')) || {};
 let generalTodos = JSON.parse(localStorage.getItem('tracker_general_todo')) || [];
 let plannerExceptions = JSON.parse(localStorage.getItem('tracker_planner_exceptions')) || {};
+let focusLogs = JSON.parse(localStorage.getItem('tracker_focus_logs')) || [];
+let dailyPriorities = JSON.parse(localStorage.getItem('tracker_daily_priorities')) || {};
 let selectedTodos = new Set();
 
 // Money
@@ -181,7 +184,7 @@ let mTransactions = JSON.parse(localStorage.getItem('m_trans')) || [];
 let mRecurring = JSON.parse(localStorage.getItem('m_rec')) || [];
 let mWishlist = JSON.parse(localStorage.getItem('m_wish')) || [];
 
-// Health (Ora interamente dinamici)
+// Health
 let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next'), 10) || 1;
 let savedGymWeights = JSON.parse(localStorage.getItem('tracker_gym_weights')) || {};
 let gymStartDate = localStorage.getItem('gym_start_date') || "";
@@ -201,13 +204,13 @@ const ALL_STORAGE_KEYS = [
     'tracker_note_cats', 'tracker_notes', 'tracker_journal',
     'tracker_category_order', 'tracker_references', 'ref_toggles',
     'tracker_ephemeral', 'tracker_general_todo', 'tracker_planner_exceptions',
+    'tracker_focus_logs', 'tracker_daily_priorities',
     'm_balance', 'm_trans', 'm_rec', 'm_wish',
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
     'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan',
     'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
 ];
 
-// --- PONTE DISCO FISSO TAURI (Autosave nativo se disponibile) ---
 let diskSyncTimeout;
 function scheduleDiskSync() {
     clearTimeout(diskSyncTimeout);
@@ -218,9 +221,7 @@ function scheduleDiskSync() {
                 await window.__TAURI__.fs.writeTextFile('minimal_tracker_db.json', JSON.stringify(payload, null, 2), {
                     dir: window.__TAURI__.fs.BaseDirectory ? window.__TAURI__.fs.BaseDirectory.AppData : undefined
                 });
-            } catch (e) {
-                // Se i permessi fs non sono attivi in tauri.conf.json, continua silenziosamente su localStorage
-            }
+            } catch (e) {}
         }
     }, 600);
 }
@@ -239,6 +240,8 @@ function saveData() {
     localStorage.setItem('tracker_ephemeral', JSON.stringify(ephemeralData));
     localStorage.setItem('tracker_general_todo', JSON.stringify(generalTodos));
     localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
+    localStorage.setItem('tracker_focus_logs', JSON.stringify(focusLogs));
+    localStorage.setItem('tracker_daily_priorities', JSON.stringify(dailyPriorities));
     scheduleDiskSync();
 }
 
@@ -260,6 +263,20 @@ function saveHealthData() {
     localStorage.setItem('tracker_diet_rules', dietRules);
     localStorage.setItem('tracker_gym_plan', JSON.stringify(gymPlan));
     scheduleDiskSync();
+}
+
+// Registra i minuti effettivi di studio/lavoro nel Focus Ledger
+function logFocusSession(minutes, category, title, dateStr = todayStr) {
+    const mins = Math.round(parseFloat(minutes) || 0);
+    if (mins <= 0) return;
+    focusLogs.push({
+        id: 'fl_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        date: dateStr,
+        category: (category || 'General').trim(),
+        title: (title || 'Focus Session').trim(),
+        minutes: mins
+    });
+    saveData();
 }
 
 // --- GESTIONE DATE E CALCOLO STATISTICHE ---
