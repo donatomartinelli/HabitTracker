@@ -700,6 +700,13 @@ function executeTerminalCommand(raw) {
         return false;
     }
 
+    if (cmd === 'sony' || cmd === 'audio') {
+        closeTerminal();
+        const folderInp = document.getElementById('sony-folder-input');
+        if (folderInp) folderInp.click();
+        return true;
+    }
+    
     if (cmd === 'food' || cmd === 'macros') {
         if (typeof openFoodDbModal === 'function') {
             closeTerminal();
@@ -1234,4 +1241,227 @@ window.addEventListener('DOMContentLoaded', () => {
                 break;
         }
     });
+});
+
+// ============================================================================
+// PIPELINE REGISTRATORE VOCALE SONY -> CATEGORIA NOTE "REGISTRAZIONI"
+// ============================================================================
+
+function handleGeminiAudioKeyInput(val) {
+    saveGeminiAudioKey(val);
+    updateGeminiAudioKeyStatusUI();
+}
+
+function updateGeminiAudioKeyStatusUI() {
+    const inp = document.getElementById('gemini-audio-key-input');
+    const status = document.getElementById('gemini-audio-key-status');
+    const countEl = document.getElementById('processed-audio-count');
+
+    if (inp && inp.value !== geminiAudioApiKey) inp.value = geminiAudioApiKey;
+    if (status) {
+        if (geminiAudioApiKey) {
+            status.textContent = '[DEDICATED KEY ACTIVE]';
+            status.style.color = 'var(--accent-green)';
+        } else if (geminiApiKey) {
+            status.textContent = '[USING MAIN KEY]';
+            status.style.color = 'var(--accent-gold)';
+        } else {
+            status.textContent = '[NO KEY SET]';
+            status.style.color = 'var(--accent-red)';
+        }
+    }
+    if (countEl) {
+        countEl.textContent = `${processedAudioFiles.length} audio files already transcribed`;
+    }
+}
+
+function resetProcessedAudioHistory() {
+    processedAudioFiles = [];
+    saveData();
+    updateGeminiAudioKeyStatusUI();
+    showToast('[AUDIO PIPELINE] History cleared. You can re-import any audio file.');
+}
+
+function getAudioMimeType(filename, fileType) {
+    if (fileType && fileType.startsWith('audio/')) return fileType;
+    const ext = filename.split('.').pop().toLowerCase();
+    const map = {
+        'mp3': 'audio/mp3',
+        'wav': 'audio/wav',
+        'm4a': 'audio/mp4',
+        'aac': 'audio/aac',
+        'ogg': 'audio/ogg',
+        'flac': 'audio/flac',
+        'webm': 'audio/webm'
+    };
+    return map[ext] || 'audio/mp3';
+}
+
+async function transcribeSingleAudioWithGemini(file, apiKey) {
+    const b64 = await blobToBase64(file);
+    const mimeType = getAudioMimeType(file.name, file.type);
+
+    const promptText = `Sei un trascrittore fedele ed editor di appunti personali.
+Ascolta questa registrazione vocale e trascrivi INTEGRALMENTE tutto ciò che viene detto in italiano.
+Regole rigorose:
+1. Non riassumere e non tagliare nessun concetto: riporta tutte le frasi, i ragionamenti e le idee espresse dall'autore.
+2. Elimina solo le esitazioni pure ("ehm", "uhm", colpi di tosse) e aggiungi la punteggiatura corretta e la divisione in paragrafi per rendere il testo scorrevole e pronto da rifinire.
+3. Restituisci SOLO il testo trascritto puro, senza commenti introduttivi o conclusivi.`;
+
+    const userParts = [
+        { text: promptText },
+        { inlineData: { mimeType: mimeType, data: b64 } }
+    ];
+
+    const candidateModels = cachedGeminiModel
+        ? [cachedGeminiModel, ...(await getAvailableFlashModels(apiKey)).filter(m => m !== cachedGeminiModel)]
+        : await getAvailableFlashModels(apiKey);
+
+    let lastErr = 'No model available';
+
+    for (const modelPath of candidateModels) {
+        const normalizedPath = modelPath.startsWith('models/') ? modelPath : `models/${modelPath}`;
+        const url = `https://generativelanguage.googleapis.com/v1beta/${normalizedPath}:generateContent?key=${encodeURIComponent(apiKey)}`;
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: userParts }],
+                generationConfig: { temperature: 0.1 }
+            })
+        });
+
+        if (res.ok) {
+            cachedGeminiModel = normalizedPath;
+            const data = await res.json();
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            return text.trim();
+        } else {
+            const errJson = await res.json().catch(() => ({}));
+            lastErr = errJson.error?.message || `HTTP ${res.status}`;
+            if (res.status === 400 && lastErr.toLowerCase().includes('api key')) break;
+        }
+    }
+
+    throw new Error(lastErr);
+}
+
+async function handleSonyAudioSelection(event) {
+    const rawFiles = Array.from(event.target.files || []);
+    event.target.value = ''; // Permette di riselezionare la stessa cartella in seguito
+    if (rawFiles.length === 0) return;
+
+    const activeKey = (geminiAudioApiKey || geminiApiKey || '').trim();
+    if (!activeKey) {
+        showToast('[ERROR] Add a Gemini API Key in [CFG] first!');
+        openManagerModal();
+        return;
+    }
+
+    // 1. Filtra solo i file audio validi (.mp3, .wav, .m4a, .ogg, .aac, .flac)
+    const validExts = ['mp3', 'wav', 'm4a', 'ogg', 'aac', 'flac', 'webm'];
+    const audioFiles = rawFiles.filter(f => {
+        const ext = f.name.split('.').pop().toLowerCase();
+        return validExts.includes(ext) || (f.type && f.type.startsWith('audio/'));
+    }).sort((a, b) => a.lastModified - b.lastModified);
+
+    if (audioFiles.length === 0) {
+        showToast('[AUDIO PIPELINE] No audio files found in selection.');
+        return;
+    }
+
+    // 2. Scarta i file che sono già stati trascritti in passato
+    const newFiles = audioFiles.filter(f => {
+        const sig = `${f.name}_${f.size}_${f.lastModified}`;
+        return !processedAudioFiles.includes(sig);
+    });
+
+    if (newFiles.length === 0) {
+        showToast(`[AUDIO PIPELINE] All ${audioFiles.length} audio files were already transcribed!`);
+        openRegistrazioniInBrowseMode();
+        return;
+    }
+
+    const statusEl = document.getElementById('sony-pipeline-status');
+    let successCount = 0;
+
+    // Assicura che la categoria "Registrazioni" esista
+    const targetCat = 'Registrazioni';
+    if (!noteCategories.includes(targetCat)) {
+        noteCategories.push(targetCat);
+        saveData();
+        renderNoteCategories();
+    }
+
+    for (let i = 0; i < newFiles.length; i++) {
+        const file = newFiles[i];
+        const progressMsg = `[TRANSCRIBING ${i + 1}/${newFiles.length}: ${file.name}...]`;
+        if (statusEl) statusEl.textContent = progressMsg;
+        showToast(progressMsg);
+
+        try {
+            const transcribedText = await transcribeSingleAudioWithGemini(file, activeKey);
+            if (transcribedText) {
+                const fileDate = formatDate(new Date(file.lastModified || Date.now()));
+                const header = `=== [${fileDate} // ${file.name}] ===`;
+                const entryBlock = `${header}\n${transcribedText}`;
+
+                if (!notesContent[targetCat] || notesContent[targetCat].trim() === '') {
+                    notesContent[targetCat] = entryBlock;
+                } else {
+                    notesContent[targetCat] += `\n\n${entryBlock}`;
+                }
+
+                // Segna il file come già elaborato
+                const sig = `${file.name}_${file.size}_${file.lastModified}`;
+                processedAudioFiles.push(sig);
+                saveData();
+                successCount++;
+            }
+        } catch (err) {
+            showToast(`[ERROR ${file.name}] ${err.message}`);
+            console.error(`Audio Pipeline error on ${file.name}:`, err);
+        }
+    }
+
+    if (statusEl) statusEl.textContent = '';
+    updateGeminiAudioKeyStatusUI();
+
+    if (successCount > 0) {
+        openRegistrazioniInBrowseMode();
+        showToast(`[SONY PIPELINE] Transcribed ${successCount}/${newFiles.length} recordings into "Registrazioni"!`);
+    }
+}
+
+function openRegistrazioniInBrowseMode() {
+    // 1. Apre il cassetto delle note se è chiuso
+    const notesSec = document.getElementById('notes-section');
+    if (notesSec && (notesSec.classList.contains('collapsed') || notesSec.style.display === 'none')) {
+        notesSec.classList.remove('collapsed');
+        notesSec.style.display = 'flex';
+        notesSec.style.flexDirection = 'column';
+        notesSec.style.height = '280px';
+    }
+
+    // 2. Seleziona la categoria "Registrazioni"
+    renderNoteCategories();
+    const select = document.getElementById('note-category');
+    if (select) select.value = 'Registrazioni';
+
+    // 3. Attiva la modalità BROWSE così il testo è subito visibile e modificabile
+    const checkbox = document.getElementById('notes-mode-checkbox');
+    if (checkbox) checkbox.checked = true;
+    toggleNotesMode();
+
+    // 4. Scorre automaticamente in fondo per mostrare l'ultima registrazione appena aggiunta
+    const textArea = document.getElementById('note-text');
+    if (textArea) {
+        textArea.scrollTop = textArea.scrollHeight;
+        textArea.focus();
+    }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    updateGeminiAudioKeyStatusUI();
 });

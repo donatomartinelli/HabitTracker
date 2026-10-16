@@ -139,9 +139,11 @@
 
             <!-- Cassetto Note -->
             <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [N] to toggle"></div>
+            <!-- Cassetto Note + Pipeline Registratore Sony -->
+            <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [N] to toggle"></div>
             <div id="notes-section" class="notes-section collapsed" style="display: none;">
                 <div class="notes-controls">
-                    <div style="display: flex; gap: 15px; align-items: center;">
+                    <div style="display: flex; gap: 12px; align-items: center;">
                         <span class="section-label" style="color: var(--text-main);">Notes</span>
                         <label class="notes-toggle">
                             <input type="checkbox" id="notes-mode-checkbox" onchange="toggleNotesMode()">
@@ -150,9 +152,20 @@
                                 <span class="t-label browse">BROWSE</span>
                             </span>
                         </label>
+                        <span id="sony-pipeline-status" style="font-size: var(--font-xs); color: var(--accent-gold); font-weight: bold;"></span>
                     </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <select id="note-category" class="form-control form-control-sm" style="width: 160px; font-weight: bold;" onchange="refreshNotesView()"></select>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <!-- Selettore Intera Cartella Registratore Sony -->
+                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select Sony Recorder folder: transcribes only NEW audio files into 'Registrazioni'">
+                            [SYNC FOLDER]
+                            <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
+                        </label>
+                        <!-- Selettore Singoli File Audio -->
+                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select individual audio files (.mp3, .wav, .m4a) to transcribe into 'Registrazioni'">
+                            [+ AUDIO]
+                            <input type="file" id="sony-files-input" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac" multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
+                        </label>
+                        <select id="note-category" class="form-control form-control-sm" style="width: 150px; font-weight: bold;" onchange="refreshNotesView()"></select>
                         <button class="btn btn-sm" onclick="openManageNotesModal()" title="Manage Note Categories">[CATS]</button>
                     </div>
                 </div>
@@ -688,6 +701,21 @@
                 </div>
             </div>
 
+            <div class="cfg-box">
+                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
+                    <span>Sony Recorder Pipeline // Dedicated Gemini API Key (Optional)</span>
+                    <span id="gemini-audio-key-status" style="color: var(--text-dim);"></span>
+                </label>
+                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                    <input type="password" id="gemini-audio-key-input" class="form-control form-control-sm" placeholder="Paste 2nd API Key (or leave empty to use main key)..." oninput="handleGeminiAudioKeyInput(this.value)">
+                    <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-audio-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span id="processed-audio-count" style="font-size: var(--font-xs); color: var(--text-dim);">0 audio files in history</span>
+                    <button type="button" class="btn btn-sm" onclick="resetProcessedAudioHistory()" title="Allow re-transcribing previously imported audio files">[RESET AUDIO MEMORY]</button>
+                </div>
+            </div>
+            
             <div id="manager-list" class="manager-list"></div>
             
             <div class="quick-add-task new-calendar-add">

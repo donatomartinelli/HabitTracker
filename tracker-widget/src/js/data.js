@@ -112,7 +112,7 @@ function migrateAndInitData() {
         'tracker_templates': [],
         'tracker_logs': {},
         'tracker_events': [],
-        'tracker_note_cats': ["General", "Productivity", "Math", "Ideas"],
+        'tracker_note_cats': ["General", "Registrazioni", "Productivity", "Math", "Ideas"],
         'tracker_notes': {},
         'tracker_category_order': [],
         'tracker_references': [],
@@ -139,6 +139,8 @@ function migrateAndInitData() {
         'tracker_food_db': DEFAULT_FOOD_DB,
         'tracker_body_logs': [],
         'tracker_gemini_key': "",
+        'tracker_gemini_audio_key': "",
+        'tracker_processed_audio': [],
         'tracker_opacity': "0.92",
         'tracker_mod_left': "daily",
         'tracker_mod_right': "planner",
@@ -152,10 +154,15 @@ function migrateAndInitData() {
         }
     }
 
+    // Assicura che la categoria "Registrazioni" esista sempre tra le categorie Note
     try {
         const notesObj = JSON.parse(localStorage.getItem('tracker_notes')) || {};
         const catsArr = JSON.parse(localStorage.getItem('tracker_note_cats')) || ["General"];
         let catsUpdated = false;
+        if (!catsArr.includes("Registrazioni")) {
+            catsArr.push("Registrazioni");
+            catsUpdated = true;
+        }
         for (let key in notesObj) {
             if (notesObj[key] && notesObj[key].trim() !== '' && !catsArr.includes(key)) {
                 catsArr.push(key);
@@ -204,7 +211,7 @@ migrateAndInitData();
 let templates = JSON.parse(localStorage.getItem('tracker_templates')) || [];
 let logs = JSON.parse(localStorage.getItem('tracker_logs')) || {};
 let specificEvents = JSON.parse(localStorage.getItem('tracker_events')) || [];
-let noteCategories = JSON.parse(localStorage.getItem('tracker_note_cats')) || ["General"];
+let noteCategories = JSON.parse(localStorage.getItem('tracker_note_cats')) || ["General", "Registrazioni"];
 let notesContent = JSON.parse(localStorage.getItem('tracker_notes')) || {};
 let journals = JSON.parse(localStorage.getItem('tracker_journal')) || {};
 let categoryOrder = JSON.parse(localStorage.getItem('tracker_category_order')) || [];
@@ -236,8 +243,10 @@ let gymPlan = JSON.parse(localStorage.getItem('tracker_gym_plan')) || DEFAULT_GY
 let foodDb = JSON.parse(localStorage.getItem('tracker_food_db')) || DEFAULT_FOOD_DB;
 let bodyLogs = JSON.parse(localStorage.getItem('tracker_body_logs')) || [];
 
-// AI & Layout
+// AI, Audio Pipeline & Layout
 let geminiApiKey = localStorage.getItem('tracker_gemini_key') || "";
+let geminiAudioApiKey = localStorage.getItem('tracker_gemini_audio_key') || "";
+let processedAudioFiles = JSON.parse(localStorage.getItem('tracker_processed_audio')) || [];
 let activeLeft = localStorage.getItem('tracker_mod_left') || 'daily';
 let activeRight = localStorage.getItem('tracker_mod_right') || 'planner';
 let savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
@@ -252,7 +261,8 @@ const ALL_STORAGE_KEYS = [
     'm_balance', 'm_trans', 'm_rec', 'm_wish', 'm_vaults', 'm_categories',
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
     'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_food_db', 'tracker_body_logs',
-    'tracker_gemini_key', 'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
+    'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio',
+    'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right', 'tracker_pane_left_width'
 ];
 
 let diskSyncTimeout;
@@ -286,6 +296,7 @@ function saveData() {
     localStorage.setItem('tracker_planner_exceptions', JSON.stringify(plannerExceptions));
     localStorage.setItem('tracker_focus_logs', JSON.stringify(focusLogs));
     localStorage.setItem('tracker_daily_priorities', JSON.stringify(dailyPriorities));
+    localStorage.setItem('tracker_processed_audio', JSON.stringify(processedAudioFiles));
     scheduleDiskSync();
 }
 
@@ -316,6 +327,12 @@ function saveHealthData() {
 function saveGeminiKey(val) {
     geminiApiKey = (val || '').trim();
     localStorage.setItem('tracker_gemini_key', geminiApiKey);
+    scheduleDiskSync();
+}
+
+function saveGeminiAudioKey(val) {
+    geminiAudioApiKey = (val || '').trim();
+    localStorage.setItem('tracker_gemini_audio_key', geminiAudioApiKey);
     scheduleDiskSync();
 }
 
