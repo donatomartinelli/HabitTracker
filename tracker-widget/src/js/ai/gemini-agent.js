@@ -1,9 +1,8 @@
 // --- js/ai/gemini-agent.js ---
-// Cervello AI Conversazionale (Domande sul Sistema + Traduzione Comandi DSL) & Pipeline Sony Audio
+// Cervello AI Conversazionale, Focus agganciato alle Task Reali & Trascrittore Sony Editor di Prosa
 
 let cachedGeminiModel = null;
 
-// Costruisce lo snapshot completo dei dati attuali (Dieta, Palestra, Lezioni/Orari, Task, Soldi)
 function getSystemContextSnapshot() {
     const todayJS = new Date(todayStr).getDay();
     const tmwJS = new Date(tomorrowStr).getDay();
@@ -18,16 +17,17 @@ function getSystemContextSnapshot() {
             }
             const curLog = (logs[dateStr] && logs[dateStr][t.id]) || Array(t.instances || 1).fill(false);
             const doneCount = curLog.filter(Boolean).length;
+            const durMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, dateStr) : (t.timerMinutes || 0);
             return {
                 title: t.title,
                 category: t.category,
+                durationMinutes: durMins,
                 schedule: timeStr,
                 progress: `${doneCount}/${t.instances || 1}`
             };
         });
     };
 
-    // Include anche eventuali Ghost Layers attivi (es. orari lezioni universitarie)
     const getGhostSchedule = (dayIdx) => {
         const items = [];
         referenceLayers.forEach(ref => {
@@ -151,35 +151,34 @@ Here is the LIVE SYSTEM SNAPSHOT (JSON):
 ${snapshotJson}
 
 You handle two types of requests:
-TYPE A — QUESTIONS / VIEW REQUESTS (e.g. "Cosa devo mangiare oggi?", "Che devo fare in palestra?", "Che lezioni o impegni ho domani?", "Fammi vedere le task di oggi", "Quanto posso spendere?"):
+TYPE A — QUESTIONS / VIEW REQUESTS (e.g. "Cosa devo mangiare oggi?", "Che devo fare in palestra?", "Che lezioni o task ho oggi/domani?", "Quanto posso spendere?"):
 - Set "isQuestion": true.
 - Write a clear, concise, well-structured answer in Italian inside "aiAnswer" using the exact data from the snapshot.
 - Set "targetModule" to the most relevant module so the UI mounts it automatically: one of "diet", "gym", "tasks", "planner", "calendar", "notes", "money" (or null).
 
-TYPE B — ACTIONS / LOGGING COMMANDS (e.g. "Oggi ho speso 12 euro in pizzeria, ho fatto palestra e aggiungi una nota in Nuova Categoria: studiare il teorema", "Attiva red mode"):
+TYPE B — ACTIONS / LOGGING COMMANDS:
 - Set "isQuestion": false.
 - Translate all user intentions into 1 or more valid CLI commands inside "commands" from this exact DSL specification:
-  1. "out [amount] #[Category] [description]" -> Log expense (e.g. "out 12 #Cibo Pizzeria")
-  2. "in [amount] [description]" -> Log income (e.g. "in 500 Borsa di studio")
-  3. "wish [item] [optional cost]" -> Add to purchase incubator (e.g. "wish Casio 45")
-  4. "todo [text]" -> Add general task to inbox
-  5. "task [title] [@oggi | @domani | @YYYY-MM-DD]" -> Schedule task on a date
-  6. "done [task title keyword]" -> Check off a task completed today (e.g. "done Analisi")
-  7. "event [@oggi | @domani | @YYYY-MM-DD] [title]" -> Add calendar event
-  8. "note [CategoryName]: [text]" -> Add note in existing or brand-new category (e.g. "note Idee: creare filtro rosso")
-  9. "focus [minutes] [title]" -> Start Pomodoro timer now
-  10. "log [minutes] [category]" -> Log completed study/work minutes
-  11. "weight [kg] [optional note]" -> Log body weight
-  12. "gym done" -> Complete active workout split day
-  13. "red on" or "red off" or "red" -> Toggle Red Mode (Gelatina Rossa)
-  14. "summon [calendar|tasks|notes|planner|diet|gym|money]" or "zero" -> Open module or Zero-UI
+  1. "focus [Task Title or Category]" -> Start a Focus session on an existing task from todayTasksAndLessons (e.g. if user says "Avvia sessione di studio di francese" or "Avvia focus Duolingo", output "focus Duolingo" or "focus French" WITHOUT inventing minutes: the system automatically uses the task's configured durationMinutes and checks it off at the end!).
+  2. "done [task title keyword]" -> Check off a task completed today (e.g. "done Duolingo").
+  3. "out [amount] #[Category] [description]" -> Log expense (e.g. "out 12 #Cibo Pizzeria").
+  4. "in [amount] [description]" -> Log income (e.g. "in 500 Borsa di studio").
+  5. "wish [item] [optional cost]" -> Add to purchase incubator.
+  6. "todo [text]" -> Add general task to inbox.
+  7. "task [title] [@oggi | @domani | @YYYY-MM-DD]" -> Schedule task on a date.
+  8. "event [@oggi | @domani | @YYYY-MM-DD] [title]" -> Add calendar event.
+  9. "note [CategoryName]: [clean polished text]" -> Add note in existing or brand-new category (remove stutters/fillers from the note text).
+  10. "weight [kg] [optional note]" -> Log body weight.
+  11. "gym done" -> Complete active workout split day.
+  12. "red on" or "red off" or "red" -> Toggle Red Mode.
+  13. "summon [calendar|tasks|notes|planner|diet|gym|money]" or "zero" -> Open module or Zero-UI.
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no backticks):
 {
   "isQuestion": true or false,
   "aiAnswer": "Direct answer in Italian if isQuestion is true, otherwise empty string",
   "targetModule": "diet|gym|tasks|planner|calendar|notes|money or null",
-  "transcript": "Exact transcription of what the user said or wrote",
+  "transcript": "Clean transcription of what the user said or wrote",
   "commands": ["cmd 1", "cmd 2"]
 }`;
 
@@ -235,12 +234,10 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
         const transcript = parsed.transcript || rawText || 'Voice Input';
         const commands = Array.isArray(parsed.commands) ? parsed.commands : [];
 
-        // Se ha associato un modulo (es. domanda su dieta, palestra, task), lo monta subito sullo sfondo (Scelta 3A)
         if (parsed.targetModule && typeof summonModule === 'function' && dashboardModules[parsed.targetModule]) {
             summonModule(parsed.targetModule);
         }
 
-        // CASO A: È una domanda sul sistema (e non ci sono comandi di modifica da confermare)
         if (parsed.isQuestion && parsed.aiAnswer && commands.length === 0) {
             if (answerBox) {
                 answerBox.style.display = 'block';
@@ -253,7 +250,6 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
             return;
         }
 
-        // CASO B: Ci sono azioni da eseguire -> Apre la Staging Area (con eventuale risposta sopra)
         if (parsed.aiAnswer && answerBox) {
             answerBox.style.display = 'block';
             answerBox.innerHTML = `<div>${escapeHtml(parsed.aiAnswer)}</div>`;
@@ -269,7 +265,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
 }
 
 // ============================================================================
-// PIPELINE REGISTRATORE VOCALE SONY -> CATEGORIA NOTE "REGISTRAZIONI"
+// PIPELINE REGISTRATORE VOCALE SONY -> EDITOR PROSA PULITA ("REGISTRAZIONI")
 // ============================================================================
 
 function handleGeminiAudioKeyInput(val) {
@@ -318,11 +314,14 @@ async function transcribeSingleAudioWithGemini(file, apiKey) {
     const b64 = await blobToBase64(file);
     const mimeType = getAudioMimeType(file.name, file.type);
 
-    const promptText = `Sei un trascrittore fedele ed editor di appunti personali.
-Ascolta questa registrazione vocale e trascrivi INTEGRALMENTE tutto ciò che viene detto in italiano.
-1. Non riassumere e non tagliare nessun concetto.
-2. Elimina solo le esitazioni ("ehm", "uhm") e aggiungi punteggiatura e divisione in paragrafi.
-3. Restituisci SOLO il testo trascritto puro.`;
+    const promptText = `Sei un editor professionista di appunti personali.
+Ascolta questa registrazione vocale e trasformala in un testo scritto in italiano scorrevole, pulito e piacevole da rileggere, mantenendo il 100% dei concetti, delle idee e dei dettagli espressi dall'autore.
+Regole rigorose di pulizia:
+1. ZERO INTERCALARI E FILLER WORDS: Elimina completamente "ehm", "uhm", "eh", "cioè", "nel senso", "praticamente", "diciamo", "aspetta", "come si chiama", "vabbè", "capito?", "ok?" quando usati come intercalari del parlato.
+2. ZERO RIPETIZIONI O BALBETTII: Se una parola o preposizione viene ripetuta due volte ("del del", "non non", "che che", "su su", "la la"), scrivila una sola volta.
+3. ZERO FALSE PARTENZE: Se l'autore inizia una frase, si interrompe e la riformula subito dopo, conserva solo la formulazione finale corretta e scorrevole.
+4. COMPLETEZZA E FEDELTÀ: Non riassumere e non omettere nessun ragionamento o esempio. Struttura il testo con punteggiatura curata e capoversi logici come se fosse stato scritto direttamente a tastiera.
+5. Restituisci SOLO il testo pulito finale, senza alcuna premessa o commento.`;
 
     const userParts = [
         { text: promptText },

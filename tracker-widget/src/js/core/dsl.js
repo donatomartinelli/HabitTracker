@@ -1,5 +1,5 @@
 // --- js/core/dsl.js ---
-// Domain Specific Language (DSL) // Scheletro Comandi Interni & Gestore Red Mode
+// Domain Specific Language (DSL) // Scheletro Comandi Interni & Aggancio Focus alle Task Reali
 
 let isRedMode = localStorage.getItem('tracker_red_mode') === 'true';
 
@@ -73,11 +73,6 @@ function getCommandPreview(raw) {
         case 'plan':
         case 'tomorrow':
             return `[EVENING BUILDER] Open interactive workspace to assemble tomorrow's plan`;
-        case 'log': {
-            const m = rest.match(/^(\d+)\s*(.*)$/);
-            if (!m) return 'Syntax: log [minutes] [category] (e.g. log 45 Studio)';
-            return `[FOCUS LEDGER] Record ${m[1]} real minutes in category "${m[2] || 'Studio'}"`;
-        }
         case 'ledger':
         case 'stats':
             return `[FOCUS LEDGER] Open Consistency Grid & Real Focus Hours breakdown`;
@@ -132,9 +127,15 @@ function getCommandPreview(raw) {
         }
         case 'focus':
         case 'pomo': {
-            const m = rest.match(/^(\d+)\s*(.*)$/);
-            if (!m) return 'Syntax: focus [minutes] [optional title]';
-            return `[POMODORO] Start ${m[1]} min session: "${m[2] || 'Quick Focus'}"`;
+            if (!rest) return 'Syntax: focus [task title or category] (e.g. focus Duolingo, focus French)';
+            const numMatch = rest.match(/^(\d+)\s+(.+)$/);
+            const queryPart = numMatch ? numMatch[2].trim() : rest;
+            const matched = typeof findMatchingTaskForFocus === 'function' ? findMatchingTaskForFocus(queryPart) : null;
+            if (matched) {
+                const dur = (numMatch ? parseInt(numMatch[1], 10) : null) || getTaskDurationMinutes(matched, selectedDateStr);
+                return `[FOCUS] Start ${dur}m session linked to task "${matched.title}" [${matched.category}] (auto-checks on finish)`;
+            }
+            return `[FOCUS] No active timed task matching "${queryPart}"`;
         }
         case 'gym':
         case 'workout':
@@ -187,16 +188,6 @@ function executeTerminalCommand(raw) {
     if (cmd === 'plan' || cmd === 'tomorrow') {
         if (typeof closeTerminal === 'function') closeTerminal();
         if (typeof openPlanTomorrowModal === 'function') openPlanTomorrowModal();
-        return true;
-    }
-
-    if (cmd === 'log') {
-        const m = rest.match(/^(\d+)\s*(.*)$/);
-        if (!m) return false;
-        const mins = parseInt(m[1], 10);
-        const cat = m[2].trim() || 'Studio';
-        logFocusSession(mins, cat, 'Manual Log', selectedDateStr);
-        if (typeof showToast === 'function') showToast(`[LEDGER] Logged ${mins}m in "${cat}"`);
         return true;
     }
 
@@ -333,7 +324,7 @@ function executeTerminalCommand(raw) {
 
         templates.push({
             id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-            category: catName, title: finalTitle, instances: 1, timerMinutes: 25,
+            category: catName, title: finalTitle, instances: 1, timerMinutes: 25, noTimer: false,
             frequency: 'specific', daysOfWeek: [dayIdx], startDate: targetDate, endDate: targetDate,
             color: '#ffffff', type: 'untimed', timeWindows: []
         });
@@ -414,19 +405,19 @@ function executeTerminalCommand(raw) {
     }
 
     if (cmd === 'focus' || cmd === 'pomo') {
-        const m = rest.match(/^(\d+)\s*(.*)$/);
-        if (!m) return false;
-        const mins = Math.max(1, parseInt(m[1], 10));
-        const focusTitle = m[2].trim() || 'Terminal Focus';
-
-        focusPlaylist = [{
-            type: 'task', id: 'custom_' + Date.now(), category: 'Focus',
-            title: focusTitle, duration: mins, color: '#ffffff', isPartial: true
-        }];
-        currentPlaylistIndex = 0;
-        startCurrentPlaylistPhase();
-        if (typeof showToast === 'function') showToast(`[FOCUS] Started ${mins}m: ${focusTitle}`);
-        return true;
+        if (!rest) return false;
+        const numMatch = rest.match(/^(\d+)\s+(.+)$/);
+        if (numMatch) {
+            const overrideMins = parseInt(numMatch[1], 10);
+            const query = numMatch[2].trim();
+            if (typeof startTaskFocusByQuery === 'function' && startTaskFocusByQuery(query, overrideMins)) {
+                return true;
+            }
+        } else if (typeof startTaskFocusByQuery === 'function' && startTaskFocusByQuery(rest)) {
+            return true;
+        }
+        if (typeof showToast === 'function') showToast(`[FOCUS] No active timed task matching "${rest}"`);
+        return false;
     }
 
     if (cmd === 'workout' || (cmd === 'gym' && rest.toLowerCase() === 'done')) {

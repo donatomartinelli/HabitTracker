@@ -1,5 +1,5 @@
 // --- js/modules/tasks.js ---
-// Atomic Module 2: Daily Tasks, Inbox, Consistency Tracker, Focus Ledger & Evening Builder
+// Atomic Module 2: Daily Tasks, Check-Only Routines, Consistency Tracker & Task-Driven Real Focus Ledger
 
 let deleteTargetType = '';
 let deleteTargetId = '';
@@ -31,26 +31,6 @@ function toggleTask(templateId, instanceIndex) {
     renderTracker();
     if (typeof renderMeds === 'function') renderMeds();
     if (typeof renderCalendarDaySummary === 'function') renderCalendarDaySummary();
-}
-
-function quickStartTaskFocus(templateId) {
-    const t = templates.find(x => x.id === templateId);
-    if (!t) return;
-
-    focusPlaylist = [{
-        type: 'task',
-        id: t.id,
-        category: t.category,
-        title: t.title,
-        duration: t.timerMinutes || 25,
-        color: t.color || '#ffffff',
-        isPartial: false
-    }];
-    currentPlaylistIndex = 0;
-    startCurrentPlaylistPhase();
-    if (typeof showToast === 'function') {
-        showToast(`[FOCUS] Started ${t.timerMinutes || 25}m: ${t.title}`);
-    }
 }
 
 function recalculateMedicineAlerts(t) {
@@ -96,6 +76,7 @@ function quickAddTask(event, categoryName) {
             title: title,
             instances: 1,
             timerMinutes: 25,
+            noTimer: false,
             frequency: 'all',
             daysOfWeek: [],
             startDate: todayStr,
@@ -125,6 +106,7 @@ function quickAddCalendar(event) {
             title: 'First Task',
             instances: 1,
             timerMinutes: 25,
+            noTimer: false,
             frequency: 'all',
             daysOfWeek: [],
             startDate: todayStr,
@@ -141,6 +123,15 @@ function quickAddCalendar(event) {
         renderTracker();
         if (typeof renderCalendar === 'function') renderCalendar();
         if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    }
+}
+
+function toggleTaskTimerMode() {
+    const modeRadio = document.querySelector('input[name="h-timer-mode"]:checked');
+    const isCheckOnly = modeRadio && modeRadio.value === 'checkonly';
+    const timerGroup = document.getElementById('h-timer-group');
+    if (timerGroup) {
+        timerGroup.style.display = isCheckOnly ? 'none' : 'block';
     }
 }
 
@@ -173,8 +164,14 @@ function editTask(id) {
             addHabitTimeWindow();
         }
     } else {
+        const isCheckOnly = Boolean(t.noTimer || t.timerMinutes === 0);
+        const radioVal = isCheckOnly ? 'checkonly' : 'measured';
+        const radioEl = document.querySelector(`input[name="h-timer-mode"][value="${radioVal}"]`);
+        if (radioEl) radioEl.checked = true;
+        toggleTaskTimerMode();
+
         document.getElementById('h-instances').value = t.instances || 1;
-        document.getElementById('h-timer').value = t.timerMinutes || 25;
+        document.getElementById('h-timer').value = t.timerMinutes > 0 ? t.timerMinutes : 25;
         document.getElementById('h-frequency').value = t.frequency || 'all';
         toggleDays();
 
@@ -323,6 +320,11 @@ function openCreationModal() {
 
     document.querySelector('input[name="h-type"][value="timed"]').checked = true;
     toggleHabitType();
+
+    const measuredRadio = document.querySelector('input[name="h-timer-mode"][value="measured"]');
+    if (measuredRadio) measuredRadio.checked = true;
+    toggleTaskTimerMode();
+
     document.getElementById('h-time-windows-container').innerHTML = '';
     addHabitTimeWindow();
     toggleDays();
@@ -390,7 +392,7 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
     const color = document.getElementById('h-color').value || '#ffffff';
     const type = document.querySelector('input[name="h-type"]:checked').value;
 
-    let instances = 1, timerMins = 25, frequency = 'specific', daysOfWeek = [], timeWindows = [];
+    let instances = 1, timerMins = 25, noTimer = false, frequency = 'specific', daysOfWeek = [], timeWindows = [];
 
     if (type === 'timed') {
         document.querySelectorAll('.habit-time-window-row').forEach(row => {
@@ -408,9 +410,15 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
             alert("Please complete at least one time window with selected days!");
             return;
         }
+        // Calcola i minuti di default dalla prima fascia oraria
+        const [sh, sm] = timeWindows[0].start.split(':').map(Number);
+        const [eh, em] = timeWindows[0].end.split(':').map(Number);
+        timerMins = Math.max(5, (eh * 60 + em) - (sh * 60 + sm));
     } else {
+        const modeRadio = document.querySelector('input[name="h-timer-mode"]:checked');
+        noTimer = (modeRadio && modeRadio.value === 'checkonly');
         instances = parseInt(document.getElementById('h-instances').value, 10) || 1;
-        timerMins = parseInt(document.getElementById('h-timer').value, 10) || 25;
+        timerMins = noTimer ? 0 : (parseInt(document.getElementById('h-timer').value, 10) || 25);
         frequency = document.getElementById('h-frequency').value;
         if (frequency === 'specific') {
             document.querySelectorAll('#h-days-container input:checked').forEach(cb => {
@@ -426,12 +434,12 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
     if (id) {
         const t = templates.find(x => x.id === id);
         if (t) {
-            Object.assign(t, { category, title, instances, timerMinutes: timerMins, frequency, daysOfWeek, startDate, endDate, color, timeWindows, type });
+            Object.assign(t, { category, title, instances, timerMinutes: timerMins, noTimer, frequency, daysOfWeek, startDate, endDate, color, timeWindows, type });
         }
     } else {
         templates.push({
             id: 't_' + Date.now(),
-            category, title, instances, timerMinutes: timerMins, frequency, daysOfWeek, startDate, endDate, color, timeWindows, type, exceptions: []
+            category, title, instances, timerMinutes: timerMins, noTimer, frequency, daysOfWeek, startDate, endDate, color, timeWindows, type, exceptions: []
         });
     }
 
@@ -481,6 +489,8 @@ document.getElementById('medicineForm').addEventListener('submit', function(e) {
         endDate: null,
         color: '#4c5b73',
         type: 'medicine',
+        noTimer: true,
+        timerMinutes: 0,
         frequency: 'all',
         timeWindows: [],
         daysOfWeek: []
@@ -590,8 +600,10 @@ function renderManager() {
             const taskRow = document.createElement('div');
             taskRow.className = 'manager-task';
 
+            const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t) : (t.timerMinutes || 0);
+            const durBadge = mins > 0 ? `${mins}m` : 'CHECK-ONLY';
             const spanTitle = document.createElement('span');
-            spanTitle.textContent = `${t.title} (${t.instances || 1}x)`;
+            spanTitle.textContent = `${t.title} (${t.instances || 1}x · ${durBadge})`;
 
             const taskActions = document.createElement('div');
             taskActions.className = 'action-btns';
@@ -718,24 +730,29 @@ function renderTasks() {
                     const titleDiv = document.createElement('div');
                     titleDiv.className = 'task-title';
 
+                    const taskMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, selectedDateStr) : (t.timerMinutes || 0);
                     let timePrefix = '';
                     if (isScheduledGroup && t.timeWindows && t.timeWindows.length > 0) {
                         const matchingTw = t.timeWindows.find(tw => tw.days && tw.days.includes(selectedDayIdx));
                         if (matchingTw) timePrefix = `[${matchingTw.start}] `;
                     }
-                    titleDiv.textContent = `${timePrefix}${t.title}`;
+                    const minSuffix = (!isScheduledGroup && taskMins > 0) ? ` (${taskMins}m)` : '';
+                    titleDiv.textContent = `${timePrefix}${t.title}${minSuffix}`;
                     leftDiv.appendChild(titleDiv);
 
                     const quickActions = document.createElement('div');
                     quickActions.className = 'task-quick-actions';
 
                     if (t.type !== 'medicine') {
-                        const btnFocus = document.createElement('button');
-                        btnFocus.className = 'icon-btn';
-                        btnFocus.title = 'Start instant Focus timer';
-                        btnFocus.textContent = '[▶]';
-                        btnFocus.onclick = () => quickStartTaskFocus(t.id);
-                        quickActions.appendChild(btnFocus);
+                        // Mostra il bottone [▶] solo se la task ha un timer (> 0 min)
+                        if (taskMins > 0) {
+                            const btnFocus = document.createElement('button');
+                            btnFocus.className = 'icon-btn';
+                            btnFocus.title = `Start ${taskMins}m Focus timer on ${t.title}`;
+                            btnFocus.textContent = '[▶]';
+                            btnFocus.onclick = () => quickStartTaskFocus(t.id);
+                            quickActions.appendChild(btnFocus);
+                        }
 
                         const btnEdit = document.createElement('button');
                         btnEdit.className = 'icon-btn';
@@ -897,6 +914,7 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
                 title: task.title,
                 instances: 1,
                 timerMinutes: 25,
+                noTimer: false,
                 frequency: 'specific',
                 daysOfWeek: [dayIndex],
                 startDate: dateStr,
@@ -917,7 +935,9 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 });
 
-// --- CONSISTENCY TRACKER, FOCUS LEDGER & EVENING BUILDER ---
+// ============================================================================
+// CONSISTENCY TRACKER & TASK-DRIVEN REAL FOCUS LEDGER
+// ============================================================================
 
 function openTrackerModal() {
     closeModals();
@@ -1024,12 +1044,7 @@ function renderTracker() {
     }
 }
 
-function deleteFocusLogEntry(id) {
-    focusLogs = focusLogs.filter(x => x.id !== id);
-    saveData();
-    renderFocusLedger();
-}
-
+// Calcola il Real Focus Ledger direttamente dalle Task spuntate in `logs` (escludendo le task Check-Only e Medicine)
 function renderFocusLedger() {
     const container = document.getElementById('focus-ledger-container');
     const summaryEl = document.getElementById('focus-ledger-summary');
@@ -1043,25 +1058,50 @@ function renderFocusLedger() {
 
     let totalMinsAll = 0, totalMinsWeek = 0, totalMinsToday = 0;
     const byCat = {};
+    const completedHistoryEntries = [];
 
-    focusLogs.forEach(item => {
-        const m = parseInt(item.minutes, 10) || 0;
-        const cat = item.category || 'General';
-        totalMinsAll += m;
-        if (item.date >= weekStartStr && item.date <= todayStr) totalMinsWeek += m;
-        if (item.date === todayStr) totalMinsToday += m;
+    // 1. Scansiona tutte le date e le task spuntate nei log reali
+    const allDates = Object.keys(logs).sort();
+    allDates.forEach(dateStr => {
+        const dayLogObj = logs[dateStr] || {};
+        for (let templateId in dayLogObj) {
+            const t = templates.find(x => x.id === templateId);
+            if (!t) continue;
 
-        if (!byCat[cat]) byCat[cat] = { total: 0, week: 0, today: 0 };
-        byCat[cat].total += m;
-        if (item.date >= weekStartStr && item.date <= todayStr) byCat[cat].week += m;
-        if (item.date === todayStr) byCat[cat].today += m;
+            const minsPerInstance = typeof getTaskDurationMinutes === 'function'
+                ? getTaskDurationMinutes(t, dateStr)
+                : (t.timerMinutes || 0);
+            if (minsPerInstance <= 0) continue; // Ignora routine Check-Only e Medicine
+
+            const checkedCount = (dayLogObj[templateId] || []).filter(Boolean).length;
+            if (checkedCount <= 0) continue;
+
+            const totalTaskMins = checkedCount * minsPerInstance;
+            const cat = t.category || 'General';
+
+            totalMinsAll += totalTaskMins;
+            if (dateStr >= weekStartStr && dateStr <= todayStr) totalMinsWeek += totalTaskMins;
+            if (dateStr === todayStr) totalMinsToday += totalTaskMins;
+
+            if (!byCat[cat]) byCat[cat] = { total: 0, week: 0, today: 0 };
+            byCat[cat].total += totalTaskMins;
+            if (dateStr >= weekStartStr && dateStr <= todayStr) byCat[cat].week += totalTaskMins;
+            if (dateStr === todayStr) byCat[cat].today += totalTaskMins;
+
+            completedHistoryEntries.push({
+                date: dateStr,
+                category: cat,
+                title: `${t.title}${checkedCount > 1 ? ' (x' + checkedCount + ')' : ''}`,
+                minutes: totalTaskMins
+            });
+        }
     });
 
     const fmtH = (mins) => (mins / 60).toFixed(1) + 'H';
     summaryEl.textContent = `TODAY: ${fmtH(totalMinsToday)} | WEEK: ${fmtH(totalMinsWeek)} | ALL-TIME: ${fmtH(totalMinsAll)}`;
 
-    if (focusLogs.length === 0) {
-        container.innerHTML = '<div class="empty-state">[ NO FOCUS SESSIONS LOGGED YET ]</div>';
+    if (completedHistoryEntries.length === 0) {
+        container.innerHTML = '<div class="empty-state">[ NO MEASURED TASKS COMPLETED YET — CHECK OFF A TIMED TASK OR COMPLETE A FOCUS SESSION ]</div>';
         return;
     }
 
@@ -1091,13 +1131,13 @@ function renderFocusLedger() {
 
     const recentHeader = document.createElement('div');
     recentHeader.className = 'sub-column-header';
-    recentHeader.textContent = 'Recent Focus Sessions';
+    recentHeader.textContent = 'Recently Completed Measured Tasks';
     container.appendChild(recentHeader);
 
     const recentList = document.createElement('div');
     recentList.style.cssText = 'display: flex; flex-direction: column; gap: 4px; max-height: 130px; overflow-y: auto;';
 
-    [...focusLogs].reverse().slice(0, 6).forEach(item => {
+    completedHistoryEntries.reverse().slice(0, 8).forEach(item => {
         const r = document.createElement('div');
         r.style.cssText = 'display: flex; justify-content: space-between; align-items: center; font-size: var(--font-xs); padding: 4px 8px; border-bottom: 1px dotted #222;';
         r.innerHTML = `
@@ -1106,15 +1146,10 @@ function renderFocusLedger() {
                 <strong style="color: var(--text-main);">[${escapeHtml(item.category)}]</strong> 
                 <span style="color: var(--text-muted);">${escapeHtml(item.title)}</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 10px;">
+            <div>
                 <strong style="color: var(--text-main);">${item.minutes} min</strong>
             </div>
         `;
-        const delBtn = document.createElement('button');
-        delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[X]';
-        delBtn.onclick = () => deleteFocusLogEntry(item.id);
-        r.lastElementChild.appendChild(delBtn);
         recentList.appendChild(r);
     });
     container.appendChild(recentList);
@@ -1182,6 +1217,7 @@ function rolloverTaskToTomorrow(templateId) {
             title: `[Rollover] ${t.title}`,
             instances: 1,
             timerMinutes: t.timerMinutes || 25,
+            noTimer: Boolean(t.noTimer),
             frequency: 'specific',
             daysOfWeek: [tmwDayIdx],
             startDate: tomorrowStr,
@@ -1213,6 +1249,7 @@ function assignInboxItemToTomorrow(todoId) {
         title: item.title,
         instances: 1,
         timerMinutes: 25,
+        noTimer: false,
         frequency: 'specific',
         daysOfWeek: [tmwDayIdx],
         startDate: tomorrowStr,
@@ -1254,6 +1291,7 @@ function addQuickTomorrowTask() {
         title: title,
         instances: 1,
         timerMinutes: 25,
+        noTimer: false,
         frequency: 'specific',
         daysOfWeek: [tmwDayIdx],
         startDate: tomorrowStr,
@@ -1352,17 +1390,8 @@ function renderPlanTomorrowModal() {
 
     let committedMins = 0;
     tmwTasks.forEach(t => {
-        if (t.timeWindows && t.timeWindows.length > 0) {
-            t.timeWindows.forEach(tw => {
-                if (tw.days && tw.days.includes(tmwDayIdx) && tw.start && tw.end) {
-                    const [sh, sm] = tw.start.split(':').map(Number);
-                    const [eh, em] = tw.end.split(':').map(Number);
-                    committedMins += Math.max(0, (eh * 60 + em) - (sh * 60 + sm));
-                }
-            });
-        } else {
-            committedMins += (t.instances || 1) * (t.timerMinutes || 25);
-        }
+        const m = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, tomorrowStr) : (t.timerMinutes || 0);
+        committedMins += (t.instances || 1) * m;
     });
 
     if (constraintsCont) {

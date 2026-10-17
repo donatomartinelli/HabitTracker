@@ -1,5 +1,5 @@
 // --- js/modules/modals.js ---
-// Iniezione sincrona dei modali HTML e funzioni globali di controllo modali
+// Iniezione sincrona dei modali HTML (Con Focus Overlay 3B senza Note e Opzione Check-Only Routine)
 
 function initModalsHtml() {
     const root = document.getElementById('modals-root');
@@ -20,37 +20,34 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 2. Pomodoro Timer Overlay -->
+    <!-- 2. Pomodoro Timer Overlay (Scelta 3B: Centrato senza Session Notes + Scaletta Playlist Sotto) -->
     <div id="pomodoroOverlay" class="pomodoro-overlay">
         <div id="widget-drag-handle">
             <span style="flex: 1; text-align: left;">:: FOCUS WIDGET</span>
             <button id="btn-widget-mode-full" class="icon-btn" style="font-size: var(--font-xs); padding-right: 8px;" onclick="toggleWidgetMode()">[+ FULL]</button>
         </div>
-        <div id="focus-split-container" style="display: flex; width: 100%; height: 100%;">
-            <div id="focus-timer-section" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
-                <button id="btn-widget-mode" class="btn btn-sm" style="position: absolute; top: 25px; left: 25px;" onclick="toggleWidgetMode()">[_ MINI WIDGET]</button>
-                <h2 id="pomodoro-task-title" style="color: white; margin-bottom: 25px; text-align: center; font-weight: bold; border: none;">Task Name</h2>
-                <div class="timer-circle-wrapper">
-                    <svg class="progress-ring" width="360" height="360" id="pomodoro-svg">
-                        <circle stroke="#1a1a1a" stroke-width="4" fill="transparent" r="160" cx="180" cy="180" />
-                        <circle id="pomodoro-circle" class="progress-ring__circle" stroke="#ffffff" stroke-width="4" fill="transparent" r="160" cx="180" cy="180" />
-                    </svg>
-                    <div class="timer-text-hover" id="pomodoro-time-text">25:00</div>
-                </div>
-                <div id="focus-controls" style="display: flex; gap: 12px; margin-top: 35px; z-index: 501;">
-                    <button id="btn-pomodoro-pause" class="btn btn-primary" onclick="togglePomodoroPause()">Pause</button>
-                    <button class="btn" onclick="skipPomodoroPhase()">Skip</button>
-                    <button class="btn" onclick="resetPomodoroPhase()">Reset</button>
-                    <button class="btn btn-danger" onclick="stopPomodoro()">Abort</button>
-                </div>
+        <div id="focus-split-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; position: relative; padding: 24px;">
+            <button id="btn-widget-mode" class="btn btn-sm" style="position: absolute; top: 25px; left: 25px;" onclick="toggleWidgetMode()">[_ MINI WIDGET]</button>
+            
+            <h2 id="pomodoro-task-title" style="color: var(--text-main); margin-bottom: 20px; text-align: center; font-weight: bold; border: none; font-size: var(--font-lg);">Task Name</h2>
+            
+            <div class="timer-circle-wrapper">
+                <svg class="progress-ring" width="320" height="320" id="pomodoro-svg">
+                    <circle stroke="#1a1a1a" stroke-width="4" fill="transparent" r="145" cx="160" cy="160" />
+                    <circle id="pomodoro-circle" class="progress-ring__circle" stroke="#ffffff" stroke-width="4" fill="transparent" r="145" cx="160" cy="160" />
+                </svg>
+                <div class="timer-text-hover" id="pomodoro-time-text">25:00</div>
             </div>
-            <div id="focus-notes-section" style="flex: 1; border-left: 1px solid var(--border-color); background: rgba(0,0,0,0.6); padding: 30px; display: flex; flex-direction: column;">
-                <div class="notes-controls" style="margin-bottom: 15px;">
-                    <span class="section-label" style="color: var(--text-main);">Session Notes</span>
-                    <select id="focus-note-category" class="form-control form-control-sm" style="width: 160px; font-weight: bold;"></select>
-                </div>
-                <textarea id="focus-note-text" class="form-control" style="flex: 1; resize: none;" placeholder="Write your idea and press Enter..." onkeydown="handleFocusNoteKeyDown(event)"></textarea>
+            
+            <div id="focus-controls" style="display: flex; gap: 12px; margin-top: 28px; z-index: 501;">
+                <button id="btn-pomodoro-pause" class="btn btn-primary" onclick="togglePomodoroPause()">Pause</button>
+                <button class="btn" onclick="skipPomodoroPhase()">Skip &amp; Check</button>
+                <button class="btn" onclick="resetPomodoroPhase()">Reset</button>
+                <button class="btn btn-danger" onclick="stopPomodoro()">Abort</button>
             </div>
+
+            <!-- Scaletta Live della Focus Playlist -->
+            <div id="focus-live-queue" style="width: 100%; max-width: 460px; margin-top: 28px;"></div>
         </div>
     </div>
 
@@ -59,7 +56,7 @@ function initModalsHtml() {
         <div class="modal-content" style="width: 460px;">
             <h2>Focus Session Builder</h2>
             <form id="timerSetupForm">
-                <p class="modal-subtitle">1. Select active tasks from selected date</p>
+                <p class="modal-subtitle">1. Select active timed tasks from selected date</p>
                 <div id="focus-available-tasks" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;"></div>
                 <p class="modal-subtitle">2. Focus Playlist</p>
                 <div id="focus-playlist" style="display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.02); padding: 10px; border: 1px solid var(--border-color); min-height: 100px; margin-bottom: 20px;"></div>
@@ -68,18 +65,6 @@ function initModalsHtml() {
                     <button type="submit" class="btn btn-primary" id="btn-start-playlist" disabled>Start Focus</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- 4. Timer Complete Modal -->
-    <div id="timerCompleteModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
-            <h2>Session Complete</h2>
-            <p class="modal-subtitle">Select a task to check off:</p>
-            <div id="uncompleted-tasks-list" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;"></div>
-            <div class="modal-actions">
-                <button type="button" class="btn" onclick="closeModals()">Skip</button>
-            </div>
         </div>
     </div>
 
@@ -102,12 +87,12 @@ function initModalsHtml() {
             <form id="habitForm">
                 <input type="hidden" id="h-id">
                 <div class="form-group">
-                    <label>Category</label>
-                    <input type="text" id="h-category" class="form-control" placeholder="e.g. STUDIO, GYM" required>
+                    <label>Category / Calendar</label>
+                    <input type="text" id="h-category" class="form-control" placeholder="e.g. French, Studio, Routine" required>
                 </div>
                 <div class="form-group">
                     <label>Task Name</label>
-                    <input type="text" id="h-title" class="form-control" placeholder="e.g. Analisi II" required>
+                    <input type="text" id="h-title" class="form-control" placeholder="e.g. Duolingo, Analisi II, Log transactions" required>
                 </div>
                 <div class="form-group">
                     <label>Color</label>
@@ -152,13 +137,24 @@ function initModalsHtml() {
                     </div>
                 </div>
                 <div id="untimed-section">
+                    <div class="form-group">
+                        <label>Task Measurement Mode</label>
+                        <div class="task-type-toggle">
+                            <label class="type-radio">
+                                <input type="radio" name="h-timer-mode" value="measured" checked onchange="toggleTaskTimerMode()"> Focus Timer (Measured)
+                            </label>
+                            <label class="type-radio">
+                                <input type="radio" name="h-timer-mode" value="checkonly" onchange="toggleTaskTimerMode()"> Check-Only Routine (No Timer)
+                            </label>
+                        </div>
+                    </div>
                     <div style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1;">
                             <label>Daily Repetitions</label>
                             <input type="number" id="h-instances" class="form-control" value="1" min="1" max="50">
                         </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label>Default Timer (min)</label>
+                        <div class="form-group" style="flex: 1;" id="h-timer-group">
+                            <label>Duration per Session (min)</label>
                             <input type="number" id="h-timer" class="form-control" value="25" min="1">
                         </div>
                     </div>
@@ -385,7 +381,7 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 11. Consistency Tracker & Focus Hours Ledger Modal -->
+    <!-- 11. Consistency Tracker & Real Focus Hours Ledger Modal -->
     <div id="trackerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 780px; max-width: 94%;">
             <h2>Consistency History &amp; Real Focus Ledger</h2>
@@ -394,7 +390,7 @@ function initModalsHtml() {
                 <div class="tracker-grid" id="github-tracker" style="margin-top: 5px;"></div>
             </div>
             <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Real Focus Hours Ledger (Pomodoro &amp; Manual Logs)</span>
+                <span>Real Focus Hours Ledger (From Completed Tasks &amp; Calendars)</span>
                 <span id="focus-ledger-summary" style="color: var(--text-main); font-weight: bold;">TOTAL: 0.0H</span>
             </div>
             <div id="focus-ledger-container" style="margin-bottom: 18px;"></div>
@@ -685,13 +681,13 @@ function initModalsHtml() {
                 <div class="help-section-card">
                     <div class="help-section-title">1. CLI // Tasks, Planner &amp; Focus</div>
                     <div class="help-grid">
+                        <div class="help-key">focus [task/cat]</div><div class="help-desc">Start Focus using the task's own duration &amp; auto-check</div>
+                        <div class="help-key">done [task]</div><div class="help-desc">Check off today's matching task</div>
                         <div class="help-key">plan</div><div class="help-desc">Open Evening Builder to assemble tomorrow's schedule</div>
                         <div class="help-key">todo [text]</div><div class="help-desc">Add item to General To-Do inbox</div>
                         <div class="help-key">task [text] [@day]</div><div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
                         <div class="help-key">event [@day] [title]</div><div class="help-desc">Add calendar event</div>
                         <div class="help-key">note [cat]: [text]</div><div class="help-desc">Append note to category</div>
-                        <div class="help-key">focus [min] [title]</div><div class="help-desc">Start instant Pomodoro</div>
-                        <div class="help-key">log [min] [cat]</div><div class="help-desc">Log offline study minutes</div>
                         <div class="help-key">ledger</div><div class="help-desc">Open Consistency Grid &amp; Real Focus Hours Ledger</div>
                     </div>
                 </div>
@@ -704,7 +700,7 @@ function initModalsHtml() {
                         <div class="help-key">vault</div><div class="help-desc">Create a new Salvadanaio / Auto-Rule</div>
                         <div class="help-key">weight [kg] [note]</div><div class="help-desc">Log body weight &amp; note</div>
                         <div class="help-key">gym done</div><div class="help-desc">Complete active workout day &amp; advance</div>
-                        <div class="help-key">food</div><div class="help-desc">Open Nutritional Database</div>
+                        <div class="help-key">red</div><div class="help-desc">Toggle Red Gelatin Mode</div>
                     </div>
                 </div>
             </div>
@@ -716,7 +712,6 @@ function initModalsHtml() {
     `;
 }
 
-// Inizializza subito l'HTML dei modali così tutti i file successivi trovano i form
 initModalsHtml();
 
 function closeModals() {
@@ -766,14 +761,12 @@ function updateOpacity(val) {
     localStorage.setItem('tracker_opacity', val);
 }
 
-// Applica opacità salvata all'avvio
 document.documentElement.style.setProperty('--bg-opacity', savedOpacity);
 const sliderEl = document.getElementById('bg-opacity-slider');
 if (sliderEl) sliderEl.value = savedOpacity;
 const labelEl = document.getElementById('opacity-val');
 if (labelEl) labelEl.innerText = savedOpacity;
 
-// Pulsante chiusura app Tauri / Finestra
 const btnClose = document.getElementById('btn-close-app');
 if (btnClose) {
     btnClose.addEventListener('click', () => {
