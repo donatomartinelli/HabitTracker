@@ -1,5 +1,5 @@
 // --- js/ai/terminal-ui.js ---
-// Command Bar UI, Loop Hands-Free "Hey Tracker", Rilevamento Silenzio (VAD) & Verdetto Vocale ("Va bene" / "Ritenta")
+// Command Bar UI, Motore Nativo Always-On "Hey Tracker" (WebAudio VAD + Pre-Roll + MediaRecorder) & Verdetto Vocale Nativo
 
 let toastTimeout;
 let commandHistory = [];
@@ -10,14 +10,29 @@ let isStagingActive = false;
 let stagedCommands = [];
 let mediaRecorder = null;
 let audioChunks = [];
-let speechRecInstance = null;
 
-// Stato per Wake Word "Hey Tracker", Rilevamento Silenzio e Conferma Vocale Staging
-let isHeyTrackerEnabled = true;
-let wakeWordRec = null;
-let wakeWordActive = false;
-let verdictRec = null;
-let vadAudioContext = null;
+// Stato Motore Nativo "Hey Tracker" (Funziona su Tauri Windows senza webkitSpeechRecognition!)
+let isHeyTrackerEnabled = localStorage.getItem('tracker_hey_enabled') !== 'false';
+let sharedMicStream = null;
+let sharedAudioCtx = null;
+let sharedAnalyser = null;
+
+let bgWakeLoopTimer = null;
+let bgRollingRecorder = null;
+let bgHeaderChunk = null;
+let bgPreRollChunks = [];
+let bgSpeechChunks = [];
+let bgIsCapturingSpeech = false;
+let bgIsEvaluating = false;
+let bgSpeechStartMs = 0;
+let bgLastLoudMs = 0;
+
+// Stato Motore Nativo per Verdetto nella Staging Area ("Va bene" / "Ritenta" / "Annulla")
+let verdictLoopTimer = null;
+let verdictRecorder = null;
+let isVerdictCapturing = false;
+let isVerdictEvaluating = false;
+
 let vadInterval = null;
 
 function showToast(msg) {
@@ -29,9 +44,25 @@ function showToast(msg) {
     toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3200);
 }
 
+// Porta automaticamente la finestra Tauri in primo piano quando dici "Hey Tracker"
+async function bringAppWindowToFront() {
+    try {
+        if (window.__TAURI__ && window.__TAURI__.window) {
+            const appWin = window.__TAURI__.window.getCurrentWindow();
+            if (appWin.unminimize) await appWin.unminimize();
+            if (appWin.show) await appWin.show();
+            if (appWin.setFocus) await appWin.setFocus();
+        }
+        window.focus();
+    } catch (e) {}
+}
+
 function handleGeminiKeyInput(val) {
     saveGeminiKey(val);
     updateGeminiKeyStatusUI();
+    if (geminiApiKey && isHeyTrackerEnabled) {
+        startNativeHeyTrackerStandby();
+    }
 }
 
 function updateGeminiKeyStatusUI() {
@@ -39,10 +70,242 @@ function updateGeminiKeyStatusUI() {
     const status = document.getElementById('gemini-key-status');
     if (inp && inp.value !== geminiApiKey) inp.value = geminiApiKey;
     if (status) {
-        status.textContent = geminiApiKey ? '[ACTIVE: GEMINI AI AGENT]' : '[STANDARD MODE]';
-        status.style.color = geminiApiKey ? 'var(--accent-green)' : 'var(--text-dim)';
+        status.textContent = geminiApiKey ? '[ACTIVE: GEMINI AI AGENT]' : '[NO API KEY]';
+        status.style.color = geminiApiKey ? 'var(--accent-green)' : 'var(--accent-red)';
+    }
+    updateHeyTrackerHeaderBadge();
+}
+
+// Aggiunge e aggiorna la spia [◉ HEY TRACKER] nell'header per vedere lo stato del microfono in tempo reale
+function ensureHeyTrackerHeaderBadge() {
+    const headerBtns = document.querySelector('.header-buttons');
+    if (!headerBtns || document.getElementById('btn-hey-tracker-status')) return;
+
+    const btn = document.createElement('button');
+    btn.id = 'btn-hey-tracker-status';
+    btn.className = 'btn btn-sm';
+    btn.title = 'Click to toggle Always-On "Hey Tracker" voice standby';
+    btn.onclick = () => {
+        isHeyTrackerEnabled = !isHeyTrackerEnabled;
+        localStorage.setItem('tracker_hey_enabled', isHeyTrackerEnabled ? 'true' : 'false');
+        if (isHeyTrackerEnabled) {
+            startNativeHeyTrackerStandby();
+            showToast('[HEY TRACKER] Always-On voice standby ENABLED');
+        } else {
+            stopNativeHeyTrackerStandby();
+            showToast('[HEY TRACKER] Voice standby PAUSED');
+        }
+        updateHeyTrackerHeaderBadge();
+    };
+    headerBtns.insertBefore(btn, headerBtns.firstChild);
+    updateHeyTrackerHeaderBadge();
+}
+
+function updateHeyTrackerHeaderBadge(state = 'standby') {
+    const btn = document.getElementById('btn-hey-tracker-status');
+    if (!btn) return;
+
+    if (!isHeyTrackerEnabled || !geminiApiKey) {
+        btn.textContent = '[○ HEY: OFF]';
+        btn.style.color = 'var(--text-dim)';
+        btn.style.borderColor = 'var(--border-color)';
+        return;
+    }
+
+    if (state === 'capturing') {
+        btn.textContent = '[● HEARING VOICE...]';
+        btn.style.color = 'var(--accent-red)';
+        btn.style.borderColor = 'var(--accent-red)';
+    } else if (state === 'checking') {
+        btn.textContent = '[◈ AI CHECK...]';
+        btn.style.color = 'var(--accent-gold)';
+        btn.style.borderColor = 'var(--accent-gold)';
+    } else {
+        btn.textContent = '[◉ HEY TRACKER]';
+        btn.style.color = 'var(--accent-green)';
+        btn.style.borderColor = 'var(--border-color)';
     }
 }
+
+// ============================================================================
+// ACCESSO CONDIVISO AL MICROFONO E LETTURA VOLUME (RMS)
+// ============================================================================
+
+async function ensureSharedMicAnalyser() {
+    if (sharedMicStream && sharedMicStream.active && sharedAnalyser) {
+        if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+            await sharedAudioCtx.resume();
+        }
+        return true;
+    }
+    try {
+        sharedMicStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                echoCancellation: true,
+                noiseSuppression: true,
+                autoGainControl: true
+            }
+        });
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        sharedAudioCtx = new AudioCtx();
+        const source = sharedAudioCtx.createMediaStreamSource(sharedMicStream);
+        sharedAnalyser = sharedAudioCtx.createAnalyser();
+        sharedAnalyser.fftSize = 512;
+        source.connect(sharedAnalyser);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+function readCurrentMicRms() {
+    if (!sharedAnalyser) return 0;
+    const data = new Uint8Array(sharedAnalyser.fftSize);
+    sharedAnalyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+        const v = (data[i] - 128) / 128;
+        sum += v * v;
+    }
+    return Math.sqrt(sum / data.length);
+}
+
+// ============================================================================
+// 1. MOTORE NATIVO STAND-BY "HEY TRACKER" (CON PRE-ROLL BUFFER DI 750ms)
+// ============================================================================
+
+async function startNativeHeyTrackerStandby() {
+    stopNativeHeyTrackerStandby();
+    if (!isHeyTrackerEnabled || !geminiApiKey) {
+        updateHeyTrackerHeaderBadge('off');
+        return;
+    }
+
+    const termOverlay = document.getElementById('terminalOverlay');
+    if ((termOverlay && termOverlay.style.display === 'flex') || isRecordingVoice || isStagingActive) {
+        return;
+    }
+
+    const ok = await ensureSharedMicAnalyser();
+    if (!ok) {
+        updateHeyTrackerHeaderBadge('off');
+        return;
+    }
+
+    try {
+        bgHeaderChunk = null;
+        bgPreRollChunks = [];
+        bgSpeechChunks = [];
+        bgIsCapturingSpeech = false;
+
+        bgRollingRecorder = new MediaRecorder(sharedMicStream);
+        bgRollingRecorder.ondataavailable = (e) => {
+            if (!e.data || e.data.size === 0) return;
+            // Il primo chunk WebM contiene l'header del container audio
+            if (!bgHeaderChunk) {
+                bgHeaderChunk = e.data;
+                return;
+            }
+            if (bgIsCapturingSpeech) {
+                bgSpeechChunks.push(e.data);
+            } else {
+                // Mantiene gli ultimi 3 frammenti (~750ms) di pre-roll per non perdere mai "Hey..."
+                bgPreRollChunks.push(e.data);
+                if (bgPreRollChunks.length > 3) bgPreRollChunks.shift();
+            }
+        };
+
+        bgRollingRecorder.start(250);
+        updateHeyTrackerHeaderBadge('standby');
+
+        let loudFrames = 0;
+
+        bgWakeLoopTimer = setInterval(async () => {
+            if (!isHeyTrackerEnabled || bgIsEvaluating || isRecordingVoice || isStagingActive) return;
+            const isTermOpen = termOverlay && termOverlay.style.display === 'flex';
+            if (isTermOpen) return;
+
+            const rms = readCurrentMicRms();
+            const now = Date.now();
+
+            if (!bgIsCapturingSpeech) {
+                if (rms > 0.028) {
+                    loudFrames++;
+                    if (loudFrames >= 2) {
+                        // Inizio del parlato rilevato! Includiamo il pre-roll
+                        bgIsCapturingSpeech = true;
+                        bgSpeechStartMs = now;
+                        bgLastLoudMs = now;
+                        bgSpeechChunks = [...bgPreRollChunks];
+                        bgPreRollChunks = [];
+                        loudFrames = 0;
+                        updateHeyTrackerHeaderBadge('capturing');
+                    }
+                } else {
+                    loudFrames = 0;
+                }
+            } else {
+                if (rms > 0.022) {
+                    bgLastLoudMs = now;
+                }
+                const silentDuration = now - bgLastLoudMs;
+                const totalSpeechDuration = now - bgSpeechStartMs;
+
+                // Quando smetti di parlare per 1.3s (o dopo max 9s), valuta la frase
+                if (silentDuration > 1300 || totalSpeechDuration > 9000) {
+                    bgIsCapturingSpeech = false;
+
+                    // Se era solo un colpo di tosse o un click (< 650ms totali), ignora senza chiamare l'API
+                    if (totalSpeechDuration < 650 || bgSpeechChunks.length < 2) {
+                        bgSpeechChunks = [];
+                        updateHeyTrackerHeaderBadge('standby');
+                        return;
+                    }
+
+                    bgIsEvaluating = true;
+                    updateHeyTrackerHeaderBadge('checking');
+
+                    const mimeType = bgRollingRecorder.mimeType || 'audio/webm';
+                    const blobParts = bgHeaderChunk ? [bgHeaderChunk, ...bgSpeechChunks] : [...bgSpeechChunks];
+                    const fullBlob = new Blob(blobParts, { type: mimeType });
+                    bgSpeechChunks = [];
+
+                    stopNativeHeyTrackerStandby();
+                    const res = await queryOrRefineWithGemini({
+                        audioBlob: fullBlob,
+                        mimeType: mimeType,
+                        isWakeWordCheck: true
+                    });
+                    bgIsEvaluating = false;
+
+                    // Se NON avevi detto "Hey Tracker", torna silenziosamente in ascolto
+                    if (!res || !res.wakeWordDetected) {
+                        startNativeHeyTrackerStandby();
+                    }
+                }
+            }
+        }, 90);
+    } catch (e) {
+        updateHeyTrackerHeaderBadge('off');
+    }
+}
+
+function stopNativeHeyTrackerStandby() {
+    if (bgWakeLoopTimer) {
+        clearInterval(bgWakeLoopTimer);
+        bgWakeLoopTimer = null;
+    }
+    if (bgRollingRecorder && bgRollingRecorder.state !== 'inactive') {
+        try { bgRollingRecorder.stop(); } catch (e) {}
+    }
+    bgRollingRecorder = null;
+    bgIsCapturingSpeech = false;
+    updateHeyTrackerHeaderBadge('standby');
+}
+
+// ============================================================================
+// 2. APERTURA / CHIUSURA TERMINALE E REGISTRAZIONE COMANDO ATTIVO
+// ============================================================================
 
 function openTerminal(autoStartVoice = false) {
     const overlay = document.getElementById('terminalOverlay');
@@ -51,7 +314,7 @@ function openTerminal(autoStartVoice = false) {
     const answerBox = document.getElementById('terminal-ai-answer');
     if (!overlay || !input) return;
 
-    stopWakeWordListener();
+    stopNativeHeyTrackerStandby();
     cancelStaging();
     stopVoiceRecordingSilently();
 
@@ -89,8 +352,8 @@ function closeTerminal() {
     if (input) input.blur();
     if (answerBox) answerBox.style.display = 'none';
 
-    // Riattiva l'ascolto passivo "Hey Tracker" quando il terminale si chiude
-    setTimeout(startWakeWordListener, 400);
+    // Riattiva subito l'ascolto passivo nativo "Hey Tracker"
+    setTimeout(startNativeHeyTrackerStandby, 350);
 }
 
 function openShortcutsHelp() {
@@ -101,7 +364,7 @@ function openShortcutsHelp() {
 }
 
 // ============================================================================
-// STAGING AREA + ASCOLTO AUTOMATICO DEL VERDETTO ("VA BENE" / "RITENTA")
+// 3. STAGING AREA + VERDETTO VOCALE NATIVO ("VA BENE" / "RITENTA" / "ANNULLA")
 // ============================================================================
 
 function openStagingArea(transcriptText, commandsArray) {
@@ -118,11 +381,10 @@ function openStagingArea(transcriptText, commandsArray) {
     renderStagingCommandList();
 
     if (feedback) {
-        feedback.textContent = 'Say "VA BENE" (or press Enter) to Confirm, "RITENTA" (or R) to Retry, "ANNULLA" (or Esc) to Cancel.';
+        feedback.textContent = 'Say "VA BENE" (or Enter) to Confirm, "RITENTA" (or R) to Retry, "ANNULLA" (or Esc) to Cancel.';
         feedback.style.color = 'var(--accent-green)';
     }
 
-    // Avvia l'ascolto vocale per "Va bene" / "Ritenta" / "Annulla"
     startStagingVerdictListener();
 }
 
@@ -187,67 +449,121 @@ function renderStagingCommandList() {
     });
 }
 
-function startStagingVerdictListener() {
+// Ascolta "Va bene" / "Ritenta" / "Annulla" tramite microfono nativo + Gemini (zero webkitSpeechRecognition)
+async function startStagingVerdictListener() {
     stopStagingVerdictListener();
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!geminiApiKey) return;
+
     const statusEl = document.getElementById('staging-voice-verdict-status');
-    if (!SpeechRec) return;
+    const ok = await ensureSharedMicAnalyser();
+    if (!ok) return;
+
+    if (statusEl) statusEl.textContent = '[◉ SAY: "VA BENE" / "RITENTA" / "ANNULLA"]';
+
+    let vHeader = null;
+    let vPreRoll = [];
+    let vSpeech = [];
+    let vStartMs = 0;
+    let vLastLoudMs = 0;
+    let vLoudFrames = 0;
+    isVerdictCapturing = false;
+    isVerdictEvaluating = false;
 
     try {
-        verdictRec = new SpeechRec();
-        verdictRec.lang = 'it-IT';
-        verdictRec.continuous = true;
-        verdictRec.interimResults = true;
-
-        verdictRec.onstart = () => {
-            if (statusEl) statusEl.textContent = '[● LISTENING: "VA BENE" / "RITENTA"]';
-        };
-
-        verdictRec.onresult = (event) => {
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const phrase = event.results[i][0].transcript.toLowerCase().trim();
-                if (phrase.includes('va bene') || phrase.includes('conferma') || phrase.includes('esegui') || phrase === 'sì' || phrase === 'si' || phrase === 'ok') {
-                    stopStagingVerdictListener();
-                    confirmStagingCommands();
-                    return;
-                }
-                if (phrase.includes('ritenta') || phrase.includes('riprova') || phrase.includes('rifai')) {
-                    stopStagingVerdictListener();
-                    retryVoiceCapture();
-                    return;
-                }
-                if (phrase.includes('annulla') || phrase.includes('cancella') || phrase.includes('chiudi')) {
-                    stopStagingVerdictListener();
-                    closeTerminal();
-                    return;
-                }
+        verdictRecorder = new MediaRecorder(sharedMicStream);
+        verdictRecorder.ondataavailable = (e) => {
+            if (!e.data || e.data.size === 0) return;
+            if (!vHeader) {
+                vHeader = e.data;
+                return;
+            }
+            if (isVerdictCapturing) {
+                vSpeech.push(e.data);
+            } else {
+                vPreRoll.push(e.data);
+                if (vPreRoll.length > 3) vPreRoll.shift();
             }
         };
+        verdictRecorder.start(200);
 
-        verdictRec.onerror = () => {
-            if (statusEl) statusEl.textContent = '';
-        };
+        verdictLoopTimer = setInterval(async () => {
+            if (!isStagingActive || isVerdictEvaluating) return;
 
-        verdictRec.onend = () => {
-            if (isStagingActive && verdictRec) {
-                try { verdictRec.start(); } catch (e) {}
-            } else if (statusEl) {
-                statusEl.textContent = '';
+            const rms = readCurrentMicRms();
+            const now = Date.now();
+
+            if (!isVerdictCapturing) {
+                if (rms > 0.028) {
+                    vLoudFrames++;
+                    if (vLoudFrames >= 2) {
+                        isVerdictCapturing = true;
+                        vStartMs = now;
+                        vLastLoudMs = now;
+                        vSpeech = [...vPreRoll];
+                        vPreRoll = [];
+                        vLoudFrames = 0;
+                        if (statusEl) statusEl.textContent = '[● HEARING VERDICT...]';
+                    }
+                } else {
+                    vLoudFrames = 0;
+                }
+            } else {
+                if (rms > 0.022) vLastLoudMs = now;
+                const silentMs = now - vLastLoudMs;
+                const totalMs = now - vStartMs;
+
+                if (silentMs > 1050 || totalMs > 4000) {
+                    isVerdictCapturing = false;
+                    if (totalMs < 400 || vSpeech.length === 0) {
+                        vSpeech = [];
+                        if (statusEl) statusEl.textContent = '[◉ SAY: "VA BENE" / "RITENTA" / "ANNULLA"]';
+                        return;
+                    }
+
+                    isVerdictEvaluating = true;
+                    if (statusEl) statusEl.textContent = '[◈ VERIFYING...]';
+
+                    const mimeType = verdictRecorder.mimeType || 'audio/webm';
+                    const blobParts = vHeader ? [vHeader, ...vSpeech] : [...vSpeech];
+                    const verdictBlob = new Blob(blobParts, { type: mimeType });
+                    vSpeech = [];
+
+                    const verdict = await evaluateSpokenStagingVerdict(verdictBlob, mimeType);
+                    isVerdictEvaluating = false;
+
+                    if (!isStagingActive) return;
+
+                    if (verdict === 'confirm') {
+                        stopStagingVerdictListener();
+                        confirmStagingCommands();
+                    } else if (verdict === 'retry') {
+                        stopStagingVerdictListener();
+                        retryVoiceCapture();
+                    } else if (verdict === 'cancel') {
+                        stopStagingVerdictListener();
+                        closeTerminal();
+                    } else if (statusEl) {
+                        statusEl.textContent = '[◉ SAY: "VA BENE" / "RITENTA" / "ANNULLA"]';
+                    }
+                }
             }
-        };
-
-        verdictRec.start();
+        }, 85);
     } catch (e) {}
 }
 
 function stopStagingVerdictListener() {
     const statusEl = document.getElementById('staging-voice-verdict-status');
     if (statusEl) statusEl.textContent = '';
-    if (verdictRec) {
-        const r = verdictRec;
-        verdictRec = null;
-        try { r.abort(); } catch (e) {}
+    if (verdictLoopTimer) {
+        clearInterval(verdictLoopTimer);
+        verdictLoopTimer = null;
     }
+    if (verdictRecorder && verdictRecorder.state !== 'inactive') {
+        try { verdictRecorder.stop(); } catch (e) {}
+    }
+    verdictRecorder = null;
+    isVerdictCapturing = false;
+    isVerdictEvaluating = false;
 }
 
 function cancelStaging() {
@@ -291,7 +607,7 @@ function retryVoiceCapture() {
 }
 
 // ============================================================================
-// REGISTRAZIONE VOCALE CON RILEVAMENTO AUTOMATICO DEL SILENZIO (ZERO-CLICK)
+// 4. REGISTRAZIONE VOCALE MANUALE/ATTIVA NEL TERMINALE (CON AUTO-SILENCE STOP)
 // ============================================================================
 
 function toggleVoiceCapture() {
@@ -321,125 +637,82 @@ function cleanupVadMonitor() {
         clearInterval(vadInterval);
         vadInterval = null;
     }
-    if (vadAudioContext) {
-        try { vadAudioContext.close(); } catch (e) {}
-        vadAudioContext = null;
-    }
 }
 
 function stopVoiceRecordingSilently() {
     cleanupVadMonitor();
     if (mediaRecorder && mediaRecorder.state !== 'inactive') {
         mediaRecorder.onstop = null;
-        mediaRecorder.stop();
-    }
-    if (mediaRecorder && mediaRecorder.stream) {
-        mediaRecorder.stream.getTracks().forEach(t => t.stop());
-    }
-    if (speechRecInstance) {
-        try { speechRecInstance.abort(); } catch (e) {}
-        speechRecInstance = null;
+        try { mediaRecorder.stop(); } catch (e) {}
     }
     setMicButtonUI(false);
 }
 
-// Monitora il volume del microfono e ferma automaticamente la registrazione dopo ~1.6s di silenzio
-function attachSilenceDetector(stream) {
+function attachSilenceDetector() {
     cleanupVadMonitor();
-    try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        vadAudioContext = new AudioCtx();
-        const source = vadAudioContext.createMediaStreamSource(stream);
-        const analyser = vadAudioContext.createAnalyser();
-        analyser.fftSize = 512;
-        source.connect(analyser);
+    let hasSpoken = false;
+    let silenceStart = Date.now();
+    const recordingStart = Date.now();
 
-        const data = new Uint8Array(analyser.fftSize);
-        let hasSpoken = false;
-        let silenceStart = Date.now();
-        const recordingStart = Date.now();
+    vadInterval = setInterval(() => {
+        if (!isRecordingVoice) {
+            cleanupVadMonitor();
+            return;
+        }
+        const rms = readCurrentMicRms();
 
-        vadInterval = setInterval(() => {
-            if (!isRecordingVoice) {
-                cleanupVadMonitor();
-                return;
+        if (rms > 0.024) {
+            hasSpoken = true;
+            silenceStart = Date.now();
+        } else {
+            const silentMs = Date.now() - silenceStart;
+            const totalMs = Date.now() - recordingStart;
+            if ((hasSpoken && silentMs > 1550) || (!hasSpoken && totalMs > 6500)) {
+                stopVoiceRecordingAndProcess();
             }
-            analyser.getByteTimeDomainData(data);
-            let sum = 0;
-            for (let i = 0; i < data.length; i++) {
-                const v = (data[i] - 128) / 128;
-                sum += v * v;
-            }
-            const rms = Math.sqrt(sum / data.length);
-
-            if (rms > 0.022) {
-                hasSpoken = true;
-                silenceStart = Date.now();
-            } else {
-                const silentMs = Date.now() - silenceStart;
-                const totalMs = Date.now() - recordingStart;
-                // Se hai parlato e fai pausa per 1.6s (oppure 6s di silenzio totale), invia in automatico
-                if ((hasSpoken && silentMs > 1650) || (!hasSpoken && totalMs > 6000)) {
-                    stopVoiceRecordingAndProcess();
-                }
-            }
-        }, 100);
-    } catch (e) {}
+        }
+    }, 95);
 }
 
 async function startVoiceRecording() {
-    stopWakeWordListener();
+    stopNativeHeyTrackerStandby();
     stopStagingVerdictListener();
     cancelStaging();
 
-    if (geminiApiKey) {
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            audioChunks = [];
-            mediaRecorder = new MediaRecorder(stream);
-
-            mediaRecorder.ondataavailable = (e) => {
-                if (e.data && e.data.size > 0) audioChunks.push(e.data);
-            };
-
-            mediaRecorder.onstop = async () => {
-                cleanupVadMonitor();
-                stream.getTracks().forEach(t => t.stop());
-                const mimeType = mediaRecorder.mimeType || 'audio/webm';
-                const audioBlob = new Blob(audioChunks, { type: mimeType });
-                await queryOrRefineWithGemini({ audioBlob, mimeType });
-            };
-
-            mediaRecorder.start();
-            setMicButtonUI(true);
-            attachSilenceDetector(stream);
-            return;
-        } catch (err) {
-            setMicButtonUI(false);
-            return;
+    if (!geminiApiKey) {
+        const feedback = document.getElementById('terminal-feedback');
+        if (feedback) {
+            feedback.textContent = 'Add your free Gemini API Key in [CFG] to enable voice recognition.';
+            feedback.style.color = 'var(--accent-red)';
         }
+        return;
     }
 
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) return;
+    const ok = await ensureSharedMicAnalyser();
+    if (!ok) {
+        setMicButtonUI(false);
+        return;
+    }
 
     try {
-        speechRecInstance = new SpeechRec();
-        speechRecInstance.lang = 'it-IT';
-        speechRecInstance.interimResults = false;
-        speechRecInstance.maxAlternatives = 1;
+        audioChunks = [];
+        mediaRecorder = new MediaRecorder(sharedMicStream);
 
-        speechRecInstance.onresult = (event) => {
-            const transcript = event.results[0][0].transcript.trim();
-            setMicButtonUI(false);
-            openStagingArea(transcript, [transcript]);
+        mediaRecorder.ondataavailable = (e) => {
+            if (e.data && e.data.size > 0) audioChunks.push(e.data);
         };
-        speechRecInstance.onerror = () => setMicButtonUI(false);
-        speechRecInstance.onend = () => { if (isRecordingVoice) setMicButtonUI(false); };
 
-        speechRecInstance.start();
+        mediaRecorder.onstop = async () => {
+            cleanupVadMonitor();
+            const mimeType = mediaRecorder.mimeType || 'audio/webm';
+            const audioBlob = new Blob(audioChunks, { type: mimeType });
+            await queryOrRefineWithGemini({ audioBlob, mimeType, isWakeWordCheck: false });
+        };
+
+        mediaRecorder.start();
         setMicButtonUI(true);
-    } catch (e) {
+        attachSilenceDetector();
+    } catch (err) {
         setMicButtonUI(false);
     }
 }
@@ -448,68 +721,8 @@ function stopVoiceRecordingAndProcess() {
     if (!isRecordingVoice) return;
     cleanupVadMonitor();
     setMicButtonUI(false);
-    if (mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop();
-    if (speechRecInstance) { try { speechRecInstance.stop(); } catch (e) {} }
-}
-
-// ============================================================================
-// WAKE WORD CONTINUA "HEY TRACKER" (SEMPRE ATTIVA ALL'AVVIO SENZA SUONI)
-// ============================================================================
-
-function startWakeWordListener() {
-    if (!isHeyTrackerEnabled || wakeWordActive || isRecordingVoice || isStagingActive) return;
-    const termOverlay = document.getElementById('terminalOverlay');
-    if (termOverlay && termOverlay.style.display === 'flex') return;
-
-    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRec) return;
-
-    try {
-        wakeWordRec = new SpeechRec();
-        wakeWordRec.lang = 'it-IT';
-        wakeWordRec.continuous = true;
-        wakeWordRec.interimResults = true;
-
-        wakeWordRec.onstart = () => { wakeWordActive = true; };
-
-        wakeWordRec.onresult = (event) => {
-            for (let i = event.resultIndex; i < event.results.length; ++i) {
-                const text = event.results[i][0].transcript.toLowerCase();
-                if (
-                    text.includes('hey tracker') ||
-                    text.includes('ei tracker') ||
-                    text.includes('ehi tracker') ||
-                    text.includes('ok tracker')
-                ) {
-                    stopWakeWordListener();
-                    openTerminal(true);
-                    return;
-                }
-            }
-        };
-
-        wakeWordRec.onerror = () => { wakeWordActive = false; };
-
-        wakeWordRec.onend = () => {
-            wakeWordActive = false;
-            const isTermOpen = termOverlay && termOverlay.style.display === 'flex';
-            if (isHeyTrackerEnabled && !isTermOpen && !isRecordingVoice && !isStagingActive) {
-                setTimeout(startWakeWordListener, 800);
-            }
-        };
-
-        wakeWordRec.start();
-    } catch (e) {
-        wakeWordActive = false;
-    }
-}
-
-function stopWakeWordListener() {
-    wakeWordActive = false;
-    if (wakeWordRec) {
-        const r = wakeWordRec;
-        wakeWordRec = null;
-        try { r.abort(); } catch (e) {}
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+        try { mediaRecorder.stop(); } catch (e) {}
     }
 }
 
@@ -518,8 +731,9 @@ function stopWakeWordListener() {
 // ============================================================================
 
 window.addEventListener('DOMContentLoaded', () => {
+    ensureHeyTrackerHeaderBadge();
     updateGeminiKeyStatusUI();
-    setTimeout(startWakeWordListener, 1200);
+    setTimeout(startNativeHeyTrackerStandby, 900);
 
     const termInput = document.getElementById('terminal-input');
     const termFeedback = document.getElementById('terminal-feedback');
@@ -555,7 +769,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
                 const firstWord = rawVal.split(/\s+/)[0].toLowerCase();
                 if (firstWord === 'ai' && geminiApiKey) {
-                    queryOrRefineWithGemini({ rawText: rawVal.slice(2).trim() });
+                    queryOrRefineWithGemini({ rawText: rawVal.slice(2).trim(), isWakeWordCheck: false });
                     return;
                 }
 
@@ -564,8 +778,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     const modalCommands = ['?', 'help', 'plan', 'tomorrow', 'ledger', 'stats', 'food', 'macros', 'vault'];
                     if (!modalCommands.includes(firstWord)) closeTerminal();
                 } else if (geminiApiKey) {
-                    // Qualsiasi frase naturale o domanda viene gestita da Gemini Flash
-                    queryOrRefineWithGemini({ rawText: rawVal });
+                    queryOrRefineWithGemini({ rawText: rawVal, isWakeWordCheck: false });
                 } else if (termFeedback) {
                     termFeedback.textContent = 'Unknown command. Type ? for help or add Gemini API Key in [CFG].';
                     termFeedback.style.color = '#ff6666';
@@ -665,11 +878,6 @@ window.addEventListener('DOMContentLoaded', () => {
             case 'j':
             case 'J':
                 e.preventDefault(); openJournal(selectedDateStr); break;
-            case 'w':
-            case 'W':
-                e.preventDefault();
-                if (typeof toggleWeeklyFlexibleDrawer === 'function') toggleWeeklyFlexibleDrawer();
-                break;
             case 's':
             case 'S':
                 e.preventDefault();
