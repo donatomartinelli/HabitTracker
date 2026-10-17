@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Minimal Habit Tracker</title>
     
-    <!-- CSS Modulari -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/features.css">
@@ -14,7 +13,19 @@
 </head>
 <body>
 
-    <!-- DRAG REGION GLOBALE & CONTROLLI FINESTRA -->
+    <!-- FILTRO OTTICO SVG PER GELATINA ROSSA (Azzera canali G e B, mappa luminanza su R) -->
+    <svg width="0" height="0" style="position: absolute; pointer-events: none;">
+        <defs>
+            <filter id="red-gel-filter" color-interpolation-filters="sRGB">
+                <feColorMatrix type="matrix" values="
+                    0.45 0.40 0.15 0 0
+                    0.00 0.00 0.00 0 0
+                    0.00 0.00 0.00 0 0
+                    0.00 0.00 0.00 1 0" />
+            </filter>
+        </defs>
+    </svg>
+
     <div data-tauri-drag-region class="tauri-drag-bar"></div>
     
     <div class="window-controls">
@@ -23,109 +34,105 @@
 
     <!-- HEADER GLOBALE UNIFICATO -->
     <header class="app-header">
-        
-        <!-- PARTE SINISTRA: Orologio + Selettori Modulo -->
         <div class="header-left">
             <div class="clock-wrap">
                 <h1 id="global-clock">00:00 DAY 00</h1>
                 <span class="header-sep">|</span>
             </div>
             
-            <div class="module-switchers">
+            <!-- CONTROLLI WORKSPACE: SELETTORE PRESET + NUMERO QUADRANTI (0-4) -->
+            <div class="workspace-controls">
                 <div class="dropdown">
-                    <div class="module-title" onclick="document.getElementById('dropdown-left').classList.toggle('show')">
-                        <span id="title-left">DAILY</span>
+                    <div class="module-title" onclick="document.getElementById('dropdown-workspaces').classList.toggle('show')" title="Switch or save custom Workspace Views">
+                        <span id="active-workspace-label">VIEW: CUSTOM</span>
                         <span class="caret">▼</span>
                     </div>
-                    <div id="dropdown-left" class="dropdown-content" style="left: 0; right: auto;"></div>
+                    <div id="dropdown-workspaces" class="dropdown-content" style="left: 0; right: auto; min-width: 240px;" onclick="event.stopPropagation()"></div>
                 </div>
-                <span class="header-slash">/</span>
-                <div class="dropdown">
-                    <div class="module-title" onclick="document.getElementById('dropdown-right').classList.toggle('show')">
-                        <span id="title-right">PLANNER</span>
-                        <span class="caret">▼</span>
-                    </div>
-                    <div id="dropdown-right" class="dropdown-content" style="left: 0; right: auto;"></div>
+
+                <div class="slot-count-bar" title="Number of active quadrants on screen (0 = Zero-UI)">
+                    <button class="slot-count-btn" id="slot-btn-0" onclick="setQuadrantCount(0)">0</button>
+                    <button class="slot-count-btn" id="slot-btn-1" onclick="setQuadrantCount(1)">1</button>
+                    <button class="slot-count-btn" id="slot-btn-2" onclick="setQuadrantCount(2)">2</button>
+                    <button class="slot-count-btn" id="slot-btn-3" onclick="setQuadrantCount(3)">3</button>
+                    <button class="slot-count-btn" id="slot-btn-4" onclick="setQuadrantCount(4)">4</button>
                 </div>
             </div>
         </div>
 
-        <!-- PARTE CENTRALE: Consistency Strip + Metriche Numeriche -->
         <div class="header-center" onclick="openTrackerModal()" title="Click to view full consistency history &amp; focus hours">
             <div id="tracker-metrics" class="tracker-metrics">TODAY 0/0 | STREAK 0D</div>
             <div id="tracker-strip-1d" class="tracker-strip-1d"></div>
         </div>
 
-        <!-- PARTE DESTRA: Azioni Globali -->
         <div class="header-buttons">
-            <button class="btn btn-sm" onclick="openPlanTomorrowModal()" title="Evening Builder: Plan Tomorrow (Shortcut: P)">[PLAN TOMORROW]</button>
+            <button id="btn-red-mode" class="btn btn-sm" onclick="toggleRedMode()" title="Toggle Red Gelatin Mode (Shortcut: R)">[RED]</button>
+            <button class="btn btn-sm" onclick="openTerminal()" title="Open Command &amp; AI Bar (Ctrl+Space or say 'Hey Tracker')">[&gt;_ AI / CMD]</button>
+            <button class="btn btn-sm" onclick="openPlanTomorrowModal()" title="Evening Builder: Plan Tomorrow (Shortcut: P)">[PLAN TMW]</button>
             <button class="btn btn-sm" onclick="openTimerModal()" title="Focus Session Builder">[▶ FOCUS]</button>
             <button class="btn btn-sm" onclick="openCreationModal()" title="Add Habit, Event or Medicine">[+ NEW]</button>
             <button class="btn btn-sm" onclick="openManagerModal()" title="Manage &amp; Backup">[CFG]</button>
         </div>
     </header>
 
-    <!-- WRAPPER MODULARE DELLA DASHBOARD -->
-    <div id="app-content-wrapper" class="layout">
-        
-        <!-- PANE SINISTRO -->
-        <div id="pane-left" class="split-pane" style="width: 50%;">
-            <div id="content-left" class="pane-content"></div>
-        </div>
+    <!-- CONTENITORE GRIGLIA DINAMICA (0, 1, 2, 3, 4 QUADRANTI) -->
+    <div id="app-content-wrapper" class="layout grid-2"></div>
 
-        <!-- RESIZER VERTICALE -->
-        <div id="main-resizer" class="resizer-vertical" title="Drag to resize"></div>
-
-        <!-- PANE DESTRO -->
-        <div id="pane-right" class="split-pane" style="width: 50%;">
-            <div id="content-right" class="pane-content"></div>
-        </div>
-    </div>
-
-    <!-- MAGAZZINO MODULI (Invisibile: Il JS sposta i moduli da qui nei Pane) -->
+    <!-- ========================================== -->
+    <!-- MAGAZZINO DEI 7 MICRO-MODULI ATOMICI       -->
+    <!-- ========================================== -->
     <div id="module-registry" style="display: none;">
         
-        <!-- ========================================== -->
-        <!-- MODULO 1: DAILY                            -->
-        <!-- ========================================== -->
-        <div id="module-daily" class="module-container">
-            
-            <!-- Sezione Calendario Mensile -->
-            <div class="module-body-padded" style="flex: 0 0 auto; padding-bottom: 12px;">
-                <div class="calendar-header">
-                    <button class="nav-btn" onclick="changeMonth(-1)">[&lt;]</button>
-                    <span id="calendar-month-name">MONTH YEAR</span>
-                    <button class="nav-btn" onclick="changeMonth(1)">[&gt;]</button>
-                </div>
-                <div class="month-grid" id="calendar-grid"></div>
-            </div>
-
-            <!-- Sezione General To-Do Inbox -->
-            <div id="general-todo-section" class="general-todo-bar">
-                <div class="section-label" style="margin-bottom: 8px;">General To-Do Inbox</div>
-                <div class="dropdown" style="display: flex; align-items: center; gap: 8px; width: 100%;">
-                    <input type="text" id="new-g-todo" class="form-control form-control-sm" placeholder="Type task (or 'comprare X') and press Enter..." onkeydown="addGeneralTask(event)">
-                    <button class="btn btn-sm dropdown-btn" onclick="document.getElementById('todo-dropdown-content').classList.toggle('show')">[LIST ▼]</button>
-                    
-                    <div id="todo-dropdown-content" class="dropdown-content todo-dropdown-box" onclick="event.stopPropagation()">
-                        <div id="general-todo-list" class="todo-dropdown-list"></div>
-                        <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openAssignModal()">Assign Selected</button>
+        <!-- 1. MODULO ATOMICO: CALENDAR -->
+        <div id="module-calendar" class="module-container">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
+                <div class="section-header-row" style="margin-bottom: 0;">
+                    <span class="section-label">Monthly Calendar</span>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn btn-sm" onclick="jumpToDate(todayStr)">[TODAY]</button>
+                        <button class="btn btn-sm" onclick="openJournal(selectedDateStr)">[JOURNAL // J]</button>
                     </div>
                 </div>
-            </div>
 
-            <!-- Sezione Daily Tasks -->
-            <div id="left-daily-tasks" class="module-body-padded" style="flex: 1 1 auto; overflow-y: auto; min-height: 0;">
-                
-                <!-- Banner Priorità del Giorno (Impostato la sera prima con Plan Tomorrow) -->
-                <div id="daily-priority-banner" style="display: none; margin-bottom: 14px; padding: 8px 12px; border: 1px solid var(--text-main); background: rgba(255,255,255,0.03); font-size: var(--font-xs);"></div>
+                <div class="calendar-header">
+                    <button class="nav-btn" onclick="changeMonth(-1)">[&lt; PREV]</button>
+                    <span id="calendar-month-name">MONTH YEAR</span>
+                    <button class="nav-btn" onclick="changeMonth(1)">[NEXT &gt;]</button>
+                </div>
+
+                <div class="month-grid" id="calendar-grid"></div>
+
+                <div style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 12px; flex: 1; min-height: 0; overflow-y: auto;">
+                    <div class="sub-column-header" id="calendar-selected-day-label">SELECTED DATE OVERVIEW</div>
+                    <div id="calendar-day-summary" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. MODULO ATOMICO: TASKS -->
+        <div id="module-tasks" class="module-container">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0;">
+                <div id="daily-priority-banner" class="daily-priority-banner" style="display: none;"></div>
 
                 <div class="section-header-row">
-                    <span class="section-label">Daily Tasks</span>
-                    <span class="section-sub-hint">Hover task for quick actions</span>
+                    <div>
+                        <span class="section-label">Daily Tasks</span>
+                        <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 8px;"></span>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <div class="dropdown">
+                            <button class="btn btn-sm dropdown-btn" id="btn-inbox-toggle" onclick="document.getElementById('todo-dropdown-content').classList.toggle('show')">[INBOX (0) ▼]</button>
+                            <div id="todo-dropdown-content" class="dropdown-content todo-dropdown-box" onclick="event.stopPropagation()">
+                                <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-bottom: 8px;" placeholder="+ Quick inbox item (or 'comprare X')..." onkeydown="addGeneralTask(event)">
+                                <div id="general-todo-list" class="todo-dropdown-list"></div>
+                                <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openAssignModal()">Assign Selected to Date</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
-                <div id="today-tasks" class="daily-columns-wrap">
+                <div id="today-tasks" class="daily-columns-wrap" style="flex: 1;">
                     <div id="scheduled-tasks-col" style="flex: 1; min-width: 0;">
                         <div class="sub-column-header">Scheduled</div>
                         <div id="scheduled-tasks-list"></div>
@@ -136,15 +143,14 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Cassetto Note -->
-            <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [N] to toggle"></div>
-            <!-- Cassetto Note + Pipeline Registratore Sony -->
-            <div id="notes-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [N] to toggle"></div>
-            <div id="notes-section" class="notes-section collapsed" style="display: none;">
-                <div class="notes-controls">
+        <!-- 3. MODULO ATOMICO: NOTES -->
+        <div id="module-notes" class="module-container">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+                <div class="notes-controls" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
                     <div style="display: flex; gap: 12px; align-items: center;">
-                        <span class="section-label" style="color: var(--text-main);">Notes</span>
+                        <span class="section-label" style="color: var(--text-main);">Notes Workspace</span>
                         <label class="notes-toggle">
                             <input type="checkbox" id="notes-mode-checkbox" onchange="toggleNotesMode()">
                             <span class="notes-slider">
@@ -154,41 +160,42 @@
                         </label>
                         <span id="sony-pipeline-status" style="font-size: var(--font-xs); color: var(--accent-gold); font-weight: bold;"></span>
                     </div>
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <!-- Selettore Intera Cartella Registratore Sony -->
-                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select Sony Recorder folder: transcribes only NEW audio files into 'Registrazioni'">
-                            [SYNC FOLDER]
+
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 140px;" placeholder="Filter text..." oninput="filterNotesView(this.value)">
+                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select Sony Recorder folder">
+                            [SYNC SONY]
                             <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
                         </label>
-                        <!-- Selettore Singoli File Audio -->
-                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select individual audio files (.mp3, .wav, .m4a) to transcribe into 'Registrazioni'">
+                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select audio files">
                             [+ AUDIO]
                             <input type="file" id="sony-files-input" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac" multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
                         </label>
-                        <select id="note-category" class="form-control form-control-sm" style="width: 150px; font-weight: bold;" onchange="refreshNotesView()"></select>
+                        <select id="note-category" class="form-control form-control-sm" style="width: 145px; font-weight: bold;" onchange="refreshNotesView()"></select>
                         <button class="btn btn-sm" onclick="openManageNotesModal()" title="Manage Note Categories">[CATS]</button>
                     </div>
                 </div>
+
                 <div style="display: flex; flex: 1; min-height: 0;">
-                    <textarea id="note-text" class="form-control" style="flex: 1; resize: none;" placeholder="Write your idea and press Enter..." onkeydown="handleNoteKeyDown(event)" oninput="handleNoteInput()"></textarea>
+                    <textarea id="note-text" class="form-control" style="flex: 1; height: 100%; resize: none; line-height: 1.5; padding: 14px;" placeholder="Write your idea and press Enter..." onkeydown="handleNoteKeyDown(event)" oninput="handleNoteInput()"></textarea>
                 </div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- MODULO 2: PLANNER                          -->
-        <!-- ========================================== -->
+        <!-- 4. MODULO ATOMICO: PLANNER -->
         <div id="module-planner" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
-                <div id="view-planner" class="tracker-content active" style="flex: 1; flex-direction: column; margin-top: 0; gap: 0;">
-                    
+                <div id="view-planner" class="tracker-content active" style="flex: 1; display: flex; flex-direction: column; margin-top: 0; gap: 0;">
                     <div class="section-header-row" style="padding-bottom: 12px;">
                         <span class="section-label">Weekly Planner</span>
-                        <div class="dropdown">
-                            <button class="btn btn-sm dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">[GHOST LAYERS ▼]</button>
-                            <div id="ghost-dropdown" class="dropdown-content" style="right: 0;">
-                                <div id="reference-toggles-list" style="max-height: 200px; overflow-y: auto; padding: 8px;"></div>
-                                <button class="btn btn-sm" style="width: calc(100% - 16px); margin: 8px; border-style: dashed;" onclick="openReferenceModal()">+ New Layer</button>
+                        <div style="display: flex; gap: 6px;">
+                            <button class="btn btn-sm" onclick="toggleWeeklyFlexibleDrawer()">[FLEX DRAWER // W]</button>
+                            <div class="dropdown">
+                                <button class="btn btn-sm dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">[GHOST LAYERS ▼]</button>
+                                <div id="ghost-dropdown" class="dropdown-content" style="right: 0;">
+                                    <div id="reference-toggles-list" style="max-height: 200px; overflow-y: auto; padding: 8px;"></div>
+                                    <button class="btn btn-sm" style="width: calc(100% - 16px); margin: 8px; border-style: dashed;" onclick="openReferenceModal()">+ New Layer</button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -202,73 +209,70 @@
                     </div>
                 </div>
             </div>
-            
-            <!-- Cassetto Settimanale -->
             <div id="weekly-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [W] to toggle"></div>
             <div id="weekly-drawer" class="notes-section collapsed" style="display: none;">
                 <div id="drawer-days-row" style="display: flex; gap: 4px; padding-left: 45px; flex: 1; overflow-y: auto;"></div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- MODULO 3: HEALTH                           -->
-        <!-- ========================================== -->
-        <div id="module-health" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 18px; overflow-y: auto;">
-                
-                <!-- Sezione Dieta & Calcolo Automatico Calorie/Macro -->
-                <div style="flex: 0 0 auto; display: flex; flex-direction: column;">
-                    <div class="section-header-row">
-                        <div>
-                            <span class="section-label">Weekly Diet Plan &amp; Auto-Macros</span>
-                            <span class="section-sub-hint" style="margin-left: 10px;">Double-click any cell to edit</span>
+        <!-- 5. MODULO ATOMICO: DIET -->
+        <div id="module-diet" class="module-container">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
+                <div class="section-header-row" style="margin-bottom: 0;">
+                    <div>
+                        <span class="section-label">Weekly Diet &amp; Auto-Macros</span>
+                        <span class="section-sub-hint" style="margin-left: 8px;">Dbl-click cell to edit</span>
+                    </div>
+
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <div class="dropdown">
+                            <button class="btn btn-sm dropdown-btn" id="btn-weight-badge" onclick="document.getElementById('weight-popover').classList.toggle('show')" title="Click to log weight or view history">
+                                WEIGHT: <strong id="body-weight-display">-- KG</strong> <span id="body-weight-delta" style="color: var(--text-dim);"></span>
+                            </button>
+                            <div id="weight-popover" class="dropdown-content" style="right: 0; width: 290px; padding: 12px;" onclick="event.stopPropagation()">
+                                <div class="sub-column-header">Log Body Weight</div>
+                                <div style="display: flex; gap: 6px; margin-bottom: 10px;">
+                                    <input type="number" id="body-weight-input" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg (74.5)" style="width: 85px;">
+                                    <input type="text" id="body-note-input" class="form-control form-control-sm" placeholder="Note / BF%..." style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBodyMetricLog();}">
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="addBodyMetricLog()">[+]</button>
+                                </div>
+                                <div class="sub-column-header">Recent Logs</div>
+                                <div id="body-history-chips" style="display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto;"></div>
+                            </div>
                         </div>
-                        <button class="btn btn-sm" onclick="openFoodDbModal()" title="Edit Nutritional Database (Kcal &amp; Macros per 100g)">[FOOD DB // MACROS]</button>
-                    </div>
-                    <div id="diet-main-content" style="width: 100%;"></div>
-                    <div id="diet-rules" class="diet-rules-bar"></div>
-                </div>
 
-                <!-- Sezione Peso Corporeo & Dati Fisici (Body Metrics) -->
-                <div class="body-metrics-bar">
-                    <div style="display: flex; align-items: baseline; gap: 12px;">
-                        <span class="section-label">Body Weight:</span>
-                        <span id="body-weight-display" class="body-weight-hero">-- KG</span>
-                        <span id="body-weight-delta" style="font-size: var(--font-xs); color: var(--text-dim);"></span>
-                    </div>
-
-                    <div id="body-history-chips" class="body-history-chips"></div>
-
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <input type="number" id="body-weight-input" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg (e.g. 74.5)" style="width: 95px;">
-                        <input type="text" id="body-note-input" class="form-control form-control-sm" placeholder="Note / BF% / Waist..." style="width: 135px;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBodyMetricLog();}">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="addBodyMetricLog()">[+ LOG]</button>
+                        <button class="btn btn-sm" onclick="openFoodDbModal()">[FOOD DB]</button>
                     </div>
                 </div>
 
-                <!-- Sezione Palestra -->
-                <div style="flex: 1; display: flex; flex-direction: column; min-height: 250px;">
-                    <div class="section-header-row">
-                        <span class="section-label">Workout Split</span>
-                        <div style="display: flex; gap: 8px; font-size: var(--font-xs); align-items: center;">
-                            <span style="color: var(--text-dim);">START:</span>
-                            <input type="date" id="gym-start-date" class="form-control form-control-sm" style="width: 125px;" onchange="updateGymDates()">
-                            <span style="color: var(--text-dim); margin-left: 4px;">END:</span>
-                            <input type="date" id="gym-end-date" class="form-control form-control-sm" style="width: 125px;" onchange="updateGymDates()">
-                        </div>
-                    </div>
-                    <div id="gym-main-content" style="flex: 1; display: flex; flex-direction: row; gap: 16px; overflow: hidden;"></div>
-                </div>
+                <div id="diet-main-content" style="width: 100%;"></div>
+                <div id="diet-rules" class="diet-rules-bar"></div>
             </div>
         </div>
 
-        <!-- ========================================== -->
-        <!-- MODULO 4: MONEY                            -->
-        <!-- ========================================== -->
+        <!-- 6. MODULO ATOMICO: GYM -->
+        <div id="module-gym" class="module-container">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+                <div class="section-header-row" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
+                    <span class="section-label">Workout Split &amp; Overload</span>
+                    <div style="display: flex; gap: 6px; font-size: var(--font-xs); align-items: center;">
+                        <span style="color: var(--text-dim);">START:</span>
+                        <input type="date" id="gym-start-date" class="form-control form-control-sm" style="width: 120px;" onchange="updateGymDates()">
+                        <span style="color: var(--text-dim);">END:</span>
+                        <input type="date" id="gym-end-date" class="form-control form-control-sm" style="width: 120px;" onchange="updateGymDates()">
+                        <button id="btn-toggle-gym-edit" class="btn btn-sm" onclick="toggleGymEditMode()">[EDIT SPLIT]</button>
+                    </div>
+                </div>
+
+                <div id="meds-main-content" style="display: none; flex: 0 0 auto; padding: 7px 12px; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color);"></div>
+
+                <div id="gym-main-content" style="flex: 1; display: flex; flex-direction: row; gap: 16px; overflow: hidden; min-height: 0;"></div>
+            </div>
+        </div>
+
+        <!-- 7. MODULO ATOMICO: MONEY -->
         <div id="module-money" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
-                
-                <!-- Barra Doppio Saldo (Total vs Spendable Reale) e Azioni -->
                 <div class="money-top-bar">
                     <div>
                         <div class="balance-cards-row">
@@ -289,10 +293,7 @@
                     </div>
                 </div>
 
-                <!-- Contenitore Unico Scrollabile -->
                 <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 6px;">
-
-                    <!-- Grafico a Scalini con Asse Min/Max e Hover -->
                     <div class="money-chart-box" id="m-chart-box">
                         <div class="chart-meta-top">
                             <span>LAST 30 TRANSACTIONS</span>
@@ -308,7 +309,6 @@
                         </div>
                     </div>
 
-                    <!-- STATISTICHE VISIVE: Doppio Grafico a Torta (Spese per Categoria & Allocazione Capitale) -->
                     <div class="money-analytics-grid">
                         <div class="pie-card">
                             <div class="sub-column-header" style="margin-bottom: 2px;">Expenses by Category</div>
@@ -317,7 +317,6 @@
                                 <div class="pie-legend" id="m-legend-expenses"></div>
                             </div>
                         </div>
-
                         <div class="pie-card">
                             <div class="sub-column-header" style="margin-bottom: 2px;">Capital Allocation</div>
                             <div class="pie-card-body">
@@ -327,7 +326,6 @@
                         </div>
                     </div>
 
-                    <!-- SALVADANAI (VAULTS) CON REGOLE AUTOMATICHE -->
                     <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
                         <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <span>Vaults // Salvadanai &amp; Auto-Rules</span>
@@ -336,7 +334,6 @@
                         <div id="m-vaults-container" class="vaults-grid"></div>
                     </div>
                     
-                    <!-- Ideas Incubator -->
                     <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
                         <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <span>Ideas Incubator</span>
@@ -345,7 +342,6 @@
                         <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                     </div>
 
-                    <!-- Recurring & Recent History -->
                     <div style="display: flex; flex-direction: row; gap: 16px; flex: 0 0 auto;">
                         <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
                             <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
@@ -354,7 +350,6 @@
                             </div>
                             <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
-
                         <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
                             <div class="sub-column-header">Recent History</div>
                             <div id="m-history-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
@@ -364,891 +359,65 @@
             </div>
         </div>
 
-    </div> <!-- FINE MAGAZZINO MODULI -->
+    </div> <!-- FINE MAGAZZINO 7 MODULI -->
 
+    <!-- RADICE MODALI INIETTATI DA js/modules/modals.js -->
+    <div id="modals-root"></div>
 
-    <!-- ================================================================= -->
-    <!-- MODALS & OVERLAYS                                                 -->
-    <!-- ================================================================= -->
-    
-    <!-- 1. Journal Modal (Diario) -->
-    <div id="journalModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 600px; height: 70vh; display: flex; flex-direction: column;">
-            <h2 id="journal-title">Journal</h2>
-            <input type="hidden" id="journal-date-hidden">
-            <p class="modal-subtitle">Write your daily log, reflections, or review.</p>
-            <textarea id="journal-text" class="form-control" style="flex: 1; resize: none; line-height: 1.5; padding: 15px;" placeholder="Log entry..."></textarea>
-            <div class="modal-actions">
-                <button class="btn" onclick="closeModals()">Close [Esc]</button>
-                <button class="btn btn-primary" onclick="saveJournal()">Save Log</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 2. Pomodoro Timer Overlay -->
-    <div id="pomodoroOverlay" class="pomodoro-overlay">
-        <div id="widget-drag-handle">
-            <span style="flex: 1; text-align: left;">:: FOCUS WIDGET</span>
-            <button id="btn-widget-mode-full" class="icon-btn" style="font-size: var(--font-xs); padding-right: 8px;" onclick="toggleWidgetMode()">[+ FULL]</button>
-        </div>
-        
-        <div id="focus-split-container" style="display: flex; width: 100%; height: 100%;">
-            <div id="focus-timer-section" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; position: relative;">
-                <button id="btn-widget-mode" class="btn btn-sm" style="position: absolute; top: 25px; left: 25px;" onclick="toggleWidgetMode()">[_ MINI WIDGET]</button>
-                <h2 id="pomodoro-task-title" style="color: white; margin-bottom: 25px; text-align: center; font-weight: bold; border: none;">Task Name</h2>
-                
-                <div class="timer-circle-wrapper">
-                    <svg class="progress-ring" width="360" height="360" id="pomodoro-svg">
-                        <circle stroke="#1a1a1a" stroke-width="4" fill="transparent" r="160" cx="180" cy="180" />
-                        <circle id="pomodoro-circle" class="progress-ring__circle" stroke="#ffffff" stroke-width="4" fill="transparent" r="160" cx="180" cy="180" />
-                    </svg>
-                    <div class="timer-text-hover" id="pomodoro-time-text">25:00</div>
-                </div>
-                
-                <div id="focus-controls" style="display: flex; gap: 12px; margin-top: 35px; z-index: 501;">
-                    <button id="btn-pomodoro-pause" class="btn btn-primary" onclick="togglePomodoroPause()">Pause</button>
-                    <button class="btn" onclick="skipPomodoroPhase()">Skip</button>
-                    <button class="btn" onclick="resetPomodoroPhase()">Reset</button>
-                    <button class="btn btn-danger" onclick="stopPomodoro()">Abort</button>
-                </div>
-            </div>
-            
-            <div id="focus-notes-section" style="flex: 1; border-left: 1px solid var(--border-color); background: rgba(0,0,0,0.6); padding: 30px; display: flex; flex-direction: column;">
-                <div class="notes-controls" style="margin-bottom: 15px;">
-                    <span class="section-label" style="color: var(--text-main);">Session Notes</span>
-                    <select id="focus-note-category" class="form-control form-control-sm" style="width: 160px; font-weight: bold;"></select>
-                </div>
-                <textarea id="focus-note-text" class="form-control" style="flex: 1; resize: none;" placeholder="Write your idea and press Enter..." onkeydown="handleFocusNoteKeyDown(event)"></textarea>
-            </div>
-        </div>
-    </div>
-
-    <!-- 3. Timer Setup Modal -->
-    <div id="timerSetupModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 460px;">
-            <h2>Focus Session Builder</h2>
-            <form id="timerSetupForm">
-                <p class="modal-subtitle">1. Select active tasks from selected date</p>
-                <div id="focus-available-tasks" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;"></div>
-                
-                <p class="modal-subtitle">2. Focus Playlist</p>
-                <div id="focus-playlist" style="display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.02); padding: 10px; border: 1px solid var(--border-color); min-height: 100px; margin-bottom: 20px;"></div>
-
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary" id="btn-start-playlist" disabled>Start Focus</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 4. Timer Complete Modal -->
-    <div id="timerCompleteModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
-            <h2>Session Complete</h2>
-            <p class="modal-subtitle">Select a task to check off:</p>
-            <div id="uncompleted-tasks-list" style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px;"></div>
-            <div class="modal-actions">
-                <button type="button" class="btn" onclick="closeModals()">Skip</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 5. Combined Creation Modal (Habits, Events, Medicines) -->
-    <div id="creationModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content">
-            <h2>Add to Planner</h2>
-            
-            <div class="task-type-toggle" style="margin-bottom: 20px;">
-                <label class="type-radio">
-                    <input type="radio" name="creation-type" value="habit" checked onchange="toggleCreationType()"> Habit / Task
-                </label>
-                <label class="type-radio">
-                    <input type="radio" name="creation-type" value="event" onchange="toggleCreationType()"> Single Event
-                </label>
-                <label class="type-radio">
-                    <input type="radio" name="creation-type" value="medicine" onchange="toggleCreationType()"> Medicine
-                </label>
-            </div>
-
-            <!-- FORM HABIT -->
-            <form id="habitForm">
-                <input type="hidden" id="h-id">
-                
-                <div class="form-group">
-                    <label>Category</label>
-                    <input type="text" id="h-category" class="form-control" placeholder="e.g. STUDIO, GYM" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Task Name</label>
-                    <input type="text" id="h-title" class="form-control" placeholder="e.g. Analisi II" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Color</label>
-                    <div class="color-palette" id="habit-color-palette">
-                        <div class="color-circle active" style="background: #ffffff;" data-color="#ffffff" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #b08d43;" data-color="#b08d43" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #725b7a;" data-color="#725b7a" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #6e7073;" data-color="#6e7073" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle custom-color-btn" onclick="document.getElementById('h-color').click()">+</div>
-                    </div>
-                    <input type="color" id="h-color" style="display: none;" value="#ffffff" onchange="updateCustomColor(this, 'h-color')">
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Start Date</label>
-                        <input type="date" id="h-startdate" class="form-control" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>End Date (optional)</label>
-                        <input type="date" id="h-enddate" class="form-control">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>Schedule Mode</label>
-                    <div class="task-type-toggle">
-                        <label class="type-radio">
-                            <input type="radio" name="h-type" value="timed" onchange="toggleHabitType()"> Timed (Grid)
-                        </label>
-                        <label class="type-radio">
-                            <input type="radio" name="h-type" value="untimed" checked onchange="toggleHabitType()"> Untimed (Flexible)
-                        </label>
-                    </div>
-                </div>
-
-                <div id="timed-section" style="display: none;">
-                    <div class="form-group">
-                        <label>Time Windows &amp; Days</label>
-                        <div id="h-time-windows-container"></div>
-                        <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addHabitTimeWindow()">+ Add Time Window</button>
-                    </div>
-                </div>
-
-                <div id="untimed-section">
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>Daily Repetitions</label>
-                            <input type="number" id="h-instances" class="form-control" value="1" min="1" max="50">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label>Default Timer (min)</label>
-                            <input type="number" id="h-timer" class="form-control" value="25" min="1">
-                        </div>
-                    </div>
-                    
-                    <div class="form-group">
-                        <label>Frequency</label>
-                        <select id="h-frequency" class="form-control" onchange="toggleDays()">
-                            <option value="all">Every day</option>
-                            <option value="weekdays">Weekdays (Mon-Fri)</option>
-                            <option value="weekends">Weekends (Sat-Sun)</option>
-                            <option value="specific">Specific days</option>
-                        </select>
-                    </div>
-                    
-                    <div class="form-group days-checkboxes" id="h-days-container" style="display: flex; gap: 10px;">
-                        <label class="day-check"><input type="checkbox" value="1"> Mon</label>
-                        <label class="day-check"><input type="checkbox" value="2"> Tue</label>
-                        <label class="day-check"><input type="checkbox" value="3"> Wed</label>
-                        <label class="day-check"><input type="checkbox" value="4"> Thu</label>
-                        <label class="day-check"><input type="checkbox" value="5"> Fri</label>
-                        <label class="day-check"><input type="checkbox" value="6"> Sat</label>
-                        <label class="day-check"><input type="checkbox" value="0"> Sun</label>
-                    </div>
-                </div>
-                
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Habit</button>
-                </div>
-            </form>
-
-            <!-- FORM EVENT -->
-            <form id="eventForm" style="display: none;">
-                <div class="form-group">
-                    <label>Event Name</label>
-                    <input type="text" id="e-title" class="form-control" required>
-                </div>
-                
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" id="e-date" class="form-control" required>
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Start Time (Optional)</label>
-                        <input type="time" id="e-start" class="form-control">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>End Time (Optional)</label>
-                        <input type="time" id="e-end" class="form-control">
-                    </div>
-                </div>
-                
-                <div class="form-group">
-                    <label>Color</label>
-                    <div class="color-palette" id="event-color-palette">
-                        <div class="color-circle active" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'e-color')"></div>
-                        <div class="color-circle" style="background: #5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'e-color')"></div>
-                        <div class="color-circle" style="background: #4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'e-color')"></div>
-                        <div class="color-circle" style="background: #b08d43;" data-color="#b08d43" onclick="selectColor(this, 'e-color')"></div>
-                        <div class="color-circle custom-color-btn" onclick="document.getElementById('e-color').click()">+</div>
-                    </div>
-                    <input type="color" id="e-color" style="display: none;" value="#b84b4b" onchange="updateCustomColor(this, 'e-color')">
-                </div>
-                
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Event</button>
-                </div>
-            </form>
-
-            <!-- FORM MEDICINE -->
-            <form id="medicineForm" style="display: none;">
-                <div class="form-group">
-                    <label>Medicine Name</label>
-                    <input type="text" id="med-title" class="form-control" placeholder="e.g. Vitamin D" required>
-                </div>
-                
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Doses per day</label>
-                        <input type="number" id="med-instances" class="form-control no-spinners" value="1" min="1" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Current Stock (Total doses)</label>
-                        <input type="number" id="med-stock" class="form-control no-spinners" placeholder="e.g. 30" required>
-                    </div>
-                </div>
-
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Start Date</label>
-                        <input type="date" id="med-startdate" class="form-control" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Alert Days Before Runout</label>
-                        <input type="number" id="med-alert" class="form-control no-spinners" value="7" min="1" required>
-                    </div>
-                </div>
-                
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Medicine</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 6. Rename Category Modal -->
-    <div id="renameModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
-            <h2>Rename Category</h2>
-            <form id="renameForm">
-                <input type="hidden" id="r-old-name">
-                <div class="form-group">
-                    <label>New Name</label>
-                    <input type="text" id="r-new-name" class="form-control" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 7. Manager & System Config Modal -->
-    <div id="managerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content">
-            <h2>System Configuration &amp; Habits</h2>
-            
-            <div class="cfg-box">
-                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 8px;">
-                    <span>Background Opacity</span>
-                    <span id="opacity-val">0.92</span>
-                </label>
-                <input type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="width: 100%; accent-color: var(--text-main);" oninput="updateOpacity(this.value)">
-            </div>
-
-            <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase;">Database Backup</span>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-sm" onclick="exportData()">[EXPORT JSON]</button>
-                    <label class="btn btn-sm" style="cursor: pointer; margin: 0;">
-                        [IMPORT JSON]
-                        <input type="file" accept=".json" style="display: none;" onchange="importData(event)">
-                    </label>
-                </div>
-            </div>
-
-            <div class="cfg-box">
-                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
-                    <span>AI Voice Refiner // Gemini Flash API Key (Optional)</span>
-                    <span id="gemini-key-status" style="color: var(--accent-green);"></span>
-                </label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="password" id="gemini-api-key-input" class="form-control form-control-sm" placeholder="Paste your Gemini API Key (AIzaSy...) for natural voice &amp; text..." oninput="handleGeminiKeyInput(this.value)">
-                    <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-api-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
-                </div>
-            </div>
-
-            <div class="cfg-box">
-                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
-                    <span>Sony Recorder Pipeline // Dedicated Gemini API Key (Optional)</span>
-                    <span id="gemini-audio-key-status" style="color: var(--text-dim);"></span>
-                </label>
-                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <input type="password" id="gemini-audio-key-input" class="form-control form-control-sm" placeholder="Paste 2nd API Key (or leave empty to use main key)..." oninput="handleGeminiAudioKeyInput(this.value)">
-                    <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-audio-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
-                </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span id="processed-audio-count" style="font-size: var(--font-xs); color: var(--text-dim);">0 audio files in history</span>
-                    <button type="button" class="btn btn-sm" onclick="resetProcessedAudioHistory()" title="Allow re-transcribing previously imported audio files">[RESET AUDIO MEMORY]</button>
-                </div>
-            </div>
-            
-            <div id="manager-list" class="manager-list"></div>
-            
-            <div class="quick-add-task new-calendar-add">
-                <span>+</span>
-                <input type="text" placeholder="Create new category and press Enter..." onkeypress="quickAddCalendar(event)">
-            </div>
-            
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="closeModals(); renderTasks();">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 8. Manage Note Categories Modal -->
-    <div id="manageNotesModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 420px;">
-            <h2>Note Categories</h2>
-            <div id="notes-manager-list" class="manager-list"></div>
-            
-            <div class="quick-add-task new-calendar-add">
-                <span>+</span>
-                <input type="text" placeholder="Add new category and press Enter..." onkeypress="quickAddNoteCategory(event)">
-            </div>
-            
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="closeModals(); renderNoteCategories();">Close</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 9. Delete Options Modal -->
-    <div id="deleteModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
-            <h2 id="delete-modal-title">Delete Options</h2>
-            <p class="modal-subtitle">Select action for <strong style="color: white;" id="delete-target-name"></strong>:</p>
-            
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button id="btn-del-single" class="btn" style="text-align: left; padding: 12px;" onclick="confirmDelete('single')">
-                    <strong>Delete for selected date only</strong>
-                </button>
-                <button id="btn-del-future" class="btn" style="text-align: left; padding: 12px;" onclick="confirmDelete('future')">
-                    <strong>Delete from selected date onwards</strong>
-                </button>
-                <button class="btn btn-danger" style="text-align: left; padding: 12px;" onclick="confirmDelete('all')">
-                    <strong>Delete completely from database</strong>
-                </button>
-            </div>
-            
-            <div class="modal-actions">
-                <button class="btn" onclick="closeModals()">Cancel</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 10. Assign General To-Do Modal -->
-    <div id="assignModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
-            <h2>Assign Tasks</h2>
-            <p class="modal-subtitle">Select target date for selected tasks:</p>
-            <form id="assignForm">
-                <div class="form-group">
-                    <label>Target Date</label>
-                    <input type="date" id="assign-date" class="form-control" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Confirm</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 11. Consistency Tracker & Focus Hours Ledger Modal (PASSO 1) -->
-    <div id="trackerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 780px; max-width: 94%;">
-            <h2>Consistency History &amp; Real Focus Ledger</h2>
-            
-            <div class="sub-column-header">Habit Completion Grid</div>
-            <div class="tracker-wrapper" style="margin-bottom: 22px;">
-                <div class="tracker-grid" id="github-tracker" style="margin-top: 5px;"></div>
-            </div>
-
-            <!-- CONTACHILOMETRI ORE REALI (FOCUS LEDGER) -->
-            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Real Focus Hours Ledger (Pomodoro &amp; Manual Logs)</span>
-                <span id="focus-ledger-summary" style="color: var(--text-main); font-weight: bold;">TOTAL: 0.0H</span>
-            </div>
-            <div id="focus-ledger-container" style="margin-bottom: 18px;"></div>
-
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="closeModals()">Close [Esc]</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 12. Evening Builder: Plan Tomorrow Modal (PASSO 1) -->
-    <div id="planTomorrowModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 820px; max-width: 95%; max-height: 88vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;">
-                <h2 style="margin: 0; border: none; padding: 0;">Evening Builder // Plan Tomorrow</h2>
-                <span id="plan-tmw-date-label" style="font-size: var(--font-sm); color: var(--text-dim); font-weight: bold;">YYYY-MM-DD</span>
-            </div>
-
-            <div style="display: flex; gap: 24px; flex: 1; overflow: hidden; min-height: 360px;">
-                
-                <!-- COLONNA SINISTRA: Fonti Automatiche (Unfinished Today + General To-Do + Constraints) -->
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 6px; border-right: 1px solid var(--border-color);">
-                    
-                    <div>
-                        <div class="sub-column-header">1. Unfinished Today (Rollover to Tomorrow)</div>
-                        <div id="plan-tmw-rollover" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-
-                    <div>
-                        <div class="sub-column-header">2. From General To-Do Inbox</div>
-                        <div id="plan-tmw-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-
-                    <div>
-                        <div class="sub-column-header">3. Fixed Constraints &amp; Active Split</div>
-                        <div id="plan-tmw-constraints" style="font-size: var(--font-xs); color: var(--text-muted); line-height: 1.6;"></div>
-                    </div>
-                </div>
-
-                <!-- COLONNA DESTRA: Scaletta di Domani + Priorità + Aggiunta Rapida -->
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
-                    
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Tomorrow's #1 Priority / Main Objective</label>
-                        <input type="text" id="plan-tmw-priority" class="form-control form-control-sm" placeholder="e.g. Complete Analysis II Chapter 4 proofs..." oninput="saveTomorrowPriority(this.value)">
-                    </div>
-
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Quick Add Task for Tomorrow</label>
-                        <div style="display: flex; gap: 6px;">
-                            <input type="text" id="plan-tmw-new-title" class="form-control form-control-sm" style="flex: 1;" placeholder="Task title..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addQuickTomorrowTask();}">
-                            <input type="time" id="plan-tmw-new-start" class="form-control form-control-sm" style="width: 92px;" title="Optional start time">
-                            <input type="time" id="plan-tmw-new-end" class="form-control form-control-sm" style="width: 92px;" title="Optional end time">
-                            <button type="button" class="btn btn-primary btn-sm" onclick="addQuickTomorrowTask()">[+ ADD]</button>
-                        </div>
-                    </div>
-
-                    <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                        <div class="sub-column-header">Tomorrow's Complete Lineup</div>
-                        <div id="plan-tmw-lineup" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn" onclick="closeModals()">Close</button>
-                <button type="button" class="btn btn-primary" onclick="closeModals(); jumpToDate(tomorrowStr);">Lock Plan &amp; View Tomorrow [&gt;]</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 13. Money Transaction Modal (+ IN / - OUT con Categoria) -->
-    <div id="mTransactionModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 420px;">
-            <h2 id="m-trans-title">New Transaction</h2>
-            <form id="mTransactionForm">
-                <input type="hidden" id="m-trans-type">
-                <div style="display: flex; gap: 12px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Amount (€)</label>
-                        <input type="number" id="m-trans-amount" class="form-control no-spinners" step="0.01" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;" id="m-trans-cat-group">
-                        <label>Category</label>
-                        <input type="text" id="m-trans-cat" list="m-cat-datalist" class="form-control" placeholder="e.g. Treno, Cinema">
-                        <datalist id="m-cat-datalist"></datalist>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <input type="text" id="m-trans-desc" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Date</label>
-                    <input type="date" id="m-trans-date" class="form-control" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 13B. Create / Edit Vault Modal (Salvadanaio) -->
-    <div id="mVaultModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
-            <h2>Create / Edit Vault (Salvadanaio)</h2>
-            <form id="mVaultForm">
-                <input type="hidden" id="m-vault-id">
-                <div class="form-group">
-                    <label>Vault Name</label>
-                    <input type="text" id="m-vault-name" class="form-control" placeholder="e.g. Fondo Emergenza, Viaggio" required>
-                </div>
-                <div style="display: flex; gap: 12px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Initial Deposit (€)</label>
-                        <input type="number" id="m-vault-balance" class="form-control no-spinners" step="0.01" value="0" min="0" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Target Goal (€, Optional)</label>
-                        <input type="number" id="m-vault-target" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 500">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Automatic Rule</label>
-                    <select id="m-vault-rule-type" class="form-control" onchange="toggleVaultRuleInput()">
-                        <option value="none">Manual only (No automatic rule)</option>
-                        <option value="percent_in">Auto-save % of every Income (+ IN)</option>
-                        <option value="monthly_fixed">Auto-save Fixed € on Day 1 of each Month</option>
-                    </select>
-                </div>
-                <div class="form-group" id="m-vault-rule-val-group" style="display: none;">
-                    <label id="m-vault-rule-val-label">Rule Value</label>
-                    <input type="number" id="m-vault-rule-val" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 15">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Vault</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 13C. Vault Transfer Modal (Versa / Preleva) -->
-    <div id="mVaultTransferModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 380px;">
-            <h2 id="m-vtrans-title">Vault Transfer</h2>
-            <form id="mVaultTransferForm">
-                <input type="hidden" id="m-vtrans-id">
-                <input type="hidden" id="m-vtrans-dir">
-                <div class="form-group">
-                    <label>Amount (€)</label>
-                    <input type="number" id="m-vtrans-amount" class="form-control no-spinners" step="0.01" min="0.01" required>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Confirm</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 14. Recurring Payment Modal -->
-    <div id="mRecurringModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
-            <h2>Add Recurring Payment</h2>
-            <form id="mRecurringForm">
-                <div class="form-group">
-                    <label>Name</label>
-                    <input type="text" id="m-rec-title" class="form-control" required>
-                </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Amount (€)</label>
-                        <input type="number" id="m-rec-amount" class="form-control no-spinners" step="0.01" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>Day of Month (1-31)</label>
-                        <input type="number" id="m-rec-day" class="form-control no-spinners" min="1" max="31" required>
-                    </div>
-                </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label>Start Date</label>
-                        <input type="date" id="m-rec-start" class="form-control" required>
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label>End Date (Optional)</label>
-                        <input type="date" id="m-rec-end" class="form-control">
-                    </div>
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 15. Purchase Idea Modal -->
-    <div id="mWishlistModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
-            <h2>Purchase Idea</h2>
-            <form id="mWishlistForm">
-                <div class="form-group">
-                    <label>Item Name</label>
-                    <input type="text" id="m-wish-title" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Estimated Cost (€, Optional)</label>
-                    <input type="number" id="m-wish-cost" class="form-control no-spinners" step="0.01">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-    
-    <!-- 16. Ghost Layer Modal -->
-    <div id="referenceModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
-            <h2>Add Ghost Layer</h2>
-            <form id="referenceForm">
-                <input type="hidden" id="ref-id">
-                <div class="form-group">
-                    <label>Layer Name</label>
-                    <input type="text" id="ref-title" class="form-control" required>
-                </div>
-                <div class="form-group">
-                    <label>Time Windows &amp; Days</label>
-                    <div id="ref-time-windows-container"></div>
-                    <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addRefTimeWindow()">+ Add Time Window</button>
-                </div>
-                <div class="form-group">
-                    <label>Color</label>
-                    <div class="color-palette" id="ref-color-palette">
-                        <div class="color-circle active" style="background: #444444;" data-color="#444444" onclick="selectColor(this, 'r-color')"></div>
-                        <div class="color-circle" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'r-color')"></div>
-                        <div class="color-circle custom-color-btn" onclick="document.getElementById('r-color').click()">+</div>
-                    </div>
-                    <input type="color" id="r-color" style="display: none;" value="#444444" onchange="updateCustomColor(this, 'r-color')">
-                </div>
-                <div class="modal-actions">
-                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- 16B. Nutritional Database Modal (Valori per 100g) -->
-    <div id="foodDbModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 680px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
-            <h2>Nutritional Database (Values per 100g)</h2>
-            <p class="modal-subtitle">Used to automatically estimate daily Kcal, Proteins (P), Carbs (C) and Fats (F) from your Diet table.</p>
-
-            <!-- Form Aggiunta Rapida Alimento -->
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; gap: 6px; margin-bottom: 14px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
-                <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">FOOD NAME</label>
-                    <input type="text" id="fdb-name" class="form-control form-control-sm" placeholder="e.g. Avena">
-                </div>
-                <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">KCAL/100G</label>
-                    <input type="number" id="fdb-kcal" class="form-control form-control-sm no-spinners" placeholder="389">
-                </div>
-                <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">PROT (G)</label>
-                    <input type="number" id="fdb-p" class="form-control form-control-sm no-spinners" step="0.1" placeholder="16.9">
-                </div>
-                <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">CARB (G)</label>
-                    <input type="number" id="fdb-c" class="form-control form-control-sm no-spinners" step="0.1" placeholder="66.3">
-                </div>
-                <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">FAT (G)</label>
-                    <input type="number" id="fdb-f" class="form-control form-control-sm no-spinners" step="0.1" placeholder="6.9">
-                </div>
-                <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">STD GRAMS</label>
-                    <input type="number" id="fdb-defg" class="form-control form-control-sm no-spinners" placeholder="100" value="100">
-                </div>
-                <button type="button" class="btn btn-primary btn-sm" style="height: 29px;" onclick="addFoodDbItem()">[+ ADD]</button>
-            </div>
-
-            <div id="food-db-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 6px;"></div>
-
-            <div class="modal-actions">
-                <button type="button" class="btn btn-primary" onclick="closeModals(); renderDiet();">Save &amp; Recalculate</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 17. Tooltip Globale Planner -->
-    <div id="planner-tooltip" class="planner-tooltip"></div>
-
-    <!-- 18. Barra di Comando Universale con Voice Control & AI Staging Area -->
+    <!-- TERMINAL OVERLAY CON RISPOSTA AI E STAGING VOCALE -->
     <div id="terminalOverlay" class="terminal-overlay" onclick="if(event.target === this) closeTerminal()">
         <div class="terminal-box">
             <div class="terminal-input-wrap">
                 <span class="terminal-prompt">&gt;_</span>
-                <input type="text" id="terminal-input" class="terminal-input" placeholder="Type command, 'ai [phrase]', or press [VOICE] (Shortcut: V)..." autocomplete="off">
-                <button type="button" id="btn-terminal-mic" class="terminal-mic-btn" onclick="toggleVoiceCapture()" title="Start/Stop Voice Command (Shortcut: V)">[VOICE // MIC]</button>
+                <input type="text" id="terminal-input" class="terminal-input" placeholder="Ask anything ('Cosa mangio oggi?'), type command, or say 'Hey Tracker'..." autocomplete="off">
+                <button type="button" id="btn-terminal-mic" class="terminal-mic-btn" onclick="toggleVoiceCapture()">[VOICE // MIC]</button>
             </div>
 
-            <!-- RIQUADRO DI CONFERMA (STAGING AREA) -->
+            <!-- RIQUADRO RISPOSTA DIRETTA DELL'AI ALLE DOMANDE SUL SISTEMA (3A) -->
+            <div id="terminal-ai-answer" style="display: none; padding: 14px 18px; background: #060606; border-bottom: 1px solid var(--border-color); font-size: var(--font-sm); line-height: 1.5; color: var(--text-main); white-space: pre-wrap;"></div>
+
+            <!-- RIQUADRO DI CONFERMA AZIONI (STAGING AREA + VERDETTO VOCALE "VA BENE / RITENTA") -->
             <div id="terminal-staging" class="terminal-staging-box">
                 <div id="staging-transcript-box" class="staging-transcript"></div>
-                <div style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Proposed System Actions (Editable before execution):</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Proposed System Actions:</span>
+                    <span id="staging-voice-verdict-status" style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold;"></span>
+                </div>
                 <div id="staging-cmd-list" class="staging-cmd-list"></div>
                 <div class="staging-actions-bar">
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">Keys: <strong style="color:var(--text-main);">[ENTER]</strong> Confirm All  |  <strong style="color:var(--text-main);">[R]</strong> Retry Voice  |  <strong style="color:var(--text-main);">[ESC]</strong> Cancel</span>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">Say <strong style="color:var(--text-main);">"VA BENE"</strong> / <strong style="color:var(--text-main);">[ENTER]</strong> Confirm | <strong style="color:var(--text-main);">"RITENTA"</strong> / <strong style="color:var(--text-main);">[R]</strong> Retry | <strong style="color:var(--text-main);">[ESC]</strong> Cancel</span>
                     <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn btn-sm" onclick="retryVoiceCapture()">[R // RETRY VOICE]</button>
+                        <button type="button" class="btn btn-sm" onclick="retryVoiceCapture()">[R // RETRY]</button>
                         <button type="button" class="btn btn-danger btn-sm" onclick="cancelStaging()">[CANCEL]</button>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[ENTER // CONFIRM &amp; EXECUTE]</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[ENTER // CONFIRM]</button>
                     </div>
                 </div>
             </div>
 
             <div class="terminal-hint">
-                <span id="terminal-feedback">Ready. Press [Enter] to execute, [VOICE] to speak, [?] for manual.</span>
-                <span style="color: #555;">CTRL+SPACE | V</span>
+                <span id="terminal-feedback">Ready. Say "Hey Tracker", ask a question, or type a command.</span>
+                <span style="color: var(--text-dim);">HEY TRACKER | CTRL+SPACE | V</span>
             </div>
         </div>
     </div>
 
-    <!-- 19. Manuale Comandi, Scorciatoie & Interazioni ( Completo ) -->
-    <div id="shortcutsHelpModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 880px; max-width: 96%; max-height: 90vh;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 16px;">
-                <h2 style="margin: 0; border: none; padding: 0;">System Manual // CLI, Shortcuts &amp; Interactions</h2>
-                <span style="font-size: var(--font-xs); color: var(--text-dim);">OPEN ANYTIME WITH [?] OR [CTRL + SPACE]</span>
-            </div>
-
-            <div class="help-manual-columns">
-                
-                <!-- 1. CLI: STUDIO, TASK & PIANIFICAZIONE -->
-                <div class="help-section-card">
-                    <div class="help-section-title">1. CLI // Daily, Planner &amp; Focus</div>
-                    <div class="help-grid">
-                        <div class="help-key">plan</div>
-                        <div class="help-desc">Open Evening Builder to assemble tomorrow's schedule</div>
-                        <div class="help-key">todo [text]</div>
-                        <div class="help-desc">Add item to General To-Do inbox</div>
-                        <div class="help-key">task [text] [@day]</div>
-                        <div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
-                        <div class="help-key">event [@day] [title]</div>
-                        <div class="help-desc">Add calendar event (e.g. <code>event @domani Exam</code>)</div>
-                        <div class="help-key">note [cat]: [text]</div>
-                        <div class="help-desc">Append note to category (creates category if new)</div>
-                        <div class="help-key">focus [min] [title]</div>
-                        <div class="help-desc">Start instant Pomodoro (e.g. <code>focus 30 Analysis</code>)</div>
-                        <div class="help-key">log [min] [cat]</div>
-                        <div class="help-desc">Log offline study minutes (e.g. <code>log 45 Studio</code>)</div>
-                        <div class="help-key">ledger</div>
-                        <div class="help-desc">Open Consistency Grid &amp; Real Focus Hours Ledger</div>
-                    </div>
-                </div>
-
-                <!-- 2. CLI: SOLDI, SALVADANAI, DIETA & PALESTRA -->
-                <div class="help-section-card">
-                    <div class="help-section-title">2. CLI // Money &amp; Health</div>
-                    <div class="help-grid">
-                        <div class="help-key">out [€] #[cat] [desc]</div>
-                        <div class="help-desc">Log categorized expense (e.g. <code>out 8.50 #treno A/R</code>)</div>
-                        <div class="help-key">in [€] [desc]</div>
-                        <div class="help-desc">Log income &amp; trigger automatic Vault % rules</div>
-                        <div class="help-key">wish [item] [€]</div>
-                        <div class="help-desc">Add idea to Incubator (e.g. <code>wish casio 45</code>)</div>
-                        <div class="help-key">vault</div>
-                        <div class="help-desc">Open modal to create a new Salvadanaio / Auto-Rule</div>
-                        <div class="help-key">weight [kg] [note]</div>
-                        <div class="help-desc">Log body weight &amp; note (e.g. <code>weight 74.2 morning</code>)</div>
-                        <div class="help-key">gym done</div>
-                        <div class="help-desc">Save weights, complete active workout day &amp; advance</div>
-                        <div class="help-key">food</div>
-                        <div class="help-desc">Open Nutritional Database (Kcal/Macros per 100g)</div>
-                    </div>
-                </div>
-
-                <!-- 3. TASTI RAPIDI GLOBALI -->
-                <div class="help-section-card">
-                    <div class="help-section-title">3. Global Keyboard Shortcuts</div>
-                    <div class="help-grid">
-                        <div class="help-key">Ctrl + Space / K</div>
-                        <div class="help-desc">Open / close universal Command Bar</div>
-                        <div class="help-key">Ctrl + S</div>
-                        <div class="help-desc">Force immediate save of all modules to storage</div>
-                        <div class="help-key">P</div>
-                        <div class="help-desc">Open Evening Builder (<code>[PLAN TOMORROW]</code>)</div>
-                        <div class="help-key">← / →  and  T</div>
-                        <div class="help-desc">Previous / Next day in calendar, <code>T</code> jumps to Today</div>
-                        <div class="help-key">N  and  W</div>
-                        <div class="help-desc">Toggle Notes drawer (<code>N</code>) or Weekly drawer (<code>W</code>)</div>
-                        <div class="help-key">J</div>
-                        <div class="help-desc">Open daily Journal for selected date</div>
-                        <div class="help-key">1 / 2 / 3 / 4</div>
-                        <div class="help-desc">Mount Left pane (Daily, Planner, Health, Money)</div>
-                        <div class="help-key">Shift + 1 / 2 / 3 / 4</div>
-                        <div class="help-desc">Mount Right pane (Daily, Planner, Health, Money)</div>
-                        <div class="help-key">S  and  Esc</div>
-                        <div class="help-desc"><code>S</code> swaps panes; <code>Esc</code> closes any modal/drawer</div>
-                    </div>
-                </div>
-
-                <!-- 4. INTERAZIONI MOUSE & SISTEMA -->
-                <div class="help-section-card">
-                    <div class="help-section-title">4. Direct Mouse &amp; Power Features</div>
-                    <div class="help-grid">
-                        <div class="help-key">Dbl-Click Calendar</div>
-                        <div class="help-desc">Open daily Journal for that specific date</div>
-                        <div class="help-key">Dbl-Click Diet Cell</div>
-                        <div class="help-desc">Edit meal or diet rules inline &amp; auto-recalculate Kcal</div>
-                        <div class="help-key">Right-Click Block</div>
-                        <div class="help-desc">Hide a single timed task instance in Weekly Planner</div>
-                        <div class="help-key">Right-Click Empty</div>
-                        <div class="help-desc">Restore hidden timed tasks on that Planner column</div>
-                        <div class="help-key">Ctrl + Mouse Wheel</div>
-                        <div class="help-desc">Zoom in / out the hourly grid in Weekly Planner</div>
-                        <div class="help-key">"comprare [item]"</div>
-                        <div class="help-desc">Typed in General To-Do sends item straight to Money Wishlist</div>
-                        <div class="help-key">goto / export</div>
-                        <div class="help-desc">CLI: <code>goto YYYY-MM-DD</code> jumps date; <code>export</code> saves JSON</div>
-                    </div>
-                </div>
-
-            </div>
-
-            <div class="modal-actions" style="margin-top: 10px;">
-                <button class="btn btn-primary" onclick="closeModals()">Close Manual [Esc]</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 20. Notifica Toast Terminale -->
+    <div id="planner-tooltip" class="planner-tooltip"></div>
     <div id="terminal-toast" class="terminal-toast"></div>
 
-    <!-- JS Modulari -->
-    <script src="js/data.js"></script>
-    <script src="js/crud.js"></script>
-    <script src="js/pomodoro.js"></script>
-    <script src="js/render.js"></script>
-    <script src="js/money.js"></script>
-    <script src="js/health.js"></script>
-    <script src="js/terminal.js"></script>
+    <!-- Script Modulari nell'ordine esatto -->
+    <script src="js/core/state.js"></script>
+    <script src="js/core/workspace.js"></script>
+    <script src="js/core/dsl.js"></script>
+    <script src="js/modules/modals.js"></script>
+    <script src="js/modules/calendar.js"></script>
+    <script src="js/modules/tasks.js"></script>
+    <script src="js/modules/notes.js"></script>
+    <script src="js/modules/planner.js"></script>
+    <script src="js/modules/focus.js"></script>
+    <script src="js/modules/diet.js"></script>
+    <script src="js/modules/gym.js"></script>
+    <script src="js/modules/money.js"></script>
+    <script src="js/ai/gemini-agent.js"></script>
+    <script src="js/ai/terminal-ui.js"></script>
 </body>
 </html>

@@ -25,26 +25,26 @@
     justify-content: space-between;
     align-items: center;
     height: 56px;
-    padding: 0 75px 0 25px;
+    padding: 0 65px 0 20px;
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
     z-index: 100;
-    background: rgba(0, 0, 0, 0.6);
+    background: rgba(0, 0, 0, 0.75);
     border-bottom: 1px solid var(--border-color);
 }
 
 .header-left {
     display: flex;
-    gap: 18px;
+    gap: 14px;
     align-items: center;
     flex-shrink: 0;
 }
 
 .clock-wrap {
     display: flex;
-    gap: 14px;
+    gap: 12px;
     align-items: center;
 }
 
@@ -60,19 +60,44 @@
     font-size: var(--font-lg);
 }
 
-.module-switchers {
+/* --- WORKSPACE PRESETS & SLOT SWITCHER NELL'HEADER --- */
+.workspace-controls {
     display: flex;
-    gap: 12px;
+    gap: 8px;
     align-items: center;
 }
 
-.header-slash {
+.slot-count-bar {
+    display: flex;
+    gap: 2px;
+    border: 1px solid var(--border-color);
+    padding: 2px;
+    background: #050505;
+}
+
+.slot-count-btn {
+    background: transparent;
+    border: none;
     color: var(--text-dim);
     font-size: var(--font-xs);
+    font-weight: bold;
+    padding: 3px 7px;
+    cursor: pointer;
+    transition: 0.1s;
+}
+
+.slot-count-btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.slot-count-btn.active {
+    background: var(--text-main);
+    color: #000000;
 }
 
 .module-title {
-    font-size: var(--font-sm);
+    font-size: var(--font-xs);
     font-weight: bold;
     text-transform: uppercase;
     letter-spacing: 0.8px;
@@ -81,13 +106,14 @@
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 8px;
-    border: 1px solid transparent;
+    padding: 5px 10px;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .module-title:hover {
-    border-color: var(--border-color);
-    background: rgba(255, 255, 255, 0.04);
+    border-color: var(--text-main);
+    background: rgba(255, 255, 255, 0.06);
 }
 
 .caret {
@@ -101,8 +127,8 @@
     align-items: center;
     justify-content: flex-end;
     gap: 14px;
-    margin: 0 25px;
-    padding-left: 15px;
+    margin: 0 18px;
+    padding-left: 12px;
     border-left: 1px solid var(--border-color);
     cursor: pointer;
     overflow: hidden;
@@ -121,37 +147,171 @@
 
 .header-buttons {
     display: flex;
-    gap: 8px;
+    gap: 6px;
     align-items: center;
     flex-shrink: 0;
 }
 
-/* --- STRUTTURA MODULARE DASHBOARD --- */
+/* --- GRIGLIA DINAMICA A 0-4 QUADRANTI --- */
 .layout {
-    display: flex;
     width: 100%;
     height: 100%;
     padding-top: 56px;
     background-color: transparent;
     backdrop-filter: blur(8px);
-}
-
-.split-pane {
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    min-width: 340px;
+    display: grid;
     overflow: hidden;
 }
 
-.pane-content {
-    flex: 1;
+.layout.grid-0 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+.layout.grid-1 {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+}
+
+.layout.grid-2 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+}
+
+.layout.grid-3 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.layout.grid-3 .quadrant-cell:nth-child(1) {
+    grid-row: 1 / span 2;
+}
+
+.layout.grid-4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+}
+
+.quadrant-cell {
     display: flex;
     flex-direction: column;
+    min-width: 0;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
+    border-right: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
 }
 
+/* Barra superiore di ogni singolo quadrante */
+.quadrant-bar {
+    height: 28px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 12px;
+    background: #060606;
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-xs);
+}
+
+.quadrant-bar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.quadrant-tag {
+    color: var(--text-dim);
+    font-weight: bold;
+}
+
+.quadrant-select {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-main);
+    font-size: var(--font-xs);
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    padding: 1px 4px;
+    outline: none;
+}
+
+.quadrant-select:hover {
+    border-color: var(--border-bright);
+    background: #111;
+}
+
+.quadrant-bar-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.quadrant-body {
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* --- SCHERMATA ZERO-UI (0 MODULI ATTIVI) --- */
+.zero-ui-screen {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    padding: 30px;
+    text-align: center;
+    gap: 24px;
+}
+
+.zero-ui-box {
+    border: 1px solid var(--border-color);
+    background: rgba(5, 5, 5, 0.85);
+    padding: 28px 36px;
+    max-width: 580px;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.zero-ui-cmd-trigger {
+    width: 100%;
+    padding: 14px 18px;
+    background: #000000;
+    border: 1px solid var(--text-main);
+    color: var(--text-main);
+    font-size: var(--font-md);
+    text-align: left;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: background 0.15s;
+}
+
+.zero-ui-cmd-trigger:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.zero-ui-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: center;
+}
+
+/* --- CONTENITORE MODULI INTERNI --- */
 .module-container {
     display: flex;
     flex-direction: column;
@@ -160,9 +320,8 @@
     overflow: hidden;
 }
 
-/* Margine standardizzato per tutti i 4 moduli */
 .module-body-padded {
-    padding: 18px 25px;
+    padding: 16px 22px;
 }
 
 .section-header-row {
@@ -195,7 +354,7 @@
     padding-bottom: 5px;
 }
 
-/* --- CASSETTI (NOTES & WEEKLY DRAWER) --- */
+/* --- CASSETTI & RESIZERS --- */
 .notes-section {
     height: 180px;
     flex-shrink: 0;
@@ -222,7 +381,6 @@
     margin-bottom: 10px;
 }
 
-/* --- RESIZERS --- */
 .resizer-horizontal {
     height: 8px;
     background-color: #050505;
@@ -247,35 +405,6 @@
 .resizer-horizontal.dragging {
     background-color: rgba(255, 255, 255, 0.06);
     border-top-style: solid;
-    border-color: var(--text-main);
-}
-
-.resizer-vertical {
-    width: 8px;
-    background-color: #050505;
-    border-left: 1px dashed var(--border-color);
-    border-right: 1px dashed var(--border-color);
-    cursor: ew-resize;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    flex-shrink: 0;
-}
-
-.resizer-vertical::after {
-    content: "";
-    height: 32px;
-    width: 1px;
-    background-color: var(--text-dim);
-}
-
-.resizer-vertical:hover,
-.resizer-vertical.dragging {
-    background-color: rgba(255, 255, 255, 0.06);
-    border-left-style: solid;
-    border-right-style: solid;
     border-color: var(--text-main);
 }
 
@@ -341,9 +470,9 @@
     right: 0;
     top: 100%;
     background-color: #060606;
-    min-width: 210px;
+    min-width: 220px;
     border: 1px solid var(--border-bright);
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.9);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.95);
     z-index: 300;
     margin-top: 4px;
 }

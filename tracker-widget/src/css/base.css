@@ -20,6 +20,70 @@
     --font-xl: 2.2rem;
 }
 
+/* --- RED MODE (EFFETTO GELATINA ROSSA UNIFORME) --- */
+body.red-mode {
+    --bg-main: #000000;
+    --bg-sec: #090000;
+    --bg-elevated: #120000;
+    --text-main: #ff2222;
+    --text-muted: #cc1818;
+    --text-dim: #881111;
+    --border-color: #380606;
+    --border-bright: #771111;
+    --accent-green: #ff3333;
+    --accent-red: #ff0000;
+    --accent-gold: #cc2222;
+}
+
+body.red-mode ::-webkit-scrollbar-thumb {
+    background: #440808;
+}
+
+body.red-mode ::-webkit-scrollbar-thumb:hover {
+    background: #881111;
+}
+
+body.red-mode .lvl-1 { background: #330505 !important; border-color: #4a0808 !important; }
+body.red-mode .lvl-2 { background: #660a0a !important; border-color: #881111 !important; }
+body.red-mode .lvl-3 { background: #aa1414 !important; border-color: #cc1818 !important; }
+body.red-mode .lvl-4 { background: #ff2222 !important; border-color: #ff2222 !important; }
+
+body.red-mode .task-title,
+body.red-mode .gym-ex-name,
+body.red-mode .m-title,
+body.red-mode .flexible-task-badge,
+body.red-mode .timer-text-hover,
+body.red-mode .modal-content strong,
+body.red-mode .gym-input,
+body.red-mode .gym-edit-input,
+body.red-mode .diet-inline-editor {
+    color: var(--text-main) !important;
+}
+
+body.red-mode .check-box {
+    border-color: var(--border-bright) !important;
+}
+
+body.red-mode .check-box.checked {
+    background: var(--text-main) !important;
+    border-color: var(--text-main) !important;
+}
+
+body.red-mode .current-time-line {
+    border-top-color: var(--text-main) !important;
+}
+
+/* Applica il filtro matrice Gelatina Rossa a grafici SVG, pallini colore e blocchi calendario */
+body.red-mode svg,
+body.red-mode .bar,
+body.red-mode .pie-dot,
+body.red-mode .color-circle,
+body.red-mode .block-absolute,
+body.red-mode .category-group,
+body.red-mode .m-item-row {
+    filter: url(#red-gel-filter);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -176,7 +240,6 @@ option {
     color: var(--text-main);
 }
 
-/* Selettori Colore Squadrati Stile Terminale */
 .color-palette {
     display: flex;
     gap: 8px;
@@ -212,7 +275,8 @@ option {
 }
 
 .empty-state {
-    color: #444444;
+    color: var(--text-dim);
+    opacity: 0.6;
     font-size: var(--font-xs);
     text-transform: uppercase;
     letter-spacing: 1px;
