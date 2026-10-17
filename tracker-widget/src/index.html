@@ -181,7 +181,7 @@
             </div>
         </div>
 
-        <!-- 4. MODULO ATOMICO: PLANNER (Senza Drawer mobile, con fascia fissa a fine giornata) -->
+        <!-- 4. MODULO ATOMICO: PLANNER -->
         <div id="module-planner" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 12px;">
                 <div id="view-planner" class="tracker-content active" style="flex: 1; display: flex; flex-direction: column; margin-top: 0; gap: 0; overflow: hidden;">
@@ -204,7 +204,6 @@
                             <div class="planner-time-labels" id="planner-time-labels"></div>
                             <div class="planner-grid-absolute" id="planner-grid"></div>
                         </div>
-                        <!-- FASCIA FISSA A FINE GIORNATA PER LE TASK FLESSIBILI (Sostituisce il vecchio Drawer) -->
                         <div id="planner-fixed-footer" style="display: flex; padding-left: 45px; border-top: 1px solid var(--border-color); background: rgba(255,255,255,0.015); min-height: 54px; max-height: 88px; overflow-y: auto; flex-shrink: 0;"></div>
                     </div>
                 </div>
@@ -266,33 +265,52 @@
             </div>
         </div>
 
-        <!-- 7. MODULO ATOMICO: MONEY -->
+        <!-- 7. MODULO ATOMICO: MONEY (NUOVA INTERFACCIA 2A: FLUSSI & SALVADANAI MENSILI AUTO-SCALANTI) -->
         <div id="module-money" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow: hidden;">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow: hidden;">
+                
+                <!-- 1. TOP BAR: SALDO REALE LIBERO, SALDO TOTALE E CASHFLOW DEL MESE -->
                 <div class="money-top-bar">
                     <div>
                         <div class="balance-cards-row">
                             <div>
-                                <div class="section-label" style="margin-bottom: 4px;">Total Balance</div>
-                                <div class="hero-balance">€ <span id="m-balance-display">0.00</span></div>
-                            </div>
-                            <div style="border-left: 1px solid var(--border-color); padding-left: 20px;">
-                                <div class="section-label" style="margin-bottom: 4px; color: var(--accent-green);">Spendable (Real Free)</div>
+                                <div class="section-label" style="margin-bottom: 4px; color: var(--accent-green);">Spendable (Unallocated Free)</div>
                                 <div class="spendable-balance">€ <span id="m-spendable-display">0.00</span></div>
                             </div>
+                            <div style="border-left: 1px solid var(--border-color); padding-left: 18px;">
+                                <div class="section-label" style="margin-bottom: 4px;">Total Account Balance</div>
+                                <div class="hero-balance" style="font-size: 1.55rem;">€ <span id="m-balance-display">0.00</span></div>
+                            </div>
                         </div>
-                        <div id="m-balance-breakdown" class="balance-sub-breakdown">VAULTS: €0.00 | PENDING BILLS THIS MONTH: €0.00</div>
+                        <div id="m-balance-breakdown" class="balance-sub-breakdown">ALLOCATED IN VAULTS: €0.00 | PENDING FIXED BILLS: €0.00</div>
                     </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-primary" onclick="openTransactionModal('in')">[+ IN]</button>
-                        <button class="btn btn-danger" onclick="openTransactionModal('out')">[- OUT]</button>
+
+                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
+                        <div id="m-monthly-cashflow" class="cashflow-pills-row"></div>
+                        <div style="display: flex; gap: 8px;">
+                            <button class="btn btn-primary btn-sm" onclick="openTransactionModal('in')">[+ IN]</button>
+                            <button class="btn btn-danger btn-sm" onclick="openTransactionModal('out')">[- OUT]</button>
+                            <button class="btn btn-sm" onclick="openVaultModal()">[+ VAULT]</button>
+                        </div>
                     </div>
                 </div>
 
-                <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 18px; padding-right: 6px;">
+                <!-- 2. AREA SCROLLABILE: SALVADANAI ORIZZONTALI + TRANSAZIONI & FLUSSI -->
+                <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-right: 6px;">
+
+                    <!-- SALVADANAI / BUDGET MENSILI CON RINNOVO E COMPENSAZIONE AUTOMATICA -->
+                    <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
+                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Monthly Vaults &amp; Auto-Deduct Envelopes (e.g. Amazon)</span>
+                            <span style="font-size: 0.65rem; color: var(--text-dim);">EXPENSES MATCHING VAULT NAME DEDUCT DIRECTLY &amp; ROLLOVER NEXT CYCLE</span>
+                        </div>
+                        <div id="m-vaults-container" class="vaults-list-horizontal"></div>
+                    </div>
+
+                    <!-- GRAFICO A SCALINI COMPATTO -->
                     <div class="money-chart-box" id="m-chart-box">
                         <div class="chart-meta-top">
-                            <span>LAST 30 TRANSACTIONS</span>
+                            <span>BALANCE STEP HISTORY (30 TX)</span>
                             <span id="m-chart-hover-info" style="color: var(--text-main); font-weight: bold;"></span>
                             <span id="m-chart-max">MAX: €0.00</span>
                         </div>
@@ -305,52 +323,32 @@
                         </div>
                     </div>
 
-                    <div class="money-analytics-grid">
-                        <div class="pie-card">
-                            <div class="sub-column-header" style="margin-bottom: 2px;">Expenses by Category</div>
-                            <div class="pie-card-body">
-                                <div class="pie-svg-wrap" id="m-pie-expenses"></div>
-                                <div class="pie-legend" id="m-legend-expenses"></div>
-                            </div>
-                        </div>
-                        <div class="pie-card">
-                            <div class="sub-column-header" style="margin-bottom: 2px;">Capital Allocation</div>
-                            <div class="pie-card-body">
-                                <div class="pie-svg-wrap" id="m-pie-allocation"></div>
-                                <div class="pie-legend" id="m-legend-allocation"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
-                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Vaults // Salvadanai &amp; Auto-Rules</span>
-                            <button class="btn btn-sm" onclick="openVaultModal()">[+ NEW VAULT]</button>
-                        </div>
-                        <div id="m-vaults-container" class="vaults-grid"></div>
-                    </div>
-                    
-                    <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
-                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Ideas Incubator</span>
-                            <button class="icon-btn" onclick="openWishlistModal()" title="Add purchase idea">[+]</button>
-                        </div>
-                        <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-
-                    <div style="display: flex; flex-direction: row; gap: 16px; flex: 0 0 auto;">
-                        <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
-                            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>Recurring Payments</span>
-                                <button class="icon-btn" onclick="openRecurringModal()" title="Add recurring payment">[+]</button>
-                            </div>
-                            <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                        </div>
-                        <div style="flex: 1; display: flex; flex-direction: column; min-width: 0;">
-                            <div class="sub-column-header">Recent History</div>
+                    <!-- COLONNE FLUSSI: RECENT TRANSACTIONS + RECURRING & INCUBATOR -->
+                    <div style="display: flex; flex-direction: row; gap: 16px; flex: 1; min-height: 0;">
+                        <div style="flex: 3; display: flex; flex-direction: column; min-width: 0;">
+                            <div class="sub-column-header">Recent Transactions</div>
                             <div id="m-history-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
+
+                        <div style="flex: 2; display: flex; flex-direction: column; gap: 16px; min-width: 0;">
+                            <div>
+                                <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Fixed Recurring Bills</span>
+                                    <button class="icon-btn" onclick="openRecurringModal()" title="Add recurring payment">[+]</button>
+                                </div>
+                                <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+
+                            <div>
+                                <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span>Purchase Ideas Incubator</span>
+                                    <button class="icon-btn" onclick="openWishlistModal()" title="Add purchase idea">[+]</button>
+                                </div>
+                                <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                            </div>
+                        </div>
                     </div>
+
                 </div>
             </div>
         </div>

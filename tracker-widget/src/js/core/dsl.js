@@ -1,5 +1,5 @@
 // --- js/core/dsl.js ---
-// Domain Specific Language (DSL) // Scheletro Comandi Interni & Aggancio Focus alle Task Reali
+// Domain Specific Language (DSL) // Scheletro Comandi Interni, Focus Task-Linked & Auto-Deduct Vaults
 
 let isRedMode = localStorage.getItem('tracker_red_mode') === 'true';
 
@@ -72,7 +72,7 @@ function getCommandPreview(raw) {
             return geminiApiKey ? `[AI AGENT] Ask or translate natural input: "${rest}"` : `[AI AGENT] Requires Gemini API Key in [CFG]`;
         case 'plan':
         case 'tomorrow':
-            return `[EVENING BUILDER] Open interactive workspace to assemble tomorrow's plan`;
+            return `[EVENING BUILDER] Open 1-Day Timeline (06:30–24:00) for tomorrow`;
         case 'ledger':
         case 'stats':
             return `[FOCUS LEDGER] Open Consistency Grid & Real Focus Hours breakdown`;
@@ -86,12 +86,22 @@ function getCommandPreview(raw) {
         case 'macros':
             return `[HEALTH] Open Nutritional Database (Kcal & Macros per 100g)`;
         case 'vault':
-            return `[MONEY] Open modal to create a new Salvadanaio / Automatic Rule`;
+            return `[MONEY] Open modal to create a new Salvadanaio with monthly renewal day`;
         case 'out':
         case '-': {
             const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
-            if (!m) return 'Syntax: out [amount] #[category] [desc] (e.g. out 8.50 #Treno A/R)';
-            return `[MONEY] Subtract €${parseFloat(m[1].replace(',', '.')).toFixed(2)} — "${m[2] || 'Expense'}"`;
+            if (!m) return 'Syntax: out [amount] #[vault/category] [desc] (e.g. out 20 #Amazon Cavo)';
+            const amt = parseFloat(m[1].replace(',', '.'));
+            const tail = m[2] || '';
+            const catMatch = tail.match(/#([a-zA-Z0-9_À-ÿ]+)/);
+            const cat = catMatch ? catMatch[1] : 'Generale';
+            const cleanDesc = tail.replace(/#[a-zA-Z0-9_À-ÿ]+/, '').trim();
+            const matchedV = typeof findMatchingVaultForExpense === 'function' ? findMatchingVaultForExpense(cat, cleanDesc || tail) : null;
+            if (matchedV) {
+                const proj = roundCurrency((parseFloat(matchedV.balance) || 0) - amt);
+                return `[MONEY -> VAULT ${matchedV.name.toUpperCase()}] Deduct €${amt.toFixed(2)} (Vault balance becomes €${proj.toFixed(2)})`;
+            }
+            return `[MONEY] Subtract €${amt.toFixed(2)} — "${tail || 'Expense'}"`;
         }
         case 'in':
         case '+': {
@@ -244,17 +254,18 @@ function executeTerminalCommand(raw) {
         if (catMatch) {
             category = catMatch[1].charAt(0).toUpperCase() + catMatch[1].slice(1).toLowerCase();
             rawDesc = rawDesc.replace(catMatch[0], '').trim();
-            if (!mCategories.includes(category)) mCategories.push(category);
         }
 
         const desc = rawDesc || category;
-        mBalance = roundCurrency(mBalance - amt);
-        mTransactions.push({
-            id: 'mt_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-            type: 'out', amount: amt, category, desc, date: todayStr
-        });
-        saveMoneyData();
-        if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
+        if (typeof recordExpenseWithVaultCheck === 'function') {
+            const res = recordExpenseWithVaultCheck({ amount: amt, category, desc, dateStr: todayStr });
+            if (res && res.matchedVault) {
+                if (typeof showToast === 'function') {
+                    showToast(`[VAULT ${res.matchedVault.name.toUpperCase()}] -€${amt.toFixed(2)} (${desc}) -> Bal: €${res.newVaultBalance.toFixed(2)}`);
+                }
+                return true;
+            }
+        }
         if (typeof showToast === 'function') showToast(`[MONEY] -€${amt.toFixed(2)} [${category}] ${desc}`);
         return true;
     }
