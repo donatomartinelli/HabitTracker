@@ -13,7 +13,7 @@
 </head>
 <body>
 
-    <!-- FILTRO OTTICO SVG PER GELATINA ROSSA (Azzera canali G e B, mappa luminanza su R) -->
+    <!-- FILTRO OTTICO SVG PER GELATINA ROSSA -->
     <svg width="0" height="0" style="position: absolute; pointer-events: none;">
         <defs>
             <filter id="red-gel-filter" color-interpolation-filters="sRGB">
@@ -40,7 +40,6 @@
                 <span class="header-sep">|</span>
             </div>
             
-            <!-- CONTROLLI WORKSPACE: SELETTORE PRESET + NUMERO QUADRANTI (0-4) -->
             <div class="workspace-controls">
                 <div class="dropdown">
                     <div class="module-title" onclick="document.getElementById('dropdown-workspaces').classList.toggle('show')" title="Switch or save custom Workspace Views">
@@ -75,7 +74,7 @@
         </div>
     </header>
 
-    <!-- CONTENITORE GRIGLIA DINAMICA (0, 1, 2, 3, 4 QUADRANTI) -->
+    <!-- CONTENITORE GRIGLIA DINAMICA -->
     <div id="app-content-wrapper" class="layout grid-2"></div>
 
     <!-- ========================================== -->
@@ -182,14 +181,13 @@
             </div>
         </div>
 
-        <!-- 4. MODULO ATOMICO: PLANNER -->
+        <!-- 4. MODULO ATOMICO: PLANNER (Senza Drawer mobile, con fascia fissa a fine giornata) -->
         <div id="module-planner" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 0;">
-                <div id="view-planner" class="tracker-content active" style="flex: 1; display: flex; flex-direction: column; margin-top: 0; gap: 0;">
-                    <div class="section-header-row" style="padding-bottom: 12px;">
-                        <span class="section-label">Weekly Planner</span>
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 12px;">
+                <div id="view-planner" class="tracker-content active" style="flex: 1; display: flex; flex-direction: column; margin-top: 0; gap: 0; overflow: hidden;">
+                    <div class="section-header-row" style="padding-bottom: 10px; margin-bottom: 0;">
+                        <span class="section-label">Weekly Planner (06:30 – 24:00)</span>
                         <div style="display: flex; gap: 6px;">
-                            <button class="btn btn-sm" onclick="toggleWeeklyFlexibleDrawer()">[FLEX DRAWER // W]</button>
                             <div class="dropdown">
                                 <button class="btn btn-sm dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">[GHOST LAYERS ▼]</button>
                                 <div id="ghost-dropdown" class="dropdown-content" style="right: 0;">
@@ -206,12 +204,10 @@
                             <div class="planner-time-labels" id="planner-time-labels"></div>
                             <div class="planner-grid-absolute" id="planner-grid"></div>
                         </div>
+                        <!-- FASCIA FISSA A FINE GIORNATA PER LE TASK FLESSIBILI (Sostituisce il vecchio Drawer) -->
+                        <div id="planner-fixed-footer" style="display: flex; padding-left: 45px; border-top: 1px solid var(--border-color); background: rgba(255,255,255,0.015); min-height: 54px; max-height: 88px; overflow-y: auto; flex-shrink: 0;"></div>
                     </div>
                 </div>
-            </div>
-            <div id="weekly-resizer" class="resizer-horizontal" title="Drag to resize / Double-click or press [W] to toggle"></div>
-            <div id="weekly-drawer" class="notes-section collapsed" style="display: none;">
-                <div id="drawer-days-row" style="display: flex; gap: 4px; padding-left: 45px; flex: 1; overflow-y: auto;"></div>
             </div>
         </div>
 
@@ -364,7 +360,7 @@
     <!-- RADICE MODALI INIETTATI DA js/modules/modals.js -->
     <div id="modals-root"></div>
 
-    <!-- TERMINAL OVERLAY CON RISPOSTA AI E STAGING VOCALE -->
+    <!-- TERMINAL OVERLAY -->
     <div id="terminalOverlay" class="terminal-overlay" onclick="if(event.target === this) closeTerminal()">
         <div class="terminal-box">
             <div class="terminal-input-wrap">
@@ -373,10 +369,8 @@
                 <button type="button" id="btn-terminal-mic" class="terminal-mic-btn" onclick="toggleVoiceCapture()">[VOICE // MIC]</button>
             </div>
 
-            <!-- RIQUADRO RISPOSTA DIRETTA DELL'AI ALLE DOMANDE SUL SISTEMA (3A) -->
             <div id="terminal-ai-answer" style="display: none; padding: 14px 18px; background: #060606; border-bottom: 1px solid var(--border-color); font-size: var(--font-sm); line-height: 1.5; color: var(--text-main); white-space: pre-wrap;"></div>
 
-            <!-- RIQUADRO DI CONFERMA AZIONI (STAGING AREA + VERDETTO VOCALE "VA BENE / RITENTA") -->
             <div id="terminal-staging" class="terminal-staging-box">
                 <div id="staging-transcript-box" class="staging-transcript"></div>
                 <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -404,7 +398,7 @@
     <div id="planner-tooltip" class="planner-tooltip"></div>
     <div id="terminal-toast" class="terminal-toast"></div>
 
-    <!-- Script Modulari nell'ordine esatto -->
+    <!-- Script Modulari -->
     <script src="js/core/state.js"></script>
     <script src="js/core/workspace.js"></script>
     <script src="js/core/dsl.js"></script>

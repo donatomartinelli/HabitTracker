@@ -1,8 +1,9 @@
 // --- js/modules/tasks.js ---
-// Atomic Module 2: Daily Tasks, Check-Only Routines, Consistency Tracker & Task-Driven Real Focus Ledger
+// Atomic Module 2: Daily Tasks, Check-Only Routines, Consistency Tracker & 1-Day Interactive Timeline (Plan Tomorrow)
 
 let deleteTargetType = '';
 let deleteTargetId = '';
+let tmwTimelineZoom = 46; // 46px per ora nella Timeline di Plan Tomorrow
 
 function toggleTask(templateId, instanceIndex) {
     if (!logs[selectedDateStr]) logs[selectedDateStr] = {};
@@ -410,7 +411,6 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
             alert("Please complete at least one time window with selected days!");
             return;
         }
-        // Calcola i minuti di default dalla prima fascia oraria
         const [sh, sm] = timeWindows[0].start.split(':').map(Number);
         const [eh, em] = timeWindows[0].end.split(':').map(Number);
         timerMins = Math.max(5, (eh * 60 + em) - (sh * 60 + sm));
@@ -660,6 +660,7 @@ function renderTasks() {
 
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
     const selectedDayIdx = new Date(selectedDateStr).getDay();
+    const customBlocksToday = Array.isArray(ephemeralData[selectedDateStr]) ? ephemeralData[selectedDateStr] : [];
 
     if (dayEvents.length > 0) {
         hasSched = true;
@@ -703,8 +704,13 @@ function renderTasks() {
     categoryOrder.forEach(cat => {
         const activeTasks = templates.filter(t => t.category === cat && isTaskActiveOnDate(t, selectedDateStr));
         if (activeTasks.length > 0) {
-            const schedTasks = activeTasks.filter(t => t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0));
-            const flexTasks = activeTasks.filter(t => t.type !== 'timed' && (!t.timeWindows || t.timeWindows.length === 0));
+            const isTaskScheduledOnDay = (t) => {
+                if (t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0)) return true;
+                return customBlocksToday.some(b => b.templateId === t.id);
+            };
+
+            const schedTasks = activeTasks.filter(t => isTaskScheduledOnDay(t));
+            const flexTasks = activeTasks.filter(t => !isTaskScheduledOnDay(t));
 
             const createGroup = (tasks, isScheduledGroup) => {
                 const groupDiv = document.createElement('div');
@@ -732,9 +738,14 @@ function renderTasks() {
 
                     const taskMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, selectedDateStr) : (t.timerMinutes || 0);
                     let timePrefix = '';
-                    if (isScheduledGroup && t.timeWindows && t.timeWindows.length > 0) {
-                        const matchingTw = t.timeWindows.find(tw => tw.days && tw.days.includes(selectedDayIdx));
-                        if (matchingTw) timePrefix = `[${matchingTw.start}] `;
+                    if (isScheduledGroup) {
+                        const customTimes = customBlocksToday.filter(b => b.templateId === t.id).map(b => `${b.start}-${b.end}`);
+                        if (customTimes.length > 0) {
+                            timePrefix = `[${customTimes.join(', ')}] `;
+                        } else if (t.timeWindows && t.timeWindows.length > 0) {
+                            const matchingTw = t.timeWindows.find(tw => tw.days && tw.days.includes(selectedDayIdx));
+                            if (matchingTw) timePrefix = `[${matchingTw.start}] `;
+                        }
                     }
                     const minSuffix = (!isScheduledGroup && taskMins > 0) ? ` (${taskMins}m)` : '';
                     titleDiv.textContent = `${timePrefix}${t.title}${minSuffix}`;
@@ -744,7 +755,6 @@ function renderTasks() {
                     quickActions.className = 'task-quick-actions';
 
                     if (t.type !== 'medicine') {
-                        // Mostra il bottone [▶] solo se la task ha un timer (> 0 min)
                         if (taskMins > 0) {
                             const btnFocus = document.createElement('button');
                             btnFocus.className = 'icon-btn';
@@ -1044,7 +1054,6 @@ function renderTracker() {
     }
 }
 
-// Calcola il Real Focus Ledger direttamente dalle Task spuntate in `logs` (escludendo le task Check-Only e Medicine)
 function renderFocusLedger() {
     const container = document.getElementById('focus-ledger-container');
     const summaryEl = document.getElementById('focus-ledger-summary');
@@ -1060,7 +1069,6 @@ function renderFocusLedger() {
     const byCat = {};
     const completedHistoryEntries = [];
 
-    // 1. Scansiona tutte le date e le task spuntate nei log reali
     const allDates = Object.keys(logs).sort();
     allDates.forEach(dateStr => {
         const dayLogObj = logs[dateStr] || {};
@@ -1071,7 +1079,7 @@ function renderFocusLedger() {
             const minsPerInstance = typeof getTaskDurationMinutes === 'function'
                 ? getTaskDurationMinutes(t, dateStr)
                 : (t.timerMinutes || 0);
-            if (minsPerInstance <= 0) continue; // Ignora routine Check-Only e Medicine
+            if (minsPerInstance <= 0) continue;
 
             const checkedCount = (dayLogObj[templateId] || []).filter(Boolean).length;
             if (checkedCount <= 0) continue;
@@ -1182,6 +1190,10 @@ function renderPriorityBanner() {
     banner.appendChild(clearBtn);
 }
 
+// ============================================================================
+// EVENING BUILDER: PLAN TOMORROW (TIMELINE GIORNALIERA 06:30-24:00 & BLOCCHI PROPORZIONALI)
+// ============================================================================
+
 function openPlanTomorrowModal() {
     closeModals();
     renderPlanTomorrowModal();
@@ -1196,43 +1208,76 @@ function saveTomorrowPriority(val) {
     if (selectedDateStr === tomorrowStr) renderPriorityBanner();
 }
 
-function rolloverTaskToTomorrow(templateId) {
+// Piazza uno o più blocchi di una Task sulla Timeline di Domani all'orario scelto
+function placeTaskBlockOnTomorrowTimeline(templateId, startTimeStr, blocksMultiplier = 1) {
     const t = templates.find(x => x.id === templateId);
     if (!t) return;
-    const tmwDayIdx = new Date(tomorrowStr).getDay();
 
-    if (t.startDate === todayStr && t.endDate === todayStr) {
-        t.startDate = tomorrowStr;
-        t.endDate = tomorrowStr;
-        t.daysOfWeek = [tmwDayIdx];
-        if (t.timeWindows && t.timeWindows.length > 0) {
-            t.timeWindows.forEach(tw => { tw.days = [tmwDayIdx]; });
-        }
-    } else {
-        const catName = t.category || 'Rollover';
-        if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
-        templates.push({
-            id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-            category: catName,
-            title: `[Rollover] ${t.title}`,
-            instances: 1,
-            timerMinutes: t.timerMinutes || 25,
-            noTimer: Boolean(t.noTimer),
-            frequency: 'specific',
-            daysOfWeek: [tmwDayIdx],
-            startDate: tomorrowStr,
-            endDate: tomorrowStr,
-            color: t.color || '#ffffff',
-            type: 'untimed',
-            timeWindows: []
-        });
+    const unitMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, tomorrowStr) : (t.timerMinutes || 25);
+    const count = Math.max(1, parseInt(blocksMultiplier, 10) || 1);
+    const totalDurationMins = Math.max(5, unitMins * count);
+
+    const startMins = timeToMinutes(startTimeStr);
+    const endMins = Math.min(24 * 60, startMins + totalDurationMins);
+    const finalStartStr = minutesToTimeStr(startMins);
+    const finalEndStr = minutesToTimeStr(endMins);
+
+    if (!Array.isArray(ephemeralData[tomorrowStr])) {
+        ephemeralData[tomorrowStr] = [];
     }
+
+    ephemeralData[tomorrowStr].push({
+        id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        templateId: t.id,
+        title: count > 1 ? `${t.title} (${count}x)` : t.title,
+        category: t.category,
+        color: t.color || '#ffffff',
+        start: finalStartStr,
+        end: finalEndStr,
+        minutes: totalDurationMins,
+        blocksUsed: count
+    });
 
     saveData();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     renderPlanTomorrowModal();
-    if (typeof showToast === 'function') showToast(`[PLAN] Rolled over "${t.title}" to tomorrow`);
+}
+
+function removeTomorrowTimelineBlock(dateStr, blockId) {
+    if (!Array.isArray(ephemeralData[dateStr])) return;
+    ephemeralData[dateStr] = ephemeralData[dateStr].filter(b => b.id !== blockId);
+    saveData();
+    renderTasks();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    if (dateStr === tomorrowStr) renderPlanTomorrowModal();
+}
+
+function moveTomorrowTimelineBlock(blockId, newStartTimeStr, isFixedTemplate = false, oldStartStr = '') {
+    if (isFixedTemplate) {
+        const t = templates.find(x => x.id === blockId);
+        if (!t) return;
+        // Nasconde l'orario fisso di default per domani e crea il blocco spostato
+        plannerExceptions[`${t.id}_${tomorrowStr}_${oldStartStr}`] = true;
+        placeTaskBlockOnTomorrowTimeline(t.id, newStartTimeStr, 1);
+        return;
+    }
+
+    const list = ephemeralData[tomorrowStr];
+    if (!Array.isArray(list)) return;
+    const b = list.find(x => x.id === blockId);
+    if (!b) return;
+
+    const dur = b.minutes || (timeToMinutes(b.end) - timeToMinutes(b.start)) || 25;
+    const startMins = timeToMinutes(newStartTimeStr);
+    const endMins = Math.min(24 * 60, startMins + dur);
+    b.start = minutesToTimeStr(startMins);
+    b.end = minutesToTimeStr(endMins);
+
+    saveData();
+    renderTasks();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    renderPlanTomorrowModal();
 }
 
 function assignInboxItemToTomorrow(todoId) {
@@ -1270,45 +1315,48 @@ function assignInboxItemToTomorrow(todoId) {
 
 function addQuickTomorrowTask() {
     const titleEl = document.getElementById('plan-tmw-new-title');
+    const minsEl = document.getElementById('plan-tmw-new-mins');
     const startEl = document.getElementById('plan-tmw-new-start');
-    const endEl = document.getElementById('plan-tmw-new-end');
     if (!titleEl) return;
 
     const title = titleEl.value.trim();
     if (!title) return;
 
+    const mins = Math.max(5, parseInt(minsEl ? minsEl.value : 30, 10) || 30);
     const startVal = startEl ? startEl.value : '';
-    const endVal = endEl ? endEl.value : '';
-    const isTimed = !!(startVal && endVal);
     const tmwDayIdx = new Date(tomorrowStr).getDay();
 
     const catName = 'Planned';
     if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
 
+    const newTaskId = 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
     templates.push({
-        id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        id: newTaskId,
         category: catName,
         title: title,
         instances: 1,
-        timerMinutes: 25,
+        timerMinutes: mins,
         noTimer: false,
         frequency: 'specific',
         daysOfWeek: [tmwDayIdx],
         startDate: tomorrowStr,
         endDate: tomorrowStr,
         color: '#ffffff',
-        type: isTimed ? 'timed' : 'untimed',
-        timeWindows: isTimed ? [{ start: startVal, end: endVal, days: [tmwDayIdx] }] : []
+        type: 'untimed',
+        timeWindows: []
     });
 
     titleEl.value = '';
     if (startEl) startEl.value = '';
-    if (endEl) endEl.value = '';
 
     saveData();
-    renderTasks();
-    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-    renderPlanTomorrowModal();
+    if (startVal) {
+        placeTaskBlockOnTomorrowTimeline(newTaskId, startVal, 1);
+    } else {
+        renderTasks();
+        if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        renderPlanTomorrowModal();
+    }
 }
 
 function skipTaskOnTomorrow(templateId) {
@@ -1320,6 +1368,9 @@ function skipTaskOnTomorrow(templateId) {
         if (!t.exceptions) t.exceptions = [];
         if (!t.exceptions.includes(tomorrowStr)) t.exceptions.push(tomorrowStr);
     }
+    if (Array.isArray(ephemeralData[tomorrowStr])) {
+        ephemeralData[tomorrowStr] = ephemeralData[tomorrowStr].filter(b => b.templateId !== templateId);
+    }
     saveData();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
@@ -1328,39 +1379,122 @@ function skipTaskOnTomorrow(templateId) {
 
 function renderPlanTomorrowModal() {
     const dateLbl = document.getElementById('plan-tmw-date-label');
-    if (dateLbl) dateLbl.textContent = `TARGET // ${tomorrowStr}`;
+    if (dateLbl) dateLbl.textContent = `TOMORROW // ${tomorrowStr}`;
 
     const prioInput = document.getElementById('plan-tmw-priority');
     if (prioInput) prioInput.value = dailyPriorities[tomorrowStr] || '';
 
-    const rolloverCont = document.getElementById('plan-tmw-rollover');
-    if (rolloverCont) {
-        rolloverCont.innerHTML = '';
-        const unfinished = templates.filter(t => {
-            if (t.type === 'medicine') return false;
-            if (!isTaskActiveOnDate(t, todayStr)) return false;
-            const curLog = (logs[todayStr] && logs[todayStr][t.id]) || Array(t.instances || 1).fill(false);
-            return curLog.some(x => !x);
-        });
+    const tmwDayIdx = new Date(tomorrowStr).getDay();
+    const customBlocks = Array.isArray(ephemeralData[tomorrowStr]) ? ephemeralData[tomorrowStr] : [];
 
-        if (unfinished.length === 0) {
-            rolloverCont.innerHTML = '<div class="empty-state">[ ALL TODAY TASKS COMPLETED ]</div>';
+    // 1. Render Blocchi Task Disponibili per Domani (proporzionali e trascinabili sulla Timeline)
+    const availCont = document.getElementById('plan-tmw-available-blocks');
+    if (availCont) {
+        availCont.innerHTML = '';
+        const activeTmwTasks = templates.filter(t => isTaskActiveOnDate(t, tomorrowStr) && t.type !== 'medicine');
+
+        let totalCommittedMins = 0;
+
+        if (activeTmwTasks.length === 0) {
+            availCont.innerHTML = '<div class="empty-state">[ NO TASKS ACTIVE FOR TOMORROW ]</div>';
         } else {
-            unfinished.forEach(t => {
-                const isSingleToday = (t.startDate === todayStr && t.endDate === todayStr);
+            activeTmwTasks.forEach(t => {
+                const unitMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, tomorrowStr) : (t.timerMinutes || 0);
+                const isFixedTimed = (t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0));
+                const totalInstances = t.instances || 1;
+                const usedBlocks = customBlocks
+                    .filter(b => b.templateId === t.id)
+                    .reduce((acc, b) => acc + (b.blocksUsed || 1), 0);
+                const remainingBlocks = isFixedTimed ? 0 : Math.max(0, totalInstances - usedBlocks);
+
+                totalCommittedMins += totalInstances * unitMins;
+
                 const row = document.createElement('div');
-                row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); font-size: var(--font-xs);';
-                row.innerHTML = `<div><strong style="color: var(--text-dim);">[${escapeHtml(t.category)}]</strong> ${escapeHtml(t.title)}</div>`;
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-sm';
-                btn.textContent = isSingleToday ? '[MOVE -> TMW]' : '[+1 TMW]';
-                btn.onclick = () => rolloverTaskToTomorrow(t.id);
-                row.appendChild(btn);
-                rolloverCont.appendChild(row);
+                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-left: 3px solid ${t.color || '#fff'}; font-size: var(--font-xs); gap: 8px;`;
+
+                if (unitMins > 0 && remainingBlocks > 0) {
+                    row.draggable = true;
+                    row.style.cursor = 'grab';
+                    row.title = 'Drag onto the timeline on the right!';
+                }
+
+                const leftInfo = document.createElement('div');
+                leftInfo.style.cssText = 'flex: 1; min-width: 0;';
+                const badgeText = unitMins > 0
+                    ? `${unitMins}m/block · ${remainingBlocks}/${totalInstances} left`
+                    : `CHECK-ONLY ROUTINE`;
+
+                leftInfo.innerHTML = `
+                    <div style="font-weight:bold; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <span style="color:var(--text-dim);">[${escapeHtml(t.category)}]</span> ${escapeHtml(t.title)}
+                    </div>
+                    <div style="font-size:0.65rem; color:var(--text-dim); margin-top:2px;">${badgeText}</div>
+                `;
+
+                const rightControls = document.createElement('div');
+                rightControls.style.cssText = 'display: flex; align-items: center; gap: 5px; flex-shrink: 0;';
+
+                // Se ha blocchi con minuti da piazzare sulla timeline
+                let multSelect = null;
+                if (unitMins > 0 && remainingBlocks > 0) {
+                    if (remainingBlocks > 1) {
+                        multSelect = document.createElement('select');
+                        multSelect.className = 'form-control form-control-sm';
+                        multSelect.style.cssText = 'width: 68px; padding: 2px 4px; font-size: 0.65rem;';
+                        for (let k = 1; k <= remainingBlocks; k++) {
+                            const opt = document.createElement('option');
+                            opt.value = k;
+                            opt.textContent = `${k}x (${k * unitMins}m)`;
+                            multSelect.appendChild(opt);
+                        }
+                        rightControls.appendChild(multSelect);
+                    }
+
+                    const timeInp = document.createElement('input');
+                    timeInp.type = 'time';
+                    timeInp.value = '09:00';
+                    timeInp.className = 'form-control form-control-sm';
+                    timeInp.style.cssText = 'width: 78px; padding: 2px 4px; font-size: 0.65rem;';
+
+                    const placeBtn = document.createElement('button');
+                    placeBtn.className = 'btn btn-sm';
+                    placeBtn.textContent = '[-> GRID]';
+                    placeBtn.onclick = () => {
+                        const mult = multSelect ? parseInt(multSelect.value, 10) : 1;
+                        placeTaskBlockOnTomorrowTimeline(t.id, timeInp.value || '09:00', mult);
+                    };
+
+                    rightControls.appendChild(timeInp);
+                    rightControls.appendChild(placeBtn);
+
+                    row.ondragstart = (ev) => {
+                        const mult = multSelect ? parseInt(multSelect.value, 10) : 1;
+                        ev.dataTransfer.setData('text/plain', JSON.stringify({
+                            kind: 'new_block',
+                            templateId: t.id,
+                            multiplier: mult
+                        }));
+                    };
+                }
+
+                const skipBtn = document.createElement('button');
+                skipBtn.className = 'icon-btn delete';
+                skipBtn.title = 'Skip this task tomorrow';
+                skipBtn.textContent = '[SKIP]';
+                skipBtn.onclick = () => skipTaskOnTomorrow(t.id);
+                rightControls.appendChild(skipBtn);
+
+                row.appendChild(leftInfo);
+                row.appendChild(rightControls);
+                availCont.appendChild(row);
             });
         }
+
+        const badgeEl = document.getElementById('plan-tmw-workload-badge');
+        if (badgeEl) badgeEl.textContent = `${(totalCommittedMins / 60).toFixed(1)}H TOTAL`;
     }
 
+    // 2. General To-Do Inbox (unica fonte di spostamento rapido)
     const inboxCont = document.getElementById('plan-tmw-inbox');
     if (inboxCont) {
         inboxCont.innerHTML = '';
@@ -1373,7 +1507,7 @@ function renderPlanTomorrowModal() {
                 row.innerHTML = `<span>${escapeHtml(item.title)}</span>`;
                 const btn = document.createElement('button');
                 btn.className = 'btn btn-sm';
-                btn.textContent = '[-> TMW]';
+                btn.textContent = '[+ ADD TO TMW]';
                 btn.onclick = () => assignInboxItemToTomorrow(item.id);
                 row.appendChild(btn);
                 inboxCont.appendChild(row);
@@ -1381,64 +1515,247 @@ function renderPlanTomorrowModal() {
         }
     }
 
-    const constraintsCont = document.getElementById('plan-tmw-constraints');
-    const lineupCont = document.getElementById('plan-tmw-lineup');
+    // 3. Disegna la Timeline Giornaliera di Domani (06:30 - 24:00)
+    renderTomorrowOneDayTimeline();
+}
+
+function renderTomorrowOneDayTimeline() {
+    const labelsCol = document.getElementById('plan-tmw-time-labels');
+    const canvasCol = document.getElementById('plan-tmw-day-canvas');
+    if (!labelsCol || !canvasCol) return;
+
+    const startHour = 6.5; // 06:30
+    const totalHeight = (24 - startHour) * tmwTimelineZoom;
+
+    labelsCol.innerHTML = '';
+    labelsCol.style.height = `${totalHeight}px`;
+
+    const lbl630 = document.createElement('div');
+    lbl630.className = 'time-label';
+    lbl630.style.top = '0px';
+    lbl630.textContent = '06:30';
+    labelsCol.appendChild(lbl630);
+
+    for (let h = 7; h < 24; h++) {
+        const tl = document.createElement('div');
+        tl.className = 'time-label';
+        tl.style.top = `${(h - startHour) * tmwTimelineZoom}px`;
+        tl.textContent = `${String(h).padStart(2, '0')}:00`;
+        labelsCol.appendChild(tl);
+    }
+
+    canvasCol.innerHTML = '';
+    canvasCol.style.height = `${totalHeight}px`;
+
+    // Linee orizzontali ogni 30 minuti per riferimento visivo preciso
+    for (let half = 13; half <= 48; half++) {
+        const hDec = half / 2;
+        const line = document.createElement('div');
+        line.className = 'grid-line-abs';
+        line.style.top = `${(hDec - startHour) * tmwTimelineZoom}px`;
+        if (half % 2 !== 0) line.style.opacity = '0.35';
+        canvasCol.appendChild(line);
+    }
+
+    // Indicatore visivo dell'orario durante il Drag & Drop sulla Timeline
+    const dropIndicator = document.createElement('div');
+    dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border-top: 2px solid var(--text-main); z-index: 60; pointer-events:none;';
+    const dropBadge = document.createElement('span');
+    dropBadge.style.cssText = 'position:absolute; right:6px; top:-18px; background:#000; color:var(--text-main); border:1px solid var(--text-main); font-size:var(--font-xs); padding:1px 6px; font-weight:bold;';
+    dropIndicator.appendChild(dropBadge);
+    canvasCol.appendChild(dropIndicator);
+
+    const calcSnappedTimeFromY = (clientY) => {
+        const rect = canvasCol.getBoundingClientRect();
+        const relY = Math.max(0, Math.min(totalHeight, clientY - rect.top));
+        const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
+        // Snap preciso a multipli di 5 minuti (perfetto per task da 10m come Duolingo o 30m come Algebra)
+        const snappedMins = Math.round(rawMins / 5) * 5;
+        return minutesToTimeStr(snappedMins);
+    };
+
+    canvasCol.ondragover = (ev) => {
+        ev.preventDefault();
+        const tStr = calcSnappedTimeFromY(ev.clientY);
+        const topPx = timeToPx(tStr, tmwTimelineZoom);
+        dropIndicator.style.display = 'block';
+        dropIndicator.style.top = `${topPx}px`;
+        dropBadge.textContent = `DROP AT ${tStr}`;
+    };
+
+    canvasCol.ondragleave = () => {
+        dropIndicator.style.display = 'none';
+    };
+
+    canvasCol.ondrop = (ev) => {
+        ev.preventDefault();
+        dropIndicator.style.display = 'none';
+        const targetTimeStr = calcSnappedTimeFromY(ev.clientY);
+        try {
+            const payload = JSON.parse(ev.dataTransfer.getData('text/plain'));
+            if (payload.kind === 'new_block') {
+                placeTaskBlockOnTomorrowTimeline(payload.templateId, targetTimeStr, payload.multiplier || 1);
+            } else if (payload.kind === 'move_ephemeral') {
+                moveTomorrowTimelineBlock(payload.blockId, targetTimeStr, false);
+            } else if (payload.kind === 'move_fixed') {
+                moveTomorrowTimelineBlock(payload.templateId, targetTimeStr, true, payload.oldStart);
+            }
+        } catch (e) {}
+    };
+
     const tmwDayIdx = new Date(tomorrowStr).getDay();
 
-    const tmwTasks = templates.filter(t => isTaskActiveOnDate(t, tomorrowStr));
-    const tmwEvents = specificEvents.filter(e => e.date === tomorrowStr);
-
-    let committedMins = 0;
-    tmwTasks.forEach(t => {
-        const m = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, tomorrowStr) : (t.timerMinutes || 0);
-        committedMins += (t.instances || 1) * m;
-    });
-
-    if (constraintsCont) {
-        constraintsCont.innerHTML = `
-            <div>:: ESTIMATED WORKLOAD: <strong style="color: var(--text-main);">${(committedMins / 60).toFixed(1)} HOURS</strong> (${tmwTasks.length} tasks)</div>
-            <div>:: CALENDAR EVENTS: <strong style="color: var(--text-main);">${tmwEvents.length}</strong></div>
-            <div>:: ACTIVE WORKOUT SPLIT: <strong style="color: var(--text-main);">DAY ${nextWorkoutDay}</strong></div>
-        `;
-    }
-
-    if (lineupCont) {
-        lineupCont.innerHTML = '';
-        if (tmwTasks.length === 0 && tmwEvents.length === 0) {
-            lineupCont.innerHTML = '<div class="empty-state">[ NO TASKS SCHEDULED FOR TOMORROW YET ]</div>';
-        } else {
-            tmwEvents.forEach(ev => {
-                const row = document.createElement('div');
-                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; border: 1px solid var(--border-color); border-left: 3px solid ${ev.color}; font-size: var(--font-xs);`;
-                const timeBadge = (ev.start && ev.end) ? `[${ev.start}-${ev.end}] ` : '[EVENT] ';
-                row.innerHTML = `<strong style="color: ${ev.color};">${escapeHtml(timeBadge + ev.title)}</strong>`;
-                lineupCont.appendChild(row);
-            });
-
-            tmwTasks.forEach(t => {
-                const row = document.createElement('div');
-                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color); border-left: 3px solid ${t.color || '#fff'}; font-size: var(--font-xs);`;
-                let timeStr = '[FLEX]';
-                if (t.timeWindows && t.timeWindows.length > 0) {
-                    const tw = t.timeWindows.find(w => w.days && w.days.includes(tmwDayIdx));
-                    if (tw) timeStr = `[${tw.start}-${tw.end}]`;
+    // 1. Ghost Layers di domani sullo sfondo
+    referenceLayers.forEach(ref => {
+        if (ref && refToggles[ref.id]) {
+            (ref.timeWindows || []).forEach(tw => {
+                if (tw.days && tw.days.includes(tmwDayIdx)) {
+                    const top = timeToPx(tw.start, tmwTimelineZoom);
+                    const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 8);
+                    const block = document.createElement('div');
+                    block.className = 'block-absolute block-ref';
+                    block.style.cssText = `top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, 0.14)}; padding: 2px 6px; color: var(--text-dim);`;
+                    block.textContent = `[GHOST] ${ref.title} (${tw.start}-${tw.end})`;
+                    canvasCol.appendChild(block);
                 }
-                row.innerHTML = `
-                    <div>
-                        <span style="color: var(--text-dim); margin-right: 6px;">${timeStr}</span>
-                        <strong style="color: var(--text-main);">${escapeHtml(t.title)}</strong>
-                        <span style="color: var(--text-dim); margin-left: 6px;">(${escapeHtml(t.category)})</span>
-                    </div>
-                `;
-                const skipBtn = document.createElement('button');
-                skipBtn.className = 'icon-btn delete';
-                skipBtn.textContent = '[SKIP]';
-                skipBtn.onclick = () => skipTaskOnTomorrow(t.id);
-                row.appendChild(skipBtn);
-                lineupCont.appendChild(row);
             });
         }
-    }
+    });
+
+    // 2. Raccoglie tutti i blocchi di domani (Task fisse + Blocchi Proporzionali piazzati + Eventi)
+    const timelineBlocks = [];
+
+    templates.forEach(t => {
+        if (t && isTaskActiveOnDate(t, tomorrowStr) && t.timeWindows && t.timeWindows.length > 0) {
+            t.timeWindows.forEach(tw => {
+                if (tw.days && tw.days.includes(tmwDayIdx)) {
+                    if (plannerExceptions[`${t.id}_${tomorrowStr}_${tw.start}`]) return;
+                    const top = timeToPx(tw.start, tmwTimelineZoom);
+                    const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 8);
+                    const durMins = timeToMinutes(tw.end) - timeToMinutes(tw.start);
+                    timelineBlocks.push({
+                        kind: 'fixed_task',
+                        id: t.id,
+                        title: t.title,
+                        category: t.category,
+                        color: t.color || '#ffffff',
+                        start: tw.start,
+                        end: tw.end,
+                        minutes: durMins,
+                        top, height, bottom: top + height
+                    });
+                }
+            });
+        }
+    });
+
+    const customBlocks = Array.isArray(ephemeralData[tomorrowStr]) ? ephemeralData[tomorrowStr] : [];
+    customBlocks.forEach(cb => {
+        const top = timeToPx(cb.start, tmwTimelineZoom);
+        const height = Math.max(timeToPx(cb.end, tmwTimelineZoom) - top, 8);
+        timelineBlocks.push({
+            kind: 'ephemeral_task',
+            id: cb.id,
+            templateId: cb.templateId,
+            title: cb.title,
+            category: cb.category || 'Planned',
+            color: cb.color || '#ffffff',
+            start: cb.start,
+            end: cb.end,
+            minutes: cb.minutes || (timeToMinutes(cb.end) - timeToMinutes(cb.start)),
+            top, height, bottom: top + height
+        });
+    });
+
+    specificEvents.forEach(e => {
+        if (e && e.date === tomorrowStr && e.start && e.end) {
+            const top = timeToPx(e.start, tmwTimelineZoom);
+            const height = Math.max(timeToPx(e.end, tmwTimelineZoom) - top, 10);
+            timelineBlocks.push({
+                kind: 'event',
+                id: e.id,
+                title: e.title,
+                category: 'Event',
+                color: e.color || '#b84b4b',
+                start: e.start,
+                end: e.end,
+                minutes: timeToMinutes(e.end) - timeToMinutes(e.start),
+                top, height, bottom: top + height
+            });
+        }
+    });
+
+    computeOverlapColumns(timelineBlocks);
+
+    timelineBlocks.forEach(b => {
+        const block = document.createElement('div');
+        block.className = `block-absolute ${b.kind === 'event' ? 'block-event' : 'block-task'}`;
+        const widthPct = 100 / (b.totalCols || 1);
+        const leftPct = (b.colIndex || 0) * widthPct;
+        const isSmall = b.height < 18;
+
+        block.style.cssText = `
+            top: ${b.top}px;
+            height: ${b.height}px;
+            left: calc(${leftPct}% + 2px);
+            width: calc(${widthPct}% - 4px);
+            border-left: 3px solid ${b.color};
+            color: ${b.color};
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: ${isSmall ? '0 6px' : '3px 8px'};
+            font-size: ${isSmall ? '0.64rem' : 'var(--font-xs)'};
+            cursor: grab;
+        `;
+
+        block.draggable = (b.kind !== 'event');
+        block.ondragstart = (ev) => {
+            if (b.kind === 'ephemeral_task') {
+                ev.dataTransfer.setData('text/plain', JSON.stringify({
+                    kind: 'move_ephemeral',
+                    blockId: b.id
+                }));
+            } else if (b.kind === 'fixed_task') {
+                ev.dataTransfer.setData('text/plain', JSON.stringify({
+                    kind: 'move_fixed',
+                    templateId: b.id,
+                    oldStart: b.start
+                }));
+            }
+        };
+
+        const infoSpan = document.createElement('span');
+        infoSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+        infoSpan.innerHTML = `<strong>[${b.start}–${b.end}] ${escapeHtml(b.title)}</strong> <span style="opacity:0.75;">(${b.minutes}m · ${escapeHtml(b.category)})</span>`;
+        block.appendChild(infoSpan);
+
+        const removeBlockAction = (ev) => {
+            ev.preventDefault();
+            ev.stopPropagation();
+            if (b.kind === 'ephemeral_task') {
+                removeTomorrowTimelineBlock(tomorrowStr, b.id);
+            } else if (b.kind === 'fixed_task') {
+                plannerExceptions[`${b.id}_${tomorrowStr}_${b.start}`] = true;
+                saveData();
+                renderWeeklyPlanner();
+                renderPlanTomorrowModal();
+            }
+        };
+
+        block.oncontextmenu = removeBlockAction;
+
+        if (!isSmall && b.kind !== 'event') {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'icon-btn delete';
+            delBtn.style.fontSize = '0.65rem';
+            delBtn.textContent = '[×]';
+            delBtn.onclick = removeBlockAction;
+            block.appendChild(delBtn);
+        }
+
+        canvasCol.appendChild(block);
+    });
 }
 
 renderTracker();

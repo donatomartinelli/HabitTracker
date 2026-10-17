@@ -1,5 +1,5 @@
 // --- js/modules/modals.js ---
-// Iniezione sincrona dei modali HTML (Con Focus Overlay 3B senza Note e Opzione Check-Only Routine)
+// Iniezione sincrona dei modali HTML (Con nuovo Plan Tomorrow: Inbox + Blocchi Proporzionali + Timeline 06:30-24:00)
 
 function initModalsHtml() {
     const root = document.getElementById('modals-root');
@@ -20,7 +20,7 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 2. Pomodoro Timer Overlay (Scelta 3B: Centrato senza Session Notes + Scaletta Playlist Sotto) -->
+    <!-- 2. Pomodoro Timer Overlay -->
     <div id="pomodoroOverlay" class="pomodoro-overlay">
         <div id="widget-drag-handle">
             <span style="flex: 1; text-align: left;">:: FOCUS WIDGET</span>
@@ -46,7 +46,6 @@ function initModalsHtml() {
                 <button class="btn btn-danger" onclick="stopPomodoro()">Abort</button>
             </div>
 
-            <!-- Scaletta Live della Focus Playlist -->
             <div id="focus-live-queue" style="width: 100%; max-width: 460px; margin-top: 28px;"></div>
         </div>
     </div>
@@ -150,11 +149,11 @@ function initModalsHtml() {
                     </div>
                     <div style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1;">
-                            <label>Daily Repetitions</label>
+                            <label>Daily Repetitions (Blocks)</label>
                             <input type="number" id="h-instances" class="form-control" value="1" min="1" max="50">
                         </div>
                         <div class="form-group" style="flex: 1;" id="h-timer-group">
-                            <label>Duration per Session (min)</label>
+                            <label>Minutes per Block</label>
                             <input type="number" id="h-timer" class="form-control" value="25" min="1">
                         </div>
                     </div>
@@ -400,49 +399,70 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 12. Evening Builder: Plan Tomorrow Modal -->
+    <!-- 12. Evening Builder: Plan Tomorrow Modal (CON TIMELINE 1-DAY 06:30-24:00 E BLOCCHI PROPORZIONALI) -->
     <div id="planTomorrowModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 820px; max-width: 95%; max-height: 88vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 16px;">
-                <h2 style="margin: 0; border: none; padding: 0;">Evening Builder // Plan Tomorrow</h2>
-                <span id="plan-tmw-date-label" style="font-size: var(--font-sm); color: var(--text-dim); font-weight: bold;">YYYY-MM-DD</span>
-            </div>
-            <div style="display: flex; gap: 24px; flex: 1; overflow: hidden; min-height: 360px;">
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto; padding-right: 6px; border-right: 1px solid var(--border-color);">
-                    <div>
-                        <div class="sub-column-header">1. Unfinished Today (Rollover to Tomorrow)</div>
-                        <div id="plan-tmw-rollover" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-                    <div>
-                        <div class="sub-column-header">2. From General To-Do Inbox</div>
-                        <div id="plan-tmw-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-                    <div>
-                        <div class="sub-column-header">3. Fixed Constraints &amp; Active Split</div>
-                        <div id="plan-tmw-constraints" style="font-size: var(--font-xs); color: var(--text-muted); line-height: 1.6;"></div>
-                    </div>
+        <div class="modal-content" style="width: 960px; max-width: 96%; height: 88vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px; flex-shrink: 0;">
+                <div>
+                    <h2 style="margin: 0; border: none; padding: 0;">Evening Builder // 1-Day Timeline (06:30 – 24:00)</h2>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">Drag task blocks onto the timeline or choose start time. Block height matches exact minutes.</span>
                 </div>
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
+                <span id="plan-tmw-date-label" style="font-size: var(--font-sm); color: var(--text-main); font-weight: bold; padding: 4px 10px; border: 1px solid var(--border-color);">YYYY-MM-DD</span>
+            </div>
+
+            <div style="display: flex; gap: 20px; flex: 1; overflow: hidden; min-height: 0;">
+                
+                <!-- COLONNA SINISTRA: Priorità, Inbox, Blocchi Task Proporzionali da Piazzare & Quick Add -->
+                <div style="width: 44%; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 8px; border-right: 1px solid var(--border-color);">
+                    
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Tomorrow's #1 Priority / Main Objective</label>
-                        <input type="text" id="plan-tmw-priority" class="form-control form-control-sm" placeholder="e.g. Complete Analysis II Chapter 4 proofs..." oninput="saveTomorrowPriority(this.value)">
+                        <input type="text" id="plan-tmw-priority" class="form-control form-control-sm" placeholder="e.g. Complete Analysis II proofs..." oninput="saveTomorrowPriority(this.value)">
                     </div>
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Quick Add Task for Tomorrow</label>
-                        <div style="display: flex; gap: 6px;">
+
+                    <!-- 1. Blocchi Task Attive Domani (con scelta numero blocchi es. Algebra 2x30m e Drag & Drop) -->
+                    <div>
+                        <div class="sub-column-header" style="display:flex; justify-content:space-between;">
+                            <span>1. Tomorrow's Task Blocks (Drag to Timeline)</span>
+                            <span id="plan-tmw-workload-badge" style="color:var(--text-main); font-weight:bold;">0.0H</span>
+                        </div>
+                        <div id="plan-tmw-available-blocks" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                    </div>
+
+                    <!-- 2. General To-Do Inbox (Senza più le abitudini ripetute di oggi) -->
+                    <div>
+                        <div class="sub-column-header">2. General To-Do Inbox (Move to Tomorrow)</div>
+                        <div id="plan-tmw-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                    </div>
+
+                    <!-- 3. Quick Add Nuova Task per Domani -->
+                    <div style="border-top: 1px solid var(--border-color); padding-top: 10px;">
+                        <div class="sub-column-header">3. Create New Task Block for Tomorrow</div>
+                        <div style="display: flex; gap: 6px; align-items: center;">
                             <input type="text" id="plan-tmw-new-title" class="form-control form-control-sm" style="flex: 1;" placeholder="Task title..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addQuickTomorrowTask();}">
-                            <input type="time" id="plan-tmw-new-start" class="form-control form-control-sm" style="width: 92px;">
-                            <input type="time" id="plan-tmw-new-end" class="form-control form-control-sm" style="width: 92px;">
+                            <input type="number" id="plan-tmw-new-mins" class="form-control form-control-sm no-spinners" style="width: 58px; text-align:center;" value="30" min="5" step="5" title="Duration in minutes">
+                            <span style="font-size:var(--font-xs); color:var(--text-dim);">MIN</span>
+                            <input type="time" id="plan-tmw-new-start" class="form-control form-control-sm" style="width: 88px;" title="Optional start time">
                             <button type="button" class="btn btn-primary btn-sm" onclick="addQuickTomorrowTask()">[+ ADD]</button>
                         </div>
                     </div>
-                    <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
-                        <div class="sub-column-header">Tomorrow's Complete Lineup</div>
-                        <div id="plan-tmw-lineup" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;"></div>
+                </div>
+
+                <!-- COLONNA DESTRA: TIMELINE GIORNALIERA 06:30 - 24:00 IDENTICA AL WEEKLY PLANNER -->
+                <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
+                    <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0;">
+                        <span>TOMORROW'S TIMELINE (06:30 – 24:00)</span>
+                        <span style="color: var(--text-dim); font-size: 0.65rem;">DRAG BLOCKS TO SCHEDULE OR MOVE · RIGHT-CLICK TO UNSCHEDULE</span>
+                    </div>
+
+                    <div id="plan-tmw-timeline-scroll" style="flex: 1; display: flex; overflow-y: auto; position: relative; border: 1px solid var(--border-color); background: rgba(255,255,255,0.01); padding-top: 10px;">
+                        <div id="plan-tmw-time-labels" class="planner-time-labels" style="width: 48px;"></div>
+                        <div id="plan-tmw-day-canvas" class="planner-col-absolute" style="flex: 1; position: relative;"></div>
                     </div>
                 </div>
             </div>
-            <div class="modal-actions">
+
+            <div class="modal-actions" style="margin-top: 14px; flex-shrink: 0;">
                 <button type="button" class="btn" onclick="closeModals()">Close</button>
                 <button type="button" class="btn btn-primary" onclick="closeModals(); jumpToDate(tomorrowStr);">Lock Plan &amp; View Tomorrow [&gt;]</button>
             </div>
@@ -683,7 +703,7 @@ function initModalsHtml() {
                     <div class="help-grid">
                         <div class="help-key">focus [task/cat]</div><div class="help-desc">Start Focus using the task's own duration &amp; auto-check</div>
                         <div class="help-key">done [task]</div><div class="help-desc">Check off today's matching task</div>
-                        <div class="help-key">plan</div><div class="help-desc">Open Evening Builder to assemble tomorrow's schedule</div>
+                        <div class="help-key">plan</div><div class="help-desc">Open Evening Builder 1-Day Timeline (06:30–24:00)</div>
                         <div class="help-key">todo [text]</div><div class="help-desc">Add item to General To-Do inbox</div>
                         <div class="help-key">task [text] [@day]</div><div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
                         <div class="help-key">event [@day] [title]</div><div class="help-desc">Add calendar event</div>

@@ -1,7 +1,8 @@
 // --- js/modules/planner.js ---
-// Atomic Module 4: Weekly Planner, Collision-Free Time Blocks & Ghost Layers
+// Atomic Module 4: Weekly Planner (06:30 - 24:00), Blocchi Proporzionali & Fascia Flessibile Fissa a Fine Giornata
 
-let plannerZoom = 40;
+const PLANNER_START_HOUR = 6.5; // 06:30
+let plannerZoom = 42;
 window.shouldScrollPlanner = true;
 
 function hexToRgba(hex, alpha) {
@@ -41,10 +42,24 @@ function getWeekStart(dateStr) {
     return new Date(d.setDate(diff));
 }
 
-function timeToPx(timeStr) {
+function timeToMinutes(timeStr) {
+    if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 390;
+    const [h, m] = timeStr.split(':').map(Number);
+    return (h * 60) + (m || 0);
+}
+
+function minutesToTimeStr(totalMins) {
+    const clamped = Math.max(390, Math.min(24 * 60, Math.round(totalMins)));
+    const h = Math.floor(clamped / 60);
+    const m = clamped % 60;
+    if (h === 24) return '23:59';
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function timeToPx(timeStr, zoomVal = plannerZoom) {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
     const [h, m] = timeStr.split(':').map(Number);
-    return ((h - 7) + m / 60) * plannerZoom;
+    return ((h + (m / 60)) - PLANNER_START_HOUR) * zoomVal;
 }
 
 function computeOverlapColumns(blocks) {
@@ -93,7 +108,7 @@ function renderWeeklyPlanner() {
         const headerRow = document.getElementById('planner-header');
         const timeLabels = document.getElementById('planner-time-labels');
         const grid = document.getElementById('planner-grid');
-        const drawerDaysRow = document.getElementById('drawer-days-row');
+        const fixedFooter = document.getElementById('planner-fixed-footer');
 
         if (!sidebar || !headerRow || !timeLabels || !grid) return;
 
@@ -128,23 +143,29 @@ function renderWeeklyPlanner() {
             sidebar.appendChild(wrap);
         });
 
-        const startHour = 7;
-        const totalGridHeight = (24 - startHour) * plannerZoom;
+        const totalGridHeight = (24 - PLANNER_START_HOUR) * plannerZoom;
 
         timeLabels.innerHTML = '';
         timeLabels.style.height = `${totalGridHeight}px`;
 
-        for (let h = startHour; h < 24; h++) {
+        // Etichetta iniziale 06:30 + tutte le ore piene dalle 07:00 alle 23:00
+        const tl630 = document.createElement('div');
+        tl630.className = 'time-label';
+        tl630.style.top = `0px`;
+        tl630.textContent = `06:30`;
+        timeLabels.appendChild(tl630);
+
+        for (let h = 7; h < 24; h++) {
             const tl = document.createElement('div');
             tl.className = 'time-label';
-            tl.style.top = `${(h - startHour) * plannerZoom}px`;
+            tl.style.top = `${(h - PLANNER_START_HOUR) * plannerZoom}px`;
             tl.textContent = `${h.toString().padStart(2, '0')}:00`;
             timeLabels.appendChild(tl);
         }
 
         headerRow.innerHTML = '';
         grid.innerHTML = '';
-        if (drawerDaysRow) drawerDaysRow.innerHTML = '';
+        if (fixedFooter) fixedFooter.innerHTML = '';
 
         const weekStart = getWeekStart(selectedDateStr);
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -163,38 +184,40 @@ function renderWeeklyPlanner() {
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
-            if (drawerDaysRow) {
-                const dropZone = document.createElement('div');
-                dropZone.className = `planner-header-day ${isToday ? 'today-col' : ''}`;
-                dropZone.style.cssText = 'background: rgba(255,255,255,0.01); min-height: 90px; padding: 5px;';
-                dropZone.innerHTML = `<div class="day-title" style="margin-bottom:4px;">${days[i]}</div>`;
+            // Fascia fissa a fine giornata per ogni colonna (mostra le task flessibili non piazzate su orario e gli eventi)
+            if (fixedFooter) {
+                const footerCell = document.createElement('div');
+                footerCell.style.cssText = 'flex: 1; border-right: 1px solid var(--border-color); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 0;';
+                if (i === 6) footerCell.style.borderRight = 'none';
 
-                let flexibleCategories = new Set();
+                const dayCustomBlocks = Array.isArray(ephemeralData[loopDateStr]) ? ephemeralData[loopDateStr] : [];
+
                 specificEvents.forEach(e => {
-                    if (e && e.date === loopDateStr) {
+                    if (e && e.date === loopDateStr && (!e.start || !e.end)) {
                         const badge = document.createElement('div');
                         badge.className = 'flexible-task-badge';
                         badge.style.borderLeft = `2px solid ${e.color}`;
                         badge.textContent = `[*] ${e.title}`;
-                        dropZone.appendChild(badge);
+                        footerCell.appendChild(badge);
                     }
                 });
 
                 templates.forEach(t => {
                     if (t && isTaskActiveOnDate(t, loopDateStr)) {
-                        if (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0))) {
-                            flexibleCategories.add(t.category);
+                        const isFlex = (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0)));
+                        const placedCount = dayCustomBlocks.filter(b => b.templateId === t.id).length;
+                        if (isFlex && placedCount < (t.instances || 1)) {
+                            const badge = document.createElement('div');
+                            badge.className = 'flexible-task-badge';
+                            badge.style.borderLeft = `2px solid ${t.color || '#fff'}`;
+                            const rem = (t.instances || 1) - placedCount;
+                            badge.textContent = `${t.title}${rem > 1 ? ' x' + rem : ''}`;
+                            footerCell.appendChild(badge);
                         }
                     }
                 });
 
-                flexibleCategories.forEach(cat => {
-                    const badge = document.createElement('div');
-                    badge.className = 'flexible-task-badge';
-                    badge.textContent = cat;
-                    dropZone.appendChild(badge);
-                });
-                drawerDaysRow.appendChild(dropZone);
+                fixedFooter.appendChild(footerCell);
             }
 
             const dayCol = document.createElement('div');
@@ -202,19 +225,26 @@ function renderWeeklyPlanner() {
             dayCol.style.height = `${totalGridHeight}px`;
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
 
-            for (let h = startHour; h <= 24; h++) {
+            // Linea 06:30 + linee orarie
+            const line630 = document.createElement('div');
+            line630.className = 'grid-line-abs';
+            line630.style.top = `0px`;
+            dayCol.appendChild(line630);
+
+            for (let h = 7; h <= 24; h++) {
                 const line = document.createElement('div');
                 line.className = 'grid-line-abs';
-                line.style.top = `${(h - startHour) * plannerZoom}px`;
+                line.style.top = `${(h - PLANNER_START_HOUR) * plannerZoom}px`;
                 dayCol.appendChild(line);
             }
 
+            // 1. Ghost Layers
             referenceLayers.forEach(ref => {
                 if (ref && refToggles[ref.id]) {
                     (ref.timeWindows || []).forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
                             const top = timeToPx(tw.start);
-                            const height = Math.max(timeToPx(tw.end) - top, 15);
+                            const height = Math.max(timeToPx(tw.end) - top, 6);
                             if (top + height > 0) {
                                 const block = document.createElement('div');
                                 block.className = 'block-absolute block-ref';
@@ -229,14 +259,16 @@ function renderWeeklyPlanner() {
                 }
             });
 
+            // 2. Blocchi Orari (Task fisse + Blocchi posizionati sulla Timeline del giorno + Eventi con orario)
             const dayBlocks = [];
+
             templates.forEach(t => {
                 if (t && isTaskActiveOnDate(t, loopDateStr) && t.timeWindows && t.timeWindows.length > 0) {
                     t.timeWindows.forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
                             if (plannerExceptions[`${t.id}_${loopDateStr}_${tw.start}`]) return;
                             const top = timeToPx(tw.start);
-                            const height = Math.max(timeToPx(tw.end) - top, 16);
+                            const height = Math.max(timeToPx(tw.end) - top, 7); // Proporzionale anche per 10 min
                             if (top + height > 0) {
                                 dayBlocks.push({
                                     kind: 'task', id: t.id, title: t.title, category: t.category,
@@ -249,10 +281,30 @@ function renderWeeklyPlanner() {
                 }
             });
 
+            // Blocchi posizionati tramite Plan Tomorrow Timeline per quella data specifica
+            const customDayBlocks = Array.isArray(ephemeralData[loopDateStr]) ? ephemeralData[loopDateStr] : [];
+            customDayBlocks.forEach(cb => {
+                const top = timeToPx(cb.start);
+                const height = Math.max(timeToPx(cb.end) - top, 7);
+                if (top + height > 0) {
+                    dayBlocks.push({
+                        kind: 'ephemeral',
+                        id: cb.id,
+                        templateId: cb.templateId,
+                        title: cb.title,
+                        category: cb.category || 'Planned',
+                        color: cb.color || '#ffffff',
+                        start: cb.start,
+                        end: cb.end,
+                        top, height, bottom: top + height
+                    });
+                }
+            });
+
             specificEvents.forEach(e => {
                 if (e && e.date === loopDateStr && e.start && e.end) {
                     const top = timeToPx(e.start);
-                    const height = Math.max(timeToPx(e.end) - top, 16);
+                    const height = Math.max(timeToPx(e.end) - top, 10);
                     if (top + height > 0) {
                         dayBlocks.push({
                             kind: 'event', id: e.id, title: e.title, category: 'Single Event',
@@ -270,6 +322,7 @@ function renderWeeklyPlanner() {
                 block.className = `block-absolute ${b.kind === 'event' ? 'block-event' : 'block-task'}`;
                 const widthPct = 100 / (b.totalCols || 1);
                 const leftPct = (b.colIndex || 0) * widthPct;
+                const isCompact = b.height < 16;
 
                 block.style.cssText = `
                     top: ${b.top}px;
@@ -278,6 +331,9 @@ function renderWeeklyPlanner() {
                     width: calc(${widthPct}% - 2px);
                     border-left: 3px solid ${b.color};
                     color: ${b.color};
+                    padding: ${isCompact ? '0px 4px' : '2px 5px'};
+                    font-size: ${isCompact ? '0.62rem' : 'var(--font-xs)'};
+                    line-height: ${isCompact ? '1' : '1.2'};
                 `;
 
                 const bTag = document.createElement('b');
@@ -287,8 +343,17 @@ function renderWeeklyPlanner() {
                 block.onmouseenter = (ev) => showTooltip(ev, b.title, `${b.start} - ${b.end}`, b.category);
                 block.onmousemove = moveTooltip;
                 block.onmouseleave = hideTooltip;
+
                 if (b.kind === 'task') {
                     block.oncontextmenu = (ev) => hidePlannerInstance(ev, b.id, loopDateStr, b.start);
+                } else if (b.kind === 'ephemeral') {
+                    block.oncontextmenu = (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        if (typeof removeTomorrowTimelineBlock === 'function') {
+                            removeTomorrowTimelineBlock(loopDateStr, b.id);
+                        }
+                    };
                 }
                 dayCol.appendChild(block);
             });
@@ -309,9 +374,9 @@ function renderWeeklyPlanner() {
                     const rect = scrollArea.getBoundingClientRect();
                     const y = e.clientY - rect.top + scrollArea.scrollTop;
                     const relativeY = y - 8;
-                    const hoursDec = (relativeY / plannerZoom) + 7;
+                    const hoursDec = (relativeY / plannerZoom) + PLANNER_START_HOUR;
 
-                    if (hoursDec >= 7 && hoursDec <= 24 && relativeY >= 0) {
+                    if (hoursDec >= PLANNER_START_HOUR && hoursDec <= 24 && relativeY >= 0) {
                         const h = Math.floor(hoursDec);
                         const m = Math.floor((hoursDec - h) * 60);
                         document.getElementById('planner-hover-time').innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -327,7 +392,7 @@ function renderWeeklyPlanner() {
                     if (e.ctrlKey) {
                         e.preventDefault();
                         plannerZoom += e.deltaY > 0 ? -4 : 4;
-                        plannerZoom = Math.max(20, Math.min(120, plannerZoom));
+                        plannerZoom = Math.max(22, Math.min(120, plannerZoom));
                         renderWeeklyPlanner();
                     }
                 }, { passive: false });
@@ -370,14 +435,15 @@ function drawCurrentTimeLine() {
     const now = getNow();
     const h = now.getHours();
     const m = now.getMinutes();
+    const curHourDec = h + (m / 60);
 
     const weekStart = getWeekStart(selectedDateStr);
     const daysDiff = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24));
 
     if (daysDiff >= 0 && daysDiff < 7) {
-        const cols = document.querySelectorAll('.planner-col-absolute');
-        if (cols[daysDiff] && h >= 7) {
-            const top = ((h - 7) + m / 60) * plannerZoom;
+        const cols = document.querySelectorAll('#planner-grid .planner-col-absolute');
+        if (cols[daysDiff] && curHourDec >= PLANNER_START_HOUR) {
+            const top = (curHourDec - PLANNER_START_HOUR) * plannerZoom;
             const line = document.createElement('div');
             line.className = 'current-time-line';
             line.style.top = `${top}px`;
@@ -393,69 +459,6 @@ function drawCurrentTimeLine() {
 }
 
 setInterval(drawCurrentTimeLine, 60000);
-
-function toggleWeeklyFlexibleDrawer() {
-    const drawer = document.getElementById('weekly-drawer');
-    if (!drawer) return;
-    if (drawer.classList.contains('collapsed') || drawer.style.display === 'none') {
-        drawer.classList.remove('collapsed');
-        drawer.style.display = 'flex';
-        drawer.style.flexDirection = 'column';
-        drawer.style.height = '200px';
-    } else {
-        drawer.classList.add('collapsed');
-        drawer.style.display = 'none';
-    }
-}
-
-function initWeeklyResizer() {
-    const resizer = document.getElementById('weekly-resizer');
-    const drawer = document.getElementById('weekly-drawer');
-    if (!resizer || !drawer) return;
-
-    let isResizing = false, startY = 0, startHeight = 0;
-
-    resizer.addEventListener('mousedown', (e) => {
-        isResizing = true;
-        startY = e.clientY;
-        if (drawer.style.display === 'none') {
-            drawer.style.display = 'flex';
-            drawer.style.flexDirection = 'column';
-            drawer.style.height = '1px';
-            startHeight = 1;
-        } else {
-            startHeight = drawer.getBoundingClientRect().height;
-        }
-        resizer.classList.add('dragging');
-        document.body.style.userSelect = 'none';
-        document.body.style.cursor = 'ns-resize';
-    });
-
-    document.addEventListener('mousemove', (e) => {
-        if (!isResizing) return;
-        let newHeight = startHeight + (startY - e.clientY);
-        if (newHeight < 40) {
-            drawer.classList.add('collapsed');
-            drawer.style.display = 'none';
-        } else {
-            drawer.classList.remove('collapsed');
-            drawer.style.display = 'flex';
-            drawer.style.flexDirection = 'column';
-            drawer.style.height = `${Math.min(newHeight, window.innerHeight * 0.6)}px`;
-        }
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (isResizing) {
-            isResizing = false;
-            resizer.classList.remove('dragging');
-            document.body.style.userSelect = '';
-            document.body.style.cursor = '';
-        }
-    });
-
-    resizer.addEventListener('dblclick', toggleWeeklyFlexibleDrawer);
-}
 
 // --- GHOST LAYERS CRUD ---
 function addRefTimeWindow(start = '', end = '', days = []) {
@@ -549,5 +552,3 @@ function toggleReference(id, checked) {
     saveData();
     renderWeeklyPlanner();
 }
-
-initWeeklyResizer();
