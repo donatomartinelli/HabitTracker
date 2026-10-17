@@ -1,5 +1,5 @@
 // --- js/core/state.js ---
-// Gestione Stato Globale, Migrazioni, Presets Workspace e Persistenza Disco/LocalStorage
+// Gestione Stato Globale, Migrazioni, Albero Tiling, Scelta Schermata d'Avvio (Startup View) e Persistenza
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -78,44 +78,18 @@ const DEFAULT_GYM_PLAN = {
 
 const DEFAULT_MONEY_CATEGORIES = ["Generale", "Treno", "Cinema", "Cibo", "Studio", "Abbonamenti", "Salute", "Svago"];
 
-const DEFAULT_WORKSPACE_PRESETS = [
-    { id: 'ws_zero',     name: '0 // ZERO-UI',   slots: [],                                      builtin: true },
-    { id: 'ws_daily',    name: 'DAILY + PLAN',   slots: ['tasks', 'planner'],                    builtin: true },
-    { id: 'ws_study',    name: 'STUDY + NOTES',  slots: ['tasks', 'notes'],                      builtin: true },
-    { id: 'ws_training', name: 'DIET + GYM',     slots: ['diet', 'gym'],                         builtin: true },
-    { id: 'ws_finance',  name: 'MONEY + TASKS',  slots: ['money', 'tasks'],                      builtin: true },
-    { id: 'ws_quad',     name: '4X OVERVIEW',    slots: ['calendar', 'tasks', 'planner', 'money'], builtin: true }
-];
+const DEFAULT_LAYOUT_TREE = {
+    id: 'root_split',
+    type: 'split',
+    dir: 'row',
+    ratio: 0.35,
+    children: [
+        { id: 'pane_init_1', type: 'pane', module: 'tasks' },
+        { id: 'pane_init_2', type: 'pane', module: 'planner' }
+    ]
+};
 
 function migrateAndInitData() {
-    const oldCats = localStorage.getItem('tracker_note_categories');
-    const currentCats = localStorage.getItem('tracker_note_cats');
-    if (oldCats) {
-        if (!currentCats) {
-            localStorage.setItem('tracker_note_cats', oldCats);
-        } else {
-            const parsedOld = JSON.parse(oldCats) || [];
-            const parsedCur = JSON.parse(currentCats) || [];
-            localStorage.setItem('tracker_note_cats', JSON.stringify(Array.from(new Set([...parsedCur, ...parsedOld]))));
-        }
-        localStorage.removeItem('tracker_note_categories');
-    }
-
-    const oldNotes = localStorage.getItem('tracker_notes_content');
-    const currentNotes = localStorage.getItem('tracker_notes');
-    if (oldNotes) {
-        const parsedOld = JSON.parse(oldNotes) || {};
-        const parsedCur = currentNotes ? (JSON.parse(currentNotes) || {}) : {};
-        for (let cat in parsedOld) {
-            if (!parsedCur[cat]) parsedCur[cat] = parsedOld[cat];
-            else if (parsedCur[cat] !== parsedOld[cat] && !parsedCur[cat].includes(parsedOld[cat])) {
-                parsedCur[cat] = parsedOld[cat] + "\n\n" + parsedCur[cat];
-            }
-        }
-        localStorage.setItem('tracker_notes', JSON.stringify(parsedCur));
-        localStorage.removeItem('tracker_notes_content');
-    }
-
     const defaults = {
         'tracker_templates': [],
         'tracker_logs': {},
@@ -150,11 +124,9 @@ function migrateAndInitData() {
         'tracker_gemini_audio_key': "",
         'tracker_processed_audio': [],
         'tracker_opacity': "0.92",
-        'tracker_mod_left': "tasks",
-        'tracker_mod_right': "planner",
-        'tracker_active_slots': ['tasks', 'planner'],
-        'tracker_workspace_presets': DEFAULT_WORKSPACE_PRESETS,
-        'tracker_pane_left_width': "50%"
+        'tracker_layout_tree': DEFAULT_LAYOUT_TREE,
+        'tracker_workspace_presets': [],
+        'tracker_startup_view': 'last'
     };
 
     for (let key in defaults) {
@@ -165,43 +137,11 @@ function migrateAndInitData() {
     }
 
     try {
-        const notesObj = JSON.parse(localStorage.getItem('tracker_notes')) || {};
-        const catsArr = JSON.parse(localStorage.getItem('tracker_note_cats')) || ["General"];
-        let catsUpdated = false;
-        if (!catsArr.includes("Registrazioni")) {
-            catsArr.push("Registrazioni");
-            catsUpdated = true;
+        const rawPresets = JSON.parse(localStorage.getItem('tracker_workspace_presets')) || [];
+        const userOnlyPresets = rawPresets.filter(p => !p.builtin);
+        if (userOnlyPresets.length !== rawPresets.length) {
+            localStorage.setItem('tracker_workspace_presets', JSON.stringify(userOnlyPresets));
         }
-        for (let key in notesObj) {
-            if (notesObj[key] && notesObj[key].trim() !== '' && !catsArr.includes(key)) {
-                catsArr.push(key);
-                catsUpdated = true;
-            }
-        }
-        if (catsUpdated) localStorage.setItem('tracker_note_cats', JSON.stringify(catsArr));
-    } catch (e) {}
-
-    try {
-        const rawBal = localStorage.getItem('m_balance');
-        if (rawBal !== null) localStorage.setItem('m_balance', roundCurrency(rawBal).toString());
-        const transArr = JSON.parse(localStorage.getItem('m_trans')) || [];
-        let transFixed = false;
-        transArr.forEach(t => {
-            if (t.id && t.id.includes('.')) {
-                const parts = t.id.split('.');
-                let mainPart = parts[0].slice(0, 16);
-                t.id = `${mainPart}_${parts[1].slice(0, 4)}`;
-                transFixed = true;
-            }
-            t.amount = roundCurrency(t.amount);
-            if (!t.category) {
-                if (t.desc && t.desc.toLowerCase().includes('bigliett')) t.category = 'Treno';
-                else if (t.desc && t.desc.startsWith('(Auto)')) t.category = 'Abbonamenti';
-                else t.category = t.type === 'in' ? 'Entrata' : 'Generale';
-                transFixed = true;
-            }
-        });
-        if (transFixed) localStorage.setItem('m_trans', JSON.stringify(transArr));
     } catch (e) {}
 }
 
@@ -243,20 +183,27 @@ let gymPlan = JSON.parse(localStorage.getItem('tracker_gym_plan')) || DEFAULT_GY
 let foodDb = JSON.parse(localStorage.getItem('tracker_food_db')) || DEFAULT_FOOD_DB;
 let bodyLogs = JSON.parse(localStorage.getItem('tracker_body_logs')) || [];
 
-// AI, Audio & Workspaces (0-4 Quadrants)
+// AI, Audio, Tiling Layout Tree & Startup View
 let geminiApiKey = localStorage.getItem('tracker_gemini_key') || "";
 let geminiAudioApiKey = localStorage.getItem('tracker_gemini_audio_key') || "";
 let processedAudioFiles = JSON.parse(localStorage.getItem('tracker_processed_audio')) || [];
 let savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
 
-let activeSlots = JSON.parse(localStorage.getItem('tracker_active_slots'));
-if (!Array.isArray(activeSlots)) activeSlots = ['tasks', 'planner'];
+let layoutTree = null;
+try {
+    const rawTree = localStorage.getItem('tracker_layout_tree');
+    layoutTree = rawTree ? JSON.parse(rawTree) : DEFAULT_LAYOUT_TREE;
+} catch (e) {
+    layoutTree = DEFAULT_LAYOUT_TREE;
+}
 
-let workspacePresets = JSON.parse(localStorage.getItem('tracker_workspace_presets')) || DEFAULT_WORKSPACE_PRESETS;
+let workspacePresets = JSON.parse(localStorage.getItem('tracker_workspace_presets')) || [];
+// 'last' | 'zero' | 'mod:tasks' | 'preset:ws_123...'
+let startupView = localStorage.getItem('tracker_startup_view') || 'last';
 
-// Mantiene activeLeft e activeRight sincronizzati per retrocompatibilità
-let activeLeft = activeSlots[0] || 'tasks';
-let activeRight = activeSlots[1] || 'planner';
+let activeSlots = ['tasks', 'planner'];
+let activeLeft = 'tasks';
+let activeRight = 'planner';
 
 const ALL_STORAGE_KEYS = [
     'tracker_templates', 'tracker_logs', 'tracker_events',
@@ -268,8 +215,7 @@ const ALL_STORAGE_KEYS = [
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
     'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_food_db', 'tracker_body_logs',
     'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio',
-    'tracker_opacity', 'tracker_mod_left', 'tracker_mod_right',
-    'tracker_active_slots', 'tracker_workspace_presets', 'tracker_pane_left_width'
+    'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view'
 ];
 
 let diskSyncTimeout;
@@ -331,12 +277,9 @@ function saveHealthData() {
 }
 
 function saveWorkspaceState() {
-    activeLeft = activeSlots[0] || 'tasks';
-    activeRight = activeSlots[1] || 'planner';
-    localStorage.setItem('tracker_active_slots', JSON.stringify(activeSlots));
+    localStorage.setItem('tracker_layout_tree', JSON.stringify(layoutTree));
     localStorage.setItem('tracker_workspace_presets', JSON.stringify(workspacePresets));
-    localStorage.setItem('tracker_mod_left', activeLeft);
-    localStorage.setItem('tracker_mod_right', activeRight);
+    localStorage.setItem('tracker_startup_view', startupView);
     scheduleDiskSync();
 }
 

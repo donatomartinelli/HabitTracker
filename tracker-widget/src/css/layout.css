@@ -31,7 +31,7 @@
     left: 0;
     width: 100%;
     z-index: 100;
-    background: rgba(0, 0, 0, 0.75);
+    background: rgba(0, 0, 0, 0.78);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -60,40 +60,10 @@
     font-size: var(--font-lg);
 }
 
-/* --- WORKSPACE PRESETS & SLOT SWITCHER NELL'HEADER --- */
 .workspace-controls {
     display: flex;
     gap: 8px;
     align-items: center;
-}
-
-.slot-count-bar {
-    display: flex;
-    gap: 2px;
-    border: 1px solid var(--border-color);
-    padding: 2px;
-    background: #050505;
-}
-
-.slot-count-btn {
-    background: transparent;
-    border: none;
-    color: var(--text-dim);
-    font-size: var(--font-xs);
-    font-weight: bold;
-    padding: 3px 7px;
-    cursor: pointer;
-    transition: 0.1s;
-}
-
-.slot-count-btn:hover {
-    color: var(--text-main);
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.slot-count-btn.active {
-    background: var(--text-main);
-    color: #000000;
 }
 
 .module-title {
@@ -152,44 +122,152 @@
     flex-shrink: 0;
 }
 
-/* --- GRIGLIA DINAMICA A 0-4 QUADRANTI --- */
+/* --- BARRA TOOLBOX IN MODALITÀ [EDIT LAYOUT] --- */
+.edit-dock-bar {
+    display: none;
+    position: absolute;
+    top: 56px;
+    left: 0;
+    width: 100%;
+    height: 42px;
+    background: #060606;
+    border-bottom: 1px solid var(--text-main);
+    z-index: 95;
+    padding: 0 20px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+body.layout-edit-mode .edit-dock-bar {
+    display: flex;
+}
+
+body.layout-edit-mode .layout {
+    padding-top: 98px;
+}
+
+.edit-dock-chips {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    overflow-x: auto;
+}
+
+.draggable-mod-chip {
+    padding: 4px 10px;
+    border: 1px dashed var(--border-bright);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-main);
+    font-size: var(--font-xs);
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: grab;
+    user-select: none;
+    white-space: nowrap;
+    transition: background 0.12s, border-color 0.12s;
+}
+
+.draggable-mod-chip:hover {
+    border-style: solid;
+    border-color: var(--text-main);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.draggable-mod-chip.in-use {
+    border-style: solid;
+    border-color: var(--text-dim);
+    color: var(--text-muted);
+}
+
+/* Badge flottante che segue il mouse durante il trascinamento custom */
+.custom-drag-ghost {
+    display: none;
+    position: fixed;
+    pointer-events: none;
+    z-index: 9999;
+    background: #000000;
+    color: var(--text-main);
+    border: 1px solid var(--text-main);
+    padding: 5px 12px;
+    font-size: var(--font-xs);
+    font-weight: bold;
+    text-transform: uppercase;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.9);
+}
+
+/* Opzioni di avvio nel menu VIEW */
+.startup-option-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    font-size: var(--font-xs);
+    cursor: pointer;
+    border-bottom: 1px solid #141414;
+    color: var(--text-muted);
+}
+
+.startup-option-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-main);
+}
+
+.startup-option-row.active {
+    color: var(--text-main);
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.startup-star-btn {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-dim);
+    font-size: 0.62rem;
+    padding: 2px 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+.startup-star-btn:hover {
+    border-color: var(--text-main);
+    color: var(--text-main);
+}
+
+.startup-star-btn.active {
+    background: var(--text-main);
+    color: #000000;
+    border-color: var(--text-main);
+}
+
+/* --- TILING WINDOW MANAGER: ALBERO SPLIT & RESIZERS --- */
 .layout {
     width: 100%;
     height: 100%;
     padding-top: 56px;
     background-color: transparent;
     backdrop-filter: blur(8px);
-    display: grid;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+}
+
+.tiling-split {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
     overflow: hidden;
 }
 
-.layout.grid-0 {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
+.tiling-split.dir-row {
+    flex-direction: row;
 }
 
-.layout.grid-1 {
-    grid-template-columns: 1fr;
-    grid-template-rows: 1fr;
-}
-
-.layout.grid-2 {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr;
-}
-
-.layout.grid-3 {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-}
-
-.layout.grid-3 .quadrant-cell:nth-child(1) {
-    grid-row: 1 / span 2;
-}
-
-.layout.grid-4 {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
+.tiling-split.dir-col {
+    flex-direction: column;
 }
 
 .quadrant-cell {
@@ -197,31 +275,46 @@
     flex-direction: column;
     min-width: 0;
     min-height: 0;
-    width: 100%;
-    height: 100%;
-    border-right: 1px solid var(--border-color);
-    border-bottom: 1px solid var(--border-color);
     overflow: hidden;
     position: relative;
+    background: transparent;
+    container-type: inline-size;
 }
 
-/* Barra superiore di ogni singolo quadrante */
+@container (max-width: 340px) {
+    .daily-columns-wrap {
+        flex-direction: column !important;
+        gap: 14px !important;
+    }
+    .module-body-padded {
+        padding: 12px 10px !important;
+    }
+}
+
 .quadrant-bar {
     height: 28px;
     flex-shrink: 0;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 0 12px;
+    padding: 0 10px;
     background: #060606;
     border-bottom: 1px solid var(--border-color);
     font-size: var(--font-xs);
+    user-select: none;
+    cursor: grab;
+}
+
+body.layout-edit-mode .quadrant-bar {
+    background: #0e0e0e;
+    border-bottom-color: var(--border-bright);
 }
 
 .quadrant-bar-left {
     display: flex;
     align-items: center;
     gap: 8px;
+    min-width: 0;
 }
 
 .quadrant-tag {
@@ -229,27 +322,42 @@
     font-weight: bold;
 }
 
+.quadrant-title-static {
+    color: var(--text-main);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 .quadrant-select {
-    background: transparent;
-    border: 1px solid transparent;
+    display: none;
+    background: #000;
+    border: 1px solid var(--border-bright);
     color: var(--text-main);
     font-size: var(--font-xs);
     font-weight: bold;
     text-transform: uppercase;
     cursor: pointer;
-    padding: 1px 4px;
+    padding: 1px 5px;
     outline: none;
 }
 
-.quadrant-select:hover {
-    border-color: var(--border-bright);
-    background: #111;
+body.layout-edit-mode .quadrant-select {
+    display: inline-block;
+}
+
+body.layout-edit-mode .quadrant-title-static {
+    display: none;
 }
 
 .quadrant-bar-actions {
     display: flex;
     align-items: center;
     gap: 6px;
+    flex-shrink: 0;
 }
 
 .quadrant-body {
@@ -259,6 +367,86 @@
     display: flex;
     flex-direction: column;
     overflow: hidden;
+}
+
+/* --- ANTEPRIMA SNAP ZONE STILE WINDOWS --- */
+.snap-preview-overlay {
+    display: none;
+    position: fixed;
+    pointer-events: none;
+    z-index: 4000;
+    border: 2px solid var(--text-main);
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(2px);
+    transition: top 0.05s ease, left 0.05s ease, width 0.05s ease, height 0.05s ease;
+    align-items: center;
+    justify-content: center;
+}
+
+.snap-preview-label {
+    background: #000000;
+    color: var(--text-main);
+    border: 1px solid var(--text-main);
+    padding: 6px 12px;
+    font-size: var(--font-xs);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* --- RESIZERS ORIZZONTALI E VERTICALI --- */
+.resizer-vertical {
+    width: 6px;
+    background-color: #050505;
+    border-left: 1px solid var(--border-color);
+    border-right: 1px solid var(--border-color);
+    cursor: ew-resize;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.resizer-vertical::after {
+    content: "";
+    height: 28px;
+    width: 1px;
+    background-color: var(--text-dim);
+}
+
+.resizer-vertical:hover,
+.resizer-vertical.dragging {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--text-main);
+}
+
+.resizer-horizontal {
+    height: 6px;
+    background-color: #050505;
+    border-top: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    cursor: ns-resize;
+    z-index: 25;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease, border-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.resizer-horizontal::after {
+    content: "";
+    width: 28px;
+    height: 1px;
+    background-color: var(--text-dim);
+}
+
+.resizer-horizontal:hover,
+.resizer-horizontal.dragging {
+    background-color: rgba(255, 255, 255, 0.1);
+    border-color: var(--text-main);
 }
 
 /* --- SCHERMATA ZERO-UI (0 MODULI ATTIVI) --- */
@@ -321,7 +509,7 @@
 }
 
 .module-body-padded {
-    padding: 16px 22px;
+    padding: 16px 20px;
 }
 
 .section-header-row {
@@ -354,58 +542,11 @@
     padding-bottom: 5px;
 }
 
-/* --- CASSETTI & RESIZERS --- */
-.notes-section {
-    height: 180px;
-    flex-shrink: 0;
-    min-height: 50px;
-    padding: 15px 25px;
-    background-color: #030303;
-    border-top: 1px solid var(--border-color);
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-start;
-    overflow: hidden;
-}
-
-.notes-section.collapsed {
-    height: 0px !important;
-    padding: 0 !important;
-    border: none !important;
-}
-
 .notes-controls {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 10px;
-}
-
-.resizer-horizontal {
-    height: 8px;
-    background-color: #050505;
-    border-top: 1px dashed var(--border-color);
-    cursor: ns-resize;
-    z-index: 20;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background 0.15s ease, border-color 0.15s ease;
-    flex-shrink: 0;
-}
-
-.resizer-horizontal::after {
-    content: "";
-    width: 32px;
-    height: 1px;
-    background-color: var(--text-dim);
-}
-
-.resizer-horizontal:hover,
-.resizer-horizontal.dragging {
-    background-color: rgba(255, 255, 255, 0.06);
-    border-top-style: solid;
-    border-color: var(--text-main);
 }
 
 /* --- MODALS & DROPDOWNS --- */

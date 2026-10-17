@@ -40,22 +40,18 @@
                 <span class="header-sep">|</span>
             </div>
             
+            <!-- CONTROLLI WORKSPACE: VISTE SALVATE DALL'UTENTE + MODALITÀ [EDIT] -->
             <div class="workspace-controls">
                 <div class="dropdown">
-                    <div class="module-title" onclick="document.getElementById('dropdown-workspaces').classList.toggle('show')" title="Switch or save custom Workspace Views">
-                        <span id="active-workspace-label">VIEW: CUSTOM</span>
+                    <div class="module-title" onclick="document.getElementById('dropdown-workspaces').classList.toggle('show')" title="Load or save your custom layouts">
+                        <span id="active-workspace-label">VIEW</span>
                         <span class="caret">▼</span>
                     </div>
-                    <div id="dropdown-workspaces" class="dropdown-content" style="left: 0; right: auto; min-width: 240px;" onclick="event.stopPropagation()"></div>
+                    <div id="dropdown-workspaces" class="dropdown-content" style="left: 0; right: auto; min-width: 250px;" onclick="event.stopPropagation()"></div>
                 </div>
 
-                <div class="slot-count-bar" title="Number of active quadrants on screen (0 = Zero-UI)">
-                    <button class="slot-count-btn" id="slot-btn-0" onclick="setQuadrantCount(0)">0</button>
-                    <button class="slot-count-btn" id="slot-btn-1" onclick="setQuadrantCount(1)">1</button>
-                    <button class="slot-count-btn" id="slot-btn-2" onclick="setQuadrantCount(2)">2</button>
-                    <button class="slot-count-btn" id="slot-btn-3" onclick="setQuadrantCount(3)">3</button>
-                    <button class="slot-count-btn" id="slot-btn-4" onclick="setQuadrantCount(4)">4</button>
-                </div>
+                <button id="btn-edit-layout" class="btn btn-sm" onclick="toggleLayoutEditMode()" title="Edit Layout: Drag &amp; Snap modules like Windows (Shortcut: E)">[EDIT]</button>
+                <button class="btn btn-sm" onclick="setQuadrantCount(0)" title="Clear screen to Zero-UI Mode (Shortcut: 0)">[0 // ZERO]</button>
             </div>
         </div>
 
@@ -74,8 +70,26 @@
         </div>
     </header>
 
-    <!-- CONTENITORE GRIGLIA DINAMICA -->
-    <div id="app-content-wrapper" class="layout grid-2"></div>
+    <!-- BARRA MODULI TRASCINABILI (Visibile quando premi [EDIT]) -->
+    <div id="edit-dock-bar" class="edit-dock-bar">
+        <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
+            <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold; white-space:nowrap;">DRAG TO SNAP (EDGES / CORNERS / CENTER):</span>
+            <div id="edit-dock-chips" class="edit-dock-chips"></div>
+        </div>
+        <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
+            <input type="text" id="dock-preset-name" class="form-control form-control-sm" style="width:140px;" placeholder="Save layout name..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('dock-preset-name');}">
+            <button class="btn btn-primary btn-sm" onclick="saveCurrentWorkspacePreset('dock-preset-name')">[SAVE VIEW]</button>
+            <button class="btn btn-sm" onclick="toggleLayoutEditMode(false)">[DONE]</button>
+        </div>
+    </div>
+
+    <!-- OVERLAY ANTEPRIMA SNAP STILE WINDOWS -->
+    <div id="snap-preview-overlay" class="snap-preview-overlay">
+        <div id="snap-preview-label" class="snap-preview-label">SNAP</div>
+    </div>
+
+    <!-- CONTENITORE TILING DINAMICO -->
+    <div id="app-content-wrapper" class="layout"></div>
 
     <!-- ========================================== -->
     <!-- MAGAZZINO DEI 7 MICRO-MODULI ATOMICI       -->
@@ -116,10 +130,10 @@
                 <div class="section-header-row">
                     <div>
                         <span class="section-label">Daily Tasks</span>
-                        <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 8px;"></span>
+                        <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
                     </div>
 
-                    <div style="display: flex; gap: 8px; align-items: center;">
+                    <div style="display: flex; gap: 6px; align-items: center;">
                         <div class="dropdown">
                             <button class="btn btn-sm dropdown-btn" id="btn-inbox-toggle" onclick="document.getElementById('todo-dropdown-content').classList.toggle('show')">[INBOX (0) ▼]</button>
                             <div id="todo-dropdown-content" class="dropdown-content todo-dropdown-box" onclick="event.stopPropagation()">
@@ -161,7 +175,7 @@
                     </div>
 
                     <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 140px;" placeholder="Filter text..." oninput="filterNotesView(this.value)">
+                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 130px;" placeholder="Filter text..." oninput="filterNotesView(this.value)">
                         <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select Sony Recorder folder">
                             [SYNC SONY]
                             <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
@@ -170,7 +184,7 @@
                             [+ AUDIO]
                             <input type="file" id="sony-files-input" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac" multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
                         </label>
-                        <select id="note-category" class="form-control form-control-sm" style="width: 145px; font-weight: bold;" onchange="refreshNotesView()"></select>
+                        <select id="note-category" class="form-control form-control-sm" style="width: 140px; font-weight: bold;" onchange="refreshNotesView()"></select>
                         <button class="btn btn-sm" onclick="openManageNotesModal()" title="Manage Note Categories">[CATS]</button>
                     </div>
                 </div>
@@ -265,11 +279,9 @@
             </div>
         </div>
 
-        <!-- 7. MODULO ATOMICO: MONEY (NUOVA INTERFACCIA 2A: FLUSSI & SALVADANAI MENSILI AUTO-SCALANTI) -->
+        <!-- 7. MODULO ATOMICO: MONEY -->
         <div id="module-money" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow: hidden;">
-                
-                <!-- 1. TOP BAR: SALDO REALE LIBERO, SALDO TOTALE E CASHFLOW DEL MESE -->
                 <div class="money-top-bar">
                     <div>
                         <div class="balance-cards-row">
@@ -295,10 +307,7 @@
                     </div>
                 </div>
 
-                <!-- 2. AREA SCROLLABILE: SALVADANAI ORIZZONTALI + TRANSAZIONI & FLUSSI -->
                 <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-right: 6px;">
-
-                    <!-- SALVADANAI / BUDGET MENSILI CON RINNOVO E COMPENSAZIONE AUTOMATICA -->
                     <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
                         <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
                             <span>Monthly Vaults &amp; Auto-Deduct Envelopes (e.g. Amazon)</span>
@@ -307,7 +316,6 @@
                         <div id="m-vaults-container" class="vaults-list-horizontal"></div>
                     </div>
 
-                    <!-- GRAFICO A SCALINI COMPATTO -->
                     <div class="money-chart-box" id="m-chart-box">
                         <div class="chart-meta-top">
                             <span>BALANCE STEP HISTORY (30 TX)</span>
@@ -323,7 +331,6 @@
                         </div>
                     </div>
 
-                    <!-- COLONNE FLUSSI: RECENT TRANSACTIONS + RECURRING & INCUBATOR -->
                     <div style="display: flex; flex-direction: row; gap: 16px; flex: 1; min-height: 0;">
                         <div style="flex: 3; display: flex; flex-direction: column; min-width: 0;">
                             <div class="sub-column-header">Recent Transactions</div>
@@ -348,7 +355,6 @@
                             </div>
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
