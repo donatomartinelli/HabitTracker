@@ -3,49 +3,33 @@
     position: absolute;
     top: 0;
     left: 0;
-    width: calc(100% - 80px);
+    width: calc(100% - 220px);
     height: 14px;
     z-index: 9999;
     cursor: grab;
     background: transparent;
 }
 
-.window-controls {
-    position: absolute;
-    top: 16px;
-    right: 20px;
-    z-index: 1000;
-    display: flex;
-    gap: 10px;
-}
-
-/* --- HEADER PRINCIPALE --- */
+/* --- HEADER PRINCIPALE MINIMALISTA --- */
 .app-header {
-    display: flex;
-    justify-content: space-between;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
     height: 56px;
-    padding: 0 65px 0 20px;
+    padding: 0 20px;
     position: absolute;
     top: 0;
     left: 0;
     width: 100%;
-    z-index: 100;
-    background: rgba(0, 0, 0, 0.78);
+    z-index: 2100;
+    background: rgba(0, 0, 0, 0.85);
     border-bottom: 1px solid var(--border-color);
 }
 
 .header-left {
     display: flex;
-    gap: 14px;
     align-items: center;
-    flex-shrink: 0;
-}
-
-.clock-wrap {
-    display: flex;
-    gap: 12px;
-    align-items: center;
+    justify-self: start;
 }
 
 #global-clock {
@@ -55,71 +39,241 @@
     white-space: nowrap;
 }
 
-.header-sep {
-    color: #333;
-    font-size: var(--font-lg);
-}
-
-.workspace-controls {
+.header-right {
     display: flex;
-    gap: 8px;
+    gap: 10px;
     align-items: center;
+    justify-self: end;
 }
 
-.module-title {
-    font-size: var(--font-xs);
+.win-ctrl-btn {
+    font-size: var(--font-sm);
     font-weight: bold;
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    color: var(--text-main);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 5px 10px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
+    padding: 4px 6px;
+    border: 1px solid transparent;
 }
 
-.module-title:hover {
-    border-color: var(--text-main);
+.win-ctrl-btn:hover {
+    border-color: var(--border-bright);
     background: rgba(255, 255, 255, 0.06);
 }
 
-.caret {
-    font-size: 0.6rem;
+/* --- BARRA "Ask anything" CON MORPHING DALL'HEADER --- */
+.header-ask-slot {
+    width: 380px;
+    height: 36px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ask-bar-container {
+    width: 380px;
+    background: #050505;
+    border: 1px solid var(--border-bright);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease,
+                box-shadow 0.28s ease;
+    z-index: 2200;
+    display: flex;
+    flex-direction: column;
+}
+
+.ask-bar-container:hover {
+    border-color: var(--text-main);
+}
+
+/* Stato espanso: scende al centro-alto e si allarga */
+.ask-bar-container.expanded {
+    position: fixed;
+    top: 10px;
+    left: 50%;
+    width: 640px;
+    max-width: 92vw;
+    transform: translate(-50%, 12vh);
+    border-color: var(--text-main);
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.96);
+}
+
+.ask-input-row {
+    display: flex;
+    align-items: center;
+    height: 34px;
+    padding: 0 12px;
+    background: #000000;
+    transition: height 0.25s ease, padding 0.25s ease;
+}
+
+.ask-bar-container.expanded .ask-input-row {
+    height: 48px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.ask-bar-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-main);
+    font-size: var(--font-sm);
+    outline: none;
+}
+
+.ask-bar-container.expanded .ask-bar-input {
+    font-size: var(--font-md);
+}
+
+.ask-bar-input::placeholder {
     color: var(--text-dim);
 }
 
-.header-center {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 14px;
-    margin: 0 18px;
-    padding-left: 12px;
-    border-left: 1px solid var(--border-color);
+/* --- PUNTINO DI STATO (●) A 4 STATI --- */
+.ask-status-dot {
+    background: none;
+    border: none;
     cursor: pointer;
+    font-size: 0.95rem;
+    line-height: 1;
+    padding: 4px 0 4px 10px;
+    transition: color 0.15s ease, transform 0.15s ease;
+    user-select: none;
+}
+
+.ask-status-dot:hover {
+    transform: scale(1.2);
+}
+
+/* 1. OFF / No Key */
+.ask-status-dot.state-off {
+    color: var(--text-dim);
+    opacity: 0.45;
+}
+
+/* 2. STANDBY ("Hey Tracker" o attesa "Va bene / Ritenta") */
+.ask-status-dot.state-standby {
+    color: var(--accent-green);
+}
+
+/* 3. RECORDING (Voce in ascolto) */
+.ask-status-dot.state-recording {
+    color: var(--accent-red);
+    animation: pulseStatusDot 0.8s infinite alternate;
+}
+
+/* 4. PROCESSING / LOADING (Giallo con Abort al click) */
+.ask-status-dot.state-processing {
+    color: var(--accent-gold);
+    animation: pulseStatusDot 0.45s infinite alternate;
+}
+
+@keyframes pulseStatusDot {
+    from { opacity: 1; transform: scale(1.15); }
+    to { opacity: 0.35; transform: scale(0.9); }
+}
+
+.ask-ai-answer {
+    padding: 14px 18px;
+    background: #060606;
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-sm);
+    line-height: 1.5;
+    color: var(--text-main);
+    white-space: pre-wrap;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+.ask-backdrop-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.82);
+    backdrop-filter: blur(6px);
+    z-index: 2050;
+}
+
+.ask-backdrop-overlay.show {
+    display: block;
+}
+
+/* --- SETTINGS MODAL CON SIDEBAR A TAB --- */
+.settings-modal-box {
+    width: 860px;
+    max-width: 95vw;
+    height: 78vh;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
-.tracker-metrics {
-    font-size: var(--font-xs);
-    color: var(--text-dim);
-    white-space: nowrap;
-    letter-spacing: 0.5px;
-}
-
-.header-center:hover .tracker-metrics {
-    color: var(--text-main);
-}
-
-.header-buttons {
+.settings-top-bar {
     display: flex;
-    gap: 6px;
+    justify-content: space-between;
     align-items: center;
+    padding: 16px 24px;
+    border-bottom: 1px solid var(--border-color);
+    background: #060606;
     flex-shrink: 0;
+}
+
+.settings-body-split {
+    display: flex;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.settings-sidebar {
+    width: 210px;
+    border-right: 1px solid var(--border-color);
+    background: #030303;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 12px 0;
+    flex-shrink: 0;
+}
+
+.settings-nav-btn {
+    width: 100%;
+    text-align: left;
+    padding: 11px 20px;
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    color: var(--text-dim);
+    font-size: var(--font-xs);
+    font-weight: bold;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: 0.15s;
+}
+
+.settings-nav-btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.settings-nav-btn.active {
+    color: var(--text-main);
+    border-left-color: var(--text-main);
+    background: rgba(255, 255, 255, 0.06);
+}
+
+.settings-tab-panel {
+    display: none;
+    flex: 1;
+    padding: 22px 26px;
+    overflow-y: auto;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.settings-tab-panel.active {
+    display: flex;
 }
 
 /* --- BARRA TOOLBOX IN MODALITÀ [EDIT LAYOUT] --- */

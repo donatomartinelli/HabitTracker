@@ -269,58 +269,138 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 7. Manager & System Config Modal -->
+    <!-- 7. Unified Settings & System Control Modal (4 Tabs) -->
     <div id="managerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content">
-            <h2>System Configuration &amp; Habits</h2>
-            <div class="cfg-box">
-                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 8px;">
-                    <span>Background Opacity</span>
-                    <span id="opacity-val">0.92</span>
-                </label>
-                <input type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="width: 100%; accent-color: var(--text-main);" oninput="updateOpacity(this.value)">
-            </div>
-            <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase;">Database Backup</span>
-                <div style="display: flex; gap: 10px;">
-                    <button class="btn btn-sm" onclick="exportData()">[EXPORT JSON]</button>
-                    <label class="btn btn-sm" style="cursor: pointer; margin: 0;">
-                        [IMPORT JSON]
-                        <input type="file" accept=".json" style="display: none;" onchange="importData(event)">
-                    </label>
+        <div class="modal-content settings-modal-box">
+            <div class="settings-top-bar">
+                <div>
+                    <h2 style="margin: 0; border: none; padding: 0;">System Settings &amp; Workspace</h2>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE LAYOUTS, ACTIONS, AI KEYS, HABITS &amp; BACKUPS</span>
                 </div>
+                <button class="btn btn-sm" onclick="closeModals(); renderTasks();">[ESC // CLOSE]</button>
             </div>
-            <div class="cfg-box">
-                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
-                    <span>AI Voice Refiner // Gemini Flash API Key</span>
-                    <span id="gemini-key-status" style="color: var(--accent-green);"></span>
-                </label>
-                <div style="display: flex; gap: 8px;">
-                    <input type="password" id="gemini-api-key-input" class="form-control form-control-sm" placeholder="Paste Gemini API Key (AIzaSy...)..." oninput="handleGeminiKeyInput(this.value)">
-                    <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-api-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
+
+            <div class="settings-body-split">
+                <!-- Sidebar Navigazione Tab -->
+                <div class="settings-sidebar">
+                    <div>
+                        <button type="button" class="settings-nav-btn active" data-tab="tab-workspace" onclick="switchSettingsTab('tab-workspace')">1. Workspace &amp; UI</button>
+                        <button type="button" class="settings-nav-btn" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. AI &amp; Voice</button>
+                        <button type="button" class="settings-nav-btn" data-tab="tab-habits" onclick="switchSettingsTab('tab-habits')">3. Habits &amp; Cats</button>
+                        <button type="button" class="settings-nav-btn" data-tab="tab-system" onclick="switchSettingsTab('tab-system')">4. Data &amp; Manual</button>
+                    </div>
+                    <div style="padding: 0 16px; font-size: 0.65rem; color: var(--text-dim);">
+                        SHORTCUTS: [E] EDIT · [0] ZERO · [P] PLAN · [R] RED · [?] HELP
+                    </div>
                 </div>
-            </div>
-            <div class="cfg-box">
-                <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
-                    <span>Sony Recorder Pipeline // Dedicated Gemini Key</span>
-                    <span id="gemini-audio-key-status" style="color: var(--text-dim);"></span>
-                </label>
-                <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                    <input type="password" id="gemini-audio-key-input" class="form-control form-control-sm" placeholder="Optional 2nd API Key..." oninput="handleGeminiAudioKeyInput(this.value)">
-                    <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-audio-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
+
+                <!-- TAB 1: APPEARANCE, QUICK ACTIONS & WORKSPACE VIEWS -->
+                <div id="tab-workspace" class="settings-tab-panel active">
+                    <div class="cfg-box">
+                        <div class="sub-column-header">Quick System Actions &amp; Builders</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            <button type="button" class="btn btn-sm" onclick="closeModals(); toggleLayoutEditMode();">[EDIT LAYOUT // E]</button>
+                            <button type="button" class="btn btn-sm" onclick="closeModals(); setQuadrantCount(0);">[0 // ZERO-UI MODE]</button>
+                            <button type="button" class="btn btn-sm" onclick="openPlanTomorrowModal()">[PLAN TOMORROW // P]</button>
+                            <button type="button" class="btn btn-sm" onclick="openTimerModal()">[▶ FOCUS BUILDER]</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal()">[+ NEW HABIT / EVENT / MED]</button>
+                        </div>
+                    </div>
+
+                    <div class="cfg-box" style="display: flex; flex-direction: column; gap: 14px;">
+                        <div class="sub-column-header" style="margin-bottom: 0;">Appearance &amp; Optical Filter</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-muted); font-size: var(--font-xs); text-transform: uppercase;">Red Gelatin Optical Mode (Shortcut: R)</span>
+                            <button type="button" id="btn-red-mode" class="btn btn-sm" onclick="toggleRedMode()">[RED]</button>
+                        </div>
+                        <div>
+                            <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
+                                <span>Window Background Opacity</span>
+                                <span id="opacity-val">0.92</span>
+                            </label>
+                            <input type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="width: 100%; accent-color: var(--text-main);" oninput="updateOpacity(this.value)">
+                        </div>
+                    </div>
+
+                    <div class="cfg-box" style="padding: 0;">
+                        <div id="settings-workspace-container"></div>
+                    </div>
                 </div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span id="processed-audio-count" style="font-size: var(--font-xs); color: var(--text-dim);">0 audio files in history</span>
-                    <button type="button" class="btn btn-sm" onclick="resetProcessedAudioHistory()">[RESET AUDIO MEMORY]</button>
+
+                <!-- TAB 2: AI & VOICE ENGINE -->
+                <div id="tab-ai" class="settings-tab-panel">
+                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="font-size: var(--font-xs); color: var(--text-main); font-weight: bold; text-transform: uppercase;">Always-On "Hey Tracker" Voice Standby</div>
+                            <div style="font-size: 0.68rem; color: var(--text-dim); margin-top: 2px;">Continuously listens in background for the wake word "Hey Tracker"</div>
+                        </div>
+                        <button type="button" id="btn-settings-hey-toggle" class="btn btn-sm" onclick="toggleHeyTrackerFromSettings()">[ENABLED]</button>
+                    </div>
+
+                    <div class="cfg-box">
+                        <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
+                            <span>AI Voice &amp; Agent // Gemini Flash API Key</span>
+                            <span id="gemini-key-status" style="color: var(--accent-green);"></span>
+                        </label>
+                        <div style="display: flex; gap: 8px;">
+                            <input type="password" id="gemini-api-key-input" class="form-control form-control-sm" placeholder="Paste Gemini API Key (AIzaSy...)..." oninput="handleGeminiKeyInput(this.value)">
+                            <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-api-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
+                        </div>
+                    </div>
+
+                    <div class="cfg-box">
+                        <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
+                            <span>Sony Recorder Pipeline // Dedicated Gemini Key</span>
+                            <span id="gemini-audio-key-status" style="color: var(--text-dim);"></span>
+                        </label>
+                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                            <input type="password" id="gemini-audio-key-input" class="form-control form-control-sm" placeholder="Optional 2nd API Key..." oninput="handleGeminiAudioKeyInput(this.value)">
+                            <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-audio-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span id="processed-audio-count" style="font-size: var(--font-xs); color: var(--text-dim);">0 audio files in history</span>
+                            <button type="button" class="btn btn-sm" onclick="resetProcessedAudioHistory()">[RESET AUDIO MEMORY]</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div id="manager-list" class="manager-list"></div>
-            <div class="quick-add-task new-calendar-add">
-                <span>+</span>
-                <input type="text" placeholder="Create new category and press Enter..." onkeypress="quickAddCalendar(event)">
-            </div>
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="closeModals(); renderTasks();">Close</button>
+
+                <!-- TAB 3: HABITS & CATEGORIES -->
+                <div id="tab-habits" class="settings-tab-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="section-label">Manage Categories &amp; Habits</span>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal()">[+ ADD HABIT / EVENT / MED]</button>
+                    </div>
+                    <div id="manager-list" class="manager-list" style="margin-bottom: 8px;"></div>
+                    <div class="quick-add-task new-calendar-add">
+                        <span>+</span>
+                        <input type="text" placeholder="Create new category and press Enter..." onkeypress="quickAddCalendar(event)">
+                    </div>
+                </div>
+
+                <!-- TAB 4: DATA & SYSTEM MANUAL -->
+                <div id="tab-system" class="settings-tab-panel">
+                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Database JSON Backup</div>
+                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">Export or restore all habits, logs, notes, diet, gym and finances</div>
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="button" class="btn btn-sm" onclick="exportData()">[EXPORT JSON]</button>
+                            <label class="btn btn-sm" style="cursor: pointer; margin: 0;">
+                                [IMPORT JSON]
+                                <input type="file" accept=".json" style="display: none;" onchange="importData(event)">
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">CLI &amp; Shortcuts Manual</div>
+                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">View all DSL commands and keyboard shortcuts</div>
+                        </div>
+                        <button type="button" class="btn btn-sm" onclick="openShortcutsHelp()">[OPEN MANUAL // ?]</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -377,25 +457,6 @@ function initModalsHtml() {
                     <button type="submit" class="btn btn-primary">Confirm</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- 11. Consistency Tracker & Real Focus Hours Ledger Modal -->
-    <div id="trackerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 780px; max-width: 94%;">
-            <h2>Consistency History &amp; Real Focus Ledger</h2>
-            <div class="sub-column-header">Habit Completion Grid</div>
-            <div class="tracker-wrapper" style="margin-bottom: 22px;">
-                <div class="tracker-grid" id="github-tracker" style="margin-top: 5px;"></div>
-            </div>
-            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                <span>Real Focus Hours Ledger (From Completed Tasks &amp; Calendars)</span>
-                <span id="focus-ledger-summary" style="color: var(--text-main); font-weight: bold;">TOTAL: 0.0H</span>
-            </div>
-            <div id="focus-ledger-container" style="margin-bottom: 18px;"></div>
-            <div class="modal-actions">
-                <button class="btn btn-primary" onclick="closeModals()">Close [Esc]</button>
-            </div>
         </div>
     </div>
 
@@ -787,10 +848,67 @@ if (sliderEl) sliderEl.value = savedOpacity;
 const labelEl = document.getElementById('opacity-val');
 if (labelEl) labelEl.innerText = savedOpacity;
 
+function switchSettingsTab(tabId) {
+    document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+    document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === tabId);
+    });
+}
+
+function syncHeyTrackerSettingsBtn() {
+    const btn = document.getElementById('btn-settings-hey-toggle');
+    if (!btn) return;
+    const enabled = typeof isHeyTrackerEnabled !== 'undefined' ? isHeyTrackerEnabled : true;
+    btn.textContent = enabled ? '[ON // LISTENING]' : '[OFF // PAUSED]';
+    btn.classList.toggle('btn-primary', enabled);
+}
+
+function toggleHeyTrackerFromSettings() {
+    if (typeof toggleHeyTrackerStandbyState === 'function') {
+        toggleHeyTrackerStandbyState();
+    } else if (typeof isHeyTrackerEnabled !== 'undefined') {
+        isHeyTrackerEnabled = !isHeyTrackerEnabled;
+        localStorage.setItem('tracker_hey_enabled', isHeyTrackerEnabled ? 'true' : 'false');
+        if (isHeyTrackerEnabled && typeof startNativeHeyTrackerStandby === 'function') startNativeHeyTrackerStandby();
+        else if (typeof stopNativeHeyTrackerStandby === 'function') stopNativeHeyTrackerStandby();
+    }
+    syncHeyTrackerSettingsBtn();
+}
+
+function openSettingsModal(defaultTab = 'tab-workspace') {
+    if (typeof renderManager === 'function') renderManager();
+    if (typeof updateWorkspaceDropdownUI === 'function') updateWorkspaceDropdownUI();
+    if (typeof updateGeminiKeyStatusUI === 'function') updateGeminiKeyStatusUI();
+    if (typeof updateGeminiAudioKeyStatusUI === 'function') updateGeminiAudioKeyStatusUI();
+    if (typeof applyRedModeUI === 'function') applyRedModeUI();
+    syncHeyTrackerSettingsBtn();
+
+    const sEl = document.getElementById('bg-opacity-slider');
+    if (sEl) sEl.value = savedOpacity;
+    const lEl = document.getElementById('opacity-val');
+    if (lEl) lEl.innerText = savedOpacity;
+
+    closeModals();
+    switchSettingsTab(defaultTab);
+    const modal = document.getElementById('managerModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+const btnMinimize = document.getElementById('btn-minimize-app');
+if (btnMinimize) {
+    btnMinimize.addEventListener('click', () => {
+        if (window.__TAURI__ && window.__TAURI__.window) {
+            window.__TAURI__.window.getCurrentWindow().minimize();
+        }
+    });
+}
+
 const btnClose = document.getElementById('btn-close-app');
 if (btnClose) {
     btnClose.addEventListener('click', () => {
-        if (window.__TAURI__) {
+        if (window.__TAURI__ && window.__TAURI__.window) {
             window.__TAURI__.window.getCurrentWindow().close();
         } else {
             window.close();

@@ -52,6 +52,16 @@ const dashboardModules = {
         minW: () => 250,
         minH: () => 170,
         render: () => { if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard(); }
+    },
+    'streak': {
+        name: 'Today & Streak',
+        id: 'module-streak',
+        minW: () => 260,
+        minH: () => 180,
+        render: () => {
+            if (typeof renderTracker === 'function') renderTracker();
+            if (typeof renderFocusLedger === 'function') renderFocusLedger();
+        }
     }
 };
 
@@ -384,49 +394,6 @@ function renderQuadrantLayout() {
     // CASO 0: MODALITÀ ZERO-UI
     if (!layoutTree || leaves.length === 0) {
         layoutTree = null;
-        const zeroDiv = document.createElement('div');
-        zeroDiv.className = 'zero-ui-screen';
-
-        const presetButtonsHtml = workspacePresets.length > 0
-            ? workspacePresets.map(p => `<button class="btn btn-sm" onclick="applyWorkspacePreset('${p.id}')">${escapeHtml(p.name)}</button>`).join('')
-            : `<span style="font-size:var(--font-xs); color:var(--text-dim);">[ NO SAVED VIEWS YET — CLICK [EDIT] TO BUILD &amp; SAVE A VIEW ]</span>`;
-
-        zeroDiv.innerHTML = `
-            <div class="zero-ui-box">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span class="section-label">ZERO-UI MODE // STANDBY</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim);">SAY "HEY TRACKER" OR PRESS [CTRL+SPACE]</span>
-                </div>
-
-                <button class="zero-ui-cmd-trigger" onclick="openTerminal()">
-                    <span><strong style="margin-right:10px;">&gt;_</strong> Ask AI, type a command, or speak...</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim);">[ENTER / V]</span>
-                </button>
-
-                <div>
-                    <div style="font-size:var(--font-xs); color:var(--text-dim); margin-bottom:8px; text-transform:uppercase;">Open Module</div>
-                    <div class="zero-ui-chips" id="zero-ui-mod-chips"></div>
-                </div>
-
-                <div style="border-top:1px solid var(--border-color); padding-top:12px;">
-                    <div style="font-size:var(--font-xs); color:var(--text-dim); margin-bottom:8px; text-transform:uppercase;">Your Saved Views</div>
-                    <div class="zero-ui-chips">${presetButtonsHtml}</div>
-                </div>
-            </div>
-        `;
-        wrapper.appendChild(zeroDiv);
-
-        const zeroChipsCont = document.getElementById('zero-ui-mod-chips');
-        if (zeroChipsCont) {
-            ALL_MODULE_KEYS.forEach(k => {
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-sm';
-                btn.textContent = `[+ ${dashboardModules[k].name.toUpperCase()}]`;
-                bindCustomPointerDragSource(btn, k, null, () => addModuleToTilingLayout(k));
-                zeroChipsCont.appendChild(btn);
-            });
-        }
-
         saveWorkspaceState();
         return;
     }
@@ -977,22 +944,9 @@ function switchModule(side, rawModKey) {
 // ============================================================================
 
 function updateWorkspaceDropdownUI() {
-    const labelEl = document.getElementById('active-workspace-label');
-    const dropEl = document.getElementById('dropdown-workspaces');
-    if (!labelEl || !dropEl) return;
+    const dropEl = document.getElementById('settings-workspace-container') || document.getElementById('dropdown-workspaces');
+    if (!dropEl) return;
 
-    const currentTreeJson = JSON.stringify(layoutTree);
-    const matchedPreset = workspacePresets.find(p => JSON.stringify(p.tree) === currentTreeJson);
-
-    if (!layoutTree || activeSlots.length === 0) {
-        labelEl.textContent = 'VIEW: ZERO-UI';
-    } else if (matchedPreset) {
-        labelEl.textContent = `VIEW: ${matchedPreset.name}`;
-    } else {
-        labelEl.textContent = `VIEW (${activeSlots.length} MODS)`;
-    }
-
-    // 1. Sezione "COSA SI APRE ALL'AVVIO DELL'APP" (Startup Default)
     const isLastStartup = (startupView === 'last');
     const isZeroStartup = (startupView === 'zero');
     const currentSingleStartupMod = startupView.startsWith('mod:') ? startupView.slice(4) : '';
@@ -1004,30 +958,30 @@ function updateWorkspaceDropdownUI() {
 
     let html = `
         <div style="padding: 7px 12px; font-size: 0.65rem; color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase;">
-            1. On App Launch (What Opens at Startup)
+            1. On App Launch (Startup Default)
         </div>
         <div class="startup-option-row ${isLastStartup ? 'active' : ''}" onclick="setStartupViewPreference('last')">
             <span>Restore Last Active Layout</span>
             <span>${isLastStartup ? '[★ ACTIVE]' : '[SET]'}</span>
         </div>
         <div class="startup-option-row ${isZeroStartup ? 'active' : ''}" onclick="setStartupViewPreference('zero')">
-            <span>0 // Zero-UI Standby Screen</span>
+            <span>0 // Zero-UI Empty Canvas</span>
             <span>${isZeroStartup ? '[★ ACTIVE]' : '[SET]'}</span>
         </div>
-        <div style="padding: 6px 12px; border-bottom: 1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <span style="font-size:var(--font-xs); color:var(--text-muted);">Single Module:</span>
-            <select class="form-control form-control-sm" style="width:145px; padding:2px 4px;" onchange="if(this.value) setStartupViewPreference(this.value)">
+        <div style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
+            <span style="font-size:var(--font-xs); color:var(--text-muted);">Single Module at Startup:</span>
+            <select class="form-control form-control-sm" style="width:180px; padding:3px 6px;" onchange="if(this.value) setStartupViewPreference(this.value)">
                 ${singleModOptionsHtml}
             </select>
         </div>
 
-        <div style="padding: 7px 12px; font-size: 0.65rem; color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase; margin-top: 4px;">
-            2. Your Saved Views (Click ★ to set as Startup)
+        <div style="padding: 7px 12px; font-size: 0.65rem; color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase; margin-top: 6px;">
+            2. Saved Custom Views (Click name to load · ★ for Startup)
         </div>
     `;
 
     if (workspacePresets.length === 0) {
-        html += `<div style="padding: 12px; font-size: var(--font-xs); color: var(--text-dim);">No saved views yet. Arrange modules and save below.</div>`;
+        html += `<div style="padding: 12px; font-size: var(--font-xs); color: var(--text-dim);">No saved views yet. Save your current tiling layout below.</div>`;
     } else {
         workspacePresets.forEach(p => {
             const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => l.module.toUpperCase()) : [];
@@ -1053,8 +1007,8 @@ function updateWorkspaceDropdownUI() {
 
     html += `
         <div style="padding: 10px; background: #030303; display: flex; gap: 6px; border-top: 1px solid var(--border-color);">
-            <input type="text" id="new-preset-name-input" class="form-control form-control-sm" placeholder="Save current view as..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('new-preset-name-input');}">
-            <button class="btn btn-primary btn-sm" onclick="saveCurrentWorkspacePreset('new-preset-name-input')">[SAVE]</button>
+            <input type="text" id="new-preset-name-input" class="form-control form-control-sm" placeholder="Save current layout as..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('new-preset-name-input');}">
+            <button class="btn btn-primary btn-sm" onclick="saveCurrentWorkspacePreset('new-preset-name-input')">[SAVE VIEW]</button>
         </div>
     `;
 

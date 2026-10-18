@@ -155,8 +155,11 @@ function getCommandPreview(raw) {
         case 'show':
         case 'open': {
             const modKey = rest.toLowerCase();
-            return dashboardModules[modKey] ? `[WORKSPACE] Summon module "${dashboardModules[modKey].name}"` : `[WORKSPACE] Specify: calendar, tasks, notes, planner, diet, gym, money`;
+            return dashboardModules[modKey] ? `[WORKSPACE] Summon module "${dashboardModules[modKey].name}"` : `[WORKSPACE] Specify: calendar, tasks, notes, planner, diet, gym, money, streak`;
         }
+        case 'settings':
+        case 'cfg':
+            return `[SYSTEM] Open Settings & Workspace Control Panel`;
         case 'goto':
             return `[CALENDAR] Jump to date`;
         case 'export':
@@ -195,6 +198,12 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
+    if (cmd === 'settings' || cmd === 'cfg') {
+        if (typeof closeTerminal === 'function') closeTerminal();
+        if (typeof openSettingsModal === 'function') openSettingsModal();
+        return true;
+    }
+    
     if (cmd === 'plan' || cmd === 'tomorrow') {
         if (typeof closeTerminal === 'function') closeTerminal();
         if (typeof openPlanTomorrowModal === 'function') openPlanTomorrowModal();

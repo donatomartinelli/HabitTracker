@@ -28,47 +28,52 @@
 
     <div data-tauri-drag-region class="tauri-drag-bar"></div>
     
-    <div class="window-controls">
-        <button id="btn-close-app" class="icon-btn" title="Close Application">[X]</button>
-    </div>
-
-    <!-- HEADER GLOBALE UNIFICATO -->
+    <<!-- HEADER GLOBALE MINIMALISTA -->
     <header class="app-header">
         <div class="header-left">
-            <div class="clock-wrap">
-                <h1 id="global-clock">00:00 DAY 00</h1>
-                <span class="header-sep">|</span>
-            </div>
-            
-            <!-- CONTROLLI WORKSPACE: VISTE SALVATE DALL'UTENTE + MODALITÀ [EDIT] -->
-            <div class="workspace-controls">
-                <div class="dropdown">
-                    <div class="module-title" onclick="document.getElementById('dropdown-workspaces').classList.toggle('show')" title="Load or save your custom layouts">
-                        <span id="active-workspace-label">VIEW</span>
-                        <span class="caret">▼</span>
-                    </div>
-                    <div id="dropdown-workspaces" class="dropdown-content" style="left: 0; right: auto; min-width: 250px;" onclick="event.stopPropagation()"></div>
+            <h1 id="global-clock">00:00 // DAY 00</h1>
+        </div>
+
+        <!-- CONTENITORE BARRA "Ask anything" NELL'HEADER -->
+        <div id="header-ask-slot" class="header-ask-slot">
+            <div id="ask-bar-container" class="ask-bar-container" onclick="if(!isAskBarExpanded) openTerminal()">
+                <div class="ask-input-row">
+                    <input type="text" id="terminal-input" class="ask-bar-input" placeholder="Ask anything" autocomplete="off">
+                    <button type="button" id="ask-status-dot" class="ask-status-dot state-standby" onclick="handleStatusDotClick(event)" title="Voice / AI Status">●</button>
                 </div>
 
-                <button id="btn-edit-layout" class="btn btn-sm" onclick="toggleLayoutEditMode()" title="Edit Layout: Drag &amp; Snap modules like Windows (Shortcut: E)">[EDIT]</button>
-                <button class="btn btn-sm" onclick="setQuadrantCount(0)" title="Clear screen to Zero-UI Mode (Shortcut: 0)">[0 // ZERO]</button>
+                <!-- Risposta Testuale AI (visibile solo quando espansa) -->
+                <div id="terminal-ai-answer" class="ask-ai-answer" style="display: none;"></div>
+
+                <!-- Staging Area Azioni Proposte (visibile solo quando espansa) -->
+                <div id="terminal-staging" class="terminal-staging-box">
+                    <div id="staging-transcript-box" class="staging-transcript"></div>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Proposed System Actions:</span>
+                        <span id="staging-voice-verdict-status" style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold;"></span>
+                    </div>
+                    <div id="staging-cmd-list" class="staging-cmd-list"></div>
+                    <div class="staging-actions-bar">
+                        <span style="font-size: var(--font-xs); color: var(--text-dim);">Say <strong style="color:var(--text-main);">"VA BENE"</strong> / <strong style="color:var(--text-main);">[ENTER]</strong> | <strong style="color:var(--text-main);">"RITENTA"</strong> / <strong style="color:var(--text-main);">[R]</strong> | <strong style="color:var(--text-main);">[ESC]</strong></span>
+                        <div style="display: flex; gap: 8px;">
+                            <button type="button" class="btn btn-sm" onclick="retryVoiceCapture()">[R // RETRY]</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="cancelStaging()">[CANCEL]</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[CONFIRM]</button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <div class="header-center" onclick="openTrackerModal()" title="Click to view full consistency history &amp; focus hours">
-            <div id="tracker-metrics" class="tracker-metrics">TODAY 0/0 | STREAK 0D</div>
-            <div id="tracker-strip-1d" class="tracker-strip-1d"></div>
-        </div>
-
-        <div class="header-buttons">
-            <button id="btn-red-mode" class="btn btn-sm" onclick="toggleRedMode()" title="Toggle Red Gelatin Mode (Shortcut: R)">[RED]</button>
-            <button class="btn btn-sm" onclick="openTerminal()" title="Open Command &amp; AI Bar (Ctrl+Space or say 'Hey Tracker')">[&gt;_ AI / CMD]</button>
-            <button class="btn btn-sm" onclick="openPlanTomorrowModal()" title="Evening Builder: Plan Tomorrow (Shortcut: P)">[PLAN TMW]</button>
-            <button class="btn btn-sm" onclick="openTimerModal()" title="Focus Session Builder">[▶ FOCUS]</button>
-            <button class="btn btn-sm" onclick="openCreationModal()" title="Add Habit, Event or Medicine">[+ NEW]</button>
-            <button class="btn btn-sm" onclick="openManagerModal()" title="Manage &amp; Backup">[CFG]</button>
+        <div class="header-right">
+            <button class="btn btn-sm" onclick="openSettingsModal()" title="Settings & System Controls (Shortcut: ,)">[SETTINGS]</button>
+            <button id="btn-minimize-app" class="icon-btn win-ctrl-btn" title="Minimize Window">[-]</button>
+            <button id="btn-close-app" class="icon-btn delete win-ctrl-btn" title="Close Application">[X]</button>
         </div>
     </header>
+
+    <!-- BACKDROP SCURO QUANDO "Ask anything" SCENDE AL CENTRO-ALTO -->
+    <div id="terminalOverlay" class="ask-backdrop-overlay" onclick="if(event.target === this) closeTerminal()"></div>
 
     <!-- BARRA MODULI TRASCINABILI (Visibile quando premi [EDIT]) -->
     <div id="edit-dock-bar" class="edit-dock-bar">
@@ -359,46 +364,38 @@
             </div>
         </div>
 
-    </div> <!-- FINE MAGAZZINO 7 MODULI -->
+        <!-- 8. MODULO ATOMICO: TODAY STREAK & CONSISTENCY -->
+        <div id="module-streak" class="module-container">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
+                <div class="section-header-row" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
+                    <div>
+                        <span class="section-label">Consistency &amp; Streak</span>
+                        <div id="tracker-metrics" style="font-size: var(--font-lg); color: var(--text-main); font-weight: bold; margin-top: 4px; font-variant-numeric: tabular-nums;">TODAY 0/0 | STREAK 0D</div>
+                    </div>
+                    <div id="tracker-strip-1d" class="tracker-strip-1d"></div>
+                </div>
+
+                <div>
+                    <div class="sub-column-header">Habit Completion Grid (Click cell to jump to date)</div>
+                    <div class="tracker-wrapper" style="padding-bottom: 6px; text-align: left;">
+                        <div class="tracker-grid" id="github-tracker" style="margin-top: 4px;"></div>
+                    </div>
+                </div>
+
+                <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
+                    <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>Real Focus Hours Ledger</span>
+                        <span id="focus-ledger-summary" style="color: var(--text-main); font-weight: bold;">TOTAL: 0.0H</span>
+                    </div>
+                    <div id="focus-ledger-container" style="flex: 1; overflow-y: auto;"></div>
+                </div>
+            </div>
+        </div>
+
+    </div> <!-- FINE MAGAZZINO 8 MODULI -->
 
     <!-- RADICE MODALI INIETTATI DA js/modules/modals.js -->
     <div id="modals-root"></div>
-
-    <!-- TERMINAL OVERLAY -->
-    <div id="terminalOverlay" class="terminal-overlay" onclick="if(event.target === this) closeTerminal()">
-        <div class="terminal-box">
-            <div class="terminal-input-wrap">
-                <span class="terminal-prompt">&gt;_</span>
-                <input type="text" id="terminal-input" class="terminal-input" placeholder="Ask anything ('Cosa mangio oggi?'), type command, or say 'Hey Tracker'..." autocomplete="off">
-                <button type="button" id="btn-terminal-mic" class="terminal-mic-btn" onclick="toggleVoiceCapture()">[VOICE // MIC]</button>
-            </div>
-
-            <div id="terminal-ai-answer" style="display: none; padding: 14px 18px; background: #060606; border-bottom: 1px solid var(--border-color); font-size: var(--font-sm); line-height: 1.5; color: var(--text-main); white-space: pre-wrap;"></div>
-
-            <div id="terminal-staging" class="terminal-staging-box">
-                <div id="staging-transcript-box" class="staging-transcript"></div>
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Proposed System Actions:</span>
-                    <span id="staging-voice-verdict-status" style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold;"></span>
-                </div>
-                <div id="staging-cmd-list" class="staging-cmd-list"></div>
-                <div class="staging-actions-bar">
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">Say <strong style="color:var(--text-main);">"VA BENE"</strong> / <strong style="color:var(--text-main);">[ENTER]</strong> Confirm | <strong style="color:var(--text-main);">"RITENTA"</strong> / <strong style="color:var(--text-main);">[R]</strong> Retry | <strong style="color:var(--text-main);">[ESC]</strong> Cancel</span>
-                    <div style="display: flex; gap: 8px;">
-                        <button type="button" class="btn btn-sm" onclick="retryVoiceCapture()">[R // RETRY]</button>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="cancelStaging()">[CANCEL]</button>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[ENTER // CONFIRM]</button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="terminal-hint">
-                <span id="terminal-feedback">Ready. Say "Hey Tracker", ask a question, or type a command.</span>
-                <span style="color: var(--text-dim);">HEY TRACKER | CTRL+SPACE | V</span>
-            </div>
-        </div>
-    </div>
-
     <div id="planner-tooltip" class="planner-tooltip"></div>
     <div id="terminal-toast" class="terminal-toast"></div>
 

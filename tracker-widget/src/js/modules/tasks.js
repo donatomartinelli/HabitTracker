@@ -951,9 +951,11 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
 
 function openTrackerModal() {
     closeModals();
+    if (typeof summonModule === 'function') {
+        summonModule('streak');
+    }
     renderTracker();
     renderFocusLedger();
-    document.getElementById('trackerModal').style.display = 'flex';
 }
 
 function renderTracker() {
@@ -1052,6 +1054,7 @@ function renderTracker() {
         }
         metricsEl.textContent = `TODAY ${todayStats.completed}/${todayStats.total} | STREAK ${streak}D`;
     }
+    renderFocusLedger();
 }
 
 function renderFocusLedger() {
