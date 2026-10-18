@@ -1,7 +1,19 @@
 // --- js/ai/gemini-agent.js ---
-// Cervello AI Conversazionale, Verifica Nativa "Hey Tracker", Verdetto Vocale "Va bene/Ritenta" & Pipeline Sony
+// Cervello AI Conversazionale, Pipeline 2-Stadi (Live Transcript -> Action), AbortController & Verdetto Vocale
 
 let cachedGeminiModel = null;
+let activeGeminiAbortController = null;
+let isGeminiProcessing = false;
+
+function abortActiveGeminiRequest() {
+    if (activeGeminiAbortController) {
+        try { activeGeminiAbortController.abort(); } catch (e) {}
+        activeGeminiAbortController = null;
+    }
+    isGeminiProcessing = false;
+    if (typeof bgIsEvaluating !== 'undefined') bgIsEvaluating = false;
+    if (typeof updateAskStatusDot === 'function') updateAskStatusDot('standby');
+}
 
 function getSystemContextSnapshot() {
     const todayJS = new Date(todayStr).getDay();
@@ -86,9 +98,9 @@ function getSystemContextSnapshot() {
 
 async function getAvailableFlashModels(apiKey) {
     const defaults = [
-        'models/gemini-flash-latest',
         'models/gemini-2.5-flash',
-        'models/gemini-2.0-flash'
+        'models/gemini-2.0-flash',
+        'models/gemini-flash-latest'
     ];
     try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
@@ -121,7 +133,7 @@ function blobToBase64(blob) {
     });
 }
 
-async function callGeminiJsonEndpoint(userParts, cleanKey) {
+async function callGeminiJsonEndpoint(userParts, cleanKey, abortSignal = null) {
     const candidateModels = cachedGeminiModel
         ? [cachedGeminiModel, ...(await getAvailableFlashModels(cleanKey)).filter(m => m !== cachedGeminiModel)]
         : await getAvailableFlashModels(cleanKey);
@@ -130,12 +142,16 @@ async function callGeminiJsonEndpoint(userParts, cleanKey) {
     let responseData = null;
 
     for (const modelPath of candidateModels) {
+        if (abortSignal && abortSignal.aborted) {
+            throw new DOMException('Aborted', 'AbortError');
+        }
         const normalizedPath = modelPath.startsWith('models/') ? modelPath : `models/${modelPath}`;
         const url = `https://generativelanguage.googleapis.com/v1beta/${normalizedPath}:generateContent?key=${encodeURIComponent(cleanKey)}`;
 
         const res = await fetch(url, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            signal: abortSignal,
             body: JSON.stringify({
                 contents: [{ parts: userParts }],
                 generationConfig: { responseMimeType: "application/json", temperature: 0.1 }
@@ -163,53 +179,125 @@ async function callGeminiJsonEndpoint(userParts, cleanKey) {
     return JSON.parse(rawJsonText);
 }
 
-// 1. GESTIONE RICHIESTA PRINCIPALE (DOMANDE SUL SISTEMA, AZIONI E WAKE-WORD "HEY TRACKER")
+// STADIO 1: TRASCRIZIONE FLASH ISTANTANEA & CONTROLLO WAKE-WORD ("HEY TRACKER")
+async function fastTranscribeAudioStage(b64Audio, mimeType, isWakeWordCheck, cleanKey, abortSignal) {
+    const fastPrompt = isWakeWordCheck
+        ? `Listen to this audio. Determine if the user said the wake word "Hey Tracker" (or phonetic equivalents like "Ehi Tracker", "Ei Tracker", "Ok Tracker", "Tracker").
+- If NO wake word is present, return: {"wakeWordDetected": false, "wakeWordOnly": false, "transcript": ""}
+- If the user ONLY said "Hey Tracker" with no command after it, return: {"wakeWordDetected": true, "wakeWordOnly": true, "transcript": ""}
+- If the user said "Hey Tracker" followed by a question or command, strip "Hey Tracker" and return the exact spoken text in "transcript": {"wakeWordDetected": true, "wakeWordOnly": false, "transcript": "..."}`
+        : `Transcribe this spoken Italian/English audio verbatim and cleanly.
+If the user only said "annulla", "cancella", or "ferma", set "abortRequested": true.
+Return ONLY JSON: {"wakeWordDetected": true, "wakeWordOnly": false, "abortRequested": false, "transcript": "..."}`;
+
+    const parts = [
+        { text: fastPrompt },
+        { inlineData: { mimeType: mimeType.split(';')[0] || 'audio/webm', data: b64Audio } }
+    ];
+    return await callGeminiJsonEndpoint(parts, cleanKey, abortSignal);
+}
+
+// 1. GESTIONE RICHIESTA PRINCIPALE (2 STADI: MOSTRA SUBITO LA QUERY CON PUNTINO GIALLO -> ELABORA AZIONE)
 async function queryOrRefineWithGemini({ audioBlob = null, mimeType = 'audio/webm', rawText = null, isWakeWordCheck = false }) {
-    const feedback = document.getElementById('terminal-feedback');
     const answerBox = document.getElementById('terminal-ai-answer');
+    const inputEl = document.getElementById('terminal-input');
     const cleanKey = (geminiApiKey || '').trim();
 
     if (!cleanKey) {
-        if (!isWakeWordCheck && feedback) {
-            feedback.textContent = 'Missing Gemini API Key. Open [CFG] and paste your key.';
-            feedback.style.color = 'var(--accent-red)';
+        if (!isWakeWordCheck) {
+            showToast('Missing Gemini API Key. Open [SETTINGS] -> AI & Voice.');
+            if (typeof openSettingsModal === 'function') openSettingsModal('tab-ai');
         }
         return null;
     }
 
-    if (!isWakeWordCheck) {
-        if (answerBox) {
-            answerBox.style.display = 'none';
-            answerBox.innerHTML = '';
-        }
-        if (feedback) {
-            feedback.textContent = '[AI AGENT] Analyzing request & live system state...';
-            feedback.style.color = 'var(--accent-gold)';
-        }
+    abortActiveGeminiRequest();
+    activeGeminiAbortController = new AbortController();
+    const signal = activeGeminiAbortController.signal;
+    isGeminiProcessing = true;
+
+    if (typeof updateAskStatusDot === 'function') {
+        updateAskStatusDot('processing');
     }
 
-    const snapshotJson = JSON.stringify(getSystemContextSnapshot());
+    if (!isWakeWordCheck && answerBox) {
+        answerBox.style.display = 'none';
+        answerBox.innerHTML = '';
+    }
 
-    const wakeWordInstruction = isWakeWordCheck
-        ? `WAKE-WORD CHECK MODE:
-First, listen carefully to the audio to determine if the user said the wake word "Hey Tracker" (or phonetic equivalents like "Ehi Tracker", "Ei Tracker", "Ok Tracker", "Tracker").
-- If the audio does NOT contain the wake word (or is just background noise/cough/unrelated speech), set "wakeWordDetected": false and leave everything else empty.
-- If the user ONLY said "Hey Tracker" (with no specific question or command after it), set "wakeWordDetected": true and "wakeWordOnly": true.
-- If the user said "Hey Tracker" FOLLOWED by a question or command (e.g. "Hey Tracker, cosa devo mangiare oggi?" or "Hey Tracker, avvia focus Duolingo"), set "wakeWordDetected": true, "wakeWordOnly": false, strip "Hey Tracker" from the transcript, and process the question/command normally below!`
-        : `Normal active mode: "wakeWordDetected" is always true and "wakeWordOnly" is false.`;
+    try {
+        let finalQueryText = (rawText || '').trim();
 
-    const systemPrompt = `You are the AI brain for a minimalist terminal Habit, Finance & Health Tracker.
+        // Se abbiamo un audioBlob, eseguiamo lo Stadio 1 Flash per mostrare SUBITO la query nella barra!
+        if (audioBlob) {
+            const b64 = await blobToBase64(audioBlob);
+            const stage1 = await fastTranscribeAudioStage(b64, mimeType, isWakeWordCheck, cleanKey, signal);
+
+            if (signal.aborted) return null;
+
+            if (isWakeWordCheck) {
+                if (!stage1 || !stage1.wakeWordDetected) {
+                    isGeminiProcessing = false;
+                    if (typeof updateAskStatusDot === 'function') updateAskStatusDot('standby');
+                    return { wakeWordDetected: false };
+                }
+
+                if (typeof bringAppWindowToFront === 'function') {
+                    await bringAppWindowToFront();
+                }
+
+                // Se ha detto solo "Hey Tracker", fa scendere la barra al centro-alto e avvia il microfono rosso!
+                if (stage1.wakeWordOnly || !stage1.transcript || !stage1.transcript.trim()) {
+                    isGeminiProcessing = false;
+                    openTerminal(true);
+                    return { wakeWordDetected: true, wakeWordOnly: true };
+                }
+
+                // Se ha detto "Hey Tracker + frase", fa scendere la barra e mostra subito la frase mentre il puntino resta GIALLO!
+                openTerminal(false);
+                if (typeof updateAskStatusDot === 'function') updateAskStatusDot('processing');
+            }
+
+            if (stage1 && stage1.abortRequested) {
+                isGeminiProcessing = false;
+                closeTerminal();
+                showToast('[ABORTED] Voice command cancelled');
+                return null;
+            }
+
+            finalQueryText = (stage1 && stage1.transcript ? stage1.transcript : '').trim();
+
+            // Mostra IMMEDIATAMENTE la query trascritta nella barra mentre il puntino è ancora GIALLO!
+            if (inputEl && finalQueryText) {
+                inputEl.value = finalQueryText;
+            }
+        } else if (inputEl && finalQueryText) {
+            inputEl.value = finalQueryText;
+        }
+
+        if (!finalQueryText) {
+            isGeminiProcessing = false;
+            if (typeof updateAskStatusDot === 'function') updateAskStatusDot('standby');
+            if (!isWakeWordCheck) showToast('[VOICE] No speech detected. Click dot or press [V] to retry.');
+            return null;
+        }
+
+        // STADIO 2: RISOLUZIONE AZIONI DSL O RISPOSTA SUL LIVE SYSTEM SNAPSHOT
+        const snapshotJson = JSON.stringify(getSystemContextSnapshot());
+
+        const systemPrompt = `You are the AI brain for a minimalist terminal Habit, Finance & Health Tracker.
 The user speaks or writes in Italian (or English).
-${wakeWordInstruction}
 
 Here is the LIVE SYSTEM SNAPSHOT (JSON):
 ${snapshotJson}
+
+User request: "${finalQueryText}"
 
 You handle two types of requests:
 TYPE A — QUESTIONS / VIEW REQUESTS (e.g. "Cosa devo mangiare oggi?", "Che devo fare in palestra?", "Che lezioni o task ho oggi/domani?", "Quanto posso spendere?"):
 - Set "isQuestion": true.
 - Write a clear, concise, well-structured answer in Italian inside "aiAnswer" using the exact data from the snapshot.
-- Set "targetModule" to the most relevant module so the UI mounts it automatically: one of "diet", "gym", "tasks", "planner", "calendar", "notes", "money" (or null).
+- Set "targetModule" to the most relevant module so the UI mounts it automatically: one of "diet", "gym", "tasks", "planner", "calendar", "notes", "money", "streak" (or null).
 
 TYPE B — ACTIONS / LOGGING COMMANDS:
 - Set "isQuestion": false.
@@ -226,50 +314,29 @@ TYPE B — ACTIONS / LOGGING COMMANDS:
   10. "weight [kg] [optional note]" -> Log body weight.
   11. "gym done" -> Complete active workout split day.
   12. "red on" or "red off" or "red" -> Toggle Red Mode.
-  13. "summon [calendar|tasks|notes|planner|diet|gym|money]" or "zero" -> Open module or Zero-UI.
+  13. "summon [calendar|tasks|notes|planner|diet|gym|money|streak]" or "zero" -> Open module or Zero-UI.
 
 Return ONLY a valid JSON object with this exact structure (no markdown, no backticks):
 {
-  "wakeWordDetected": true or false,
-  "wakeWordOnly": true or false,
+  "wakeWordDetected": true,
+  "wakeWordOnly": false,
   "isQuestion": true or false,
   "aiAnswer": "Direct answer in Italian if isQuestion is true, otherwise empty string",
-  "targetModule": "diet|gym|tasks|planner|calendar|notes|money or null",
-  "transcript": "Clean transcription of what the user said or wrote (without 'Hey Tracker')",
+  "targetModule": "diet|gym|tasks|planner|calendar|notes|money|streak or null",
+  "transcript": "Clean transcription of what the user said or wrote",
   "commands": ["cmd 1", "cmd 2"]
 }`;
 
-    try {
-        const userParts = [{ text: systemPrompt }];
-        if (audioBlob) {
-            const b64 = await blobToBase64(audioBlob);
-            userParts.push({ inlineData: { mimeType: mimeType.split(';')[0] || 'audio/webm', data: b64 } });
-        } else if (rawText) {
-            userParts.push({ text: `User input: "${rawText}"` });
-        }
+        const parsed = await callGeminiJsonEndpoint([{ text: systemPrompt }], cleanKey, signal);
+        if (signal.aborted) return null;
 
-        const parsed = await callGeminiJsonEndpoint(userParts, cleanKey);
-
-        // Se era un controllo in background della wake-word
-        if (isWakeWordCheck) {
-            if (!parsed.wakeWordDetected) {
-                return { wakeWordDetected: false };
-            }
-            // Porta subito la finestra di Tauri in primo piano!
-            if (typeof bringAppWindowToFront === 'function') {
-                await bringAppWindowToFront();
-            }
-            // Se ha detto solo "Hey Tracker", apre il terminale con il microfono attivo per ascoltare la frase
-            if (parsed.wakeWordOnly || (!parsed.aiAnswer && (!parsed.commands || parsed.commands.length === 0))) {
-                openTerminal(true);
-                return { wakeWordDetected: true, wakeWordOnly: true };
-            }
-            // Se ha detto "Hey Tracker + frase completa", apre il terminale senza microfono e mostra subito il risultato!
-            openTerminal(false);
-        }
-
-        const transcript = parsed.transcript || rawText || 'Voice Input';
+        isGeminiProcessing = false;
+        const transcript = parsed.transcript || finalQueryText;
         const commands = Array.isArray(parsed.commands) ? parsed.commands : [];
+
+        if (inputEl && transcript) {
+            inputEl.value = transcript;
+        }
 
         if (parsed.targetModule && typeof summonModule === 'function' && dashboardModules[parsed.targetModule]) {
             summonModule(parsed.targetModule);
@@ -280,10 +347,7 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
                 answerBox.style.display = 'block';
                 answerBox.innerHTML = `<div style="font-size:var(--font-xs); color:var(--text-dim); margin-bottom:6px; text-transform:uppercase;">QUERY // "${escapeHtml(transcript)}"</div><div>${escapeHtml(parsed.aiAnswer)}</div>`;
             }
-            if (feedback) {
-                feedback.textContent = 'AI Answer displayed above. Press [Esc] to close or ask another question.';
-                feedback.style.color = 'var(--accent-green)';
-            }
+            if (typeof updateAskStatusDot === 'function') updateAskStatusDot('standby');
             return parsed;
         }
 
@@ -291,15 +355,49 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
             answerBox.style.display = 'block';
             answerBox.innerHTML = `<div>${escapeHtml(parsed.aiAnswer)}</div>`;
         }
+
         openStagingArea(transcript, commands);
         return parsed;
 
     } catch (err) {
-        if (!isWakeWordCheck && feedback) {
-            feedback.textContent = `AI Agent Error: ${err.message}`;
-            feedback.style.color = 'var(--accent-red)';
+        isGeminiProcessing = false;
+        if (err.name === 'AbortError') {
+            if (typeof updateAskStatusDot === 'function') updateAskStatusDot('standby');
+            return null;
+        }
+        if (typeof updateAskStatusDot === 'function') updateAskStatusDot('standby');
+        if (!isWakeWordCheck) {
+            showToast(`[AI ERROR] ${err.message}`);
         }
         return null;
+    }
+}
+
+// 2. INTERPRETE NATIVO DEL VERDETTO VOCALE NELLA STAGING AREA ("VA BENE" / "PROCEDI" / "RITENTA" / "ANNULLA")
+async function evaluateSpokenStagingVerdict(audioBlob, mimeType = 'audio/webm') {
+    const cleanKey = (geminiApiKey || '').trim();
+    if (!cleanKey) return 'none';
+
+    const promptText = `Listen to this short voice response from the user reviewing proposed actions in a confirmation dialog.
+Classify what the user said into ONE of these exact verdicts:
+- "confirm": if the user said "va bene", "procedi", "conferma", "sì", "si", "ok", "esegui", "perfetto", "vai".
+- "retry": if the user said "ritenta", "riprova", "rifai", "no riprova", "sbagliato".
+- "cancel": if the user said "annulla", "cancella", "chiudi", "esci", "ferma".
+- "none": if it is just silence, noise, or unrelated.
+
+Return ONLY valid JSON:
+{ "verdict": "confirm" | "retry" | "cancel" | "none", "transcript": "what was heard" }`;
+
+    try {
+        const b64 = await blobToBase64(audioBlob);
+        const userParts = [
+            { text: promptText },
+            { inlineData: { mimeType: mimeType.split(';')[0] || 'audio/webm', data: b64 } }
+        ];
+        const parsed = await callGeminiJsonEndpoint(userParts, cleanKey);
+        return parsed.verdict || 'none';
+    } catch (e) {
+        return 'none';
     }
 }
 
