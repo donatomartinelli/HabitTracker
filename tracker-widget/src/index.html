@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Minimal Habit Tracker</title>
+    <title>Cortex</title>
     
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
@@ -28,37 +28,40 @@
 
     <div data-tauri-drag-region class="tauri-drag-bar"></div>
     
-    <<!-- HEADER GLOBALE MINIMALISTA -->
+    <!-- HEADER GLOBALE MINIMALISTA -->
     <header class="app-header">
         <div class="header-left">
             <h1 id="global-clock">00:00 // DAY 00</h1>
         </div>
 
-        <!-- CONTENITORE BARRA "Ask anything" NELL'HEADER -->
+        <!-- CONTENITORE BARRA DSL NELL'HEADER -->
         <div id="header-ask-slot" class="header-ask-slot">
             <div id="ask-bar-container" class="ask-bar-container" onclick="if(!isAskBarExpanded) openTerminal()">
                 <div class="ask-input-row">
-                    <input type="text" id="terminal-input" class="ask-bar-input" placeholder="Ask anything" autocomplete="off">
-                    <button type="button" id="ask-status-dot" class="ask-status-dot state-standby" onclick="handleStatusDotClick(event)" title="Voice / AI Status">●</button>
+                    <input type="text" id="terminal-input" class="ask-bar-input" placeholder="Type command (? for help)" autocomplete="off">
                 </div>
 
-                <!-- Risposta Testuale AI (visibile solo quando espansa) -->
+                <!-- Anteprima Live del Comando (visibile solo quando si digita a barra espansa) -->
+                <div id="terminal-live-preview" class="terminal-live-preview" style="display: none;"></div>
+
+                <!-- Tendina Suggerimenti & Autocompletamento Contestuale [TAB] -->
+                <div id="terminal-suggestions" class="terminal-suggestions-list" style="display: none;"></div>
+
+                <!-- Scheda Riepilogo Istantaneo Locale (diet, gym, today, tomorrow, bal) -->
                 <div id="terminal-ai-answer" class="ask-ai-answer" style="display: none;"></div>
 
-                <!-- Staging Area Azioni Proposte (visibile solo quando espansa) -->
+                <!-- Staging Area Azioni Impilate (Shift+Enter o separatore ;) -->
                 <div id="terminal-staging" class="terminal-staging-box">
-                    <div id="staging-transcript-box" class="staging-transcript"></div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Proposed System Actions:</span>
-                        <span id="staging-voice-verdict-status" style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold;"></span>
+                        <span style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Staged Commands Queue:</span>
+                        <span style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold;">[SHIFT+ENTER TO ADD MORE]</span>
                     </div>
                     <div id="staging-cmd-list" class="staging-cmd-list"></div>
                     <div class="staging-actions-bar">
-                        <span style="font-size: var(--font-xs); color: var(--text-dim);">Say <strong style="color:var(--text-main);">"VA BENE"</strong> / <strong style="color:var(--text-main);">[ENTER]</strong> | <strong style="color:var(--text-main);">"RITENTA"</strong> / <strong style="color:var(--text-main);">[R]</strong> | <strong style="color:var(--text-main);">[ESC]</strong></span>
+                        <span style="font-size: var(--font-xs); color: var(--text-dim);">Press <strong style="color:var(--text-main);">[ENTER]</strong> (on empty input) to execute all | <strong style="color:var(--text-main);">[ESC]</strong> to clear</span>
                         <div style="display: flex; gap: 8px;">
-                            <button type="button" class="btn btn-sm" onclick="retryVoiceCapture()">[R // RETRY]</button>
-                            <button type="button" class="btn btn-danger btn-sm" onclick="cancelStaging()">[CANCEL]</button>
-                            <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[CONFIRM]</button>
+                            <button type="button" class="btn btn-danger btn-sm" onclick="cancelStaging()">[CLEAR]</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[EXECUTE ALL // ENTER]</button>
                         </div>
                     </div>
                 </div>
@@ -72,7 +75,7 @@
         </div>
     </header>
 
-    <!-- BACKDROP SCURO QUANDO "Ask anything" SCENDE AL CENTRO-ALTO -->
+    <!-- BACKDROP SCURO QUANDO LA BARRA SCENDE AL CENTRO-ALTO -->
     <div id="terminalOverlay" class="ask-backdrop-overlay" onclick="if(event.target === this) closeTerminal()"></div>
 
     <!-- BARRA MODULI TRASCINABILI (Visibile quando premi [EDIT]) -->
@@ -97,7 +100,7 @@
     <div id="app-content-wrapper" class="layout"></div>
 
     <!-- ========================================== -->
-    <!-- MAGAZZINO DEI 7 MICRO-MODULI ATOMICI       -->
+    <!-- MAGAZZINO DEGLI 8 MICRO-MODULI ATOMICI     -->
     <!-- ========================================== -->
     <div id="module-registry" style="display: none;">
         

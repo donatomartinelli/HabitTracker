@@ -1,5 +1,5 @@
 // --- js/modules/modals.js ---
-// Iniezione sincrona dei modali HTML (Con nuovo Plan Tomorrow: Inbox + Blocchi Proporzionali + Timeline 06:30-24:00)
+// Iniezione sincrona dei modali HTML (Con Manuale DSL Strutturato ? e Pipeline Sony Intatta)
 
 function initModalsHtml() {
     const root = document.getElementById('modals-root');
@@ -275,7 +275,7 @@ function initModalsHtml() {
             <div class="settings-top-bar">
                 <div>
                     <h2 style="margin: 0; border: none; padding: 0;">System Settings &amp; Workspace</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE LAYOUTS, ACTIONS, AI KEYS, HABITS &amp; BACKUPS</span>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE LAYOUTS, ACTIONS, SONY AUDIO KEYS, HABITS &amp; BACKUPS</span>
                 </div>
                 <button class="btn btn-sm" onclick="closeModals(); renderTasks();">[ESC // CLOSE]</button>
             </div>
@@ -285,7 +285,7 @@ function initModalsHtml() {
                 <div class="settings-sidebar">
                     <div>
                         <button type="button" class="settings-nav-btn active" data-tab="tab-workspace" onclick="switchSettingsTab('tab-workspace')">1. Workspace &amp; UI</button>
-                        <button type="button" class="settings-nav-btn" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. AI &amp; Voice</button>
+                        <button type="button" class="settings-nav-btn" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. Sony Audio Pipeline</button>
                         <button type="button" class="settings-nav-btn" data-tab="tab-habits" onclick="switchSettingsTab('tab-habits')">3. Habits &amp; Cats</button>
                         <button type="button" class="settings-nav-btn" data-tab="tab-system" onclick="switchSettingsTab('tab-system')">4. Data &amp; Manual</button>
                     </div>
@@ -327,19 +327,11 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <!-- TAB 2: AI & VOICE ENGINE -->
+                <!-- TAB 2: SONY RECORDER PIPELINE (GEMINI AUDIO TRANSCRIPTION) -->
                 <div id="tab-ai" class="settings-tab-panel">
-                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="font-size: var(--font-xs); color: var(--text-main); font-weight: bold; text-transform: uppercase;">Always-On "Hey Tracker" Voice Standby</div>
-                            <div style="font-size: 0.68rem; color: var(--text-dim); margin-top: 2px;">Continuously listens in background for the wake word "Hey Tracker"</div>
-                        </div>
-                        <button type="button" id="btn-settings-hey-toggle" class="btn btn-sm" onclick="toggleHeyTrackerFromSettings()">[ENABLED]</button>
-                    </div>
-
                     <div class="cfg-box">
                         <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
-                            <span>AI Voice &amp; Agent // Gemini Flash API Key</span>
+                            <span>Primary Gemini API Key (Fallback for Audio Pipeline)</span>
                             <span id="gemini-key-status" style="color: var(--accent-green);"></span>
                         </label>
                         <div style="display: flex; gap: 8px;">
@@ -354,7 +346,7 @@ function initModalsHtml() {
                             <span id="gemini-audio-key-status" style="color: var(--text-dim);"></span>
                         </label>
                         <div style="display: flex; gap: 8px; margin-bottom: 8px;">
-                            <input type="password" id="gemini-audio-key-input" class="form-control form-control-sm" placeholder="Optional 2nd API Key..." oninput="handleGeminiAudioKeyInput(this.value)">
+                            <input type="password" id="gemini-audio-key-input" class="form-control form-control-sm" placeholder="Optional Dedicated API Key for [SYNC SONY]..." oninput="handleGeminiAudioKeyInput(this.value)">
                             <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-audio-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -395,8 +387,8 @@ function initModalsHtml() {
 
                     <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
-                            <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">CLI &amp; Shortcuts Manual</div>
-                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">View all DSL commands and keyboard shortcuts</div>
+                            <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Cortex DSL &amp; Shortcuts Manual</div>
+                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">View all DSL commands, contextual autocomplete rules and shortcuts</div>
                         </div>
                         <button type="button" class="btn btn-sm" onclick="openShortcutsHelp()">[OPEN MANUAL // ?]</button>
                     </div>
@@ -460,7 +452,7 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 12. Evening Builder: Plan Tomorrow Modal (CON TIMELINE 1-DAY 06:30-24:00 E BLOCCHI PROPORZIONALI) -->
+    <!-- 12. Evening Builder: Plan Tomorrow Modal -->
     <div id="planTomorrowModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 960px; max-width: 96%; height: 88vh; display: flex; flex-direction: column;">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px; flex-shrink: 0;">
@@ -472,16 +464,12 @@ function initModalsHtml() {
             </div>
 
             <div style="display: flex; gap: 20px; flex: 1; overflow: hidden; min-height: 0;">
-                
-                <!-- COLONNA SINISTRA: Priorità, Inbox, Blocchi Task Proporzionali da Piazzare & Quick Add -->
                 <div style="width: 44%; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 8px; border-right: 1px solid var(--border-color);">
-                    
                     <div class="form-group" style="margin-bottom: 0;">
                         <label>Tomorrow's #1 Priority / Main Objective</label>
                         <input type="text" id="plan-tmw-priority" class="form-control form-control-sm" placeholder="e.g. Complete Analysis II proofs..." oninput="saveTomorrowPriority(this.value)">
                     </div>
 
-                    <!-- 1. Blocchi Task Attive Domani (con scelta numero blocchi es. Algebra 2x30m e Drag & Drop) -->
                     <div>
                         <div class="sub-column-header" style="display:flex; justify-content:space-between;">
                             <span>1. Tomorrow's Task Blocks (Drag to Timeline)</span>
@@ -490,13 +478,11 @@ function initModalsHtml() {
                         <div id="plan-tmw-available-blocks" style="display: flex; flex-direction: column; gap: 6px;"></div>
                     </div>
 
-                    <!-- 2. General To-Do Inbox (Senza più le abitudini ripetute di oggi) -->
                     <div>
                         <div class="sub-column-header">2. General To-Do Inbox (Move to Tomorrow)</div>
                         <div id="plan-tmw-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
                     </div>
 
-                    <!-- 3. Quick Add Nuova Task per Domani -->
                     <div style="border-top: 1px solid var(--border-color); padding-top: 10px;">
                         <div class="sub-column-header">3. Create New Task Block for Tomorrow</div>
                         <div style="display: flex; gap: 6px; align-items: center;">
@@ -509,7 +495,6 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <!-- COLONNA DESTRA: TIMELINE GIORNALIERA 06:30 - 24:00 IDENTICA AL WEEKLY PLANNER -->
                 <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
                     <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0;">
                         <span>TOMORROW'S TIMELINE (06:30 – 24:00)</span>
@@ -571,12 +556,12 @@ function initModalsHtml() {
                 <input type="hidden" id="m-vault-id">
                 <div class="form-group">
                     <label>Vault Name</label>
-                    <input type="text" id="m-vault-name" class="form-control" placeholder="e.g. Fondo Emergenza, Viaggio" required>
+                    <input type="text" id="m-vault-name" class="form-control" placeholder="e.g. Amazon, Fondo Emergenza" required>
                 </div>
                 <div style="display: flex; gap: 12px;">
                     <div class="form-group" style="flex: 1;">
                         <label>Initial Deposit (€)</label>
-                        <input type="number" id="m-vault-balance" class="form-control no-spinners" step="0.01" value="0" min="0" required>
+                        <input type="number" id="m-vault-balance" class="form-control no-spinners" step="0.01" value="0" required>
                     </div>
                     <div class="form-group" style="flex: 1;">
                         <label>Target Goal (€, Optional)</label>
@@ -588,12 +573,18 @@ function initModalsHtml() {
                     <select id="m-vault-rule-type" class="form-control" onchange="toggleVaultRuleInput()">
                         <option value="none">Manual only (No automatic rule)</option>
                         <option value="percent_in">Auto-save % of every Income (+ IN)</option>
-                        <option value="monthly_fixed">Auto-save Fixed € on Day 1 of each Month</option>
+                        <option value="monthly_fixed">Auto-save Fixed € on Renewal Day of Month</option>
                     </select>
                 </div>
-                <div class="form-group" id="m-vault-rule-val-group" style="display: none;">
-                    <label id="m-vault-rule-val-label">Rule Value</label>
-                    <input type="number" id="m-vault-rule-val" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 15">
+                <div style="display: none; gap: 12px;" id="m-vault-rule-val-group">
+                    <div class="form-group" style="flex: 1;">
+                        <label id="m-vault-rule-val-label">Rule Value</label>
+                        <input type="number" id="m-vault-rule-val" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 15">
+                    </div>
+                    <div class="form-group" style="flex: 1;" id="m-vault-renewal-day-group">
+                        <label>Renewal Day (1-31)</label>
+                        <input type="number" id="m-vault-renewal-day" class="form-control no-spinners" min="1" max="31" value="15">
+                    </div>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
@@ -751,40 +742,100 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 19. System Manual Modal -->
+    <!-- 19. Cortex DSL & System Manual Modal (?) -->
     <div id="shortcutsHelpModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 880px; max-width: 96%; max-height: 90vh;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 16px;">
-                <h2 style="margin: 0; border: none; padding: 0;">System Manual // CLI, Shortcuts &amp; Interactions</h2>
-                <span style="font-size: var(--font-xs); color: var(--text-dim);">OPEN ANYTIME WITH [?] OR [CTRL + SPACE]</span>
+        <div class="modal-content" style="width: 960px; max-width: 96%; max-height: 90vh;">
+            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 14px;">
+                <div>
+                    <h2 style="margin: 0; border: none; padding: 0;">Cortex DSL Manual // Sintassi, Autocompletamento &amp; Modifiche</h2>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">Usa <code>[TAB]</code> per autocompletare · <code>[ENTER]</code> per eseguire all'istante · <code>[SHIFT + ENTER]</code> (o <code>;</code>) per impilare nella Staging Area.</span>
+                </div>
+                <span style="font-size: var(--font-xs); color: var(--text-main); font-weight: bold;">SHORTCUT: [?]</span>
             </div>
+
             <div class="help-manual-columns">
+                <!-- 1. TASKS, FOCUS, CALENDARIO & NOTE -->
                 <div class="help-section-card">
-                    <div class="help-section-title">1. CLI // Tasks, Planner &amp; Focus</div>
+                    <div class="help-section-title">1. Task, Focus, Calendario &amp; Note</div>
                     <div class="help-grid">
-                        <div class="help-key">focus [task/cat]</div><div class="help-desc">Start Focus using the task's own duration &amp; auto-check</div>
-                        <div class="help-key">done [task]</div><div class="help-desc">Check off today's matching task</div>
-                        <div class="help-key">plan</div><div class="help-desc">Open Evening Builder 1-Day Timeline (06:30–24:00)</div>
-                        <div class="help-key">todo [text]</div><div class="help-desc">Add item to General To-Do inbox</div>
-                        <div class="help-key">task [text] [@day]</div><div class="help-desc">Schedule task on <code>@oggi</code>, <code>@domani</code> or <code>@YYYY-MM-DD</code></div>
-                        <div class="help-key">event [@day] [title]</div><div class="help-desc">Add calendar event</div>
-                        <div class="help-key">note [cat]: [text]</div><div class="help-desc">Append note to category</div>
-                        <div class="help-key">ledger</div><div class="help-desc">Open Consistency Grid &amp; Real Focus Hours Ledger</div>
+                        <div class="help-key"><code>done [task]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>done Duolingo</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Spunta la prima casella libera della task attiva oggi (autocompleta con <code>[TAB]</code>). Se è un medicinale, scala <code>-1</code> dallo stock.</div>
+
+                        <div class="help-key"><code>focus [task/cat]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>focus Analisi</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Avvia il timer Pomodoro con la durata esatta configurata nella task (o <code>focus 45 Analisi</code> per forzare i minuti) e spunta la task al termine.</div>
+
+                        <div class="help-key"><code>task [titolo] [@day]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>task Studio @domani</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Crea una task flessibile da 25m nella categoria <code>General To-Do</code> per <code>@oggi</code>, <code>@domani</code> o <code>@YYYY-MM-DD</code>.</div>
+
+                        <div class="help-key"><code>todo [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>todo Bolletta</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge una voce non schedulata nella lista <code>General To-Do Inbox</code>.</div>
+
+                        <div class="help-key"><code>event [@day] [titolo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>event @domani Esame</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Inserisce un evento singolo sul Calendario e nel Weekly Planner.</div>
+
+                        <div class="help-key"><code>note [Cat]: [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>note Math: Teorema</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Accoda la nota nella categoria indicata (premi <code>[TAB]</code> dopo <code>note </code> per scegliere la categoria; se nuova, la crea).</div>
                     </div>
                 </div>
+
+                <!-- 2. MONEY, VAULTS, DIETA & PALESTRA -->
                 <div class="help-section-card">
-                    <div class="help-section-title">2. CLI // Money, Diet &amp; Gym</div>
+                    <div class="help-section-title">2. Money, Salvadanai, Dieta &amp; Palestra</div>
                     <div class="help-grid">
-                        <div class="help-key">out [€] #[cat] [desc]</div><div class="help-desc">Log categorized expense</div>
-                        <div class="help-key">in [€] [desc]</div><div class="help-desc">Log income &amp; trigger Vault % rules</div>
-                        <div class="help-key">wish [item] [€]</div><div class="help-desc">Add idea to Incubator</div>
-                        <div class="help-key">vault</div><div class="help-desc">Create a new Salvadanaio / Auto-Rule</div>
-                        <div class="help-key">weight [kg] [note]</div><div class="help-desc">Log body weight &amp; note</div>
-                        <div class="help-key">gym done</div><div class="help-desc">Complete active workout day &amp; advance</div>
-                        <div class="help-key">red</div><div class="help-desc">Toggle Red Gelatin Mode</div>
+                        <div class="help-key"><code>out [€] #[Cat/Vault] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>out 20 #Amazon Cavo</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Sottrae l'importo dal saldo totale. Se <code>#Nome</code> corrisponde a un <strong>Vault</strong>, scala direttamente dal Vault (anche andando in negativo per il rollover); altrimenti riduce lo Spendable Balance.</div>
+
+                        <div class="help-key"><code>in [€] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>in 500 Borsa</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge <code>+€</code> al saldo totale e accantona automaticamente le percentuali nei Vault con regola <code>% of Income</code>.</div>
+
+                        <div class="help-key"><code>wish [item] [€ opz.]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>wish Libro 18</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Inserisce l'idea d'acquisto nel <code>Purchase Ideas Incubator</code> senza toccare il saldo.</div>
+
+                        <div class="help-key"><code>weight [kg] [nota]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>weight 74.5 digiuno</code></span></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Registra il peso corporeo odierno e aggiorna il delta <code>+/- kg</code> nel modulo Diet.</div>
+
+                        <div class="help-key"><code>gym done</code></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Salva tutti i carichi inseriti nella scheda attiva e avanza al giorno successivo dello split (<code>Day 1 ↔ Day 2</code>).</div>
+                    </div>
+                </div>
+
+                <!-- 3. ISPEZIONE ISTANTANEA IN SOLA LETTURA (0ms) -->
+                <div class="help-section-card">
+                    <div class="help-section-title">3. Ispezione Rapida in Sola Lettura (0ms nella Barra)</div>
+                    <div class="help-grid">
+                        <div class="help-key"><code>diet</code> / <code>diet @domani</code></div>
+                        <div class="help-desc">Mostra subito nella barra tutti i pasti del giorno, le regole fisse e i macro calcolati (Kcal, P, C, F).</div>
+
+                        <div class="help-key"><code>gym</code></div>
+                        <div class="help-desc">Mostra gli esercizi del <code>Day</code> attivo in palestra con le ripetizioni e gli ultimi pesi salvati.</div>
+
+                        <div class="help-key"><code>today</code> / <code>tomorrow</code></div>
+                        <div class="help-desc">Mostra il riepilogo di priorità #1, eventi, task orarie/flessibili e stato di completamento per oggi o domani.</div>
+
+                        <div class="help-key"><code>bal</code> / <code>money</code></div>
+                        <div class="help-desc">Mostra Spendable Balance, saldo totale, saldo di ogni Vault e cashflow netto del mese.</div>
+                    </div>
+                </div>
+
+                <!-- 4. WORKSPACE, STAGING & SCORCIATOIE GLOBALI -->
+                <div class="help-section-card">
+                    <div class="help-section-title">4. Workspace, Staging &amp; Scorciatoie da Tastiera</div>
+                    <div class="help-grid">
+                        <div class="help-key"><code>summon [modulo]</code> · <code>swap</code> · <code>zero</code></div>
+                        <div class="help-desc">Monta un modulo nel layout tiling (<code>calendar</code>, <code>tasks</code>, <code>notes</code>, <code>planner</code>, <code>diet</code>, <code>gym</code>, <code>money</code>, <code>streak</code>), scambia i quadranti o attiva Zero-UI.</div>
+
+                        <div class="help-key"><code>plan</code> · <code>ledger</code> · <code>food</code> · <code>vault</code></div>
+                        <div class="help-desc">Apre rispettivamente l'Evening Builder (Timeline Domani), il Focus Ledger, il Food DB o il modale nuovo Salvadanaio.</div>
+
+                        <div class="help-key">[SHIFT + ENTER] / <code>;</code></div>
+                        <div class="help-desc">Mette il comando nella <strong>Staging Area</strong> per accumularne altri prima di premere <code>[ENTER]</code>.</div>
+
+                        <div class="help-key">[CTRL+SPACE] · [?] · [,] · [E]</div>
+                        <div class="help-desc"><code>[CTRL+SPACE]</code> apre la barra · <code>[?]</code> Manuale · <code>[,]</code> Settings · <code>[E]</code> Edit Layout · <code>[P]</code> Plan Tomorrow · <code>[J]</code> Journal · <code>[R]</code> Red Mode.</div>
                     </div>
                 </div>
             </div>
+
             <div class="modal-actions" style="margin-top: 10px;">
                 <button class="btn btn-primary" onclick="closeModals()">Close Manual [Esc]</button>
             </div>
@@ -857,33 +908,12 @@ function switchSettingsTab(tabId) {
     });
 }
 
-function syncHeyTrackerSettingsBtn() {
-    const btn = document.getElementById('btn-settings-hey-toggle');
-    if (!btn) return;
-    const enabled = typeof isHeyTrackerEnabled !== 'undefined' ? isHeyTrackerEnabled : true;
-    btn.textContent = enabled ? '[ON // LISTENING]' : '[OFF // PAUSED]';
-    btn.classList.toggle('btn-primary', enabled);
-}
-
-function toggleHeyTrackerFromSettings() {
-    if (typeof toggleHeyTrackerStandbyState === 'function') {
-        toggleHeyTrackerStandbyState();
-    } else if (typeof isHeyTrackerEnabled !== 'undefined') {
-        isHeyTrackerEnabled = !isHeyTrackerEnabled;
-        localStorage.setItem('tracker_hey_enabled', isHeyTrackerEnabled ? 'true' : 'false');
-        if (isHeyTrackerEnabled && typeof startNativeHeyTrackerStandby === 'function') startNativeHeyTrackerStandby();
-        else if (typeof stopNativeHeyTrackerStandby === 'function') stopNativeHeyTrackerStandby();
-    }
-    syncHeyTrackerSettingsBtn();
-}
-
 function openSettingsModal(defaultTab = 'tab-workspace') {
     if (typeof renderManager === 'function') renderManager();
     if (typeof updateWorkspaceDropdownUI === 'function') updateWorkspaceDropdownUI();
     if (typeof updateGeminiKeyStatusUI === 'function') updateGeminiKeyStatusUI();
     if (typeof updateGeminiAudioKeyStatusUI === 'function') updateGeminiAudioKeyStatusUI();
     if (typeof applyRedModeUI === 'function') applyRedModeUI();
-    syncHeyTrackerSettingsBtn();
 
     const sEl = document.getElementById('bg-opacity-slider');
     if (sEl) sEl.value = savedOpacity;

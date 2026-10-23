@@ -58,7 +58,7 @@
     background: rgba(255, 255, 255, 0.06);
 }
 
-/* --- BARRA "Ask anything" CON MORPHING DALL'HEADER --- */
+/* --- BARRA DSL CON MORPHING DALL'HEADER --- */
 .header-ask-slot {
     width: 380px;
     height: 36px;
@@ -129,48 +129,65 @@
     color: var(--text-dim);
 }
 
-/* --- PUNTINO DI STATO (●) A 4 STATI --- */
-.ask-status-dot {
-    background: none;
-    border: none;
+/* --- LIVE PREVIEW & TENDINA AUTOCOMPLETAMENTO CONTESTUALE --- */
+.terminal-live-preview {
+    padding: 7px 16px;
+    background: #080808;
+    border-bottom: 1px solid var(--border-color);
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+}
+
+.terminal-suggestions-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 230px;
+    overflow-y: auto;
+    background: #040404;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.suggestion-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    font-size: var(--font-xs);
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.06);
     cursor: pointer;
-    font-size: 0.95rem;
-    line-height: 1;
-    padding: 4px 0 4px 10px;
-    transition: color 0.15s ease, transform 0.15s ease;
-    user-select: none;
+    gap: 12px;
 }
 
-.ask-status-dot:hover {
-    transform: scale(1.2);
+.suggestion-item:last-child {
+    border-bottom: none;
 }
 
-/* 1. OFF / No Key */
-.ask-status-dot.state-off {
+.suggestion-item:hover,
+.suggestion-item.active {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.suggestion-item.active {
+    border-left: 3px solid var(--text-main);
+    padding-left: 13px;
+}
+
+.suggestion-cmd {
+    color: var(--text-main);
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.suggestion-desc {
     color: var(--text-dim);
-    opacity: 0.45;
-}
-
-/* 2. STANDBY ("Hey Tracker" o attesa "Va bene / Ritenta") */
-.ask-status-dot.state-standby {
-    color: var(--accent-green);
-}
-
-/* 3. RECORDING (Voce in ascolto) */
-.ask-status-dot.state-recording {
-    color: var(--accent-red);
-    animation: pulseStatusDot 0.8s infinite alternate;
-}
-
-/* 4. PROCESSING / LOADING (Giallo con Abort al click) */
-.ask-status-dot.state-processing {
-    color: var(--accent-gold);
-    animation: pulseStatusDot 0.45s infinite alternate;
-}
-
-@keyframes pulseStatusDot {
-    from { opacity: 1; transform: scale(1.15); }
-    to { opacity: 0.35; transform: scale(0.9); }
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .ask-ai-answer {
@@ -180,8 +197,7 @@
     font-size: var(--font-sm);
     line-height: 1.5;
     color: var(--text-main);
-    white-space: pre-wrap;
-    max-height: 45vh;
+    max-height: 48vh;
     overflow-y: auto;
 }
 
@@ -603,56 +619,6 @@ body.layout-edit-mode .quadrant-title-static {
     border-color: var(--text-main);
 }
 
-/* --- SCHERMATA ZERO-UI (0 MODULI ATTIVI) --- */
-.zero-ui-screen {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    width: 100%;
-    height: 100%;
-    padding: 30px;
-    text-align: center;
-    gap: 24px;
-}
-
-.zero-ui-box {
-    border: 1px solid var(--border-color);
-    background: rgba(5, 5, 5, 0.85);
-    padding: 28px 36px;
-    max-width: 580px;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-    gap: 18px;
-}
-
-.zero-ui-cmd-trigger {
-    width: 100%;
-    padding: 14px 18px;
-    background: #000000;
-    border: 1px solid var(--text-main);
-    color: var(--text-main);
-    font-size: var(--font-md);
-    text-align: left;
-    cursor: pointer;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    transition: background 0.15s;
-}
-
-.zero-ui-cmd-trigger:hover {
-    background: rgba(255, 255, 255, 0.06);
-}
-
-.zero-ui-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: center;
-}
-
 /* --- CONTENITORE MODULI INTERNI --- */
 .module-container {
     display: flex;
@@ -776,62 +742,7 @@ body.layout-edit-mode .quadrant-title-static {
     display: block;
 }
 
-/* --- TERMINAL COMMAND PALETTE & TOAST --- */
-.terminal-overlay {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.75);
-    backdrop-filter: blur(4px);
-    z-index: 2000;
-    justify-content: center;
-    align-items: flex-start;
-    padding-top: 14vh;
-}
-
-.terminal-box {
-    width: 640px;
-    max-width: 92%;
-    background: #050505;
-    border: 1px solid var(--text-main);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.95);
-}
-
-.terminal-input-wrap {
-    display: flex;
-    align-items: center;
-    padding: 14px 18px;
-    border-bottom: 1px solid var(--border-color);
-    background: #000000;
-}
-
-.terminal-prompt {
-    color: var(--text-main);
-    font-weight: bold;
-    margin-right: 12px;
-    font-size: var(--font-md);
-    user-select: none;
-}
-
-.terminal-input {
-    flex: 1;
-    background: transparent;
-    border: none;
-    color: var(--text-main);
-    font-size: var(--font-md);
-    outline: none;
-}
-
-.terminal-hint {
-    padding: 9px 18px;
-    font-size: var(--font-xs);
-    color: var(--text-dim);
-    background: #080808;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
+/* --- TOAST NOTIFICATIONS --- */
 .terminal-toast {
     position: fixed;
     bottom: 24px;
@@ -853,7 +764,7 @@ body.layout-edit-mode .quadrant-title-static {
     transform: translateY(0);
 }
 
-/* --- STRUCTURED HELP MANUAL --- */
+/* --- STRUCTURED HELP MANUAL (?) --- */
 .help-manual-columns {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -883,8 +794,8 @@ body.layout-edit-mode .quadrant-title-static {
 
 .help-grid {
     display: grid;
-    grid-template-columns: 145px 1fr;
-    gap: 6px 12px;
+    grid-template-columns: 170px 1fr;
+    gap: 8px 12px;
     font-size: var(--font-xs);
     align-items: baseline;
 }
@@ -892,53 +803,26 @@ body.layout-edit-mode .quadrant-title-static {
 .help-key {
     color: var(--text-main);
     font-weight: bold;
-    white-space: nowrap;
+    line-height: 1.35;
 }
 
 .help-desc {
     color: var(--text-dim);
-    line-height: 1.35;
+    line-height: 1.4;
+}
+
+.help-desc strong {
+    color: var(--text-muted);
 }
 
 .help-desc code {
-    color: var(--text-muted);
+    color: var(--text-main);
     background: rgba(255, 255, 255, 0.06);
     padding: 1px 4px;
     border: 1px solid #333;
 }
 
-/* --- VOICE CONTROL & AI STAGING AREA --- */
-.terminal-mic-btn {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-dim);
-    padding: 4px 10px;
-    font-size: var(--font-xs);
-    cursor: pointer;
-    text-transform: uppercase;
-    font-weight: bold;
-    transition: 0.15s;
-    margin-left: 8px;
-    white-space: nowrap;
-}
-
-.terminal-mic-btn:hover {
-    color: var(--text-main);
-    border-color: var(--text-main);
-}
-
-.terminal-mic-btn.recording {
-    background: var(--accent-red);
-    color: #000000;
-    border-color: var(--accent-red);
-    animation: pulseMic 1s infinite alternate;
-}
-
-@keyframes pulseMic {
-    from { opacity: 1; }
-    to { opacity: 0.55; }
-}
-
+/* --- STAGING AREA CODA COMANDI --- */
 .terminal-staging-box {
     display: none;
     flex-direction: column;
@@ -946,15 +830,6 @@ body.layout-edit-mode .quadrant-title-static {
     padding: 14px 18px;
     background: #060606;
     border-bottom: 1px solid var(--border-color);
-}
-
-.staging-transcript {
-    font-size: var(--font-xs);
-    color: var(--text-muted);
-    padding: 8px 10px;
-    background: rgba(255, 255, 255, 0.02);
-    border-left: 2px solid var(--text-dim);
-    line-height: 1.4;
 }
 
 .staging-cmd-list {
