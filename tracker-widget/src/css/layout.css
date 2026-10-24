@@ -29,7 +29,120 @@
 .header-left {
     display: flex;
     align-items: center;
+    gap: 12px;
     justify-self: start;
+    min-width: 0;
+}
+
+/* --- HEADER INLINE FOCUS TIMER & BOTTOM PROGRESS LINE --- */
+.header-inline-focus {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+}
+
+.header-focus-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-bright);
+    border-left: 3px solid var(--text-main);
+    font-size: var(--font-xs);
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.header-focus-pill:hover {
+    background: #080808;
+    border-color: var(--text-main);
+}
+
+.header-focus-pill.is-paused {
+    border-left-color: var(--accent-gold) !important;
+    opacity: 0.85;
+}
+
+.header-focus-icon {
+    font-size: 0.68rem;
+    color: var(--text-main);
+}
+
+.header-focus-time {
+    font-weight: bold;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
+    font-size: var(--font-sm);
+}
+
+.header-focus-sep {
+    color: var(--text-dim);
+}
+
+.header-focus-title {
+    color: var(--text-muted);
+    font-weight: bold;
+    text-transform: uppercase;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.header-focus-actions {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    padding-left: 8px;
+    border-left: 1px dotted var(--border-bright);
+}
+
+.header-focus-pill:hover .header-focus-actions {
+    display: flex;
+}
+
+.header-focus-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    font-weight: bold;
+    padding: 2px 5px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: 0.12s;
+}
+
+.header-focus-btn:hover {
+    color: var(--text-main);
+    border-color: var(--text-main);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.header-focus-btn.danger:hover {
+    color: var(--accent-red);
+    border-color: var(--accent-red);
+    background: rgba(255, 85, 85, 0.12);
+}
+
+.header-focus-progress-track {
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(255, 255, 255, 0.05);
+    pointer-events: none;
+    z-index: 2150;
+}
+
+.header-focus-progress-bar {
+    height: 100%;
+    width: 100%;
+    background: var(--text-main);
+    transition: width 0.25s linear;
 }
 
 #global-clock {

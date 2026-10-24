@@ -1,9 +1,10 @@
 // --- js/modules/focus.js ---
-// Pomodoro Engine (Timestamp-accurate), Centrato senza Note + Scaletta Live & Aggancio alle Task Reali
+// Pomodoro Engine (Timestamp-accurate), Header Inline Focus Bar + Bottom Progress Line & Fullscreen Toggle
 
 let pomodoroInterval;
 let focusPlaylist = [];
 let isPomodoroPaused = false;
+let isFullscreenFocusOpen = false;
 let currentPlaylistIndex = 0;
 let timeRemaining = 0;
 let totalPhaseTime = 0;
@@ -27,7 +28,6 @@ function playBeep(frequency, duration) {
 function getTaskDurationMinutes(t, dateStr = selectedDateStr) {
     if (!t || t.type === 'medicine' || t.noTimer) return 0;
 
-    // Se è una task con fasce orarie sulla griglia, calcola la durata della fascia del giorno
     if (t.type === 'timed' && t.timeWindows && t.timeWindows.length > 0) {
         const dayIdx = new Date(dateStr).getDay();
         const matchingTw = t.timeWindows.find(w => w.days && w.days.includes(dayIdx)) || t.timeWindows[0];
@@ -52,7 +52,7 @@ function findMatchingTaskForFocus(queryStr) {
     const validTemplates = templates.filter(t => getTaskDurationMinutes(t, selectedDateStr) > 0);
     const activeToday = validTemplates.filter(t => isTaskActiveOnDate(t, selectedDateStr));
 
-    // 1. Priorità: Task attive oggi non ancora completate (match su titolo o categoria)
+    // 1. Priorità: Task attive oggi non ancora completate
     const uncompletedActive = activeToday.filter(t => {
         const curLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances || 1).fill(false);
         return curLog.some(x => !x);
@@ -62,7 +62,7 @@ function findMatchingTaskForFocus(queryStr) {
         || uncompletedActive.find(t => t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
     if (match) return match;
 
-    // 2. Qualsiasi task attiva oggi (anche se già spuntata)
+    // 2. Qualsiasi task attiva oggi
     match = activeToday.find(t => t.title.toLowerCase() === q || t.category.toLowerCase() === q)
         || activeToday.find(t => t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q));
     if (match) return match;
@@ -71,7 +71,7 @@ function findMatchingTaskForFocus(queryStr) {
     return validTemplates.find(t => t.title.toLowerCase().includes(q) || t.category.toLowerCase().includes(q)) || null;
 }
 
-// Avvia il Focus direttamente dall'ID della task
+// Avvia il Focus direttamente dall'ID della task (in modalità Header Inline di default)
 function quickStartTaskFocus(templateId) {
     const t = templates.find(x => x.id === templateId);
     if (!t) return false;
@@ -92,9 +92,10 @@ function quickStartTaskFocus(templateId) {
         isPartial: false
     }];
     currentPlaylistIndex = 0;
+    isFullscreenFocusOpen = false;
     startCurrentPlaylistPhase();
     if (typeof showToast === 'function') {
-        showToast(`[FOCUS] Started ${mins}m: ${t.title} [${t.category}]`);
+        showToast(`[FOCUS INLINE] Started ${mins}m: ${t.title} [${t.category}]`);
     }
     return true;
 }
@@ -117,9 +118,10 @@ function startTaskFocusByQuery(queryStr, overrideMinutes = null) {
             isPartial: false
         }];
         currentPlaylistIndex = 0;
+        isFullscreenFocusOpen = false;
         startCurrentPlaylistPhase();
         if (typeof showToast === 'function') {
-            showToast(`[FOCUS] ${matchedTask.title} (${matchedTask.category}) — ${mins}m`);
+            showToast(`[FOCUS INLINE] ${matchedTask.title} (${matchedTask.category}) — ${mins}m`);
         }
         return true;
     }
@@ -141,8 +143,14 @@ function skipPomodoroPhase() {
     if (focusPlaylist.length === 0 || currentPlaylistIndex >= focusPlaylist.length) return;
 
     const phase = focusPlaylist[currentPlaylistIndex];
-    if (phase.type === 'task' && !phase.isPartial && phase.id) {
-        checkOffCompletedTaskInstance(phase.id);
+    if (phase.type === 'task') {
+        if (typeof logFocusSession === 'function') {
+            const elapsedMins = Math.max(1, Math.round((totalPhaseTime - Math.max(0, timeRemaining)) / 60));
+            logFocusSession(elapsedMins, phase.category, phase.title, todayStr);
+        }
+        if (!phase.isPartial && phase.id) {
+            checkOffCompletedTaskInstance(phase.id);
+        }
     }
 
     clearInterval(pomodoroInterval);
@@ -183,7 +191,7 @@ function renderAvailableTasksForFocus() {
 
     templates.forEach(t => {
         const mins = getTaskDurationMinutes(t, selectedDateStr);
-        if (mins <= 0) return; // Esclude medicine e task Check-Only senza timer
+        if (mins <= 0) return;
 
         if (isTaskActiveOnDate(t, selectedDateStr)) {
             const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances || 1).fill(false);
@@ -300,7 +308,6 @@ function renderFocusPlaylist() {
     });
 }
 
-// Disegna la scaletta live sotto il cerchio durante la sessione Focus (Scelta 3B)
 function renderLiveFocusQueue() {
     const queueEl = document.getElementById('focus-live-queue');
     if (!queueEl) return;
@@ -351,40 +358,121 @@ document.getElementById('timerSetupForm').addEventListener('submit', function(e)
     }
 
     currentPlaylistIndex = 0;
+    isFullscreenFocusOpen = false;
     startCurrentPlaylistPhase();
 });
 
+function syncFocusViewState() {
+    const isActive = focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
+    const inlineWrap = document.getElementById('header-inline-focus');
+    const progTrack = document.getElementById('header-focus-progress-track');
+    const overlay = document.getElementById('pomodoroOverlay');
+    const btnWidgetMode = document.getElementById('btn-widget-mode');
+
+    if (btnWidgetMode) {
+        btnWidgetMode.textContent = '[_ MINIMIZE TO HEADER]';
+    }
+
+    if (!isActive) {
+        if (inlineWrap) inlineWrap.style.display = 'none';
+        if (progTrack) progTrack.style.display = 'none';
+        if (overlay) {
+            overlay.classList.remove('widget-mode');
+            overlay.style.display = 'none';
+        }
+        return;
+    }
+
+    if (inlineWrap) inlineWrap.style.display = 'flex';
+    if (progTrack) progTrack.style.display = 'block';
+
+    if (overlay) {
+        overlay.classList.remove('widget-mode');
+        overlay.style.display = isFullscreenFocusOpen ? 'flex' : 'none';
+    }
+}
+
+function openFullscreenFocusOverlay() {
+    if (focusPlaylist.length === 0 || currentPlaylistIndex >= focusPlaylist.length) return;
+    isFullscreenFocusOpen = true;
+    syncFocusViewState();
+    updatePomodoroDisplay();
+}
+
+// Nel fullscreen, il pulsante in alto a sinistra minimizza il timer nella barra dell'header (zero coperture)
+function toggleWidgetMode() {
+    isFullscreenFocusOpen = false;
+    syncFocusViewState();
+    updatePomodoroDisplay();
+}
+
+function resetWidgetMode() {
+    isFullscreenFocusOpen = false;
+    const overlay = document.getElementById('pomodoroOverlay');
+    if (overlay) {
+        overlay.classList.remove('widget-mode');
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.right = '0';
+        overlay.style.bottom = '0';
+    }
+}
+
 function startCurrentPlaylistPhase() {
     if (currentPlaylistIndex >= focusPlaylist.length) {
-        resetWidgetMode();
-        document.getElementById('pomodoroOverlay').style.display = 'none';
+        stopPomodoro();
         if (typeof showToast === 'function') showToast('[FOCUS] Session completed & tasks checked off!');
         return;
     }
 
     isPomodoroPaused = false;
-    document.getElementById('btn-pomodoro-pause').innerText = "Pause";
+    const pauseBtnFull = document.getElementById('btn-pomodoro-pause');
+    if (pauseBtnFull) pauseBtnFull.innerText = 'Pause';
+    const pauseBtnHdr = document.getElementById('btn-header-focus-pause');
+    if (pauseBtnHdr) pauseBtnHdr.textContent = '[PAUSE]';
 
     const phase = focusPlaylist[currentPlaylistIndex];
-    document.getElementById('pomodoroOverlay').style.display = 'flex';
+    const activeColor = phase.type === 'task' ? (phase.color || '#ffffff') : '#888888';
 
+    // Aggiorna Fullscreen Overlay
     const titleEl = document.getElementById('pomodoro-task-title');
     const circle = document.getElementById('pomodoro-circle');
-
     if (phase.type === 'task') {
         const catPrefix = phase.category ? `[${phase.category}] ` : '';
-        titleEl.innerText = `${catPrefix}${phase.title}`;
-        circle.setAttribute('stroke', phase.color || '#ffffff');
+        if (titleEl) titleEl.innerText = `${catPrefix}${phase.title}`;
+        if (circle) circle.setAttribute('stroke', activeColor);
         playBeep(800, 0.2);
     } else {
-        titleEl.innerText = "BREAK TIME";
-        circle.setAttribute('stroke', '#666666');
+        if (titleEl) titleEl.innerText = 'BREAK TIME';
+        if (circle) circle.setAttribute('stroke', '#666666');
+    }
+
+    // Aggiorna Header Inline Pill & Progress Bar
+    const hdrPill = document.getElementById('header-focus-pill');
+    const hdrTitle = document.getElementById('header-focus-title');
+    const hdrIcon = document.getElementById('header-focus-icon');
+    const hdrProgBar = document.getElementById('header-focus-progress-bar');
+
+    if (hdrPill) {
+        hdrPill.style.borderLeftColor = activeColor;
+        hdrPill.classList.remove('is-paused');
+    }
+    if (hdrTitle) {
+        hdrTitle.textContent = phase.type === 'task' ? phase.title : 'BREAK';
+    }
+    if (hdrIcon) {
+        hdrIcon.textContent = '▶';
+        hdrIcon.style.color = activeColor;
+    }
+    if (hdrProgBar) {
+        hdrProgBar.style.background = activeColor;
     }
 
     totalPhaseTime = phase.duration * 60;
     timeRemaining = totalPhaseTime;
     phaseEndTimeMs = Date.now() + (totalPhaseTime * 1000);
 
+    syncFocusViewState();
     renderLiveFocusQueue();
     updatePomodoroDisplay();
     clearInterval(pomodoroInterval);
@@ -394,19 +482,30 @@ function startCurrentPlaylistPhase() {
 function updatePomodoroDisplay() {
     const m = Math.floor(Math.abs(timeRemaining) / 60).toString().padStart(2, '0');
     const s = (Math.abs(timeRemaining) % 60).toString().padStart(2, '0');
+    const formattedTime = `${timeRemaining < 0 ? '-' : ''}${m}:${s}`;
 
+    // 1. Testo Fullscreen
     const textEl = document.getElementById('pomodoro-time-text');
-    if (textEl) textEl.innerText = `${timeRemaining < 0 ? '-' : ''}${m}:${s}`;
+    if (textEl) textEl.innerText = formattedTime;
 
-    const overlay = document.getElementById('pomodoroOverlay');
-    const isWidget = overlay && overlay.classList.contains('widget-mode');
+    // 2. Testo Header Inline
+    const hdrTimeEl = document.getElementById('header-focus-time');
+    if (hdrTimeEl) hdrTimeEl.textContent = formattedTime;
 
-    const radius = isWidget ? 55 : 145;
+    const percent = totalPhaseTime > 0 ? Math.max(0, Math.min(1, timeRemaining / totalPhaseTime)) : 0;
+
+    // 3. Linea di progresso inferiore nell'Header
+    const hdrProgBar = document.getElementById('header-focus-progress-bar');
+    if (hdrProgBar) {
+        hdrProgBar.style.width = `${(percent * 100).toFixed(2)}%`;
+    }
+
+    // 4. Cerchio SVG Fullscreen
+    const radius = 145;
     const circumference = 2 * Math.PI * radius;
     const circle = document.getElementById('pomodoro-circle');
     if (circle) {
         circle.style.strokeDasharray = `${circumference} ${circumference}`;
-        const percent = totalPhaseTime > 0 ? Math.max(0, timeRemaining / totalPhaseTime) : 0;
         circle.style.strokeDashoffset = circumference - (percent * circumference);
     }
 }
@@ -424,6 +523,9 @@ function runPomodoroTick() {
 
         if (phase.type === 'task') {
             playBeep(400, 0.5);
+            if (typeof logFocusSession === 'function') {
+                logFocusSession(phase.duration, phase.category, phase.title, todayStr);
+            }
             if (!phase.isPartial && phase.id) {
                 checkOffCompletedTaskInstance(phase.id);
             }
@@ -439,64 +541,24 @@ function togglePomodoroPause() {
     if (!isPomodoroPaused) {
         phaseEndTimeMs = Date.now() + (timeRemaining * 1000);
     }
-    document.getElementById('btn-pomodoro-pause').innerText = isPomodoroPaused ? "Resume" : "Pause";
+
+    const pauseBtnFull = document.getElementById('btn-pomodoro-pause');
+    if (pauseBtnFull) pauseBtnFull.innerText = isPomodoroPaused ? 'Resume' : 'Pause';
+
+    const pauseBtnHdr = document.getElementById('btn-header-focus-pause');
+    if (pauseBtnHdr) pauseBtnHdr.textContent = isPomodoroPaused ? '[RESUME]' : '[PAUSE]';
+
+    const hdrPill = document.getElementById('header-focus-pill');
+    if (hdrPill) hdrPill.classList.toggle('is-paused', isPomodoroPaused);
+
+    const hdrIcon = document.getElementById('header-focus-icon');
+    if (hdrIcon) hdrIcon.textContent = isPomodoroPaused ? '⏸' : '▶';
 }
 
 function stopPomodoro() {
     clearInterval(pomodoroInterval);
-    resetWidgetMode();
-    document.getElementById('pomodoroOverlay').style.display = 'none';
     focusPlaylist = [];
-}
-
-let isDraggingWidget = false;
-let widgetOffsetX, widgetOffsetY;
-
-document.getElementById('widget-drag-handle').addEventListener('mousedown', (e) => {
-    isDraggingWidget = true;
-    const overlay = document.getElementById('pomodoroOverlay');
-    widgetOffsetX = e.clientX - overlay.getBoundingClientRect().left;
-    widgetOffsetY = e.clientY - overlay.getBoundingClientRect().top;
-});
-
-document.addEventListener('mousemove', (e) => {
-    if (!isDraggingWidget) return;
-    const overlay = document.getElementById('pomodoroOverlay');
-    overlay.style.left = (e.clientX - widgetOffsetX) + 'px';
-    overlay.style.top = (e.clientY - widgetOffsetY) + 'px';
-    overlay.style.right = 'auto';
-    overlay.style.bottom = 'auto';
-});
-
-document.addEventListener('mouseup', () => {
-    isDraggingWidget = false;
-});
-
-function toggleWidgetMode() {
-    const overlay = document.getElementById('pomodoroOverlay');
-    const queueEl = document.getElementById('focus-live-queue');
-    const isWidget = overlay.classList.toggle('widget-mode');
-
-    if (isWidget) {
-        overlay.style.top = '64px';
-        overlay.style.right = '25px';
-        overlay.style.left = 'auto';
-        overlay.style.bottom = 'auto';
-        if (queueEl) queueEl.style.display = 'none';
-    } else {
-        resetWidgetMode();
-    }
-
-    updatePomodoroDisplay();
-}
-
-function resetWidgetMode() {
-    const overlay = document.getElementById('pomodoroOverlay');
-    const queueEl = document.getElementById('focus-live-queue');
-    overlay.classList.remove('widget-mode');
-    overlay.style.top = '0';
-    overlay.style.left = '0';
-    overlay.style.right = '0';
-    overlay.style.bottom = '0';
-    if (queueEl) queueEl.style.display = 'block';
+    isFullscreenFocusOpen = false;
+    resetWidgetMode();
+    syncFocusViewState();
 }

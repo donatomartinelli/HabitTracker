@@ -32,6 +32,26 @@
     <header class="app-header">
         <div class="header-left">
             <h1 id="global-clock">00:00 // DAY 00</h1>
+
+            <!-- TIMER FOCUS INTEGRATO NELL'HEADER (Visibile quando il timer è attivo) -->
+            <div id="header-inline-focus" class="header-inline-focus" style="display: none;">
+                <span class="header-sep">|</span>
+                <div class="header-focus-pill" id="header-focus-pill">
+                    <span id="header-focus-icon" class="header-focus-icon">▶</span>
+                    <span id="header-focus-time" class="header-focus-time">25:00</span>
+                    <span class="header-focus-sep">//</span>
+                    <span id="header-focus-title" class="header-focus-title">TASK</span>
+
+                    <!-- Controlli rapidi visibili al passaggio del mouse -->
+                    <div class="header-focus-actions">
+                        <button type="button" id="btn-header-focus-pause" class="header-focus-btn" onclick="togglePomodoroPause()" title="Pause / Resume">[PAUSE]</button>
+                        <button type="button" class="header-focus-btn" onclick="skipPomodoroPhase()" title="Skip & Check off task">[SKIP]</button>
+                        <button type="button" class="header-focus-btn" onclick="resetPomodoroPhase()" title="Reset current phase">[RESET]</button>
+                        <button type="button" class="header-focus-btn" onclick="openFullscreenFocusOverlay()" title="Expand to Fullscreen Circle">[FULL]</button>
+                        <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()" title="Abort Focus Session">[×]</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- CONTENITORE BARRA DSL NELL'HEADER -->
@@ -72,6 +92,11 @@
             <button class="btn btn-sm" onclick="openSettingsModal()" title="Settings & System Controls (Shortcut: ,)">[SETTINGS]</button>
             <button id="btn-minimize-app" class="icon-btn win-ctrl-btn" title="Minimize Window">[-]</button>
             <button id="btn-close-app" class="icon-btn delete win-ctrl-btn" title="Close Application">[X]</button>
+        </div>
+
+        <!-- SOTTILISSIMA LINEA DI PROGRESSO SUL BORDO INFERIORE DELL'HEADER -->
+        <div id="header-focus-progress-track" class="header-focus-progress-track" style="display: none;">
+            <div id="header-focus-progress-bar" class="header-focus-progress-bar"></div>
         </div>
     </header>
 

@@ -21,13 +21,13 @@ function initModalsHtml() {
     </div>
 
     <!-- 2. Pomodoro Timer Overlay -->
-    <div id="pomodoroOverlay" class="pomodoro-overlay">
+    <div id="pomodoroOverlay" class="pomodoro-overlay" style="z-index: 2500;">
         <div id="widget-drag-handle">
             <span style="flex: 1; text-align: left;">:: FOCUS WIDGET</span>
             <button id="btn-widget-mode-full" class="icon-btn" style="font-size: var(--font-xs); padding-right: 8px;" onclick="toggleWidgetMode()">[+ FULL]</button>
         </div>
         <div id="focus-split-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; position: relative; padding: 24px;">
-            <button id="btn-widget-mode" class="btn btn-sm" style="position: absolute; top: 25px; left: 25px;" onclick="toggleWidgetMode()">[_ MINI WIDGET]</button>
+            <button id="btn-widget-mode" class="btn btn-sm" style="position: absolute; top: 25px; left: 25px; z-index: 2510;" onclick="toggleWidgetMode()">[_ MINIMIZE TO HEADER]</button>
             
             <h2 id="pomodoro-task-title" style="color: var(--text-main); margin-bottom: 20px; text-align: center; font-weight: bold; border: none; font-size: var(--font-lg);">Task Name</h2>
             
@@ -39,10 +39,11 @@ function initModalsHtml() {
                 <div class="timer-text-hover" id="pomodoro-time-text">25:00</div>
             </div>
             
-            <div id="focus-controls" style="display: flex; gap: 12px; margin-top: 28px; z-index: 501;">
+            <div id="focus-controls" style="display: flex; gap: 12px; margin-top: 28px; z-index: 2510; flex-wrap: wrap; justify-content: center;">
                 <button id="btn-pomodoro-pause" class="btn btn-primary" onclick="togglePomodoroPause()">Pause</button>
                 <button class="btn" onclick="skipPomodoroPhase()">Skip &amp; Check</button>
                 <button class="btn" onclick="resetPomodoroPhase()">Reset</button>
+                <button class="btn" onclick="toggleWidgetMode()">[_ Header Mode]</button>
                 <button class="btn btn-danger" onclick="stopPomodoro()">Abort</button>
             </div>
 
