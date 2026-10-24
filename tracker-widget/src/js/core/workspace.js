@@ -415,12 +415,16 @@ function renderQuadrantLayout() {
     leaves.forEach(leaf => {
         const modInfo = dashboardModules[leaf.module];
         if (modInfo) {
-            modInfo.render();
-            if (leaf.module === 'money' && typeof drawSteppedChart === 'function') {
-                setTimeout(drawSteppedChart, 20);
+            try {
+                modInfo.render();
+                if (leaf.module === 'money' && typeof drawSteppedChart === 'function') {
+                    setTimeout(drawSteppedChart, 20);
+                }
+            } catch (err) {
+                console.error(`[CORTEX] Error rendering module "${leaf.module}":`, err);
             }
         }
-    });
+    });y
 
     saveWorkspaceState();
 }

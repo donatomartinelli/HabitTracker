@@ -1,10 +1,17 @@
-// --- ATOMIC MODULE 3: STANDALONE NOTES, BROWSE CARDS, @DATE TAGS & AI EXTRACTOR ---
+// --- js/modules/notes.js ---
+// ATOMIC MODULE 3: STANDALONE NOTES, BROWSE CARDS, @DATE TAGS & AI EXTRACTOR
 
 let currentNoteMode = 'write';
 let extractedNoteHashes = new Set(JSON.parse(localStorage.getItem('tracker_extracted_notes') || '[]'));
 
 function saveExtractedNoteHashes() {
-    localStorage.setItem('tracker_extracted_notes', JSON.stringify(Array.from(extractedNoteHashes)));
+    const arr = Array.from(extractedNoteHashes);
+    try {
+        localStorage.setItem('tracker_extracted_notes', JSON.stringify(arr));
+    } catch (e) {}
+    if (typeof persistKeysMap === 'function') {
+        persistKeysMap({ 'tracker_extracted_notes': arr });
+    }
 }
 
 function computeNoteHash(rawStr) {
@@ -25,6 +32,59 @@ function markNoteCardExtracted(rawStr) {
     if (!rawStr || !rawStr.trim()) return;
     extractedNoteHashes.add(computeNoteHash(rawStr));
     saveExtractedNoteHashes();
+}
+
+// Garantisce che #notes-browse-container esista sempre nel DOM accanto a #note-text
+function ensureBrowseContainerExists() {
+    let browseCont = document.getElementById('notes-browse-container');
+    if (!browseCont) {
+        const textEl = document.getElementById('note-text');
+        if (textEl && textEl.parentElement) {
+            browseCont = document.createElement('div');
+            browseCont.id = 'notes-browse-container';
+            browseCont.className = 'notes-browse-container';
+            browseCont.style.display = 'none';
+            textEl.parentElement.appendChild(browseCont);
+        }
+    }
+    return browseCont;
+}
+
+// Garantisce che tutte le categorie presenti in notesContent (es. "Registrazioni") siano sempre caricate nella select
+function ensureNoteCategoriesSynced() {
+    if (!Array.isArray(noteCategories) || noteCategories.length === 0) {
+        noteCategories = ['General', 'Registrazioni'];
+    }
+    if (!noteCategories.includes('General')) noteCategories.unshift('General');
+    if (!noteCategories.includes('Registrazioni')) noteCategories.push('Registrazioni');
+
+    if (notesContent && typeof notesContent === 'object') {
+        Object.keys(notesContent).forEach(k => {
+            if (k && k.trim() && !noteCategories.includes(k)) {
+                noteCategories.push(k);
+            }
+        });
+    }
+
+    const select = document.getElementById('note-category');
+    if (!select) return 'General';
+
+    const prevVal = select.value;
+    if (select.options.length !== noteCategories.length || !prevVal) {
+        select.innerHTML = '';
+        noteCategories.forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            opt.textContent = cat;
+            select.appendChild(opt);
+        });
+        if (prevVal && noteCategories.includes(prevVal)) {
+            select.value = prevVal;
+        } else {
+            select.value = noteCategories[0] || 'General';
+        }
+    }
+    return select.value || 'General';
 }
 
 // 1A. Split intelligente: mantiene uniti i blocchi Sony === [data // file] === e divide il resto per \n\n
@@ -81,7 +141,17 @@ function rebuildCategoryFromCards(cardsArray) {
 
 function toggleNotesMode() {
     const checkbox = document.getElementById('notes-mode-checkbox');
-    currentNoteMode = (checkbox && checkbox.checked) ? 'browse' : 'write';
+    const nextMode = (checkbox && checkbox.checked) ? 'browse' : 'write';
+
+    // Se hai scritto qualcosa in WRITE e passi a BROWSE senza aver premuto Invio, salva automaticamente la nota
+    if (currentNoteMode === 'write' && nextMode === 'browse') {
+        const textEl = document.getElementById('note-text');
+        if (textEl && textEl.value.trim() !== '') {
+            saveNote();
+        }
+    }
+
+    currentNoteMode = nextMode;
     refreshNotesView();
 }
 
@@ -89,13 +159,12 @@ function refreshNotesView() {
     const checkbox = document.getElementById('notes-mode-checkbox');
     currentNoteMode = (checkbox && checkbox.checked) ? 'browse' : 'write';
 
-    const catEl = document.getElementById('note-category');
+    const cat = ensureNoteCategoriesSynced();
     const textEl = document.getElementById('note-text');
-    const browseCont = document.getElementById('notes-browse-container');
+    const browseCont = ensureBrowseContainerExists();
     const searchEl = document.getElementById('note-search-input');
-    if (!catEl || !textEl) return;
+    if (!textEl) return;
 
-    const cat = catEl.value;
     const activeFilter = searchEl ? searchEl.value.trim() : '';
 
     if (currentNoteMode === 'write') {
@@ -115,9 +184,7 @@ function refreshNotesView() {
 
 function filterNotesView(query) {
     const checkbox = document.getElementById('notes-mode-checkbox');
-    const catEl = document.getElementById('note-category');
-    if (!catEl) return;
-
+    const cat = ensureNoteCategoriesSynced();
     const cleanQ = (query || '').trim();
 
     if (cleanQ && checkbox && !checkbox.checked) {
@@ -127,11 +194,11 @@ function filterNotesView(query) {
 
     if (currentNoteMode === 'browse') {
         const textEl = document.getElementById('note-text');
-        const browseCont = document.getElementById('notes-browse-container');
+        const browseCont = ensureBrowseContainerExists();
         if (textEl) textEl.style.display = 'none';
         if (browseCont) {
             browseCont.style.display = 'flex';
-            renderBrowseCards(catEl.value, cleanQ);
+            renderBrowseCards(cat, cleanQ);
         }
     }
 }
@@ -153,7 +220,6 @@ function handleNoteDateTagClick(event, rawToken) {
         jumpToDate(resolvedDate);
     }
 
-    // Se nessuno tra Calendar, Tasks o Planner è visibile nel workspace, monta Tasks
     if (typeof activeSlots !== 'undefined' && Array.isArray(activeSlots)) {
         const hasDateModule = activeSlots.some(m => ['calendar', 'tasks', 'planner'].includes(m));
         if (!hasDateModule && typeof summonModule === 'function') {
@@ -190,7 +256,7 @@ function toggleNoteCardCheckbox(cat, storageIndex, lineIndex) {
 
 // 1A + 2A + 3A + 4A + 5A: Renderizzazione schede in ordine cronologico inverso
 function renderBrowseCards(cat, filterQuery = '') {
-    const browseCont = document.getElementById('notes-browse-container');
+    const browseCont = ensureBrowseContainerExists();
     if (!browseCont) return;
     browseCont.innerHTML = '';
 
@@ -202,7 +268,6 @@ function renderBrowseCards(cat, filterQuery = '') {
         return;
     }
 
-    // Mantiene l'indice reale di storage ma ordina dal più recente al più vecchio (1A)
     const indexedCards = allCards
         .map((card, storageIdx) => ({ card, storageIdx }))
         .reverse()
@@ -218,7 +283,7 @@ function renderBrowseCards(cat, filterQuery = '') {
 
     const frag = document.createDocumentFragment();
 
-    indexedCards.forEach(({ card, storageIdx }, displayIdx) => {
+    indexedCards.forEach(({ card, storageIdx }) => {
         const extracted = isNoteCardExtracted(card.raw);
         const cardEl = document.createElement('div');
         cardEl.className = `note-card ${extracted ? 'is-extracted' : ''}`;
@@ -316,7 +381,6 @@ function renderFormattedCardBody(bodyContainer, card, cat, storageIdx) {
     const lines = (card.body || '').split('\n');
 
     lines.forEach((line, lineIdx) => {
-        // 1. Checkbox interattiva: [ ] o [x] (anche preceduta da - o *)
         const checkMatch = line.match(/^\s*(?:[-*]\s+)?\[([ xX])\]\s+(.*)$/);
         if (checkMatch) {
             const isChecked = checkMatch[1].toLowerCase() === 'x';
@@ -342,7 +406,6 @@ function renderFormattedCardBody(bodyContainer, card, cat, storageIdx) {
             return;
         }
 
-        // 2. Punto elenco: - testo oppure * testo
         const listMatch = line.match(/^\s*[-*]\s+(.*)$/);
         if (listMatch) {
             const row = document.createElement('div');
@@ -352,7 +415,6 @@ function renderFormattedCardBody(bodyContainer, card, cat, storageIdx) {
             return;
         }
 
-        // 3. Riga di testo normale
         const lineDiv = document.createElement('div');
         if (line.trim() === '') {
             lineDiv.style.height = '8px';
@@ -384,7 +446,6 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
         if (cancelled) return;
         const newVal = ta.value.trim();
         if (!newVal) {
-            // Se svuotata completamente, elimina la scheda
             allCards.splice(storageIdx, 1);
         } else {
             allCards[storageIdx].body = newVal;
@@ -604,8 +665,9 @@ function handleNoteKeyDown(event) {
 }
 
 function saveNote() {
-    const cat = document.getElementById('note-category').value;
+    const cat = ensureNoteCategoriesSynced();
     const textEl = document.getElementById('note-text');
+    if (!textEl) return;
     const text = textEl.value.trim();
     if (!text || !cat) return;
 
@@ -615,6 +677,7 @@ function saveNote() {
 
     textEl.value = '';
     textEl.placeholder = `[OK] Saved in ${cat}!`;
+    if (typeof showToast === 'function') showToast(`[NOTES] Saved in "${cat}"`);
     setTimeout(() => {
         if (currentNoteMode === 'write') {
             textEl.placeholder = `Write a new note in [${cat}] and press Enter...`;
@@ -627,34 +690,7 @@ function handleNoteInput() {
 }
 
 function renderNoteCategories() {
-    if (!noteCategories || noteCategories.length === 0) {
-        noteCategories = ['General', 'Registrazioni'];
-        saveData();
-    }
-
-    const select = document.getElementById('note-category');
-    const focusSelect = document.getElementById('focus-note-category');
-    const prevVal = select ? select.value : null;
-
-    if (select) select.innerHTML = '';
-    if (focusSelect) focusSelect.innerHTML = '';
-
-    noteCategories.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        opt.textContent = cat;
-        if (select) select.appendChild(opt);
-
-        const optFocus = document.createElement('option');
-        optFocus.value = cat;
-        optFocus.textContent = cat;
-        if (focusSelect) focusSelect.appendChild(optFocus);
-    });
-
-    if (select && prevVal && noteCategories.includes(prevVal)) {
-        select.value = prevVal;
-    }
-
+    ensureNoteCategoriesSynced();
     refreshNotesView();
 }
 
@@ -667,6 +703,7 @@ function openManageNotesModal() {
 function renderNotesManager() {
     const container = document.getElementById('notes-manager-list');
     if (!container) return;
+    ensureNoteCategoriesSynced();
     container.innerHTML = '';
 
     noteCategories.forEach(cat => {
@@ -714,8 +751,8 @@ function removeNoteCategory(cat) {
 }
 
 function openRegistrazioniInBrowseMode() {
-    if (activeLeft !== 'notes' && activeRight !== 'notes' && typeof switchModule === 'function') {
-        switchModule('right', 'notes');
+    if (typeof summonModule === 'function' && (!activeSlots || !activeSlots.includes('notes'))) {
+        summonModule('notes');
     }
 
     renderNoteCategories();
@@ -724,8 +761,13 @@ function openRegistrazioniInBrowseMode() {
 
     const checkbox = document.getElementById('notes-mode-checkbox');
     if (checkbox) checkbox.checked = true;
-    toggleNotesMode();
+    currentNoteMode = 'browse';
+    refreshNotesView();
 
     const browseCont = document.getElementById('notes-browse-container');
     if (browseCont) browseCont.scrollTop = 0;
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    renderNoteCategories();
+});

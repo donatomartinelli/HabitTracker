@@ -197,8 +197,9 @@
                     </div>
                 </div>
 
-                <div style="display: flex; flex: 1; min-height: 0;">
+                <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
                     <textarea id="note-text" class="form-control" style="flex: 1; height: 100%; resize: none; line-height: 1.5; padding: 14px;" placeholder="Write your idea and press Enter..." onkeydown="handleNoteKeyDown(event)" oninput="handleNoteInput()"></textarea>
+                    <div id="notes-browse-container" class="notes-browse-container" style="display: none;"></div>
                 </div>
             </div>
         </div>
