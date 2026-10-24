@@ -62,6 +62,15 @@ const dashboardModules = {
             if (typeof renderTracker === 'function') renderTracker();
             if (typeof renderFocusLedger === 'function') renderFocusLedger();
         }
+    },
+    'uni': {
+        name: 'University',
+        id: 'module-uni',
+        minW: () => 280,
+        minH: () => 190,
+        render: () => {
+            if (typeof renderUniDashboard === 'function') renderUniDashboard();
+        }
     }
 };
 

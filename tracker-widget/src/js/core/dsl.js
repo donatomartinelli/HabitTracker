@@ -1,5 +1,5 @@
 // --- js/core/dsl.js ---
-// Motore DSL 100% Locale: Esecuzione Azioni, Comandi di Ispezione Istantanea (0ms) & Autocompletamento Contestuale
+// Motore DSL 100% Locale: Azioni, University Bridge (uni, esame, tassa, appello), Ispezione Istantanea & Autocompletamento
 
 let isRedMode = localStorage.getItem('tracker_red_mode') === 'true';
 
@@ -54,10 +54,14 @@ function shiftSelectedDate(daysOffset) {
 }
 
 // ============================================================================
-// CATALOGO COMANDI DSL & AUTOCOMPLETAMENTO CONTESTUALE LIVE (2A)
+// CATALOGO COMANDI DSL & AUTOCOMPLETAMENTO CONTESTUALE LIVE
 // ============================================================================
 
 const DSL_COMMAND_SPECS = [
+    { verb: 'uni', syntax: 'uni [roadmap|lectures|appeals|libretto|info]', fill: 'uni', desc: 'Summon University module or switch its internal sub-modules' },
+    { verb: 'esame', syntax: 'esame [Nome] [Voto 18-30L] [CFU]', fill: 'esame ', desc: 'Record passed exam in Libretto & archive its study tasks' },
+    { verb: 'tassa', syntax: 'tassa [Importo] [YYYY-MM-DD] [Nome]', fill: 'tassa ', desc: 'Add University tax (Red Calendar event + Tasse Uni category)' },
+    { verb: 'appello', syntax: 'appello [Nome] [YYYY-MM-DD] [HH:MM]', fill: 'appello ', desc: 'Schedule exam appeal date on Calendar & Planner' },
     { verb: 'out', syntax: 'out [€] #[Vault/Cat] [desc]', fill: 'out ', desc: 'Log expense (auto-deducts from matching Vault)' },
     { verb: 'in', syntax: 'in [€] [desc]', fill: 'in ', desc: 'Log income (+€ and trigger % Vault rules)' },
     { verb: 'wish', syntax: 'wish [item] [optional €]', fill: 'wish ', desc: 'Add item to Purchase Ideas Incubator' },
@@ -92,7 +96,6 @@ function getContextualSuggestions(rawInput) {
     const trimmed = val.trimStart();
     if (!trimmed) return [];
 
-    // Se l'utente sta scrivendo comandi multipli separati da ';', suggerisce sull'ultimo segmento
     const segments = val.split(';');
     const prefixBeforeLast = segments.length > 1 ? segments.slice(0, -1).join(';') + '; ' : '';
     const activeSeg = segments[segments.length - 1].trimStart();
@@ -103,7 +106,6 @@ function getContextualSuggestions(rawInput) {
     const hasSpaceAfterCmd = activeSeg.length > parts[0].length;
     const rest = activeSeg.slice(parts[0].length).trimStart();
 
-    // 1. Suggerimento sui verbi DSL se l'utente sta ancora digitando la prima parola
     if (!hasSpaceAfterCmd) {
         return DSL_COMMAND_SPECS
             .filter(s => s.verb.startsWith(cmd) || s.syntax.toLowerCase().startsWith(cmd))
@@ -115,7 +117,34 @@ function getContextualSuggestions(rawInput) {
             }));
     }
 
-    // 2. Autocompletamento contestuale per `done ` e `focus ` -> Task attive nella data selezionata
+    // Autocompletamento per `uni ` -> Sotto-moduli e viste di #module-uni
+    if (cmd === 'uni') {
+        const subOpts = [
+            { display: 'uni', desc: 'Summon University module', fillValue: `${prefixBeforeLast}uni` },
+            { display: 'uni info', desc: 'Instant Career & Exams snapshot in bar', fillValue: `${prefixBeforeLast}uni info` },
+            { display: 'uni roadmap', desc: 'Open Roadmap & Study Phases sub-module', fillValue: `${prefixBeforeLast}uni roadmap` },
+            { display: 'uni lectures', desc: 'Open Orario Lezioni sub-module', fillValue: `${prefixBeforeLast}uni lectures` },
+            { display: 'uni appeals', desc: 'Open Appelli & Tasse sub-module', fillValue: `${prefixBeforeLast}uni appeals` },
+            { display: 'uni libretto', desc: 'Open Libretto (180 CFU) sub-module', fillValue: `${prefixBeforeLast}uni libretto` }
+        ];
+        const q = rest.toLowerCase();
+        return subOpts.filter(o => !q || o.display.toLowerCase().includes(q));
+    }
+
+    // Autocompletamento per `esame ` o `appello ` -> Pesca dai corsi rimasti in Roadmap
+    if (cmd === 'esame' || cmd === 'appello') {
+        const q = rest.toLowerCase();
+        const remCourses = (typeof uniData !== 'undefined' && uniData.remainingExams) ? uniData.remainingExams : [];
+        return remCourses
+            .filter(c => !q || c.name.toLowerCase().includes(q))
+            .map(c => ({
+                display: cmd === 'esame' ? `esame ${c.name} [Voto] ${c.cfu}` : `appello ${c.name} ${todayStr} 09:00`,
+                desc: `${c.name} (${c.cfu} CFU · Anno ${c.year || 1})`,
+                fillValue: `${prefixBeforeLast}${cmd} ${c.name} `
+            }));
+    }
+
+    // Autocompletamento per `done ` e `focus `
     if (cmd === 'done' || cmd === 'check' || cmd === 'focus' || cmd === 'pomo') {
         const q = rest.toLowerCase();
         const isFocus = (cmd === 'focus' || cmd === 'pomo');
@@ -141,7 +170,7 @@ function getContextualSuggestions(rawInput) {
             });
     }
 
-    // 3. Autocompletamento contestuale per `out` / `-` -> Vaults & Categorie quando digita `#` o dopo l'importo
+    // Autocompletamento per `out` / `-` -> Vaults & Categorie (inclusa #Tasse Uni)
     if (cmd === 'out' || cmd === '-') {
         const hashMatch = activeSeg.match(/^(.*?\s+)#([a-zA-Z0-9_À-ÿ]*)$/);
         if (hashMatch) {
@@ -174,7 +203,6 @@ function getContextualSuggestions(rawInput) {
             return results.slice(0, 8);
         }
 
-        // Se ha appena scritto l'importo (es. "out 20 "), suggerisce i Vault e le Categorie con #
         const amtOnlyMatch = rest.match(/^(\d+(?:[.,]\d+)?)\s*$/);
         if (amtOnlyMatch && activeSeg.endsWith(' ')) {
             const amtStr = amtOnlyMatch[1];
@@ -186,7 +214,7 @@ function getContextualSuggestions(rawInput) {
                     fillValue: `${prefixBeforeLast}${cmd} ${amtStr} #${v.name} `
                 });
             });
-            mCategories.slice(0, 5).forEach(c => {
+            mCategories.slice(0, 6).forEach(c => {
                 if (!mVaults.some(v => v.name.toLowerCase() === c.toLowerCase())) {
                     results.push({
                         display: `${cmd} ${amtStr} #${c}`,
@@ -199,7 +227,6 @@ function getContextualSuggestions(rawInput) {
         }
     }
 
-    // 4. Autocompletamento per `note ` -> Categorie di Note
     if (cmd === 'note') {
         if (!rest.includes(':')) {
             const q = rest.toLowerCase();
@@ -215,7 +242,6 @@ function getContextualSuggestions(rawInput) {
         return [];
     }
 
-    // 5. Autocompletamento per `summon` / `view` / `open` -> Gli 8 Moduli Atomici
     if (cmd === 'summon' || cmd === 'view' || cmd === 'show' || cmd === 'open') {
         const q = rest.toLowerCase();
         return Object.keys(dashboardModules)
@@ -227,7 +253,6 @@ function getContextualSuggestions(rawInput) {
             }));
     }
 
-    // 6. Autocompletamento per `gym` -> `gym` (scheda) o `gym done` (completa)
     if (cmd === 'gym') {
         return [
             { display: 'gym', desc: `Inspect active Workout Split (Day ${nextWorkoutDay}) & weights`, fillValue: `${prefixBeforeLast}gym` },
@@ -235,7 +260,6 @@ function getContextualSuggestions(rawInput) {
         ];
     }
 
-    // 7. Autocompletamento per `diet` -> `@oggi` / `@domani`
     if (cmd === 'diet') {
         return [
             { display: 'diet @oggi', desc: `Show today's meals & macros (${todayStr})`, fillValue: `${prefixBeforeLast}diet @oggi` },
@@ -243,7 +267,6 @@ function getContextualSuggestions(rawInput) {
         ];
     }
 
-    // 8. Autocompletamento token data `@oggi`, `@domani`, `@ieri` in `task`, `event`, `goto`
     if (cmd === 'task' || cmd === 'event' || cmd === 'goto') {
         const atMatch = activeSeg.match(/^(.*?\s*)@([a-zA-Z0-9-]*)$/);
         if (atMatch) {
@@ -285,6 +308,18 @@ function getCommandPreview(raw) {
     const rest = str.slice(parts[0].length).trim();
 
     switch (cmd) {
+        case 'uni':
+            if (rest.toLowerCase() === 'info') return `[INSPECT UNI] Show instant Career Averages, CFU & Appeals summary`;
+            return `[UNIVERSITY] Summon #module-uni ${rest ? '(Sub-module: ' + rest.toUpperCase() + ')' : ''}`;
+        case 'esame':
+            if (!rest) return 'Syntax: esame [Nome] [Voto 18-30L] [CFU] (e.g. esame Algebra 28 9)';
+            return `[UNI -> LIBRETTO] Record passed exam (${rest}), update averages & archive study tasks`;
+        case 'tassa':
+            if (!rest) return 'Syntax: tassa [Importo] [YYYY-MM-DD] [Nome] (e.g. tassa 350 2026-11-30 Prima Rata)';
+            return `[UNI -> TAX & CALENDAR] Create Red Deadline Event + log in "Tasse Uni": ${rest}`;
+        case 'appello':
+            if (!rest) return 'Syntax: appello [Nome] [YYYY-MM-DD] [HH:MM] (e.g. appello Analisi 2026-12-15 09:00)';
+            return `[UNI -> CALENDAR] Schedule exam appeal & countdown: ${rest}`;
         case 'diet': {
             const targetDate = resolveDateToken(rest) || selectedDateStr;
             return `[INSPECT DIET] Show meals & macros for ${targetDate === tomorrowStr ? 'TOMORROW' : targetDate}`;
@@ -393,7 +428,7 @@ function getCommandPreview(raw) {
         case 'show':
         case 'open': {
             const modKey = rest.toLowerCase();
-            return dashboardModules[modKey] ? `[WORKSPACE] Summon module "${dashboardModules[modKey].name}"` : `[WORKSPACE] Specify: calendar, tasks, notes, planner, diet, gym, money, streak`;
+            return dashboardModules[modKey] ? `[WORKSPACE] Summon module "${dashboardModules[modKey].name}"` : `[WORKSPACE] Specify: calendar, tasks, notes, planner, diet, gym, money, streak, uni`;
         }
         case 'swap':
             return `[WORKSPACE] Swap primary tiling quadrants`;
@@ -411,7 +446,7 @@ function getCommandPreview(raw) {
 }
 
 // ============================================================================
-// RIEPILOGHI ISTANTANEI IN SOLA LETTURA (3A - 0ms LOCAL RENDERING)
+// RIEPILOGHI ISTANTANEI IN SOLA LETTURA (0ms LOCAL RENDERING)
 // ============================================================================
 
 function showInstantInspectionCard(titleHtml, bodyHtml) {
@@ -425,6 +460,56 @@ function showInstantInspectionCard(titleHtml, bodyHtml) {
         </div>
         <div style="display:flex; flex-direction:column; gap:6px;">${bodyHtml}</div>
     `;
+}
+
+function renderInstantUniSummary() {
+    const st = typeof calculateUniStats === 'function' ? calculateUniStats() : { weightedMean: 0, arithmeticMean: 0, base110: 0, totalCfu: 0, targetCfu: 180 };
+    const rem = (uniData && uniData.remainingExams) ? uniData.remainingExams : [];
+    const apps = (uniData && uniData.appeals) ? uniData.appeals : [];
+
+    let html = `
+        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; font-size:var(--font-xs); text-align:center;">
+            <div style="padding:6px; border:1px solid var(--border-bright);">
+                <div style="color:var(--text-dim);">WEIGHTED</div>
+                <strong style="font-size:var(--font-md); color:var(--accent-green);">${st.weightedMean.toFixed(2)}</strong>
+            </div>
+            <div style="padding:6px; border:1px solid var(--border-color);">
+                <div style="color:var(--text-dim);">ARITHMETIC</div>
+                <strong style="font-size:var(--font-md);">${st.arithmeticMean.toFixed(2)}</strong>
+            </div>
+            <div style="padding:6px; border:1px solid var(--border-color);">
+                <div style="color:var(--text-dim);">BASE /110</div>
+                <strong style="font-size:var(--font-md); color:var(--accent-gold);">${st.base110.toFixed(1)}</strong>
+            </div>
+            <div style="padding:6px; border:1px solid var(--border-color);">
+                <div style="color:var(--text-dim);">CFU</div>
+                <strong style="font-size:var(--font-md);">${st.totalCfu}/${st.targetCfu}</strong>
+            </div>
+        </div>
+    `;
+
+    if (rem.length > 0) {
+        html += `<div style="font-size:var(--font-xs); color:var(--text-dim); margin-top:4px;">ACTIVE COURSES IN ROADMAP:</div>`;
+        rem.forEach(c => {
+            const hrs = typeof getExamStudiedHours === 'function' ? getExamStudiedHours(c.id, c.name) : 0;
+            html += `<div style="display:flex; justify-content:space-between; font-size:var(--font-xs); padding:4px 8px; border:1px solid var(--border-color);">
+                <span><strong>${escapeHtml(c.name)}</strong> (${c.cfu} CFU) — Phase: ${escapeHtml(c.prepPhase.toUpperCase())}</span>
+                <strong>${hrs.toFixed(1)}h studied</strong>
+            </div>`;
+        });
+    }
+
+    if (apps.length > 0) {
+        html += `<div style="font-size:var(--font-xs); color:var(--text-dim); margin-top:4px;">UPCOMING APPEALS:</div>`;
+        apps.slice(0, 4).forEach(a => {
+            html += `<div style="display:flex; justify-content:space-between; font-size:var(--font-xs); padding:4px 8px; border-left:2px solid var(--accent-gold); background:rgba(255,255,255,0.02);">
+                <strong>${escapeHtml(a.examName)}</strong>
+                <span>${escapeHtml(a.date)} (${escapeHtml(a.time)})</span>
+            </div>`;
+        });
+    }
+
+    showInstantInspectionCard('UNIVERSITY SNAPSHOT // 180 CFU', html);
 }
 
 function renderInstantDietSummary(targetDateStr) {
@@ -572,7 +657,6 @@ function renderInstantMoneySummary() {
     showInstantInspectionCard(`FINANCE & VAULTS SNAPSHOT`, html);
 }
 
-// Restituisce true se il comando è una query di sola lettura che mostra la scheda dentro la barra espansa
 function isInspectionOnlyCommand(raw) {
     const parts = (raw || '').trim().split(/\s+/);
     const cmd = (parts[0] || '').toLowerCase();
@@ -580,9 +664,8 @@ function isInspectionOnlyCommand(raw) {
     if (cmd === 'diet' || cmd === 'today' || cmd === 'oggi' || cmd === 'tomorrow' || cmd === 'domani' || cmd === 'schedule' || cmd === 'bal' || cmd === 'money' || cmd === 'balance') {
         return true;
     }
-    if (cmd === 'gym' && rest !== 'done') {
-        return true;
-    }
+    if (cmd === 'gym' && rest !== 'done') return true;
+    if (cmd === 'uni' && rest === 'info') return true;
     return false;
 }
 
@@ -602,6 +685,96 @@ function executeTerminalCommand(raw) {
     const parts = str.split(/\s+/);
     const cmd = parts[0].toLowerCase();
     const rest = str.slice(parts[0].length).trim();
+
+    // --- COMANDI MODULO UNIVERSITY (uni, esame, tassa, appello) ---
+    if (cmd === 'uni') {
+        const subArg = rest.toLowerCase();
+        if (subArg === 'info') {
+            renderInstantUniSummary();
+            return true;
+        }
+        if (typeof UNI_SUBMODULES !== 'undefined' && UNI_SUBMODULES[subArg]) {
+            uniData.activeSubModules = [subArg];
+            saveUniData();
+        }
+        if (typeof summonModule === 'function') {
+            summonModule('uni');
+            if (typeof renderUniDashboard === 'function') renderUniDashboard();
+            if (typeof showToast === 'function') showToast('[WORKSPACE] Summoned University');
+            return true;
+        }
+        return false;
+    }
+
+    if (cmd === 'esame') {
+        // Supporta: esame [Nome anche multi-parola] [Voto es. 28 o 30L] [CFU opzionale]
+        const m = rest.match(/^(.*?)\s+(\d{2}[lL]?)(?:\s+(\d+))?$/);
+        if (!m || !m[1].trim()) return false;
+        const examName = m[1].trim();
+        const gradeStr = m[2].trim();
+        const cfuVal = m[3] ? parseInt(m[3], 10) : null;
+        if (typeof recordPassedExam === 'function') {
+            return recordPassedExam(examName, gradeStr, cfuVal, todayStr);
+        }
+        return false;
+    }
+
+    if (cmd === 'tassa') {
+        // Supporta qualsiasi ordine di Importo, Data (@YYYY-MM-DD o YYYY-MM-DD) e Nome Tassa
+        if (!rest) return false;
+        let dateStr = null;
+        let amountVal = null;
+        const titleWords = [];
+
+        rest.split(/\s+/).forEach(tok => {
+            const maybeDate = resolveDateToken(tok);
+            if (maybeDate && !dateStr) {
+                dateStr = maybeDate;
+            } else if (/^\d+(?:[.,]\d+)?$/.test(tok.replace('€', '')) && amountVal === null) {
+                amountVal = parseFloat(tok.replace('€', '').replace(',', '.'));
+            } else {
+                titleWords.push(tok);
+            }
+        });
+
+        if (amountVal === null || amountVal <= 0) return false;
+        if (!dateStr) dateStr = todayStr;
+        const taxTitle = titleWords.join(' ').trim() || 'Rata Universitaria';
+
+        if (typeof addUniTax === 'function') {
+            return addUniTax(taxTitle, amountVal, dateStr);
+        }
+        return false;
+    }
+
+    if (cmd === 'appello') {
+        if (!rest) return false;
+        let dateStr = null;
+        let timeStr = '09:00';
+        const nameWords = [];
+
+        rest.split(/\s+/).forEach(tok => {
+            const maybeDate = resolveDateToken(tok);
+            if (maybeDate && !dateStr) {
+                dateStr = maybeDate;
+            } else if (/^\d{2}:\d{2}$/.test(tok)) {
+                timeStr = tok;
+            } else {
+                nameWords.push(tok);
+            }
+        });
+
+        const examName = nameWords.join(' ').trim();
+        if (!examName || !dateStr) return false;
+        if (typeof addUniAppeal === 'function') {
+            const ok = addUniAppeal(examName, dateStr, timeStr);
+            if (ok && typeof showToast === 'function') {
+                showToast(`[APPELLO] "${examName}" fissato per il ${dateStr} (${timeStr})`);
+            }
+            return ok;
+        }
+        return false;
+    }
 
     // --- COMANDI DI ISPEZIONE ISTANTANEA IN SOLA LETTURA (0ms) ---
     if (cmd === 'diet') {

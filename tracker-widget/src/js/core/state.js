@@ -1,5 +1,5 @@
 // --- js/core/state.js ---
-// Gestione Stato Globale, Migrazioni, Albero Tiling, Scelta Schermata d'Avvio (Startup View) e Persistenza
+// Gestione Stato Globale, Migrazioni, Albero Tiling, Modulo University & Persistenza
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -76,7 +76,17 @@ const DEFAULT_GYM_PLAN = {
     ]
 };
 
-const DEFAULT_MONEY_CATEGORIES = ["Generale", "Treno", "Cinema", "Cibo", "Studio", "Abbonamenti", "Salute", "Svago"];
+const DEFAULT_MONEY_CATEGORIES = ["Generale", "Tasse Uni", "Treno", "Cinema", "Cibo", "Studio", "Abbonamenti", "Salute", "Svago"];
+
+const DEFAULT_UNI_DATA = {
+    targetCfu: 180,
+    activeSubModules: ['roadmap'],
+    subLayoutDir: 'row',
+    passedExams: [],
+    remainingExams: [],
+    appeals: [],
+    taxes: []
+};
 
 const DEFAULT_LAYOUT_TREE = {
     id: 'root_split',
@@ -120,6 +130,7 @@ function migrateAndInitData() {
         'tracker_gym_plan': DEFAULT_GYM_PLAN,
         'tracker_food_db': DEFAULT_FOOD_DB,
         'tracker_body_logs': [],
+        'tracker_uni_data': DEFAULT_UNI_DATA,
         'tracker_gemini_key': "",
         'tracker_gemini_audio_key': "",
         'tracker_processed_audio': [],
@@ -171,6 +182,7 @@ let mRecurring = JSON.parse(localStorage.getItem('m_rec')) || [];
 let mWishlist = JSON.parse(localStorage.getItem('m_wish')) || [];
 let mVaults = JSON.parse(localStorage.getItem('m_vaults')) || [];
 let mCategories = JSON.parse(localStorage.getItem('m_categories')) || DEFAULT_MONEY_CATEGORIES;
+if (!mCategories.includes('Tasse Uni')) mCategories.push('Tasse Uni');
 
 // Health (Diet & Gym)
 let nextWorkoutDay = parseInt(localStorage.getItem('tracker_gym_next'), 10) || 1;
@@ -182,6 +194,9 @@ let dietRules = localStorage.getItem('tracker_diet_rules') || DEFAULT_DIET_RULES
 let gymPlan = JSON.parse(localStorage.getItem('tracker_gym_plan')) || DEFAULT_GYM_PLAN;
 let foodDb = JSON.parse(localStorage.getItem('tracker_food_db')) || DEFAULT_FOOD_DB;
 let bodyLogs = JSON.parse(localStorage.getItem('tracker_body_logs')) || [];
+
+// University
+let uniData = Object.assign({}, DEFAULT_UNI_DATA, JSON.parse(localStorage.getItem('tracker_uni_data')) || {});
 
 // AI, Audio, Tiling Layout Tree & Startup View
 let geminiApiKey = localStorage.getItem('tracker_gemini_key') || "";
@@ -198,7 +213,6 @@ try {
 }
 
 let workspacePresets = JSON.parse(localStorage.getItem('tracker_workspace_presets')) || [];
-// 'last' | 'zero' | 'mod:tasks' | 'preset:ws_123...'
 let startupView = localStorage.getItem('tracker_startup_view') || 'last';
 
 let activeSlots = ['tasks', 'planner'];
@@ -214,6 +228,7 @@ const ALL_STORAGE_KEYS = [
     'm_balance', 'm_trans', 'm_rec', 'm_wish', 'm_vaults', 'm_categories',
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
     'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_food_db', 'tracker_body_logs',
+    'tracker_uni_data',
     'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio',
     'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view'
 ];
@@ -276,6 +291,11 @@ function saveHealthData() {
     scheduleDiskSync();
 }
 
+function saveUniData() {
+    localStorage.setItem('tracker_uni_data', JSON.stringify(uniData));
+    scheduleDiskSync();
+}
+
 function saveWorkspaceState() {
     localStorage.setItem('tracker_layout_tree', JSON.stringify(layoutTree));
     localStorage.setItem('tracker_workspace_presets', JSON.stringify(workspacePresets));
@@ -328,7 +348,8 @@ let selectedDateStr = todayStr;
 let currentCalendarDate = new Date(todayObj.getFullYear(), todayObj.getMonth(), 1);
 
 function syncCategoryOrder() {
-    const existingCats = new Set(templates.map(t => t.category));
+    const activeTemplates = templates.filter(t => !t.endDate || t.endDate >= todayStr);
+    const existingCats = new Set(activeTemplates.map(t => t.category));
     existingCats.forEach(c => {
         if (!categoryOrder.includes(c)) categoryOrder.push(c);
     });
@@ -392,6 +413,7 @@ function exportData() {
     saveData();
     saveMoneyData();
     saveHealthData();
+    saveUniData();
     saveWorkspaceState();
 
     const backup = buildBackupObject();

@@ -835,6 +835,23 @@ function initModalsHtml() {
                         <div class="help-desc"><code>[CTRL+SPACE]</code> apre la barra · <code>[?]</code> Manuale · <code>[,]</code> Settings · <code>[E]</code> Edit Layout · <code>[P]</code> Plan Tomorrow · <code>[J]</code> Journal · <code>[R]</code> Red Mode.</div>
                     </div>
                 </div>
+
+                <div class="help-section-card">
+                    <div class="help-section-title">4. University, Workspace &amp; Scorciatoie</div>
+                    <div class="help-grid">
+                        <div class="help-key"><code>uni</code> · <code>uni info</code></div>
+                        <div class="help-desc">Monta il modulo <code>University</code> (con i suoi 4 sotto-moduli componibili) o mostra le medie nella barra.</div>
+
+                        <div class="help-key"><code>esame [Nome] [Voto] [CFU]</code></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Registra il voto nel Libretto (es. <code>esame Algebra 28 9</code>), ricalcola le medie su 180 CFU e archivia le task di studio del corso.</div>
+
+                        <div class="help-key"><code>tassa [€] [Data] [Nome]</code></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Crea un evento in rosso sul Calendario il giorno della scadenza e collega il pagamento alla categoria <code>Tasse Uni</code>.</div>
+
+                        <div class="help-key"><code>appello [Nome] [Data] [Ora]</code></div>
+                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge l'appello con countdown e crea il blocco su Calendar e Weekly Planner.</div>
+                    </div>
+                </div>
             </div>
 
             <div class="modal-actions" style="margin-top: 10px;">
