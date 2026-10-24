@@ -15,7 +15,17 @@ function toggleTask(templateId, instanceIndex) {
         logs[selectedDateStr][templateId] = Array(targetTemplate.instances || 1).fill(false);
     }
 
-    logs[selectedDateStr][templateId][instanceIndex] = !logs[selectedDateStr][templateId][instanceIndex];
+    const wasChecked = Boolean(logs[selectedDateStr][templateId][instanceIndex]);
+
+    // PONTE BIDIREZIONALE PALESTRA: se stai spuntando la task "Palestra", apre il modale di revisione pesi/ripetizioni!
+    if (!wasChecked && typeof isGymRoutineTask === 'function' && isGymRoutineTask(targetTemplate)) {
+        if (typeof openGymWorkoutReviewModal === 'function') {
+            openGymWorkoutReviewModal(selectedDateStr, nextWorkoutDay);
+            return;
+        }
+    }
+
+    logs[selectedDateStr][templateId][instanceIndex] = !wasChecked;
     const isChecked = logs[selectedDateStr][templateId][instanceIndex];
 
     if (targetTemplate.type === 'medicine') {

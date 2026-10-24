@@ -1,5 +1,5 @@
 // --- js/core/state.js ---
-// Gestione Stato Globale, Migrazioni, Albero Tiling, Modulo University & Persistenza
+// Gestione Stato Globale, Migrazioni, Albero Tiling, Modulo University, Gym Routine & Persistenza
 
 function escapeHtml(str) {
     if (str === null || str === undefined) return '';
@@ -53,27 +53,37 @@ const DEFAULT_FOOD_DB = [
 
 const DEFAULT_GYM_PLAN = {
     1: [
-        { id: "g1_1", name: "Panca Inclinata 2 Manubri", repStr: "4x5-8", sets: 4 },
-        { id: "g1_2", name: "Panca Piana Multipower", repStr: "8-8-6", sets: 3 },
-        { id: "g1_3", name: "Croci in Piedi Cavi Bassi", repStr: "2x12 + 10 parziali", sets: 2 },
-        { id: "g1_4", name: "Shoulder Press", repStr: "3x5-8", sets: 3 },
-        { id: "g1_5", name: "Alzate Laterali Deltoid", repStr: "2x12 + 1xmax - 20%", sets: 2 },
-        { id: "g1_6", name: "Curl Bicheps-Machine", repStr: "10-8-8", sets: 3 },
-        { id: "g1_7", name: "Curl Alt. Seduto Panca Incl.", repStr: "2x12 + 1xmax - 20%", sets: 2 },
-        { id: "g1_8", name: "Crunch Machine", repStr: "3xMax", sets: 0 },
-        { id: "g1_9", name: "Plank Busto Scorrimento", repStr: "3xMax", sets: 0 }
+        { id: "g1_1", group: "Pettorali", name: "Panca Inclinata 2 Manubri", repStr: "4x5-8", sets: 4, currentReps: 5 },
+        { id: "g1_2", group: "Pettorali", name: "Panca Piana Multipower", repStr: "8-8-6", sets: 3 },
+        { id: "g1_3", group: "Pettorali", name: "Croci in Piedi Cavi Bassi", repStr: "2x12 + 10 parziali", sets: 3 },
+        { id: "g1_4", group: "Spalle", name: "Shoulder Press", repStr: "3x5-8", sets: 3, currentReps: 5 },
+        { id: "g1_5", group: "Spalle", name: "Alzate Laterali Deltoid", repStr: "2x12 + 1xmax - 20%", sets: 3 },
+        { id: "g1_6", group: "Bicipiti", name: "Curl Bicheps-Machine", repStr: "10-8-8", sets: 3 },
+        { id: "g1_7", group: "Bicipiti", name: "Curl Alt. Seduto Panca Incl.", repStr: "2x12 + 1xmax - 20%", sets: 3 },
+        { id: "g1_8", group: "Addome", name: "Crunch Machine", repStr: "3xMax", sets: 0 },
+        { id: "g1_9", group: "Addome", name: "Plank Busto Scorrimento", repStr: "3xMax", sets: 0 }
     ],
     2: [
-        { id: "g2_1", name: "Lat Machine Avanti", repStr: "4x5-8", sets: 4 },
-        { id: "g2_2", name: "Rematore In Piedi T-Bar", repStr: "8-8-6", sets: 3 },
-        { id: "g2_3", name: "Pull Down Cavo Alto", repStr: "2x12 + 1xmax - 20%", sets: 2 },
-        { id: "g2_4", name: "Push Down Sbarra 2 Maniglie", repStr: "10-8-8", sets: 3 },
-        { id: "g2_5", name: "Kick Back Seduto 1 Manubrio", repStr: "2x12 + 1xmax - 20%", sets: 2 },
-        { id: "g2_6", name: "Leg Press Inclinata", repStr: "3x5-8", sets: 3 },
-        { id: "g2_7", name: "Leg Extension", repStr: "2x12 + 1xmax - 20%", sets: 2 },
-        { id: "g2_8", name: "Leg Curl", repStr: "12-12-10", sets: 3 },
-        { id: "g2_9", name: "Chiusure A Libro Gambe Tese", repStr: "3xMax", sets: 0 }
+        { id: "g2_1", group: "Dorsali", name: "Lat Machine Avanti", repStr: "4x5-8", sets: 4, currentReps: 5 },
+        { id: "g2_2", group: "Dorsali", name: "Rematore In Piedi T-Bar", repStr: "8-8-6", sets: 3 },
+        { id: "g2_3", group: "Dorsali", name: "Pull Down Cavo Alto", repStr: "2x12 + 1xmax - 20%", sets: 3 },
+        { id: "g2_4", group: "Tricipiti", name: "Push Down Sbarra 2 Maniglie", repStr: "10-8-8", sets: 3 },
+        { id: "g2_5", group: "Tricipiti", name: "Kick Back Seduto 1 Manubrio", repStr: "2x12 + 1xmax - 20%", sets: 3 },
+        { id: "g2_6", group: "Gambe", name: "Leg Press Inclinata", repStr: "3x5-8", sets: 3, currentReps: 5 },
+        { id: "g2_7", group: "Gambe", name: "Leg Extension", repStr: "2x12 + 1xmax - 20%", sets: 3 },
+        { id: "g2_8", group: "Gambe", name: "Leg Curl", repStr: "12-12-10", sets: 3 },
+        { id: "g2_9", group: "Addome", name: "Chiusure A Libro Gambe Tese", repStr: "3xMax", sets: 0 }
     ]
+};
+
+const DEFAULT_GYM_ROUTINE = {
+    enabled: true,
+    timeWindows: [
+        { days: [1, 2, 4], start: "19:45", end: "21:15" }, // Lun, Mar, Gio alle 19:45
+        { days: [6], start: "16:00", end: "17:30" }        // Sab alle 16:00
+    ],
+    activeSubModules: ['split'],
+    subLayoutDir: 'row'
 };
 
 const DEFAULT_MONEY_CATEGORIES = ["Generale", "Tasse Uni", "Treno", "Cinema", "Cibo", "Studio", "Abbonamenti", "Salute", "Svago"];
@@ -128,6 +138,7 @@ function migrateAndInitData() {
         'tracker_diet_data': DEFAULT_DIET_DATA,
         'tracker_diet_rules': DEFAULT_DIET_RULES,
         'tracker_gym_plan': DEFAULT_GYM_PLAN,
+        'tracker_gym_routine': DEFAULT_GYM_ROUTINE,
         'tracker_food_db': DEFAULT_FOOD_DB,
         'tracker_body_logs': [],
         'tracker_uni_data': DEFAULT_UNI_DATA,
@@ -192,6 +203,7 @@ let gymEndDate = localStorage.getItem('gym_end_date') || "";
 let dietData = JSON.parse(localStorage.getItem('tracker_diet_data')) || DEFAULT_DIET_DATA;
 let dietRules = localStorage.getItem('tracker_diet_rules') || DEFAULT_DIET_RULES;
 let gymPlan = JSON.parse(localStorage.getItem('tracker_gym_plan')) || DEFAULT_GYM_PLAN;
+let gymRoutine = Object.assign({}, DEFAULT_GYM_ROUTINE, JSON.parse(localStorage.getItem('tracker_gym_routine')) || {});
 let foodDb = JSON.parse(localStorage.getItem('tracker_food_db')) || DEFAULT_FOOD_DB;
 let bodyLogs = JSON.parse(localStorage.getItem('tracker_body_logs')) || [];
 
@@ -227,7 +239,7 @@ const ALL_STORAGE_KEYS = [
     'tracker_focus_logs', 'tracker_daily_priorities',
     'm_balance', 'm_trans', 'm_rec', 'm_wish', 'm_vaults', 'm_categories',
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
-    'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_food_db', 'tracker_body_logs',
+    'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_gym_routine', 'tracker_food_db', 'tracker_body_logs',
     'tracker_uni_data',
     'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio',
     'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view'
@@ -286,6 +298,7 @@ function saveHealthData() {
     localStorage.setItem('tracker_diet_data', JSON.stringify(dietData));
     localStorage.setItem('tracker_diet_rules', dietRules);
     localStorage.setItem('tracker_gym_plan', JSON.stringify(gymPlan));
+    localStorage.setItem('tracker_gym_routine', JSON.stringify(gymRoutine));
     localStorage.setItem('tracker_food_db', JSON.stringify(foodDb));
     localStorage.setItem('tracker_body_logs', JSON.stringify(bodyLogs));
     scheduleDiskSync();

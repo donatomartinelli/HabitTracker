@@ -267,24 +267,9 @@
             </div>
         </div>
 
-        <!-- 6. MODULO ATOMICO: GYM -->
+        <!-- 6. MODULO ATOMICO: GYM (CON SOTTO-MODULI COMPONIBILI) -->
         <div id="module-gym" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
-                <div class="section-header-row" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
-                    <span class="section-label">Workout Split &amp; Overload</span>
-                    <div style="display: flex; gap: 6px; font-size: var(--font-xs); align-items: center;">
-                        <span style="color: var(--text-dim);">START:</span>
-                        <input type="date" id="gym-start-date" class="form-control form-control-sm" style="width: 120px;" onchange="updateGymDates()">
-                        <span style="color: var(--text-dim);">END:</span>
-                        <input type="date" id="gym-end-date" class="form-control form-control-sm" style="width: 120px;" onchange="updateGymDates()">
-                        <button id="btn-toggle-gym-edit" class="btn btn-sm" onclick="toggleGymEditMode()">[EDIT SPLIT]</button>
-                    </div>
-                </div>
-
-                <div id="meds-main-content" style="display: none; flex: 0 0 auto; padding: 7px 12px; background: rgba(255,255,255,0.015); border: 1px solid var(--border-color);"></div>
-
-                <div id="gym-main-content" style="flex: 1; display: flex; flex-direction: row; gap: 16px; overflow: hidden; min-height: 0;"></div>
-            </div>
+            <div id="gym-main-root" class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;"></div>
         </div>
 
         <!-- 7. MODULO ATOMICO: MONEY -->

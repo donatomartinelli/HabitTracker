@@ -555,11 +555,14 @@ function renderInstantGymSummary() {
                 if (w) weights.push(`${w}kg`);
             }
             const weightBadge = weights.length > 0 ? weights.join(' · ') : (ex.sets > 0 ? 'No weights logged' : 'Bodyweight');
+            const meta = typeof resolveGymSchemeMeta === 'function' ? resolveGymSchemeMeta(ex.repStr) : { isProg: false };
+            const progTag = meta.isProg ? ` [ORA: ${ex.sets}x${ex.currentReps || 5}]` : '';
+
             rowsHtml += `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); font-size:var(--font-xs);">
                     <div>
                         <strong style="color:var(--text-main);">${escapeHtml(ex.name)}</strong>
-                        <span style="color:var(--text-dim); margin-left:6px;">(${escapeHtml(ex.repStr)})</span>
+                        <span style="color:var(--text-dim); margin-left:6px;">(${escapeHtml(ex.repStr + progTag)})</span>
                     </div>
                     <span style="color:var(--text-muted); font-variant-numeric:tabular-nums;">${escapeHtml(weightBadge)}</span>
                 </div>
@@ -567,7 +570,7 @@ function renderInstantGymSummary() {
         });
     }
 
-    rowsHtml += `<div style="font-size:0.68rem; color:var(--text-dim); margin-top:2px;">Type <strong style="color:var(--text-main);">gym done</strong> to complete Day ${activeDay} and advance split.</div>`;
+    rowsHtml += `<div style="font-size:0.68rem; color:var(--text-dim); margin-top:2px;">Type <strong style="color:var(--text-main);">gym done</strong> to review weights/reps &amp; complete Day ${activeDay}.</div>`;
     showInstantInspectionCard(`ACTIVE WORKOUT SPLIT // DAY ${activeDay}`, rowsHtml);
 }
 
@@ -719,6 +722,15 @@ function executeTerminalCommand(raw) {
         return false;
     }
 
+    if (cmd === 'workout' || (cmd === 'gym' && rest.toLowerCase() === 'done')) {
+        if (typeof closeTerminal === 'function') closeTerminal();
+        if (typeof openGymWorkoutReviewModal === 'function') {
+            openGymWorkoutReviewModal(selectedDateStr, nextWorkoutDay);
+            return true;
+        }
+        return false;
+    }
+    
     if (cmd === 'tassa') {
         // Supporta qualsiasi ordine di Importo, Data (@YYYY-MM-DD o YYYY-MM-DD) e Nome Tassa
         if (!rest) return false;
