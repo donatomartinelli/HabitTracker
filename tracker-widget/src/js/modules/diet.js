@@ -235,7 +235,7 @@ function renderDiet() {
     if (!mainArea) return;
     mainArea.innerHTML = '';
 
-    const todayJS = new Date(selectedDateStr).getDay();
+    const todayJS = parseLocalDate(selectedDateStr).getDay();
     const dayOrder = [1, 2, 3, 4, 5, 6, 0];
     const dayLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
 

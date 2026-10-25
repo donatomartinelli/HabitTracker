@@ -257,7 +257,7 @@ function deleteCategory(catName) {
 }
 
 function confirmDelete(mode) {
-    let targetDate = new Date(selectedDateStr);
+    let targetDate = parseLocalDate(selectedDateStr);
     targetDate.setDate(targetDate.getDate() - 1);
     const yesterdayStr = formatDate(targetDate);
 
@@ -669,7 +669,7 @@ function renderTasks() {
     let hasSched = false, hasFlex = false;
 
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
-    const selectedDayIdx = new Date(selectedDateStr).getDay();
+    const selectedDayIdx = parseLocalDate(selectedDateStr).getDay();
     const customBlocksToday = Array.isArray(ephemeralData[selectedDateStr]) ? ephemeralData[selectedDateStr] : [];
 
     if (dayEvents.length > 0) {
@@ -920,7 +920,7 @@ function openAssignModal() {
 document.getElementById('assignForm').addEventListener('submit', function(e) {
     e.preventDefault();
     const dateStr = document.getElementById('assign-date').value;
-    const dayIndex = new Date(dateStr).getDay();
+    const dayIndex = parseLocalDate(dateStr).getDay();
 
     const catName = 'General To-Do';
     if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
@@ -985,8 +985,8 @@ function renderTracker() {
         if (t.startDate && t.startDate < earliestDate) earliestDate = t.startDate;
     });
 
-    const start = new Date(earliestDate);
-    const today = new Date(todayStr);
+    const start = parseLocalDate(earliestDate);
+    const today = parseLocalDate(todayStr);
     const diffDays = Math.ceil(Math.abs(today - start) / (1000 * 60 * 60 * 24));
 
     const daysToRender2D = Math.max(7, diffDays + 1);
@@ -1073,14 +1073,16 @@ function renderFocusLedger() {
     if (!container || !summaryEl) return;
 
     container.innerHTML = '';
-    const d = new Date(todayStr);
+    const d = parseLocalDate(todayStr);
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    const weekStartStr = formatDate(new Date(d.setDate(diff)));
+    d.setDate(diff);
+    const weekStartStr = formatDate(d);
 
     let totalMinsAll = 0, totalMinsWeek = 0, totalMinsToday = 0;
     const byCat = {};
     const completedHistoryEntries = [];
+    const accountedDateTitles = new Set();
 
     const allDates = Object.keys(logs).sort();
     allDates.forEach(dateStr => {
@@ -1088,6 +1090,8 @@ function renderFocusLedger() {
         for (let templateId in dayLogObj) {
             const t = templates.find(x => x.id === templateId);
             if (!t) continue;
+
+            accountedDateTitles.add(`${dateStr}_${t.title.toLowerCase()}`);
 
             const minsPerInstance = typeof getTaskDurationMinutes === 'function'
                 ? getTaskDurationMinutes(t, dateStr)
@@ -1117,6 +1121,35 @@ function renderFocusLedger() {
             });
         }
     });
+
+    // Integra eventuali sessioni Pomodoro da focusLogs di task rimosse dal database
+    if (Array.isArray(focusLogs)) {
+        focusLogs.forEach(fl => {
+            if (!fl || !fl.date || !fl.minutes) return;
+            const key = `${fl.date}_${(fl.title || '').toLowerCase()}`;
+            if (accountedDateTitles.has(key)) return;
+
+            const mins = parseInt(fl.minutes, 10) || 0;
+            if (mins <= 0) return;
+            const cat = fl.category || 'General';
+
+            totalMinsAll += mins;
+            if (fl.date >= weekStartStr && fl.date <= todayStr) totalMinsWeek += mins;
+            if (fl.date === todayStr) totalMinsToday += mins;
+
+            if (!byCat[cat]) byCat[cat] = { total: 0, week: 0, today: 0 };
+            byCat[cat].total += mins;
+            if (fl.date >= weekStartStr && fl.date <= todayStr) byCat[cat].week += mins;
+            if (fl.date === todayStr) byCat[cat].today += mins;
+
+            completedHistoryEntries.push({
+                date: fl.date,
+                category: cat,
+                title: fl.title || 'Focus Session',
+                minutes: mins
+            });
+        });
+    }
 
     const fmtH = (mins) => (mins / 60).toFixed(1) + 'H';
     summaryEl.textContent = `TODAY: ${fmtH(totalMinsToday)} | WEEK: ${fmtH(totalMinsWeek)} | ALL-TIME: ${fmtH(totalMinsAll)}`;
@@ -1297,7 +1330,7 @@ function assignInboxItemToTomorrow(todoId) {
     const item = generalTodos.find(x => x.id === todoId);
     if (!item) return;
 
-    const tmwDayIdx = new Date(tomorrowStr).getDay();
+    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
     const catName = 'General To-Do';
     if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
 
@@ -1337,7 +1370,7 @@ function addQuickTomorrowTask() {
 
     const mins = Math.max(5, parseInt(minsEl ? minsEl.value : 30, 10) || 30);
     const startVal = startEl ? startEl.value : '';
-    const tmwDayIdx = new Date(tomorrowStr).getDay();
+    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
 
     const catName = 'Planned';
     if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
@@ -1397,7 +1430,7 @@ function renderPlanTomorrowModal() {
     const prioInput = document.getElementById('plan-tmw-priority');
     if (prioInput) prioInput.value = dailyPriorities[tomorrowStr] || '';
 
-    const tmwDayIdx = new Date(tomorrowStr).getDay();
+    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
     const customBlocks = Array.isArray(ephemeralData[tomorrowStr]) ? ephemeralData[tomorrowStr] : [];
 
     // 1. Render Blocchi Task Disponibili per Domani (proporzionali e trascinabili sulla Timeline)
@@ -1616,7 +1649,7 @@ function renderTomorrowOneDayTimeline() {
         } catch (e) {}
     };
 
-    const tmwDayIdx = new Date(tomorrowStr).getDay();
+    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
 
     // 1. Ghost Layers di domani sullo sfondo
     referenceLayers.forEach(ref => {

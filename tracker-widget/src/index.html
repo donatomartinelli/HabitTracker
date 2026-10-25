@@ -29,9 +29,26 @@
     <div data-tauri-drag-region class="tauri-drag-bar"></div>
     
     <!-- HEADER GLOBALE MINIMALISTA -->
+    <!-- HEADER GLOBALE MINIMALISTA -->
     <header class="app-header">
         <div class="header-left">
             <h1 id="global-clock">00:00 // DAY 00</h1>
+
+            <!-- FOCUS TIMER INLINE (Controllato da js/modules/focus.js) -->
+            <div id="header-inline-focus" class="header-inline-focus" style="display: none;">
+                <div id="header-focus-pill" class="header-focus-pill" ondblclick="openFullscreenFocusOverlay()" title="Double-click to expand Fullscreen">
+                    <span id="header-focus-icon" class="header-focus-icon">▶</span>
+                    <span id="header-focus-time" class="header-focus-time">25:00</span>
+                    <span class="header-focus-sep">//</span>
+                    <span id="header-focus-title" class="header-focus-title">TASK</span>
+                    <div class="header-focus-actions">
+                        <button type="button" id="btn-header-focus-pause" class="header-focus-btn" onclick="togglePomodoroPause()">[PAUSE]</button>
+                        <button type="button" class="header-focus-btn" onclick="skipPomodoroPhase()" title="Skip & Check off">[SKIP]</button>
+                        <button type="button" class="header-focus-btn" onclick="openFullscreenFocusOverlay()" title="Fullscreen Overlay">[FULL]</button>
+                        <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()" title="Abort Session">[×]</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- CONTENITORE BARRA DSL NELL'HEADER -->
@@ -69,9 +86,16 @@
         </div>
 
         <div class="header-right">
+            <button id="btn-quick-switcher" class="btn btn-sm" onclick="openQuickSwitcherModal()" title="Quick View & Module Switcher (Shortcut: V)">[VIEW // V]</button>
+            <button id="btn-hud-mode" class="btn btn-sm" onclick="toggleHudMode()" title="Toggle 56px Always-on-Top HUD Bar (Shortcut: Alt+H)">[HUD]</button>
             <button class="btn btn-sm" onclick="openSettingsModal()" title="Settings & System Controls (Shortcut: ,)">[SETTINGS]</button>
             <button id="btn-minimize-app" class="icon-btn win-ctrl-btn" title="Minimize Window">[-]</button>
             <button id="btn-close-app" class="icon-btn delete win-ctrl-btn" title="Close Application">[X]</button>
+        </div>
+
+        <!-- LINEA PROGRESSO FOCUS SOTTO L'HEADER -->
+        <div id="header-focus-progress-track" class="header-focus-progress-track" style="display: none;">
+            <div id="header-focus-progress-bar" class="header-focus-progress-bar"></div>
         </div>
     </header>
 
@@ -168,7 +192,7 @@
 
         <!-- 3. MODULO ATOMICO: NOTES -->
         <div id="module-notes" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden;">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 10px; overflow: hidden;">
                 <div class="notes-controls" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
                     <div style="display: flex; gap: 12px; align-items: center;">
                         <span class="section-label" style="color: var(--text-main);">Notes Workspace</span>
@@ -183,19 +207,38 @@
                     </div>
 
                     <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 130px;" placeholder="Filter text..." oninput="filterNotesView(this.value)">
-                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select Sony Recorder folder">
-                            [SYNC SONY]
-                            <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
-                        </label>
-                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select audio files">
+                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 120px;" placeholder="Filter text..." oninput="filterNotesView(this.value)">
+                        <button type="button" id="btn-top-generate-actions" class="btn btn-sm" onclick="triggerBatchAiExtraction()" title="Select cards in BROWSE mode and click to extract actions from all selected cards">[✦ GENERATE ACTIONS]</button>
+                        <button type="button" class="btn btn-sm" onclick="triggerSonyUsbOrFolderSync()" title="Auto-Sync from Sony Recorder (VOICE/A/) or choose folder">[SYNC SONY]</button>
+                        <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
+                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select audio files manually">
                             [+ AUDIO]
                             <input type="file" id="sony-files-input" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac" multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
                         </label>
-                        <select id="note-category" class="form-control form-control-sm" style="width: 140px; font-weight: bold;" onchange="refreshNotesView()"></select>
+                        <select id="note-category" class="form-control form-control-sm" style="width: 135px; font-weight: bold;" onchange="onNoteCategoryChange()"></select>
                         <button class="btn btn-sm" onclick="openManageNotesModal()" title="Manage Note Categories">[CATS]</button>
                     </div>
                 </div>
+
+                <!-- BARRA OPERAZIONI SU CELLE SELEZIONATE (1A, 2A, 4A: compare quando selezioni 1+ celle in BROWSE) -->
+                <div id="notes-batch-bar" class="note-batch-bar" style="display: none;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <strong id="notes-selected-count" style="color: var(--text-main); font-size: var(--font-xs);">0 SELECTED</strong>
+                        <button type="button" class="btn btn-sm" onclick="selectAllVisibleNotes()">[ALL]</button>
+                        <button type="button" class="btn btn-sm" onclick="clearNoteSelection()">[NONE]</button>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                        <button type="button" id="btn-batch-ai" class="btn btn-primary btn-sm" onclick="triggerBatchAiExtraction()">[✦ GENERATE ACTIONS]</button>
+                        <button type="button" id="btn-batch-merge" class="btn btn-sm" onclick="mergeSelectedNoteCards()" title="Merge selected cards into a single clean note">[MERGE]</button>
+                        <select id="batch-move-select" class="form-control form-control-sm" style="width: 145px;" onchange="if(this.value){ moveSelectedNoteCardsTo(this.value); this.value=''; }">
+                            <option value="">[➔ MOVE TO...]</option>
+                        </select>
+                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteSelectedNoteCards()">[DELETE]</button>
+                    </div>
+                </div>
+
+                <!-- STAGING AREA UNIFICATA PER ESTRAZIONE AZIONI MULTI-CELLA -->
+                <div id="notes-batch-ai-drawer" class="note-ai-drawer" style="display: none; flex-shrink: 0; max-height: 45%; overflow-y: auto;"></div>
 
                 <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
                     <textarea id="note-text" class="form-control" style="flex: 1; height: 100%; resize: none; line-height: 1.5; padding: 14px;" placeholder="Write your idea and press Enter..." onkeydown="handleNoteKeyDown(event)" oninput="handleNoteInput()"></textarea>

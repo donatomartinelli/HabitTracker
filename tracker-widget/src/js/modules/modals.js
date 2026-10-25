@@ -326,6 +326,14 @@ function initModalsHtml() {
                     <div class="cfg-box" style="padding: 0;">
                         <div id="settings-workspace-container"></div>
                     </div>
+
+                    <div class="cfg-box">
+                        <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
+                            <span>3. Custom Command Aliases (1-Word Macros)</span>
+                            <span style="font-size:0.65rem; color:var(--text-dim);">TYPE ALIAS IN COMMAND BAR + [ENTER] TO RUN ALL</span>
+                        </div>
+                        <div id="settings-aliases-container"></div>
+                    </div>
                 </div>
 
                 <!-- TAB 2: SONY RECORDER PIPELINE (GEMINI AUDIO TRANSCRIPTION) -->
@@ -836,8 +844,8 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <div class="help-section-card">
-                    <div class="help-section-title">4. University, Workspace &amp; Scorciatoie</div>
+                <div class="help-section-card" style="grid-column: 1 / -1;">
+                    <div class="help-section-title">5. University Bridge (180 CFU, Appelli &amp; Tasse)</div>
                     <div class="help-grid">
                         <div class="help-key"><code>uni</code> · <code>uni info</code></div>
                         <div class="help-desc">Monta il modulo <code>University</code> (con i suoi 4 sotto-moduli componibili) o mostra le medie nella barra.</div>
@@ -859,6 +867,34 @@ function initModalsHtml() {
             </div>
         </div>
     </div>
+
+    <!-- 20. Quick-Switcher Modal (Shortcut: V) -->
+    <div id="quickSwitcherModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 640px; max-width: 95%; padding: 20px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:12px;">
+                <div>
+                    <h2 style="margin:0; border:none; padding:0;">Quick View Switcher</h2>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim);">CLICK TO REPLACE VIEW · <strong>[SHIFT + CLICK]</strong> (OR <strong>[SHIFT + ↑]</strong>) TO COMBINE MULTIPLE MODULES</span>
+                </div>
+                <button class="btn btn-sm" onclick="closeModals()">[ESC]</button>
+            </div>
+
+            <input type="text" id="qs-filter-input" class="form-control form-control-sm" style="margin-bottom:12px;" placeholder="Filter views or type 'notes + tasks' and press Enter..." autocomplete="off">
+
+            <div id="qs-staged-bar" style="display:none; align-items:center; justify-content:space-between; padding:8px 12px; margin-bottom:12px; border:1px solid var(--text-main); background:rgba(255,255,255,0.05);">
+                <div style="font-size:var(--font-xs);">
+                    <span style="color:var(--text-dim); font-weight:bold;">COMBINING MODULES: </span>
+                    <strong id="qs-staged-list" style="color:var(--text-main); text-transform:uppercase;"></strong>
+                </div>
+                <div style="display:flex; gap:6px;">
+                    <button type="button" class="btn btn-sm" onclick="clearQuickSwitcherStaged()">[CLEAR]</button>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="commitQuickSwitcherStaged()">[OPEN COMBINED // ENTER]</button>
+                </div>
+            </div>
+
+            <div id="qs-body-content" style="display:flex; flex-direction:column; gap:14px; max-height:62vh; overflow-y:auto;"></div>
+        </div>
+    </div>
     `;
 }
 
@@ -868,6 +904,288 @@ function closeModals() {
     document.querySelectorAll('.modal-overlay').forEach(m => {
         m.style.display = 'none';
     });
+    if (typeof setHudTemporaryExpansion === 'function' && !isAskBarExpanded) {
+        setHudTemporaryExpansion(false);
+    }
+}
+
+// ============================================================================
+// EDITOR CUSTOM ALIASES CON SUGGERIMENTI ISPIRAZIONALI (SENZA PRESET FORZATI)
+// ============================================================================
+
+const ALIAS_INSPIRATION_TEMPLATES = [
+    { name: 'sera', cmds: 'red on; tasks; plan', desc: 'Attiva Gelatina Rossa, monta Daily Tasks e apre la Timeline di domani' },
+    { name: 'mattina', cmds: 'red off; tasks + planner; today', desc: 'Ripristina colori, affianca Tasks + Planner e mostra il riepilogo di oggi' },
+    { name: 'sessione', cmds: 'uni roadmap + notes', desc: 'Sovrappone sullo schermo University Roadmap e Notes affiancati' },
+    { name: 'conti', cmds: 'money; bal', desc: 'Apre il modulo Money a tutto schermo e mostra lo snapshot dei Vault' },
+    { name: 'barra', cmds: 'hud on', desc: 'Collassa Cortex nella striscia HUD da 56px Always-on-Top' }
+];
+
+function renderCustomAliasesSettingsUI() {
+    const cont = document.getElementById('settings-aliases-container');
+    if (!cont) return;
+
+    const entries = Object.entries(typeof customAliases !== 'undefined' ? customAliases : {});
+
+    let html = `
+        <div style="margin-bottom: 12px;">
+            <div style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">
+                Idee &amp; Template (Clicca un suggerimento per pre-compilare i campi qui sotto):
+            </div>
+            <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="alias-inspiration-chips"></div>
+        </div>
+
+        <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="new-alias-name" class="form-control form-control-sm" style="width: 130px; font-weight: bold;" placeholder="Parola (es. sera)">
+            <span style="color: var(--text-dim); font-weight: bold;">=</span>
+            <input type="text" id="new-alias-cmds" class="form-control form-control-sm" style="flex: 1; min-width: 220px;" placeholder="Comandi separati da ; (es. red on; tasks; plan)" onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCustomAliasFromUI();}">
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveCustomAliasFromUI()">[+ SAVE ALIAS]</button>
+        </div>
+
+        <div id="custom-aliases-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+    `;
+
+    cont.innerHTML = html;
+
+    const chipsBox = cont.querySelector('#alias-inspiration-chips');
+    ALIAS_INSPIRATION_TEMPLATES.forEach(tpl => {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'btn btn-sm';
+        chip.style.cssText = 'font-size: 0.65rem; padding: 3px 8px; border-style: dashed; text-transform: none;';
+        chip.title = `${tpl.desc}\nComandi: ${tpl.cmds}`;
+        chip.innerHTML = `<strong>${escapeHtml(tpl.name)}</strong> <span style="color:var(--text-dim);">→ ${escapeHtml(tpl.cmds)}</span>`;
+        chip.onclick = () => {
+            const nInp = document.getElementById('new-alias-name');
+            const cInp = document.getElementById('new-alias-cmds');
+            if (nInp) nInp.value = tpl.name;
+            if (cInp) {
+                cInp.value = tpl.cmds;
+                cInp.focus();
+            }
+        };
+        chipsBox.appendChild(chip);
+    });
+
+    const listEl = cont.querySelector('#custom-aliases-list');
+    if (entries.length === 0) {
+        listEl.innerHTML = `<div class="empty-state" style="padding: 6px 0;">[ NESSUN ALIAS CREATO — CLICCA UN SUGGERIMENTO SOPRA O SCRIVI IL TUO ]</div>`;
+    } else {
+        entries.forEach(([aliasKey, macroCmds]) => {
+            const row = document.createElement('div');
+            row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.025); border: 1px solid var(--border-color); border-left: 3px solid var(--text-main); font-size: var(--font-xs); gap: 10px;';
+            row.innerHTML = `
+                <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <strong style="color:var(--text-main); text-transform:uppercase; margin-right:8px;">${escapeHtml(aliasKey)}</strong>
+                    <span style="color:var(--text-dim);">→</span>
+                    <code style="color:var(--text-muted); margin-left:6px;">${escapeHtml(macroCmds)}</code>
+                </div>
+                <div style="display:flex; gap:6px; flex-shrink:0;">
+                    <button type="button" class="btn btn-sm btn-run-alias" title="Esegui ora questo alias">[▶ RUN]</button>
+                    <button type="button" class="icon-btn btn-edit-alias" title="Modifica">[✎]</button>
+                    <button type="button" class="icon-btn delete btn-del-alias" title="Elimina">[X]</button>
+                </div>
+            `;
+            row.querySelector('.btn-run-alias').onclick = () => {
+                closeModals();
+                executeTerminalCommand(aliasKey);
+            };
+            row.querySelector('.btn-edit-alias').onclick = () => {
+                document.getElementById('new-alias-name').value = aliasKey;
+                document.getElementById('new-alias-cmds').value = macroCmds;
+                document.getElementById('new-alias-cmds').focus();
+            };
+            row.querySelector('.btn-del-alias').onclick = () => {
+                delete customAliases[aliasKey];
+                saveCustomAliases();
+                renderCustomAliasesSettingsUI();
+            };
+            listEl.appendChild(row);
+        });
+    }
+}
+
+function saveCustomAliasFromUI() {
+    const nInp = document.getElementById('new-alias-name');
+    const cInp = document.getElementById('new-alias-cmds');
+    if (!nInp || !cInp) return;
+
+    const cleanName = nInp.value.trim().toLowerCase().replace(/\s+/g, '_');
+    const cleanCmds = cInp.value.trim();
+    if (!cleanName || !cleanCmds) return;
+
+    customAliases[cleanName] = cleanCmds;
+    saveCustomAliases();
+    nInp.value = '';
+    cInp.value = '';
+    renderCustomAliasesSettingsUI();
+    if (typeof showToast === 'function') {
+        showToast(`[ALIAS SAVED] Type "${cleanName}" in the command bar!`);
+    }
+}
+
+// ============================================================================
+// QUICK-SWITCHER MODAL (SCORCIATOIA: V) CON COMBINAZIONE MULTI-MODULO
+// ============================================================================
+
+let qsStagedModules = [];
+
+function openQuickSwitcherModal() {
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
+    closeModals();
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
+
+    qsStagedModules = [];
+    const modal = document.getElementById('quickSwitcherModal');
+    const inp = document.getElementById('qs-filter-input');
+    if (!modal) return;
+
+    modal.style.display = 'flex';
+    if (inp) {
+        inp.value = '';
+        inp.oninput = () => renderQuickSwitcherContent(inp.value);
+        inp.onkeydown = (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeModals();
+                return;
+            }
+            if (e.key === 'ArrowUp' && e.shiftKey) {
+                e.preventDefault();
+                const q = inp.value.trim();
+                const modKey = typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(q) : null;
+                if (modKey && !qsStagedModules.includes(modKey)) {
+                    qsStagedModules.push(modKey);
+                    inp.value = '';
+                    renderQuickSwitcherContent('');
+                }
+                return;
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (qsStagedModules.length > 0 && !inp.value.trim()) {
+                    commitQuickSwitcherStaged();
+                    return;
+                }
+                const q = inp.value.trim();
+                if (q) {
+                    if (executeTerminalCommand(q)) {
+                        closeModals();
+                    }
+                } else if (qsStagedModules.length > 0) {
+                    commitQuickSwitcherStaged();
+                }
+            }
+        };
+        setTimeout(() => inp.focus(), 30);
+    }
+
+    renderQuickSwitcherContent('');
+}
+
+function clearQuickSwitcherStaged() {
+    qsStagedModules = [];
+    renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
+}
+
+function commitQuickSwitcherStaged() {
+    if (qsStagedModules.length === 0) return;
+    const toMount = [...qsStagedModules];
+    qsStagedModules = [];
+    closeModals();
+    setModulesView(toMount);
+}
+
+function renderQuickSwitcherContent(filterStr = '') {
+    const body = document.getElementById('qs-body-content');
+    const stagedBar = document.getElementById('qs-staged-bar');
+    const stagedList = document.getElementById('qs-staged-list');
+    if (!body) return;
+
+    if (stagedBar && stagedList) {
+        if (qsStagedModules.length > 0) {
+            stagedBar.style.display = 'flex';
+            stagedList.textContent = qsStagedModules.map(k => dashboardModules[k].name).join(' + ');
+        } else {
+            stagedBar.style.display = 'none';
+        }
+    }
+
+    const q = (filterStr || '').trim().toLowerCase();
+    body.innerHTML = '';
+
+    // 1. VISTE SALVATE (PRESETS)
+    const matchingPresets = (workspacePresets || []).filter(p => !q || p.name.toLowerCase().includes(q));
+    const presetsSection = document.createElement('div');
+    presetsSection.innerHTML = `<div class="sub-column-header">1. Saved Custom Views (Click to Replace Screen)</div>`;
+
+    if (matchingPresets.length === 0) {
+        presetsSection.innerHTML += `<div class="empty-state" style="padding:4px 0;">[ NO SAVED VIEWS MATCHING ]</div>`;
+    } else {
+        const grid = document.createElement('div');
+        grid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
+        matchingPresets.forEach(p => {
+            const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => dashboardModules[l.module]?.name || l.module) : [];
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'btn';
+            btn.style.cssText = 'text-align:left; padding:10px 12px; display:flex; flex-direction:column; gap:4px;';
+            btn.innerHTML = `
+                <strong style="color:var(--text-main); font-size:var(--font-sm);">${escapeHtml(p.name)}</strong>
+                <span style="color:var(--text-dim); font-size:0.65rem; text-transform:none;">${escapeHtml(pLeaves.join(' + ') || 'ZERO-UI')}</span>
+            `;
+            btn.onclick = () => {
+                closeModals();
+                if (typeof isHudMode !== 'undefined' && isHudMode) toggleHudMode(false);
+                applyWorkspacePreset(p.id);
+            };
+            grid.appendChild(btn);
+        });
+        presetsSection.appendChild(grid);
+    }
+    body.appendChild(presetsSection);
+
+    // 2. GRIGLIA DEI 9 MODULI SINGOLI (Click = Apri subito · Shift+Click = Combina più schede)
+    const modSection = document.createElement('div');
+    modSection.innerHTML = `<div class="sub-column-header">2. Atomic Modules (Click = Open Single · Shift+Click = Combine Multiple)</div>`;
+    const modGrid = document.createElement('div');
+    modGrid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
+
+    ALL_MODULE_KEYS
+        .filter(k => !q || k.includes(q) || dashboardModules[k].name.toLowerCase().includes(q))
+        .forEach(k => {
+            const isStaged = qsStagedModules.includes(k);
+            const isCurrentlyMounted = activeSlots.includes(k);
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = `btn ${isStaged ? 'btn-primary' : ''}`;
+            btn.style.cssText = 'text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center;';
+            btn.innerHTML = `
+                <div>
+                    <div style="font-weight:bold; font-size:var(--font-xs);">${escapeHtml(dashboardModules[k].name)}</div>
+                    <div style="font-size:0.62rem; opacity:0.65;">cmd: ${escapeHtml(k)}</div>
+                </div>
+                <span style="font-size:0.65rem;">${isStaged ? '[+ STAGED]' : (isCurrentlyMounted ? '[ACTIVE]' : '')}</span>
+            `;
+            btn.onclick = (e) => {
+                if (e.shiftKey) {
+                    const idx = qsStagedModules.indexOf(k);
+                    if (idx !== -1) qsStagedModules.splice(idx, 1);
+                    else qsStagedModules.push(k);
+                    renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
+                } else if (qsStagedModules.length > 0) {
+                    if (!qsStagedModules.includes(k)) qsStagedModules.push(k);
+                    commitQuickSwitcherStaged();
+                } else {
+                    closeModals();
+                    setModulesView([k]);
+                }
+            };
+            modGrid.appendChild(btn);
+        });
+
+    modSection.appendChild(modGrid);
+    body.appendChild(modSection);
 }
 
 function selectColor(element, inputId) {
@@ -908,7 +1226,11 @@ function updateOpacity(val) {
     document.documentElement.style.setProperty('--bg-opacity', val);
     const label = document.getElementById('opacity-val');
     if (label) label.innerText = val;
-    localStorage.setItem('tracker_opacity', val);
+    if (typeof persistKeysMap === 'function') {
+        persistKeysMap({ 'tracker_opacity': String(val) });
+    } else {
+        localStorage.setItem('tracker_opacity', val);
+    }
 }
 
 document.documentElement.style.setProperty('--bg-opacity', savedOpacity);
@@ -932,6 +1254,8 @@ function openSettingsModal(defaultTab = 'tab-workspace') {
     if (typeof updateGeminiKeyStatusUI === 'function') updateGeminiKeyStatusUI();
     if (typeof updateGeminiAudioKeyStatusUI === 'function') updateGeminiAudioKeyStatusUI();
     if (typeof applyRedModeUI === 'function') applyRedModeUI();
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
+    if (typeof renderCustomAliasesSettingsUI === 'function') renderCustomAliasesSettingsUI();
 
     const sEl = document.getElementById('bg-opacity-slider');
     if (sEl) sEl.value = savedOpacity;

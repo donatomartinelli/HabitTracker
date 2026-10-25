@@ -424,7 +424,7 @@ function renderQuadrantLayout() {
                 console.error(`[CORTEX] Error rendering module "${leaf.module}":`, err);
             }
         }
-    });y
+    });
 
     saveWorkspaceState();
 }
@@ -548,76 +548,75 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
 }
 
 function attachSplitResizer(resizerEl, splitEl, splitNode, childEl0, childEl1) {
-    let isDragging = false;
-
     resizerEl.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        isDragging = true;
         resizerEl.classList.add('dragging');
         document.body.style.userSelect = 'none';
         document.body.style.cursor = splitNode.dir === 'row' ? 'ew-resize' : 'ns-resize';
-    });
 
-    document.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        const rect = splitEl.getBoundingClientRect();
+        const onMouseMove = (moveEvent) => {
+            const rect = splitEl.getBoundingClientRect();
 
-        if (splitNode.dir === 'row') {
-            const totalW = rect.width;
-            if (totalW <= 100) return;
+            if (splitNode.dir === 'row') {
+                const totalW = rect.width;
+                if (totalW <= 100) return;
 
-            const minW0 = getSubtreeMinWidth(splitNode.children[0]);
-            const minW1 = getSubtreeMinWidth(splitNode.children[1]);
+                const minW0 = getSubtreeMinWidth(splitNode.children[0]);
+                const minW1 = getSubtreeMinWidth(splitNode.children[1]);
 
-            let minRatio = minW0 / totalW;
-            let maxRatio = (totalW - minW1) / totalW;
+                let minRatio = minW0 / totalW;
+                let maxRatio = (totalW - minW1) / totalW;
 
-            if (minRatio > maxRatio) {
-                const sumMin = minW0 + minW1;
-                minRatio = maxRatio = minW0 / (sumMin || 1);
+                if (minRatio > maxRatio) {
+                    const sumMin = minW0 + minW1;
+                    minRatio = maxRatio = minW0 / (sumMin || 1);
+                }
+
+                minRatio = Math.max(0.125, Math.min(0.875, minRatio));
+                maxRatio = Math.max(minRatio, Math.min(0.875, maxRatio));
+
+                const rawRatio = (moveEvent.clientX - rect.left) / totalW;
+                const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
+
+                splitNode.ratio = clampedRatio;
+                childEl0.style.flex = `${clampedRatio} 1 0%`;
+                childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
+            } else {
+                const totalH = rect.height;
+                if (totalH <= 100) return;
+
+                const minH0 = getSubtreeMinHeight(splitNode.children[0]);
+                const minH1 = getSubtreeMinHeight(splitNode.children[1]);
+
+                let minRatio = Math.max(0.15, minH0 / totalH);
+                let maxRatio = Math.min(0.85, (totalH - minH1) / totalH);
+                if (minRatio > maxRatio) minRatio = maxRatio = 0.5;
+
+                const rawRatio = (moveEvent.clientY - rect.top) / totalH;
+                const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
+
+                splitNode.ratio = clampedRatio;
+                childEl0.style.flex = `${clampedRatio} 1 0%`;
+                childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
             }
+        };
 
-            minRatio = Math.max(0.125, Math.min(0.875, minRatio));
-            maxRatio = Math.max(minRatio, Math.min(0.875, maxRatio));
+        const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            resizerEl.classList.remove('dragging');
+            document.body.style.userSelect = '';
+            document.body.style.cursor = '';
+            saveWorkspaceState();
+            if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+            if (activeSlots.includes('money') && typeof drawSteppedChart === 'function') {
+                setTimeout(drawSteppedChart, 15);
+            }
+        };
 
-            const rawRatio = (e.clientX - rect.left) / totalW;
-            const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
-
-            splitNode.ratio = clampedRatio;
-            childEl0.style.flex = `${clampedRatio} 1 0%`;
-            childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
-        } else {
-            const totalH = rect.height;
-            if (totalH <= 100) return;
-
-            const minH0 = getSubtreeMinHeight(splitNode.children[0]);
-            const minH1 = getSubtreeMinHeight(splitNode.children[1]);
-
-            let minRatio = Math.max(0.15, minH0 / totalH);
-            let maxRatio = Math.min(0.85, (totalH - minH1) / totalH);
-            if (minRatio > maxRatio) minRatio = maxRatio = 0.5;
-
-            const rawRatio = (e.clientY - rect.top) / totalH;
-            const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
-
-            splitNode.ratio = clampedRatio;
-            childEl0.style.flex = `${clampedRatio} 1 0%`;
-            childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
-        }
-    });
-
-    document.addEventListener('mouseup', () => {
-        if (!isDragging) return;
-        isDragging = false;
-        resizerEl.classList.remove('dragging');
-        document.body.style.userSelect = '';
-        document.body.style.cursor = '';
-        saveWorkspaceState();
-        if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-        if (activeSlots.includes('money') && typeof drawSteppedChart === 'function') {
-            setTimeout(drawSteppedChart, 15);
-        }
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('mouseup', onMouseUp);
     });
 }
 
@@ -936,6 +935,7 @@ function setQuadrantCount(targetCount) {
 }
 
 function summonModule(modKey) {
+    if (isHudMode) toggleHudMode(false);
     addModuleToTilingLayout(modKey);
 }
 
@@ -1127,4 +1127,197 @@ setInterval(updateGlobalClock, 1000);
 window.addEventListener('DOMContentLoaded', () => {
     updateGlobalClock();
     initDashboard();
+});
+
+// ============================================================================
+// SOVRAPPOSIZIONE DIRETTA MODULI (1 O PIÙ SCHEDE IN SOSTITUZIONE DEL LAYOUT)
+// ============================================================================
+
+function resolveModuleKeyFromText(rawText) {
+    const q = (rawText || '').trim().toLowerCase();
+    if (!q) return null;
+    if (dashboardModules[q]) return q;
+
+    const aliasesMap = {
+        'daily tasks': 'tasks',
+        'daily': 'tasks',
+        'task': 'tasks',
+        'note': 'notes',
+        'weekly planner': 'planner',
+        'week': 'planner',
+        'monthly calendar': 'calendar',
+        'cal': 'calendar',
+        'diet & macros': 'diet',
+        'macros': 'diet',
+        'gym split': 'gym',
+        'workout': 'gym',
+        'palestra': 'gym',
+        'today & streak': 'streak',
+        'consistency': 'streak',
+        'university': 'uni'
+    };
+    if (aliasesMap[q]) return aliasesMap[q];
+
+    for (const k of ALL_MODULE_KEYS) {
+        const nameLower = dashboardModules[k].name.toLowerCase();
+        if (k.startsWith(q) || nameLower === q || nameLower.startsWith(q)) {
+            return k;
+        }
+    }
+    return null;
+}
+
+// Sostituisce completamente il layout attuale con l'elenco di moduli scelto (es. ['notes', 'tasks'])
+function setModulesView(modKeysArray) {
+    const validMods = [];
+    (modKeysArray || []).forEach(k => {
+        const resolved = dashboardModules[k] ? k : resolveModuleKeyFromText(k);
+        if (resolved && !validMods.includes(resolved)) {
+            validMods.push(resolved);
+        }
+    });
+
+    if (validMods.length === 0) return false;
+
+    if (isHudMode) {
+        toggleHudMode(false);
+    }
+
+    const buildBalancedSubtree = (keys, depth = 0) => {
+        if (keys.length === 1) return makePaneNode(keys[0]);
+        if (keys.length === 2) {
+            const dir = (depth % 2 === 0) ? 'row' : 'col';
+            const ratio = dir === 'row' ? getOptimalInitialRatio(keys[0], keys[1]) : 0.5;
+            return makeSplitNode(dir, ratio, makePaneNode(keys[0]), makePaneNode(keys[1]));
+        }
+        const mid = Math.ceil(keys.length / 2);
+        const leftKeys = keys.slice(0, mid);
+        const rightKeys = keys.slice(mid);
+        const dir = (depth % 2 === 0) ? 'row' : 'col';
+        const ratio = leftKeys.length / keys.length;
+        return makeSplitNode(dir, ratio, buildBalancedSubtree(leftKeys, depth + 1), buildBalancedSubtree(rightKeys, depth + 1));
+    };
+
+    layoutTree = buildBalancedSubtree(validMods, 0);
+    renderQuadrantLayout();
+
+    if (typeof showToast === 'function') {
+        const names = validMods.map(k => dashboardModules[k].name).join(' + ');
+        showToast(`[VIEW] ${names}`);
+    }
+    return true;
+}
+
+// ============================================================================
+// MODALITÀ HUD TOP-BAR (56px ALWAYS-ON-TOP + AUTO-ESPANSIONE POPUP/TERMINALE)
+// ============================================================================
+
+let isHudMode = false;
+let isHudTempExpanded = false;
+let savedNormalWindowSize = { width: 1100, height: 620 };
+
+async function applyTauriWindowGeometry(width, height, alwaysOnTop = null) {
+    try {
+        const tauriObj = window.__TAURI__;
+        if (!tauriObj || !tauriObj.window) return;
+        const appWin = typeof tauriObj.window.getCurrentWindow === 'function'
+            ? tauriObj.window.getCurrentWindow()
+            : null;
+        if (!appWin) return;
+
+        if (alwaysOnTop !== null && typeof appWin.setAlwaysOnTop === 'function') {
+            await appWin.setAlwaysOnTop(Boolean(alwaysOnTop));
+        }
+
+        if (typeof appWin.setSize === 'function') {
+            const LogicalSizeCtor = (tauriObj.dpi && tauriObj.dpi.LogicalSize)
+                || (tauriObj.window && tauriObj.window.LogicalSize);
+            if (LogicalSizeCtor) {
+                await appWin.setSize(new LogicalSizeCtor(Math.round(width), Math.round(height)));
+            } else {
+                await appWin.setSize({ type: 'Logical', width: Math.round(width), height: Math.round(height) });
+            }
+        }
+    } catch (err) {
+        console.warn('[HUD MODE] Tauri window resize warning:', err);
+    }
+}
+
+async function toggleHudMode(forceState = null) {
+    const nextState = forceState !== null ? Boolean(forceState) : !isHudMode;
+
+    if (nextState && !isHudMode) {
+        // Salva le dimensioni normali correnti prima di collassare a 56px
+        if (window.innerHeight > 120) {
+            savedNormalWindowSize = {
+                width: Math.max(600, window.innerWidth || 1100),
+                height: Math.max(400, window.innerHeight || 620)
+            };
+        }
+        isHudMode = true;
+        isHudTempExpanded = false;
+        document.body.classList.add('hud-mode');
+        document.body.classList.remove('hud-temp-expanded');
+        await applyTauriWindowGeometry(savedNormalWindowSize.width, 56, true);
+    } else if (!nextState && isHudMode) {
+        isHudMode = false;
+        isHudTempExpanded = false;
+        document.body.classList.remove('hud-mode', 'hud-temp-expanded');
+        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, false);
+    }
+
+    const hudBtn = document.getElementById('btn-hud-mode');
+    if (hudBtn) {
+        hudBtn.textContent = isHudMode ? '[HUD: ON]' : '[HUD]';
+        hudBtn.classList.toggle('btn-primary', isHudMode);
+    }
+
+    if (typeof showToast === 'function' && !isHudMode) {
+        showToast('[HUD] Full Workspace Restored');
+    }
+}
+
+// Espande temporaneamente la finestra Tauri quando si apre la barra comandi o un modale in modalità HUD
+async function setHudTemporaryExpansion(shouldExpand) {
+    if (!isHudMode) return;
+    if (shouldExpand && !isHudTempExpanded) {
+        isHudTempExpanded = true;
+        document.body.classList.add('hud-temp-expanded');
+        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, true);
+    } else if (!shouldExpand && isHudTempExpanded) {
+        isHudTempExpanded = false;
+        document.body.classList.remove('hud-temp-expanded');
+        await applyTauriWindowGeometry(savedNormalWindowSize.width, 56, true);
+    }
+}
+
+// Scorciatoie Globali per HUD (Alt+H) e Quick-Switcher (V)
+document.addEventListener('keydown', (e) => {
+    if (e.altKey && (e.key === 'h' || e.key === 'H')) {
+        e.preventDefault();
+        toggleHudMode();
+        return;
+    }
+
+    const activeTag = document.activeElement ? document.activeElement.tagName : '';
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || (document.activeElement && document.activeElement.isContentEditable)) return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+    const termOverlay = document.getElementById('terminalOverlay');
+    if (termOverlay && termOverlay.classList.contains('show')) return;
+
+    const qsModal = document.getElementById('quickSwitcherModal');
+    if (qsModal && qsModal.style.display === 'flex' && (e.key === 'v' || e.key === 'V')) {
+        e.preventDefault();
+        closeModals();
+        return;
+    }
+
+    const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+    if (anyModalOpen) return;
+
+    if (e.key === 'v' || e.key === 'V') {
+        e.preventDefault();
+        if (typeof openQuickSwitcherModal === 'function') openQuickSwitcherModal();
+    }
 });

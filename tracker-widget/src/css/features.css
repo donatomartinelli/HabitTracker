@@ -954,3 +954,49 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     padding-bottom: 0;
 }
 
+/* --- NOTES BATCH BAR, SELECTION, MOVE DROPDOWN & INLINE SPLIT TOOLBAR --- */
+.note-batch-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 7px 12px;
+    background: #070707;
+    border: 1px solid var(--text-main);
+    gap: 10px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+
+.note-card.is-selected {
+    border-color: var(--text-main);
+    background: rgba(255, 255, 255, 0.055);
+}
+
+.note-move-select {
+    background: transparent;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+    font-size: var(--font-xs);
+    padding: 3px 6px;
+    cursor: pointer;
+    text-transform: uppercase;
+    outline: none;
+}
+
+.note-move-select:hover,
+.note-move-select:focus {
+    border-color: var(--text-main);
+    color: var(--text-main);
+}
+
+.note-inline-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 8px;
+    background: #080808;
+    border: 1px solid var(--border-bright);
+    border-bottom: none;
+    gap: 8px;
+    flex-wrap: wrap;
+}

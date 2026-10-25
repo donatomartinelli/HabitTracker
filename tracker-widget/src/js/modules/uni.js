@@ -912,7 +912,7 @@ function renderUniSubAppealsAndTaxes(container) {
         appListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NESSUN APPELLO IN PROGRAMMA ]</div>';
     } else {
         sortedAppeals.forEach(app => {
-            const diffDays = Math.ceil((new Date(app.date) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
+            const diffDays = Math.ceil((parseLocalDate(app.date) - parseLocalDate(todayStr)) / (1000 * 60 * 60 * 24));
             const cdLabel = diffDays === 0 ? 'TODAY!' : (diffDays > 0 ? `IN ${diffDays} DAYS` : `${Math.abs(diffDays)}D AGO`);
 
             const row = document.createElement('div');
@@ -948,7 +948,7 @@ function renderUniSubAppealsAndTaxes(container) {
         taxListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NESSUNA TASSA REGISTRATA ]</div>';
     } else {
         sortedTaxes.forEach(tax => {
-            const diffDays = Math.ceil((new Date(tax.dueDate) - new Date(todayStr)) / (1000 * 60 * 60 * 24));
+            const diffDays = Math.ceil((parseLocalDate(tax.dueDate) - parseLocalDate(todayStr)) / (1000 * 60 * 60 * 24));
             const statusBadge = tax.paid
                 ? '<span style="color:var(--accent-green); font-weight:bold;">[PAGATA ✓]</span>'
                 : `<span style="color:var(--accent-red); font-weight:bold;">[SCADE: ${tax.dueDate} (${diffDays >= 0 ? diffDays + 'g' : 'SCADUTA'})]</span>`;

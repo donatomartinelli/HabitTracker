@@ -29,7 +29,7 @@ function getTaskDurationMinutes(t, dateStr = selectedDateStr) {
     if (!t || t.type === 'medicine' || t.noTimer) return 0;
 
     if (t.type === 'timed' && t.timeWindows && t.timeWindows.length > 0) {
-        const dayIdx = new Date(dateStr).getDay();
+        const dayIdx = parseLocalDate(dateStr).getDay();
         const matchingTw = t.timeWindows.find(w => w.days && w.days.includes(dayIdx)) || t.timeWindows[0];
         if (matchingTw && matchingTw.start && matchingTw.end) {
             const [sh, sm] = matchingTw.start.split(':').map(Number);

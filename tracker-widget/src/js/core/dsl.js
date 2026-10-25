@@ -48,7 +48,7 @@ function jumpToDate(dateStr) {
 }
 
 function shiftSelectedDate(daysOffset) {
-    const d = new Date(selectedDateStr);
+    const d = parseLocalDate(selectedDateStr);
     d.setDate(d.getDate() + daysOffset);
     jumpToDate(formatDate(d));
 }
@@ -58,6 +58,7 @@ function shiftSelectedDate(daysOffset) {
 // ============================================================================
 
 const DSL_COMMAND_SPECS = [
+    { verb: 'hud', syntax: 'hud [on|off]', fill: 'hud', desc: 'Toggle 56px Always-on-Top HUD Top-Bar (Shortcut: Alt+H)' },
     { verb: 'uni', syntax: 'uni [roadmap|lectures|appeals|libretto|info]', fill: 'uni', desc: 'Summon University module or switch its internal sub-modules' },
     { verb: 'esame', syntax: 'esame [Nome] [Voto 18-30L] [CFU]', fill: 'esame ', desc: 'Record passed exam in Libretto & archive its study tasks' },
     { verb: 'tassa', syntax: 'tassa [Importo] [YYYY-MM-DD] [Nome]', fill: 'tassa ', desc: 'Add University tax (Red Calendar event + Tasse Uni category)' },
@@ -101,20 +102,73 @@ function getContextualSuggestions(rawInput) {
     const activeSeg = segments[segments.length - 1].trimStart();
     if (!activeSeg) return [];
 
+    // Supporto combinazione multi-scheda con "+" o Shift+ArrowUp (es. "notes + daily tasks")
+    if (activeSeg.includes('+')) {
+        const plusParts = activeSeg.split('+');
+        const completedMods = plusParts.slice(0, -1).map(s => s.trim()).filter(Boolean);
+        const currentModQuery = plusParts[plusParts.length - 1].trim().toLowerCase();
+        const completedKeys = completedMods.map(m => typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(m) : m).filter(Boolean);
+        const prefixPlus = prefixBeforeLast + completedMods.join(' + ') + ' + ';
+
+        return Object.keys(dashboardModules)
+            .filter(k => !completedKeys.includes(k) && (!currentModQuery || k.startsWith(currentModQuery) || dashboardModules[k].name.toLowerCase().includes(currentModQuery)))
+            .map(k => ({
+                display: `${completedMods.join(' + ')} + ${dashboardModules[k].name.toLowerCase()}`,
+                desc: `[MULTI-VIEW] Add [${dashboardModules[k].name}] (Shift+↑ to add another · Enter to open)`,
+                fillValue: `${prefixPlus}${k}`,
+                isModuleSuggestion: true,
+                moduleKey: k
+            }));
+    }
+
     const parts = activeSeg.split(/\s+/);
     const cmd = parts[0].toLowerCase();
     const hasSpaceAfterCmd = activeSeg.length > parts[0].length;
     const rest = activeSeg.slice(parts[0].length).trimStart();
+    const fullQueryLower = activeSeg.trim().toLowerCase();
+
+    // Suggerimenti diretti per Moduli anche multi-parola (es. "daily tasks", "weekly planner")
+    const matchingDirectModules = Object.keys(dashboardModules)
+        .filter(k => k.startsWith(fullQueryLower) || dashboardModules[k].name.toLowerCase().startsWith(fullQueryLower) || dashboardModules[k].name.toLowerCase().includes(fullQueryLower))
+        .map(k => ({
+            display: `${dashboardModules[k].name.toLowerCase()} (${k})`,
+            desc: `[OPEN VIEW] Replace screen with ${dashboardModules[k].name} (Shift+↑ to combine with another)`,
+            fillValue: prefixBeforeLast + k,
+            isModuleSuggestion: true,
+            moduleKey: k
+        }));
 
     if (!hasSpaceAfterCmd) {
-        return DSL_COMMAND_SPECS
+        const customAliasMatches = Object.entries(typeof customAliases !== 'undefined' ? customAliases : {})
+            .filter(([aliasName]) => aliasName.toLowerCase().startsWith(cmd))
+            .map(([aliasName, macroStr]) => ({
+                display: `${aliasName} [ALIAS]`,
+                desc: `Macro -> ${macroStr}`,
+                fillValue: prefixBeforeLast + aliasName
+            }));
+
+        const savedPresetMatches = (typeof workspacePresets !== 'undefined' ? workspacePresets : [])
+            .filter(p => p.name.toLowerCase().startsWith(cmd))
+            .map(p => ({
+                display: `${p.name.toLowerCase()} [SAVED VIEW]`,
+                desc: `Load saved workspace view "${p.name}"`,
+                fillValue: prefixBeforeLast + p.name.toLowerCase()
+            }));
+
+        const stdMatches = DSL_COMMAND_SPECS
             .filter(s => s.verb.startsWith(cmd) || s.syntax.toLowerCase().startsWith(cmd))
-            .slice(0, 8)
             .map(s => ({
                 display: s.syntax,
                 desc: s.desc,
                 fillValue: prefixBeforeLast + s.fill
             }));
+
+        return [...customAliasMatches, ...savedPresetMatches, ...matchingDirectModules, ...stdMatches].slice(0, 9);
+    }
+
+    // Se ha scritto più parole (es. "daily tasks") che matchano il nome di un modulo o di una vista salvata
+    if (matchingDirectModules.length > 0 && !DSL_COMMAND_SPECS.some(s => s.verb === cmd)) {
+        return matchingDirectModules;
     }
 
     // Autocompletamento per `uni ` -> Sotto-moduli e viste di #module-uni
@@ -303,11 +357,37 @@ function getCommandPreview(raw) {
     }
     if (str === '?' || str.toLowerCase() === 'help') return 'Open Cortex DSL Manual & Shortcuts';
 
+    const lowerStr = str.toLowerCase();
+
+    // 1. Check Custom Alias
+    if (typeof customAliases !== 'undefined' && customAliases[lowerStr]) {
+        return `[CUSTOM ALIAS "${lowerStr.toUpperCase()}"] Runs: ${customAliases[lowerStr]}`;
+    }
+
+    // 2. Check Saved Workspace Preset diretto
+    if (typeof workspacePresets !== 'undefined') {
+        const matchedPreset = workspacePresets.find(p => p.name.toLowerCase() === lowerStr);
+        if (matchedPreset) {
+            return `[SAVED VIEW] Replace workspace with preset "${matchedPreset.name}"`;
+        }
+    }
+
+    // 3. Check Multi-Modulo ("notes + daily tasks") o Modulo Singolo diretto ("notes", "daily tasks")
+    if (str.includes('+') || (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(str) && lowerStr !== 'uni' && lowerStr !== 'gym' && lowerStr !== 'diet' && lowerStr !== 'money')) {
+        const modParts = str.split('+').map(s => s.trim()).filter(Boolean);
+        const resolved = modParts.map(m => typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(m) : null);
+        if (resolved.length > 0 && resolved.every(Boolean)) {
+            const names = resolved.map(k => dashboardModules[k].name).join(' + ');
+            return `[VIEW REPLACE] Open ${names} (Press Shift+↑ to stack another module)`;
+        }
+    }
+
     const parts = str.split(/\s+/);
     const cmd = parts[0].toLowerCase();
     const rest = str.slice(parts[0].length).trim();
 
     switch (cmd) {
+        case 'hud': return '[WINDOW] Toggle 56px Always-on-Top HUD Bar (Alt+H)';
         case 'uni':
             if (rest.toLowerCase() === 'info') return `[INSPECT UNI] Show instant Career Averages, CFU & Appeals summary`;
             return `[UNIVERSITY] Summon #module-uni ${rest ? '(Sub-module: ' + rest.toUpperCase() + ')' : ''}`;
@@ -513,7 +593,7 @@ function renderInstantUniSummary() {
 }
 
 function renderInstantDietSummary(targetDateStr) {
-    const dObj = new Date(targetDateStr);
+    const dObj = parseLocalDate(targetDateStr);
     const dayIdx = dObj.getDay();
     const dayNames = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
     const totals = typeof calculateDayMacros === 'function' ? calculateDayMacros(dayIdx) : { kcal: 0, p: 0, c: 0, f: 0 };
@@ -575,7 +655,7 @@ function renderInstantGymSummary() {
 }
 
 function renderInstantScheduleSummary(targetDateStr) {
-    const dayIdx = new Date(targetDateStr).getDay();
+    const dayIdx = parseLocalDate(targetDateStr).getDay();
     const prio = dailyPriorities[targetDateStr] || '';
     const activeTasks = templates.filter(t => isTaskActiveOnDate(t, targetDateStr));
     const dayEvents = specificEvents.filter(e => e.date === targetDateStr);
@@ -685,6 +765,42 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
+    const lowerStr = str.toLowerCase();
+
+    // 1. Esecuzione Custom Alias
+    if (typeof customAliases !== 'undefined' && customAliases[lowerStr]) {
+        const subCmds = customAliases[lowerStr].split(';').map(s => s.trim()).filter(Boolean);
+        let okCount = 0;
+        subCmds.forEach(sc => {
+            if (executeTerminalCommand(sc)) okCount++;
+        });
+        if (typeof showToast === 'function') {
+            showToast(`[ALIAS: ${lowerStr.toUpperCase()}] Executed ${okCount} command(s)`);
+        }
+        return okCount > 0;
+    }
+
+    // 2. Apertura diretta Vista Salvata (es. digitando il nome del preset)
+    if (typeof workspacePresets !== 'undefined') {
+        const matchedPreset = workspacePresets.find(p => p.name.toLowerCase() === lowerStr);
+        if (matchedPreset && typeof applyWorkspacePreset === 'function') {
+            if (typeof isHudMode !== 'undefined' && isHudMode && typeof toggleHudMode === 'function') {
+                toggleHudMode(false);
+            }
+            applyWorkspacePreset(matchedPreset.id);
+            return true;
+        }
+    }
+
+    // 3. Apertura e Sovrapposizione Modulo Singolo o Multi-Modulo con "+" (es. "notes + daily tasks" o "tasks")
+    if (str.includes('+') || (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(str) && !['uni', 'gym', 'diet', 'money', 'bal'].includes(lowerStr))) {
+        const modTokens = str.split('+').map(s => s.trim()).filter(Boolean);
+        const resolvedKeys = modTokens.map(m => typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(m) : null);
+        if (resolvedKeys.length > 0 && resolvedKeys.every(Boolean)) {
+            return setModulesView(resolvedKeys);
+        }
+    }
+
     const parts = str.split(/\s+/);
     const cmd = parts[0].toLowerCase();
     const rest = str.slice(parts[0].length).trim();
@@ -726,6 +842,17 @@ function executeTerminalCommand(raw) {
         if (typeof closeTerminal === 'function') closeTerminal();
         if (typeof openGymWorkoutReviewModal === 'function') {
             openGymWorkoutReviewModal(selectedDateStr, nextWorkoutDay);
+            return true;
+        }
+        return false;
+    }
+
+    if (cmd === 'hud') {
+        if (typeof closeTerminal === 'function') closeTerminal();
+        if (typeof toggleHudMode === 'function') {
+            if (rest.toLowerCase() === 'on') toggleHudMode(true);
+            else if (rest.toLowerCase() === 'off') toggleHudMode(false);
+            else toggleHudMode();
             return true;
         }
         return false;
@@ -970,7 +1097,7 @@ function executeTerminalCommand(raw) {
         const finalTitle = titleTokens.join(' ').trim();
         if (!finalTitle) return false;
 
-        const dayIdx = new Date(targetDate).getDay();
+        const dayIdx = parseLocalDate(targetDate).getDay();
         const catName = 'General To-Do';
         if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
 
@@ -1070,16 +1197,6 @@ function executeTerminalCommand(raw) {
             return true;
         }
         if (typeof showToast === 'function') showToast(`[FOCUS] No active timed task matching "${rest}"`);
-        return false;
-    }
-
-    if (cmd === 'workout' || (cmd === 'gym' && rest.toLowerCase() === 'done')) {
-        if (typeof completeWorkout === 'function') {
-            const completedDay = nextWorkoutDay;
-            completeWorkout(completedDay);
-            if (typeof showToast === 'function') showToast(`[GYM] Workout Day ${completedDay} completed!`);
-            return true;
-        }
         return false;
     }
 

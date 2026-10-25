@@ -39,14 +39,11 @@ function processRecurringPayments() {
     today.setHours(0, 0, 0, 0);
     let madeChanges = false;
 
-    mRecurring.forEach(rec => {
-        let lastProc = rec.lastProcessed ? new Date(rec.lastProcessed) : new Date(rec.startDate);
-        lastProc.setHours(0, 0, 0, 0);
 
-        let startD = new Date(rec.startDate);
-        startD.setHours(0, 0, 0, 0);
-        let endD = rec.endDate ? new Date(rec.endDate) : new Date("2099-12-31");
-        endD.setHours(0, 0, 0, 0);
+    mRecurring.forEach(rec => {
+      let lastProc = rec.lastProcessed ? parseLocalDate(rec.lastProcessed) : parseLocalDate(rec.startDate);
+      let startD = parseLocalDate(rec.startDate);
+      let endD = rec.endDate ? parseLocalDate(rec.endDate) : parseLocalDate("2099-12-31");
 
         if (today >= startD && today <= endD) {
             let checkDate = new Date(lastProc);

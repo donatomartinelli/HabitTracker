@@ -23,6 +23,7 @@ function showToast(msg) {
 
 // Apertura ed espansione fluida della barra al centro-alto
 function openTerminal() {
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
     isAskBarExpanded = true;
     const container = document.getElementById('ask-bar-container');
     const backdrop = document.getElementById('terminalOverlay');
@@ -59,6 +60,11 @@ function closeTerminal() {
     if (answerBox) {
         answerBox.style.display = 'none';
         answerBox.innerHTML = '';
+    }
+
+    if (typeof setHudTemporaryExpansion === 'function') {
+    const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+    if (!anyModalOpen) setHudTemporaryExpansion(false);
     }
 }
 
@@ -262,10 +268,15 @@ function confirmStagingCommands() {
         if (executeTerminalCommand(cmd)) executedCount++;
     });
 
+    const answerBox = document.getElementById('terminal-ai-answer');
+    const hasInspectionCardOpen = shouldKeepBarOpen || (answerBox && answerBox.style.display === 'block');
+    const anyModalNowOpen = openedModal || Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+
     cancelStaging();
-    if (!shouldKeepBarOpen && !openedModal) {
+    if (!hasInspectionCardOpen && !anyModalNowOpen) {
         closeTerminal();
     }
+
     if (executedCount > 0) {
         showToast(`[EXECUTED] ${executedCount} command(s) completed`);
     }
@@ -323,6 +334,31 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            // SHIFT + FRECCIA SU -> Impila/Combina più schede (es. "notes" -> Shift+Up -> "notes + ")
+            if (e.key === 'ArrowUp' && e.shiftKey) {
+                e.preventDefault();
+                const currentRaw = termInput.value;
+                const parts = currentRaw.split('+');
+                const lastToken = parts[parts.length - 1].trim();
+
+                let resolvedMod = null;
+                if (activeSuggestions.length > 0 && activeSuggestions[selectedSuggestionIdx] && activeSuggestions[selectedSuggestionIdx].moduleKey) {
+                    resolvedMod = activeSuggestions[selectedSuggestionIdx].moduleKey;
+                } else if (typeof resolveModuleKeyFromText === 'function') {
+                    resolvedMod = resolveModuleKeyFromText(lastToken);
+                }
+
+                if (resolvedMod) {
+                    const prevMods = parts.slice(0, -1).map(s => s.trim()).filter(Boolean);
+                    if (!prevMods.includes(resolvedMod)) prevMods.push(resolvedMod);
+                    termInput.value = prevMods.join(' + ') + ' + ';
+                    selectedSuggestionIdx = 0;
+                    updateLivePreviewAndSuggestions();
+                    showToast(`[STACK VIEW] Added "${dashboardModules[resolvedMod].name}". Type next module!`);
+                }
+                return;
+            }
+
             if (e.key === 'ArrowUp') {
                 if (activeSuggestions.length > 0) {
                     e.preventDefault();
@@ -365,6 +401,20 @@ window.addEventListener('DOMContentLoaded', () => {
                 historyIndex = commandHistory.length;
 
                 // Se ha premuto Shift+Enter oppure ha scritto più comandi separati da ';' -> impila nella Staging Area
+                const matchedAliasMacro = (typeof customAliases !== 'undefined' && customAliases[rawVal.toLowerCase()])
+                    ? customAliases[rawVal.toLowerCase()]
+                    : null;
+
+                // Se ha premuto Shift+Enter su un Alias -> esplode i comandi dell'alias nella Staging Area
+                if (e.shiftKey && matchedAliasMacro) {
+                    const aliasParts = matchedAliasMacro.split(';').map(s => s.trim()).filter(Boolean);
+                    pushCommandsToStaging(aliasParts);
+                    termInput.value = '';
+                    hideSuggestionsAndPreview();
+                    return;
+                }
+
+                // Se ha premuto Shift+Enter oppure ha scritto più comandi separati da ';' -> impila nella Staging Area
                 if (e.shiftKey || rawVal.includes(';')) {
                     const parts = rawVal.split(';').map(s => s.trim()).filter(Boolean);
                     pushCommandsToStaging(parts);
@@ -388,12 +438,25 @@ window.addEventListener('DOMContentLoaded', () => {
                 const modalCommands = ['?', 'help', 'plan', 'ledger', 'stats', 'food', 'macros', 'vault', 'settings', 'cfg'];
 
                 const ok = executeTerminalCommand(rawVal);
+                const answerBox = document.getElementById('terminal-ai-answer');
+                const hasInspectionCardOpen = isInspection || (answerBox && answerBox.style.display === 'block');
+                const anyModalNowOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+
                 if (ok) {
-                    if (isInspection) {
+                    if (hasInspectionCardOpen) {
                         termInput.select();
                         hideSuggestionsAndPreview();
-                    } else if (!modalCommands.includes(firstWord)) {
+                    } else if (!modalCommands.includes(firstWord) && !anyModalNowOpen) {
                         closeTerminal();
+                    } else if (anyModalNowOpen) {
+                        isAskBarExpanded = false;
+                        const container = document.getElementById('ask-bar-container');
+                        const backdrop = document.getElementById('terminalOverlay');
+                        if (container) container.classList.remove('expanded');
+                        if (backdrop) backdrop.classList.remove('show');
+                        termInput.value = '';
+                        termInput.blur();
+                        hideSuggestionsAndPreview();
                     }
                 } else {
                     showToast(`Invalid syntax or unknown command "${firstWord}". Press ? for manual.`);

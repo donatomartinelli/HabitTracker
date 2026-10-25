@@ -119,8 +119,9 @@ const ALL_STORAGE_KEYS = [
     'tracker_gym_next', 'tracker_gym_weights', 'gym_start_date', 'gym_end_date',
     'tracker_diet_data', 'tracker_diet_rules', 'tracker_gym_plan', 'tracker_gym_routine', 'tracker_food_db', 'tracker_body_logs',
     'tracker_uni_data',
-    'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio',
-    'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view'
+    'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio', 'tracker_extracted_notes',
+    'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view',
+    'tracker_custom_aliases'
 ];
 
 function safeJsonParse(rawStr, fallbackVal) {
@@ -290,7 +291,7 @@ function migrateAndInitData() {
         'tracker_templates': [],
         'tracker_logs': {},
         'tracker_events': [],
-        'tracker_note_cats': ["General", "Registrazioni", "Productivity", "Math", "Ideas"],
+        'tracker_note_cats': ["General", "Registrazioni", "Extracted", "Productivity", "Math", "Ideas"],
         'tracker_notes': {},
         'tracker_category_order': [],
         'tracker_references': [],
@@ -324,7 +325,8 @@ function migrateAndInitData() {
         'tracker_opacity': "0.92",
         'tracker_layout_tree': DEFAULT_LAYOUT_TREE,
         'tracker_workspace_presets': [],
-        'tracker_startup_view': 'last'
+        'tracker_startup_view': 'last',
+        'tracker_custom_aliases': {}
     };
 
     for (let key in defaults) {
@@ -389,6 +391,13 @@ let savedOpacity = localStorage.getItem('tracker_opacity') || '0.92';
 let layoutTree = safeJsonParse(localStorage.getItem('tracker_layout_tree'), DEFAULT_LAYOUT_TREE);
 let workspacePresets = safeJsonParse(localStorage.getItem('tracker_workspace_presets'), []);
 let startupView = localStorage.getItem('tracker_startup_view') || 'last';
+let customAliases = safeJsonParse(localStorage.getItem('tracker_custom_aliases'), {});
+
+function saveCustomAliases() {
+    persistKeysMap({
+        'tracker_custom_aliases': customAliases
+    });
+}
 
 let activeSlots = ['tasks', 'planner'];
 let activeLeft = 'tasks';
@@ -474,24 +483,19 @@ function saveGeminiAudioKey(val) {
 // ============================================================================
 
 function mergeNotesObjectsNonDestructive(targetNotes, candidateNotes) {
+    // Disabilitato il merge cieco basato sulla lunghezza che resuscitava categorie/note eliminate.
+    // Il recupero avviene solo se il database in memoria è completamente vuoto (primo avvio/reset).
     if (!candidateNotes || typeof candidateNotes !== 'object') return false;
-    let recoveredAny = false;
+    if (Object.keys(targetNotes).length > 0) return false;
 
+    let recoveredAny = false;
     for (const [cat, text] of Object.entries(candidateNotes)) {
         if (!text || typeof text !== 'string' || !text.trim()) continue;
-        const currentText = (targetNotes[cat] || '').trim();
-
-        if (!currentText) {
-            targetNotes[cat] = text;
-            recoveredAny = true;
-        } else if (text.trim().length > currentText.length && !currentText.includes(text.trim())) {
-            // Conserva la versione più ricca/completa senza perdere eventuali aggiunte recenti
-            targetNotes[cat] = text;
-            recoveredAny = true;
-        }
+        targetNotes[cat] = text;
         if (!noteCategories.includes(cat)) {
             noteCategories.push(cat);
         }
+        recoveredAny = true;
     }
     return recoveredAny;
 }
@@ -501,22 +505,29 @@ async function bootHydrateAndRecoverDatabase() {
         const idbData = await idbReadAll();
         const diskData = await readTauriDiskDatabase();
 
-        let notesRecovered = false;
         let stateUpdated = false;
+        const hasLocalNotes = Object.keys(notesContent).some(k => notesContent[k] && notesContent[k].trim().length > 0);
 
-        // 1. Unione intelligente e recupero di tutte le Note e Registrazioni da IndexedDB e da Tauri Disk
         for (const source of [idbData, diskData]) {
             if (!source || typeof source !== 'object') continue;
 
-            const candidateNotes = typeof source['tracker_notes'] === 'string'
-                ? safeJsonParse(source['tracker_notes'], null)
-                : source['tracker_notes'];
-
-            if (mergeNotesObjectsNonDestructive(notesContent, candidateNotes)) {
-                notesRecovered = true;
+            // Ripristina le note da IndexedDB/Disco SOLO se lo stato locale è completamente vuoto
+            if (!hasLocalNotes && Object.keys(notesContent).length === 0 && source['tracker_notes']) {
+                const candidateNotes = typeof source['tracker_notes'] === 'string'
+                    ? safeJsonParse(source['tracker_notes'], null)
+                    : source['tracker_notes'];
+                if (candidateNotes && typeof candidateNotes === 'object' && Object.keys(candidateNotes).length > 0) {
+                    notesContent = candidateNotes;
+                    if (source['tracker_note_cats']) {
+                        const candCats = typeof source['tracker_note_cats'] === 'string'
+                            ? safeJsonParse(source['tracker_note_cats'], null)
+                            : source['tracker_note_cats'];
+                        if (Array.isArray(candCats) && candCats.length > 0) noteCategories = candCats;
+                    }
+                    stateUpdated = true;
+                }
             }
 
-            // Se templates o logs in memoria erano vuoti ma esistono su disco/IndexedDB, li ripristina
             if (templates.length === 0 && source['tracker_templates']) {
                 const candTemplates = typeof source['tracker_templates'] === 'string'
                     ? safeJsonParse(source['tracker_templates'], [])
@@ -547,23 +558,36 @@ async function bootHydrateAndRecoverDatabase() {
                     stateUpdated = true;
                 }
             }
+
+            if (typeof customAliases !== 'undefined' && Object.keys(customAliases).length === 0 && source['tracker_custom_aliases']) {
+                const candAliases = typeof source['tracker_custom_aliases'] === 'string'
+                    ? safeJsonParse(source['tracker_custom_aliases'], {})
+                    : source['tracker_custom_aliases'];
+                if (candAliases && typeof candAliases === 'object' && Object.keys(candAliases).length > 0) {
+                    customAliases = candAliases;
+                    stateUpdated = true;
+                }
+            }
+        }
+
+        if (!noteCategories.includes('Extracted')) {
+            const regIdx = noteCategories.indexOf('Registrazioni');
+            if (regIdx !== -1) noteCategories.splice(regIdx + 1, 0, 'Extracted');
+            else noteCategories.push('Extracted');
         }
 
         isStorageHydrated = true;
 
-        // Salva lo stato unificato su IndexedDB e Tauri Disk
         saveData();
         saveMoneyData();
         saveHealthData();
         saveUniData();
         saveWorkspaceState();
+        if (typeof saveCustomAliases === 'function') saveCustomAliases();
 
-        if (notesRecovered || stateUpdated) {
+        if (stateUpdated) {
             if (typeof renderNoteCategories === 'function') renderNoteCategories();
             if (typeof renderQuadrantLayout === 'function') renderQuadrantLayout();
-            if (typeof showToast === 'function' && notesRecovered) {
-                showToast('[STORAGE] Note e Registrazioni ripristinate dal database!');
-            }
         }
     } catch (e) {
         isStorageHydrated = true;
@@ -600,6 +624,13 @@ function formatDate(date) {
     return `${y}-${m}-${d}`;
 }
 
+function parseLocalDate(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return getNow();
+    const parts = dateStr.split('-').map(Number);
+    if (parts.length !== 3 || isNaN(parts[0])) return new Date(dateStr);
+    return new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0);
+}
+
 const todayObj = getNow();
 let todayStr = formatDate(todayObj);
 
@@ -629,7 +660,7 @@ function isTaskActiveOnDate(template, dateStr) {
     if (dateStr < template.startDate) return false;
     if (template.endDate && dateStr > template.endDate) return false;
 
-    const dateObj = new Date(dateStr);
+    const dateObj = parseLocalDate(dateStr);
     const dayOfWeek = dateObj.getDay();
 
     if (template.type === 'timed' || (template.timeWindows && template.timeWindows.length > 0)) {
@@ -702,11 +733,13 @@ function buildBackupObject() {
         'tracker_gemini_key': geminiApiKey,
         'tracker_gemini_audio_key': geminiAudioApiKey,
         'tracker_processed_audio': JSON.stringify(processedAudioFiles),
+        'tracker_extracted_notes': localStorage.getItem('tracker_extracted_notes') || '[]',
         'tracker_opacity': savedOpacity,
         'tracker_red_mode': localStorage.getItem('tracker_red_mode') || 'false',
         'tracker_layout_tree': JSON.stringify(layoutTree),
         'tracker_workspace_presets': JSON.stringify(workspacePresets),
-        'tracker_startup_view': startupView
+        'tracker_startup_view': startupView,
+        'tracker_custom_aliases': JSON.stringify(customAliases)
     };
 }
 
@@ -744,6 +777,20 @@ function importData(event) {
                 }
             }
             await idbWriteBatch(batch);
+            const jsonString = JSON.stringify(batch, null, 2);
+            if (window.__TAURI__ && window.__TAURI__.core && window.__TAURI__.core.invoke) {
+                try { await window.__TAURI__.core.invoke('save_atomic_db', { payload: jsonString }); } catch (e) {}
+            }
+            if (window.__TAURI__ && window.__TAURI__.fs && window.__TAURI__.fs.writeTextFile) {
+                try {
+                    const baseDir = window.__TAURI__.fs.BaseDirectory
+                        ? (window.__TAURI__.fs.BaseDirectory.AppData || window.__TAURI__.fs.BaseDirectory.AppLocalData)
+                        : undefined;
+                    const opts = baseDir !== undefined ? { dir: baseDir, baseDir: baseDir } : undefined;
+                    await window.__TAURI__.fs.writeTextFile('cortex_db.json', jsonString, opts);
+                    await window.__TAURI__.fs.writeTextFile('minimal_tracker_db.json', jsonString, opts);
+                } catch (e) {}
+            }
             alert("Backup restored successfully! The app will now reload.");
             location.reload();
         } catch (err) {

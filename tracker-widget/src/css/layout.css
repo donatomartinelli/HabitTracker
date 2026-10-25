@@ -997,3 +997,14 @@ body.layout-edit-mode .quadrant-title-static {
     border-top: 1px dotted #222;
     gap: 10px;
 }
+
+/* --- MODALITÀ HUD TOP-BAR (56PX ALWAYS-ON-TOP) --- */
+body.hud-mode:not(.hud-temp-expanded) #app-content-wrapper,
+body.hud-mode:not(.hud-temp-expanded) #edit-dock-bar {
+    display: none !important;
+}
+
+body.hud-mode .app-header {
+    background: #000000;
+    border-bottom: 1px solid var(--border-bright);
+}
