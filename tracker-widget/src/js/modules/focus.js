@@ -207,6 +207,23 @@ function renderAvailableTasksForFocus() {
         }
     });
 
+    (routinesData || []).forEach(r => {
+        const mins = (!r.noTimer && parseInt(r.timerMinutes, 10) > 0) ? parseInt(r.timerMinutes, 10) : 0;
+        if (mins <= 0) return;
+        if (typeof isRoutineActiveOnDate === 'function' && isRoutineActiveOnDate(r, selectedDateStr)) {
+            const alreadyInPlaylist = focusPlaylist.some(p => p.id === r.id);
+            if (!alreadyInPlaylist) {
+                if (!cats['Routines']) cats['Routines'] = [];
+                cats['Routines'].push({
+                    task: { id: r.id, category: 'Routines', title: r.title, color: r.color || '#b08d43', timerMinutes: mins, noTimer: false },
+                    remaining: 1,
+                    mins: mins
+                });
+                hasTasks = true;
+            }
+        }
+    });
+    
     if (!hasTasks) {
         container.innerHTML = '<span class="empty-state">[ NO TIMED TASKS PENDING FOR SELECTED DATE ]</span>';
         return;

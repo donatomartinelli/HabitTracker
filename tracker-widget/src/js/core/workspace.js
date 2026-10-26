@@ -10,7 +10,7 @@ const dashboardModules = {
         render: () => { if (typeof renderCalendar === 'function') renderCalendar(); }
     },
     'tasks': {
-        name: 'Daily Tasks',
+        name: 'Tasks',
         id: 'module-tasks',
         // Comprimibile fino a 1/8 della larghezza dello schermo
         minW: () => Math.max(155, Math.floor(window.innerWidth * 0.125)),
@@ -1291,7 +1291,7 @@ async function setHudTemporaryExpansion(shouldExpand) {
     }
 }
 
-// Scorciatoie Globali per HUD (Alt+H) e Quick-Switcher (V)
+// Scorciatoie Globali per HUD (H) e Quick-Switcher (V)
 document.addEventListener('keydown', (e) => {
     if (e.altKey && (e.key === 'h' || e.key === 'H')) {
         e.preventDefault();
@@ -1316,7 +1316,10 @@ document.addEventListener('keydown', (e) => {
     const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
     if (anyModalOpen) return;
 
-    if (e.key === 'v' || e.key === 'V') {
+    if (e.key === 'h' || e.key === 'H') {
+        e.preventDefault();
+        toggleHudMode();
+    } else if (e.key === 'v' || e.key === 'V') {
         e.preventDefault();
         if (typeof openQuickSwitcherModal === 'function') openQuickSwitcherModal();
     }

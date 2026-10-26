@@ -1,5 +1,5 @@
 // --- js/modules/planner.js ---
-// Atomic Module 4: Weekly Planner (06:30 - 24:00), Blocchi Proporzionali & Fascia Flessibile Fissa a Fine Giornata
+// Atomic Module 4: Weekly Planner (06:30 - 24:00), 5 Day Phases (4A), Snap-to-Phase Engine (5A) & Proportional Blocks
 
 const PLANNER_START_HOUR = 6.5; // 06:30
 let plannerZoom = 42;
@@ -62,6 +62,148 @@ function timeToPx(timeStr, zoomVal = plannerZoom) {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
     const [h, m] = timeStr.split(':').map(Number);
     return ((h + (m / 60)) - PLANNER_START_HOUR) * zoomVal;
+}
+
+// Restituisce i metadati della Fase del Giorno in base all'orario "HH:MM"
+function getDayPhaseForTime(timeStr) {
+    const mins = timeToMinutes(timeStr);
+    const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
+    for (const ph of phases) {
+        const pStart = timeToMinutes(ph.start);
+        const pEnd = timeToMinutes(ph.end);
+        if (mins >= pStart && mins < pEnd) return ph;
+    }
+    return phases[phases.length - 1] || { id: 'evening', short: 'EVENING', start: '20:00', end: '24:00' };
+}
+
+// 5A. MOTORE SNAP-TO-PHASE: Trova il primo slot libero dentro la Fase scelta in una data specifica
+function findFirstFreeSlotInPhase(dateStr, phaseId, durationMins) {
+    const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
+    const phase = phases.find(p => p.id === phaseId) || phases[0];
+    if (!phase) return '09:00';
+
+    const pStartMins = timeToMinutes(phase.start);
+    const pEndMins = timeToMinutes(phase.end);
+    const dayIdx = parseLocalDate(dateStr).getDay();
+
+    const occupied = [];
+
+    // 1. Task fisse con timeWindows attive in quel giorno
+    templates.forEach(t => {
+        if (t && isTaskActiveOnDate(t, dateStr) && Array.isArray(t.timeWindows)) {
+            t.timeWindows.forEach(tw => {
+                if (tw.days && tw.days.includes(dayIdx)) {
+                    if (plannerExceptions[`${t.id}_${dateStr}_${tw.start}`]) return;
+                    occupied.push({ start: timeToMinutes(tw.start), end: timeToMinutes(tw.end) });
+                }
+            });
+        }
+    });
+
+    // 2. Blocchi ephemeral già piazzati in quella data
+    const customBlocks = Array.isArray(ephemeralData[dateStr]) ? ephemeralData[dateStr] : [];
+    customBlocks.forEach(cb => {
+        occupied.push({ start: timeToMinutes(cb.start), end: timeToMinutes(cb.end) });
+    });
+
+    // 3. Eventi con orario in quella data
+    specificEvents.forEach(e => {
+        if (e && e.date === dateStr && e.start && e.end) {
+            occupied.push({ start: timeToMinutes(e.start), end: timeToMinutes(e.end) });
+        }
+    });
+
+    occupied.sort((a, b) => a.start - b.start);
+
+    // Cerca il primo spazio libero di almeno `durationMins` a step di 5 minuti dentro la fase
+    let candidateStart = pStartMins;
+    while (candidateStart + durationMins <= pEndMins) {
+        const candidateEnd = candidateStart + durationMins;
+        const conflict = occupied.find(iv => candidateStart < iv.end && candidateEnd > iv.start);
+        if (!conflict) {
+            return minutesToTimeStr(candidateStart);
+        }
+        // Salta direttamente alla fine del blocco in conflitto (arrotondato a 5 min)
+        candidateStart = Math.ceil(conflict.end / 5) * 5;
+    }
+
+    // Se la fase è piena ma c'è spazio prima della fine giornata, accoda subito dopo l'ultimo impegno della fase
+    if (candidateStart < 24 * 60 - 10) {
+        return minutesToTimeStr(Math.min(24 * 60 - durationMins, candidateStart));
+    }
+    return phase.start;
+}
+
+// 5A. Piazza automaticamente una Task nella Fase del Giorno scelta (su qualsiasi data: oggi, domani, settimana)
+function scheduleTaskInDayPhase(templateId, dateStr, phaseId, blocksMultiplier = 1) {
+    const t = templates.find(x => x.id === templateId);
+    if (!t) return false;
+
+    const unitMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, dateStr) : (t.timerMinutes || 25);
+    const count = Math.max(1, parseInt(blocksMultiplier, 10) || 1);
+    const totalDurationMins = Math.max(10, (unitMins > 0 ? unitMins : 25) * count);
+
+    const startTimeStr = findFirstFreeSlotInPhase(dateStr, phaseId, totalDurationMins);
+    const startMins = timeToMinutes(startTimeStr);
+    const endMins = Math.min(24 * 60, startMins + totalDurationMins);
+    const finalStartStr = minutesToTimeStr(startMins);
+    const finalEndStr = minutesToTimeStr(endMins);
+
+    if (!Array.isArray(ephemeralData[dateStr])) {
+        ephemeralData[dateStr] = [];
+    }
+
+    const phaseObj = (typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : []).find(p => p.id === phaseId);
+
+    ephemeralData[dateStr].push({
+        id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        templateId: t.id,
+        title: count > 1 ? `${t.title} (${count}x)` : t.title,
+        category: t.category,
+        color: t.color || '#ffffff',
+        start: finalStartStr,
+        end: finalEndStr,
+        minutes: totalDurationMins,
+        blocksUsed: count,
+        phaseId: phaseId
+    });
+
+    saveData();
+    if (typeof renderTasks === 'function') renderTasks();
+    renderWeeklyPlanner();
+    if (typeof renderPlanTomorrowModal === 'function' && document.getElementById('planTomorrowModal')?.style.display === 'flex') {
+        renderPlanTomorrowModal();
+    }
+    if (typeof renderWeeklyPlanModal === 'function' && document.getElementById('weeklyPlanModal')?.style.display === 'flex') {
+        renderWeeklyPlanModal();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(`[${phaseObj ? phaseObj.short : 'PHASE'}] "${t.title}" scheduled at ${finalStartStr}–${finalEndStr} (${dateStr})`);
+    }
+    return true;
+}
+
+// Costruisce le bande visive e i divisori delle 5 Fasi del Giorno su una colonna del Planner o della Timeline
+function appendDayPhaseBandsToColumn(colEl, zoomVal, showPhaseLabels = false) {
+    const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
+    phases.forEach((ph, idx) => {
+        const topPx = (ph.startDec - PLANNER_START_HOUR) * zoomVal;
+        const heightPx = (ph.endDec - ph.startDec) * zoomVal;
+
+        const band = document.createElement('div');
+        band.className = `planner-phase-band ${idx % 2 === 1 ? 'alt' : ''}`;
+        band.style.cssText = `top:${topPx}px; height:${heightPx}px;`;
+
+        if (showPhaseLabels) {
+            const tag = document.createElement('span');
+            tag.className = 'planner-phase-watermark';
+            tag.textContent = `${ph.short} // ${ph.start}–${ph.end}`;
+            band.appendChild(tag);
+        }
+
+        colEl.appendChild(band);
+    });
 }
 
 function computeOverlapColumns(blocks) {
@@ -150,7 +292,6 @@ function renderWeeklyPlanner() {
         timeLabels.innerHTML = '';
         timeLabels.style.height = `${totalGridHeight}px`;
 
-        // Etichetta iniziale 06:30 + tutte le ore piene dalle 07:00 alle 23:00
         const tl630 = document.createElement('div');
         tl630.className = 'time-label';
         tl630.style.top = `0px`;
@@ -164,6 +305,19 @@ function renderWeeklyPlanner() {
             tl.textContent = `${h.toString().padStart(2, '0')}:00`;
             timeLabels.appendChild(tl);
         }
+
+        // 4A. Indicatori verticali delle 5 Fasi nella colonna orari
+        const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
+        phases.forEach(ph => {
+            const midDec = (ph.startDec + ph.endDec) / 2;
+            const midPx = (midDec - PLANNER_START_HOUR) * plannerZoom;
+            const pBadge = document.createElement('div');
+            pBadge.className = 'planner-phase-side-tag';
+            pBadge.style.top = `${midPx}px`;
+            pBadge.title = `${ph.label} (${ph.start} – ${ph.end})`;
+            pBadge.textContent = ph.short.replace('EARLY ', 'E-').replace('LATE ', 'L-').replace('EVENING', 'EVE');
+            timeLabels.appendChild(pBadge);
+        });
 
         headerRow.innerHTML = '';
         grid.innerHTML = '';
@@ -186,7 +340,6 @@ function renderWeeklyPlanner() {
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
-            // Fascia fissa a fine giornata per ogni colonna (mostra le task flessibili non piazzate su orario e gli eventi)
             if (fixedFooter) {
                 const footerCell = document.createElement('div');
                 footerCell.style.cssText = 'flex: 1; border-right: 1px solid var(--border-color); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 0;';
@@ -227,7 +380,9 @@ function renderWeeklyPlanner() {
             dayCol.style.height = `${totalGridHeight}px`;
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
 
-            // Linea 06:30 + linee orarie
+            // 4A. Bande visive e divisori delle 5 Fasi (con watermark sulla prima colonna o sul giorno selezionato)
+            appendDayPhaseBandsToColumn(dayCol, plannerZoom, i === 0 || isToday);
+
             const line630 = document.createElement('div');
             line630.className = 'grid-line-abs';
             line630.style.top = `0px`;
@@ -261,7 +416,7 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            // 2. Blocchi Orari (Task fisse + Blocchi posizionati sulla Timeline del giorno + Eventi con orario)
+            // 2. Blocchi Orari
             const dayBlocks = [];
 
             templates.forEach(t => {
@@ -270,7 +425,7 @@ function renderWeeklyPlanner() {
                         if (tw.days && tw.days.includes(jsDay)) {
                             if (plannerExceptions[`${t.id}_${loopDateStr}_${tw.start}`]) return;
                             const top = timeToPx(tw.start);
-                            const height = Math.max(timeToPx(tw.end) - top, 7); // Proporzionale anche per 10 min
+                            const height = Math.max(timeToPx(tw.end) - top, 7);
                             if (top + height > 0) {
                                 dayBlocks.push({
                                     kind: 'task', id: t.id, title: t.title, category: t.category,
@@ -283,7 +438,30 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            // Blocchi posizionati tramite Plan Tomorrow Timeline per quella data specifica
+            // Routine in modalità Timed (1A: mostra l'intera Routine come blocco unico sul Weekly Planner)
+            (routinesData || []).forEach(r => {
+                if (r && r.type === 'timed' && isRoutineActiveOnDate(r, loopDateStr) && Array.isArray(r.timeWindows)) {
+                    r.timeWindows.forEach(tw => {
+                        if (tw.days && tw.days.includes(jsDay)) {
+                            const top = timeToPx(tw.start);
+                            const height = Math.max(timeToPx(tw.end) - top, 7);
+                            if (top + height > 0) {
+                                dayBlocks.push({
+                                    kind: 'routine',
+                                    id: r.id,
+                                    title: r.title,
+                                    category: 'Routine',
+                                    color: r.color || '#b08d43',
+                                    start: tw.start,
+                                    end: tw.end,
+                                    top, height, bottom: top + height
+                                });
+                            }
+                        }
+                    });
+                }
+            });
+            
             const customDayBlocks = Array.isArray(ephemeralData[loopDateStr]) ? ephemeralData[loopDateStr] : [];
             customDayBlocks.forEach(cb => {
                 const top = timeToPx(cb.start);
@@ -342,7 +520,8 @@ function renderWeeklyPlanner() {
                 bTag.textContent = b.title;
                 block.appendChild(bTag);
 
-                block.onmouseenter = (ev) => showTooltip(ev, b.title, `${b.start} - ${b.end}`, b.category);
+                const phaseMeta = getDayPhaseForTime(b.start);
+                block.onmouseenter = (ev) => showTooltip(ev, b.title, `${b.start} - ${b.end} (${phaseMeta.short})`, b.category);
                 block.onmousemove = moveTooltip;
                 block.onmouseleave = hideTooltip;
 
@@ -546,7 +725,7 @@ function deleteReference(id) {
     document.getElementById('btn-del-single').style.display = 'none';
     document.getElementById('btn-del-future').style.display = 'none';
     closeModals();
-    document.getElementById('deleteModal').style.display = 'flex';
+    document.getElementById('referenceModal').style.display = 'flex';
 }
 
 function toggleReference(id, checked) {

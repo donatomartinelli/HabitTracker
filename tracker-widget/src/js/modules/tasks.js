@@ -1,9 +1,32 @@
 // --- js/modules/tasks.js ---
-// Atomic Module 2: Daily Tasks, Check-Only Routines, Consistency Tracker & 1-Day Interactive Timeline (Plan Tomorrow)
+// Atomic Module 2: Tasks (4 Colonne: Fixed, Flexible, Routines, To-Do), Iniezione Medicine, [TASKS ⚙] con [EDIT] a monte & Plan Tomorrow
 
 let deleteTargetType = '';
 let deleteTargetId = '';
 let tmwTimelineZoom = 46; // 46px per ora nella Timeline di Plan Tomorrow
+
+// Stato per la modalità [EDIT] a monte in [TASKS ⚙] (Scelta 3A)
+let isTasksManagerEditMode = false;
+let selectedManagerCats = new Set();
+let selectedManagerTasks = new Set();
+
+function isSingleDayTodoTemplate(t) {
+    if (!t) return false;
+    return t.category === 'General To-Do' || t.isTodo === true;
+}
+
+// 2B. Nasconde automaticamente in [TASKS ⚙] le To-Do dei giorni passati o già completate
+function shouldShowTaskInSettingsManager(t) {
+    if (!t || t.type === 'medicine') return false;
+    if (isSingleDayTodoTemplate(t)) {
+        if (t.endDate && t.endDate < todayStr) return false;
+        const targetDay = t.startDate || todayStr;
+        const dayLog = (logs[targetDay] && logs[targetDay][t.id]) || [];
+        const isCompleted = dayLog.length >= (t.instances || 1) && dayLog.every(Boolean);
+        if (isCompleted) return false;
+    }
+    return true;
+}
 
 function toggleTask(templateId, instanceIndex) {
     if (!logs[selectedDateStr]) logs[selectedDateStr] = {};
@@ -17,7 +40,7 @@ function toggleTask(templateId, instanceIndex) {
 
     const wasChecked = Boolean(logs[selectedDateStr][templateId][instanceIndex]);
 
-    // PONTE BIDIREZIONALE PALESTRA: se stai spuntando la task "Palestra", apre il modale di revisione pesi/ripetizioni!
+    // PONTE BIDIREZIONALE PALESTRA: se stai spuntando la task "Palestra", apre il modale di revisione pesi/ripetizioni
     if (!wasChecked && typeof isGymRoutineTask === 'function' && isGymRoutineTask(targetTemplate)) {
         if (typeof openGymWorkoutReviewModal === 'function') {
             openGymWorkoutReviewModal(selectedDateStr, nextWorkoutDay);
@@ -35,12 +58,15 @@ function toggleTask(templateId, instanceIndex) {
             targetTemplate.stock = (targetTemplate.stock || 0) + 1;
         }
         recalculateMedicineAlerts(targetTemplate);
+        if (typeof showToast === 'function') {
+            showToast(`[MEDICINE] ${targetTemplate.title}: ${targetTemplate.stock} doses left`);
+        }
     }
 
     saveData();
     renderTasks();
     renderTracker();
-    if (typeof renderMeds === 'function') renderMeds();
+    if (typeof renderCalendar === 'function') renderCalendar();
     if (typeof renderCalendarDaySummary === 'function') renderCalendarDaySummary();
 }
 
@@ -48,7 +74,11 @@ function recalculateMedicineAlerts(t) {
     specificEvents = specificEvents.filter(e => e.parentId !== t.id);
     if (t.stock <= 0) return;
 
-    const daysLeft = Math.floor(t.stock / t.instances);
+    const intervalMult = (t.frequency === 'interval')
+        ? Math.max(1, parseInt(t.intervalDays, 10) || 14)
+        : 1;
+    const daysLeft = Math.floor((t.stock / (t.instances || 1)) * intervalMult);
+
     let runOutDateObj = new Date();
     runOutDateObj.setDate(runOutDateObj.getDate() + daysLeft);
     const runOutDateStr = formatDate(runOutDateObj);
@@ -137,6 +167,10 @@ function quickAddCalendar(event) {
     }
 }
 
+// ============================================================================
+// TOGGLES & HELPERS MODALE CREAZIONE UNIFICATO (HABIT, ROUTINE, EVENT, MEDICINE)
+// ============================================================================
+
 function toggleTaskTimerMode() {
     const modeRadio = document.querySelector('input[name="h-timer-mode"]:checked');
     const isCheckOnly = modeRadio && modeRadio.value === 'checkonly';
@@ -146,9 +180,56 @@ function toggleTaskTimerMode() {
     }
 }
 
+function toggleRoutineScheduleType() {
+    const isTimed = document.querySelector('input[name="rtn-type"]:checked')?.value === 'timed';
+    const timedSec = document.getElementById('rtn-timed-section');
+    const untimedSec = document.getElementById('rtn-untimed-section');
+    if (timedSec) timedSec.style.display = isTimed ? 'block' : 'none';
+    if (untimedSec) untimedSec.style.display = isTimed ? 'none' : 'block';
+}
+
+function toggleRoutineTimerMode() {
+    const modeRadio = document.querySelector('input[name="rtn-timer-mode"]:checked');
+    const isMeasured = modeRadio && modeRadio.value === 'measured';
+    const grp = document.getElementById('rtn-timer-group');
+    if (grp) grp.style.display = isMeasured ? 'block' : 'none';
+}
+
+function toggleRoutineDays() {
+    const freq = document.getElementById('rtn-frequency')?.value;
+    const cont = document.getElementById('rtn-days-container');
+    if (cont) cont.style.display = (freq === 'specific') ? 'flex' : 'none';
+}
+
+function toggleMedFrequencyInputs() {
+    const freq = document.getElementById('med-frequency')?.value;
+    const intGrp = document.getElementById('med-interval-group');
+    const daysGrp = document.getElementById('med-days-container');
+    if (intGrp) intGrp.style.display = (freq === 'interval') ? 'block' : 'none';
+    if (daysGrp) daysGrp.style.display = (freq === 'specific') ? 'flex' : 'none';
+}
+
+function populateMedicineRoutineSelect(selectedRoutineId = 'rtn_evening') {
+    const sel = document.getElementById('med-routine-select');
+    if (!sel) return;
+    sel.innerHTML = '';
+    (routinesData || []).forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = r.title;
+        if (r.id === selectedRoutineId) opt.selected = true;
+        sel.appendChild(opt);
+    });
+}
+
 function editTask(id) {
     const t = templates.find(x => x.id === id);
     if (!t) return;
+
+    if (t.type === 'medicine') {
+        editMedicine(id);
+        return;
+    }
 
     document.getElementById('h-id').value = t.id;
     document.getElementById('h-category').value = t.category;
@@ -194,6 +275,86 @@ function editTask(id) {
     }
 
     document.querySelector('input[name="creation-type"][value="habit"]').checked = true;
+    toggleCreationType();
+    closeModals();
+    document.getElementById('creationModal').style.display = 'flex';
+}
+
+function editMedicine(id) {
+    const m = templates.find(x => x.id === id && x.type === 'medicine');
+    if (!m) return;
+
+    populateMedicineRoutineSelect(m.routineId || 'rtn_evening');
+    document.getElementById('med-id').value = m.id;
+    document.getElementById('med-title').value = m.title;
+    document.getElementById('med-instances').value = m.instances || 1;
+    document.getElementById('med-stock').value = m.stock ?? 30;
+    document.getElementById('med-startdate').value = m.startDate || todayStr;
+    document.getElementById('med-alert').value = m.alertDays || 7;
+    document.getElementById('med-frequency').value = m.frequency || 'all';
+    document.getElementById('med-interval-days').value = m.intervalDays || 14;
+    toggleMedFrequencyInputs();
+
+    if (m.frequency === 'specific') {
+        document.querySelectorAll('#med-days-container input').forEach(cb => {
+            cb.checked = m.daysOfWeek && m.daysOfWeek.includes(parseInt(cb.value, 10));
+        });
+    }
+
+    document.querySelector('input[name="creation-type"][value="medicine"]').checked = true;
+    toggleCreationType();
+    closeModals();
+    document.getElementById('creationModal').style.display = 'flex';
+}
+
+function editRoutine(routineId) {
+    const r = (routinesData || []).find(x => x.id === routineId);
+    if (!r) return;
+
+    document.getElementById('rtn-id').value = r.id;
+    document.getElementById('rtn-title').value = r.title;
+    document.getElementById('rtn-startdate').value = r.startDate || todayStr;
+    document.getElementById('rtn-enddate').value = r.endDate || '';
+
+    const colorInp = document.getElementById('rtn-color');
+    colorInp.value = r.color || '#b08d43';
+    updateCustomColor(colorInp, 'rtn-color');
+
+    const hasTw = r.timeWindows && r.timeWindows.length > 0;
+    const isTimed = r.type === 'timed' || hasTw;
+    document.querySelector(`input[name="rtn-type"][value="${isTimed ? 'timed' : 'untimed'}"]`).checked = true;
+    toggleRoutineScheduleType();
+
+    document.getElementById('rtn-time-windows-container').innerHTML = '';
+    if (isTimed) {
+        if (hasTw) r.timeWindows.forEach(tw => addRoutineTimeWindow(tw.start, tw.end, tw.days));
+        else addRoutineTimeWindow();
+    } else {
+        const isCheckOnly = Boolean(r.noTimer || !r.timerMinutes);
+        document.querySelector(`input[name="rtn-timer-mode"][value="${isCheckOnly ? 'checkonly' : 'measured'}"]`).checked = true;
+        toggleRoutineTimerMode();
+        document.getElementById('rtn-timer').value = r.timerMinutes || 20;
+        document.getElementById('rtn-frequency').value = r.frequency || 'all';
+        toggleRoutineDays();
+        if (r.frequency === 'specific') {
+            document.querySelectorAll('#rtn-days-container input').forEach(cb => {
+                cb.checked = r.daysOfWeek && r.daysOfWeek.includes(parseInt(cb.value, 10));
+            });
+        }
+    }
+
+    const builder = document.getElementById('rtn-subsections-builder');
+    if (builder) {
+        builder.innerHTML = '';
+        (r.sections || []).forEach(sec => {
+            addRoutineFormSubsection(sec.title, (sec.items || []).map(i => i.title), sec.id);
+        });
+        if ((r.sections || []).length === 0) {
+            addRoutineFormSubsection('Steps', []);
+        }
+    }
+
+    document.querySelector('input[name="creation-type"][value="routine"]').checked = true;
     toggleCreationType();
     closeModals();
     document.getElementById('creationModal').style.display = 'flex';
@@ -261,7 +422,24 @@ function confirmDelete(mode) {
     targetDate.setDate(targetDate.getDate() - 1);
     const yesterdayStr = formatDate(targetDate);
 
-    if (deleteTargetType === 'task') {
+    if (deleteTargetType === 'bulk_manager') {
+        templates.forEach(t => {
+            if (selectedManagerTasks.has(t.id) || selectedManagerCats.has(t.category)) {
+                if (mode === 'single') {
+                    if (!t.exceptions) t.exceptions = [];
+                    t.exceptions.push(selectedDateStr);
+                } else if (mode === 'future') {
+                    t.endDate = yesterdayStr;
+                }
+            }
+        });
+        if (mode === 'all') {
+            templates = templates.filter(t => !selectedManagerTasks.has(t.id) && !selectedManagerCats.has(t.category));
+            syncCategoryOrder();
+        }
+        selectedManagerCats.clear();
+        selectedManagerTasks.clear();
+    } else if (deleteTargetType === 'task') {
         const t = templates.find(x => x.id === deleteTargetId);
         if (t) {
             if (mode === 'single') {
@@ -271,8 +449,10 @@ function confirmDelete(mode) {
                 t.endDate = yesterdayStr;
             } else if (mode === 'all') {
                 templates = templates.filter(x => x.id !== deleteTargetId);
+                specificEvents = specificEvents.filter(e => e.parentId !== deleteTargetId);
             }
         }
+        selectedManagerTasks.delete(deleteTargetId);
     } else if (deleteTargetType === 'category') {
         if (mode === 'single') {
             templates.forEach(t => {
@@ -289,6 +469,7 @@ function confirmDelete(mode) {
             templates = templates.filter(x => x.category !== deleteTargetId);
             syncCategoryOrder();
         }
+        selectedManagerCats.delete(deleteTargetId);
     } else if (deleteTargetType === 'reference' && mode === 'all') {
         referenceLayers = referenceLayers.filter(r => r.id !== deleteTargetId);
         delete refToggles[deleteTargetId];
@@ -298,7 +479,6 @@ function confirmDelete(mode) {
     closeModals();
     renderTasks();
     renderTracker();
-    renderManager();
     if (typeof renderCalendar === 'function') renderCalendar();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     if (typeof renderAvailableTasksForFocus === 'function') renderAvailableTasksForFocus();
@@ -312,9 +492,14 @@ function toggleHabitType() {
 
 function toggleCreationType() {
     const type = document.querySelector('input[name="creation-type"]:checked').value;
-    document.getElementById('habitForm').style.display = type === 'habit' ? 'block' : 'none';
-    document.getElementById('eventForm').style.display = type === 'event' ? 'block' : 'none';
-    document.getElementById('medicineForm').style.display = type === 'medicine' ? 'block' : 'none';
+    const hForm = document.getElementById('habitForm');
+    const rForm = document.getElementById('routineForm');
+    const eForm = document.getElementById('eventForm');
+    const mForm = document.getElementById('medicineForm');
+    if (hForm) hForm.style.display = type === 'habit' ? 'block' : 'none';
+    if (rForm) rForm.style.display = type === 'routine' ? 'block' : 'none';
+    if (eForm) eForm.style.display = type === 'event' ? 'block' : 'none';
+    if (mForm) mForm.style.display = type === 'medicine' ? 'block' : 'none';
 }
 
 function toggleDays() {
@@ -322,14 +507,14 @@ function toggleDays() {
     document.getElementById('h-days-container').style.display = (freq === 'specific') ? 'flex' : 'none';
 }
 
-function openCreationModal() {
+function openCreationModal(defaultTab = 'habit') {
     document.getElementById('habitForm').reset();
     document.getElementById('h-id').value = "";
     document.getElementById('h-startdate').value = selectedDateStr;
     document.getElementById('h-color').value = '#ffffff';
     updateCustomColor(document.getElementById('h-color'), 'h-color');
 
-    document.querySelector('input[name="h-type"][value="timed"]').checked = true;
+    document.querySelector('input[name="h-type"][value="untimed"]').checked = true;
     toggleHabitType();
 
     const measuredRadio = document.querySelector('input[name="h-timer-mode"][value="measured"]');
@@ -340,29 +525,76 @@ function openCreationModal() {
     addHabitTimeWindow();
     toggleDays();
 
+    // Reset Routine Form
+    const rtnForm = document.getElementById('routineForm');
+    if (rtnForm) {
+        rtnForm.reset();
+        document.getElementById('rtn-id').value = '';
+        document.getElementById('rtn-startdate').value = selectedDateStr;
+        document.getElementById('rtn-color').value = '#b08d43';
+        updateCustomColor(document.getElementById('rtn-color'), 'rtn-color');
+        document.querySelector('input[name="rtn-type"][value="untimed"]').checked = true;
+        toggleRoutineScheduleType();
+        document.querySelector('input[name="rtn-timer-mode"][value="checkonly"]').checked = true;
+        toggleRoutineTimerMode();
+        document.getElementById('rtn-time-windows-container').innerHTML = '';
+        addRoutineTimeWindow();
+        toggleRoutineDays();
+        const builder = document.getElementById('rtn-subsections-builder');
+        if (builder) {
+            builder.innerHTML = '';
+            addRoutineFormSubsection('Steps', []);
+        }
+    }
+
+    // Reset Event Form
     document.getElementById('eventForm').reset();
     document.getElementById('e-date').value = selectedDateStr;
     document.getElementById('e-color').value = '#b84b4b';
     updateCustomColor(document.getElementById('e-color'), 'e-color');
 
-    const medStart = document.getElementById('med-startdate');
-    if (medStart) medStart.value = selectedDateStr;
+    // Reset Medicine Form
+    const medForm = document.getElementById('medicineForm');
+    if (medForm) {
+        medForm.reset();
+        const medIdInp = document.getElementById('med-id');
+        if (medIdInp) medIdInp.value = '';
+        const medStart = document.getElementById('med-startdate');
+        if (medStart) medStart.value = selectedDateStr;
+        populateMedicineRoutineSelect('rtn_evening');
+        toggleMedFrequencyInputs();
+    }
 
-    document.querySelector('input[name="creation-type"][value="habit"]').checked = true;
+    const targetRadio = document.querySelector(`input[name="creation-type"][value="${defaultTab}"]`)
+        || document.querySelector('input[name="creation-type"][value="habit"]');
+    if (targetRadio) targetRadio.checked = true;
     toggleCreationType();
 
     closeModals();
     document.getElementById('creationModal').style.display = 'flex';
 }
 
-function openManagerModal() {
+function openTasksSettingsModal(defaultTab = 'tcfg-tasks') {
+    isTasksManagerEditMode = false;
+    selectedManagerCats.clear();
+    selectedManagerTasks.clear();
+    updateTasksManagerEditToolbar();
     renderManager();
+    renderRoutinesManagerList();
+    renderMedsManagerList();
     closeModals();
-    document.getElementById('managerModal').style.display = 'flex';
+    if (typeof switchTasksConfigTab === 'function') switchTasksConfigTab(defaultTab);
+    const modal = document.getElementById('tasksSettingsModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function openManagerModal() {
+    openTasksSettingsModal('tcfg-tasks');
 }
 
 function addHabitTimeWindow(start = '', end = '', days = []) {
     const container = document.getElementById('h-time-windows-container');
+    if (!container) return;
     const div = document.createElement('div');
     div.className = 'habit-time-window-row';
     div.style.cssText = 'border: 1px solid #333; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.02);';
@@ -393,7 +625,98 @@ function addHabitTimeWindow(start = '', end = '', days = []) {
     container.appendChild(div);
 }
 
-document.getElementById('habitForm').addEventListener('submit', function(e) {
+function addRoutineTimeWindow(start = '', end = '', days = []) {
+    const container = document.getElementById('rtn-time-windows-container');
+    if (!container) return;
+    const div = document.createElement('div');
+    div.className = 'rtn-time-window-row';
+    div.style.cssText = 'border: 1px solid #333; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.02);';
+
+    const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
+    const dayVals = [1, 2, 3, 4, 5, 6, 0];
+    let checksHtml = '';
+
+    for (let i = 0; i < 7; i++) {
+        const checked = days.includes(dayVals[i]) ? 'checked' : '';
+        checksHtml += `<label class="day-check"><input type="checkbox" value="${dayVals[i]}" class="tw-day-check" ${checked}> ${dayLabels[i]}</label>`;
+    }
+
+    div.innerHTML = `
+        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>Start</label>
+                <input type="time" class="form-control rtn-start" value="${start}">
+            </div>
+            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                <label>End</label>
+                <input type="time" class="form-control rtn-end" value="${end}">
+            </div>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">[X]</button>
+        </div>
+        <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
+    `;
+    container.appendChild(div);
+}
+
+function addRoutineFormSubsection(secTitle = '', stepTitlesArray = [], existingSecId = '') {
+    const builder = document.getElementById('rtn-subsections-builder');
+    if (!builder) return;
+
+    const secBox = document.createElement('div');
+    secBox.className = 'rtn-form-sec-box';
+    if (existingSecId) secBox.dataset.secId = existingSecId;
+    secBox.style.cssText = 'border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); padding: 10px; display: flex; flex-direction: column; gap: 8px;';
+
+    secBox.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
+            <input type="text" class="form-control form-control-sm rtn-sec-name-inp" placeholder="Sub-section Name (e.g. Grooming, Casa, Chiusura)..." value="${escapeHtml(secTitle)}" style="font-weight: bold;">
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" title="Remove Sub-section">[X]</button>
+        </div>
+        <div class="rtn-sec-steps-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
+        <div style="display: flex; gap: 6px;">
+            <input type="text" class="form-control form-control-sm rtn-new-step-inp" placeholder="+ Add step (e.g. Doccia, Rasatura barba + crema) & press Enter...">
+            <button type="button" class="btn btn-sm rtn-add-step-btn">[+ STEP]</button>
+        </div>
+    `;
+
+    const stepsList = secBox.querySelector('.rtn-sec-steps-list');
+
+    const appendStepRow = (stepText) => {
+        const clean = (stepText || '').trim();
+        if (!clean) return;
+        const row = document.createElement('div');
+        row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 3px 6px; background: rgba(255,255,255,0.02); border: 1px solid #222;';
+        row.innerHTML = `
+            <input type="text" class="form-control form-control-sm rtn-step-val-inp" value="${escapeHtml(clean)}" style="border: none; background: transparent; padding: 2px 4px;">
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.remove()">[×]</button>
+        `;
+        stepsList.appendChild(row);
+    };
+
+    (stepTitlesArray || []).forEach(st => appendStepRow(st));
+
+    const newStepInp = secBox.querySelector('.rtn-new-step-inp');
+    const addStepBtn = secBox.querySelector('.rtn-add-step-btn');
+
+    newStepInp.onkeydown = (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            appendStepRow(newStepInp.value);
+            newStepInp.value = '';
+        }
+    };
+    addStepBtn.onclick = () => {
+        appendStepRow(newStepInp.value);
+        newStepInp.value = '';
+        newStepInp.focus();
+    };
+
+    builder.appendChild(secBox);
+}
+
+// --- SUBMIT HANDLERS ---
+
+document.getElementById('habitForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const id = document.getElementById('h-id').value;
     const category = document.getElementById('h-category').value.trim();
@@ -462,7 +785,102 @@ document.getElementById('habitForm').addEventListener('submit', function(e) {
     if (typeof renderAvailableTasksForFocus === 'function') renderAvailableTasksForFocus();
 });
 
-document.getElementById('eventForm').addEventListener('submit', function(e) {
+document.getElementById('routineForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('rtn-id').value;
+    const title = document.getElementById('rtn-title').value.trim();
+    const startDate = document.getElementById('rtn-startdate').value || todayStr;
+    const endDate = document.getElementById('rtn-enddate').value || null;
+    const color = document.getElementById('rtn-color').value || '#b08d43';
+    const type = document.querySelector('input[name="rtn-type"]:checked').value;
+
+    let timerMinutes = 20, noTimer = true, frequency = 'all', daysOfWeek = [], timeWindows = [];
+
+    if (type === 'timed') {
+        document.querySelectorAll('.rtn-time-window-row').forEach(row => {
+            const start = row.querySelector('.rtn-start').value;
+            const end = row.querySelector('.rtn-end').value;
+            let days = [];
+            row.querySelectorAll('.tw-day-check:checked').forEach(cb => {
+                const dVal = parseInt(cb.value, 10);
+                days.push(dVal);
+                if (!daysOfWeek.includes(dVal)) daysOfWeek.push(dVal);
+            });
+            if (start && end && days.length > 0) timeWindows.push({ start, end, days });
+        });
+        if (timeWindows.length === 0) {
+            alert("Please complete at least one time window with selected days!");
+            return;
+        }
+        frequency = 'specific';
+        noTimer = false;
+        const [sh, sm] = timeWindows[0].start.split(':').map(Number);
+        const [eh, em] = timeWindows[0].end.split(':').map(Number);
+        timerMinutes = Math.max(5, (eh * 60 + em) - (sh * 60 + sm));
+    } else {
+        const modeRadio = document.querySelector('input[name="rtn-timer-mode"]:checked');
+        noTimer = (modeRadio && modeRadio.value === 'checkonly');
+        timerMinutes = noTimer ? 0 : (parseInt(document.getElementById('rtn-timer').value, 10) || 20);
+        frequency = document.getElementById('rtn-frequency').value;
+        if (frequency === 'specific') {
+            document.querySelectorAll('#rtn-days-container input:checked').forEach(cb => {
+                daysOfWeek.push(parseInt(cb.value, 10));
+            });
+            if (daysOfWeek.length === 0) {
+                alert("Please select at least one day!");
+                return;
+            }
+        }
+    }
+
+    const sections = [];
+    document.querySelectorAll('#rtn-subsections-builder .rtn-form-sec-box').forEach((box, idx) => {
+        const secName = box.querySelector('.rtn-sec-name-inp').value.trim() || `Section ${idx + 1}`;
+        const pendingInp = box.querySelector('.rtn-new-step-inp');
+        const items = [];
+        box.querySelectorAll('.rtn-step-val-inp').forEach((sInp, sIdx) => {
+            const val = sInp.value.trim();
+            if (val) {
+                items.push({
+                    id: `ri_${Date.now()}_${idx}_${sIdx}`,
+                    title: val
+                });
+            }
+        });
+        if (pendingInp && pendingInp.value.trim()) {
+            items.push({
+                id: `ri_${Date.now()}_${idx}_p`,
+                title: pendingInp.value.trim()
+            });
+        }
+        if (items.length > 0 || secName) {
+            sections.push({
+                id: box.dataset.secId || `sec_${Date.now()}_${idx}`,
+                title: secName,
+                items: items
+            });
+        }
+    });
+
+    if (id) {
+        const existing = routinesData.find(x => x.id === id);
+        if (existing) {
+            Object.assign(existing, { title, color, startDate, endDate, type, noTimer, timerMinutes, frequency, daysOfWeek, timeWindows, sections });
+        }
+    } else {
+        routinesData.push({
+            id: 'rtn_' + Date.now(),
+            title, color, startDate, endDate, type, noTimer, timerMinutes, frequency, daysOfWeek, timeWindows, sections
+        });
+    }
+
+    saveData();
+    closeModals();
+    renderTasks();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+});
+
+document.getElementById('eventForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const startVal = document.getElementById('e-start') ? document.getElementById('e-start').value : '';
     const endVal = document.getElementById('e-end') ? document.getElementById('e-end').value : '';
@@ -483,40 +901,149 @@ document.getElementById('eventForm').addEventListener('submit', function(e) {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 });
 
-document.getElementById('medicineForm').addEventListener('submit', function(e) {
+document.getElementById('medicineForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
+    const id = document.getElementById('med-id') ? document.getElementById('med-id').value : '';
     const catName = 'Medicine';
     if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
 
-    const med = {
-        id: 'm_' + Date.now(),
+    const frequency = document.getElementById('med-frequency') ? document.getElementById('med-frequency').value : 'all';
+    const intervalDays = document.getElementById('med-interval-days')
+        ? Math.max(1, parseInt(document.getElementById('med-interval-days').value, 10) || 14)
+        : 14;
+    const routineId = document.getElementById('med-routine-select')
+        ? document.getElementById('med-routine-select').value
+        : 'rtn_evening';
+
+    const daysOfWeek = [];
+    if (frequency === 'specific') {
+        document.querySelectorAll('#med-days-container input:checked').forEach(cb => {
+            daysOfWeek.push(parseInt(cb.value, 10));
+        });
+    }
+
+    const medPayload = {
         category: catName,
         title: document.getElementById('med-title').value.trim(),
-        instances: parseInt(document.getElementById('med-instances').value, 10),
-        stock: parseInt(document.getElementById('med-stock').value, 10),
-        alertDays: parseInt(document.getElementById('med-alert').value, 10),
-        startDate: document.getElementById('med-startdate').value,
+        routineId: routineId,
+        instances: parseInt(document.getElementById('med-instances').value, 10) || 1,
+        stock: parseInt(document.getElementById('med-stock').value, 10) || 0,
+        alertDays: parseInt(document.getElementById('med-alert').value, 10) || 7,
+        startDate: document.getElementById('med-startdate').value || todayStr,
         endDate: null,
         color: '#4c5b73',
         type: 'medicine',
         noTimer: true,
         timerMinutes: 0,
-        frequency: 'all',
+        frequency: frequency,
+        intervalDays: intervalDays,
         timeWindows: [],
-        daysOfWeek: []
+        daysOfWeek: daysOfWeek
     };
 
-    templates.push(med);
-    recalculateMedicineAlerts(med);
+    let targetMed = null;
+    if (id) {
+        targetMed = templates.find(x => x.id === id);
+        if (targetMed) Object.assign(targetMed, medPayload);
+    } else {
+        targetMed = Object.assign({ id: 'm_' + Date.now() }, medPayload);
+        templates.push(targetMed);
+    }
+
+    if (targetMed) recalculateMedicineAlerts(targetMed);
     saveData();
     document.getElementById('medicineForm').reset();
     closeModals();
     renderTasks();
     if (typeof renderCalendar === 'function') renderCalendar();
-    if (typeof renderMeds === 'function') renderMeds();
 });
 
-// --- RENDER TASKS, MANAGER & INBOX ---
+// ============================================================================
+// DEDICATED [TASKS ⚙] MANAGER: MODALITÀ [EDIT] A MONTE (3A), ROUTINES, MEDICINES
+// ============================================================================
+
+function toggleTasksManagerEditMode(forceState = null) {
+    isTasksManagerEditMode = forceState !== null ? Boolean(forceState) : !isTasksManagerEditMode;
+    if (!isTasksManagerEditMode) {
+        selectedManagerCats.clear();
+        selectedManagerTasks.clear();
+    }
+    updateTasksManagerEditToolbar();
+    renderManager();
+}
+
+function updateTasksManagerEditToolbar() {
+    const toggleBtn = document.getElementById('btn-tcfg-toggle-edit');
+    const editOneBtn = document.getElementById('btn-tcfg-edit-one');
+    const delManyBtn = document.getElementById('btn-tcfg-delete-many');
+
+    const totalSel = selectedManagerCats.size + selectedManagerTasks.size;
+
+    if (toggleBtn) {
+        toggleBtn.textContent = isTasksManagerEditMode ? '[DONE EDIT]' : '[EDIT]';
+        toggleBtn.classList.toggle('btn-primary', isTasksManagerEditMode);
+    }
+    if (editOneBtn) {
+        editOneBtn.style.display = isTasksManagerEditMode ? 'inline-block' : 'none';
+        editOneBtn.disabled = (totalSel !== 1);
+    }
+    if (delManyBtn) {
+        delManyBtn.style.display = isTasksManagerEditMode ? 'inline-block' : 'none';
+        delManyBtn.disabled = (totalSel === 0);
+        delManyBtn.textContent = `[X DELETE (${totalSel})]`;
+    }
+}
+
+function toggleSelectManagerCat(catName) {
+    if (selectedManagerCats.has(catName)) selectedManagerCats.delete(catName);
+    else selectedManagerCats.add(catName);
+    updateTasksManagerEditToolbar();
+    renderManager();
+}
+
+function toggleSelectManagerTask(taskId) {
+    if (selectedManagerTasks.has(taskId)) selectedManagerTasks.delete(taskId);
+    else selectedManagerTasks.add(taskId);
+    updateTasksManagerEditToolbar();
+    renderManager();
+}
+
+function editSelectedManagerItem() {
+    const totalSel = selectedManagerCats.size + selectedManagerTasks.size;
+    if (totalSel !== 1) return;
+
+    if (selectedManagerCats.size === 1) {
+        const catName = Array.from(selectedManagerCats)[0];
+        openRenameModal(catName);
+    } else if (selectedManagerTasks.size === 1) {
+        const taskId = Array.from(selectedManagerTasks)[0];
+        editTask(taskId);
+    }
+}
+
+function deleteSelectedManagerItems() {
+    const totalSel = selectedManagerCats.size + selectedManagerTasks.size;
+    if (totalSel === 0) return;
+
+    if (totalSel === 1) {
+        if (selectedManagerCats.size === 1) {
+            deleteCategory(Array.from(selectedManagerCats)[0]);
+            return;
+        } else {
+            deleteTask(Array.from(selectedManagerTasks)[0]);
+            return;
+        }
+    }
+
+    deleteTargetType = 'bulk_manager';
+    deleteTargetId = '';
+    document.getElementById('delete-target-name').innerText = `${totalSel} selected items`;
+    document.getElementById('btn-del-single').style.display = 'block';
+    document.getElementById('btn-del-future').style.display = 'block';
+
+    closeModals();
+    document.getElementById('deleteModal').style.display = 'flex';
+}
 
 function moveCategory(catName, direction) {
     const idx = categoryOrder.indexOf(catName);
@@ -540,7 +1067,7 @@ function renderManager() {
     const frag = document.createDocumentFragment();
     const cats = {};
 
-    templates.forEach(t => {
+    templates.filter(t => shouldShowTaskInSettingsManager(t)).forEach(t => {
         if (!cats[t.category]) cats[t.category] = [];
         cats[t.category].push(t);
     });
@@ -548,7 +1075,7 @@ function renderManager() {
     syncCategoryOrder();
 
     categoryOrder.forEach(cat => {
-        if (!cats[cat]) return;
+        if (!cats[cat] || cats[cat].length === 0) return;
 
         const catDiv = document.createElement('div');
         catDiv.className = 'manager-category';
@@ -558,6 +1085,13 @@ function renderManager() {
 
         const leftPart = document.createElement('div');
         leftPart.style.cssText = 'display:flex; align-items:center; gap: 10px;';
+
+        if (isTasksManagerEditMode) {
+            const catCb = document.createElement('div');
+            catCb.className = `check-box ${selectedManagerCats.has(cat) ? 'checked' : ''}`;
+            catCb.onclick = () => toggleSelectManagerCat(cat);
+            leftPart.appendChild(catCb);
+        }
 
         const arrowsCol = document.createElement('div');
         arrowsCol.style.cssText = 'display:flex; flex-direction:column; gap:2px;';
@@ -576,63 +1110,44 @@ function renderManager() {
         arrowsCol.appendChild(btnDown);
 
         const titleEl = document.createElement('h3');
-        titleEl.style.cssText = 'margin:0; border:none; padding:0;';
+        titleEl.style.cssText = 'margin:0; border:none; padding:0; cursor:pointer;';
         titleEl.textContent = cat;
+        if (isTasksManagerEditMode) {
+            titleEl.onclick = () => toggleSelectManagerCat(cat);
+        }
 
         leftPart.appendChild(arrowsCol);
         leftPart.appendChild(titleEl);
-
-        const rightActions = document.createElement('div');
-        rightActions.className = 'action-btns';
-        rightActions.style.cssText = 'display:flex; margin-bottom:6px;';
-
-        const btnRename = document.createElement('button');
-        btnRename.className = 'icon-btn';
-        btnRename.textContent = '[EDIT]';
-        btnRename.onclick = () => openRenameModal(cat);
-
-        const btnDelCat = document.createElement('button');
-        btnDelCat.className = 'icon-btn delete';
-        btnDelCat.textContent = '[X]';
-        btnDelCat.onclick = () => deleteCategory(cat);
-
-        rightActions.appendChild(btnRename);
-        rightActions.appendChild(btnDelCat);
-
         headerRow.appendChild(leftPart);
-        headerRow.appendChild(rightActions);
         catDiv.appendChild(headerRow);
 
         const tasksWrap = document.createElement('div');
         tasksWrap.style.cssText = 'border-top: 1px solid #333; margin-top: 5px; padding-top: 10px;';
 
         cats[cat].forEach(t => {
+            const isSel = selectedManagerTasks.has(t.id);
             const taskRow = document.createElement('div');
             taskRow.className = 'manager-task';
+            taskRow.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding: 6px 8px; cursor:${isTasksManagerEditMode ? 'pointer' : 'default'}; background:${isSel ? 'rgba(255,255,255,0.06)' : 'transparent'};`;
+
+            const leftTask = document.createElement('div');
+            leftTask.style.cssText = 'display:flex; align-items:center; gap:10px;';
+
+            if (isTasksManagerEditMode) {
+                const tCb = document.createElement('div');
+                tCb.className = `check-box ${isSel ? 'checked' : ''}`;
+                leftTask.appendChild(tCb);
+                taskRow.onclick = () => toggleSelectManagerTask(t.id);
+            }
 
             const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t) : (t.timerMinutes || 0);
             const durBadge = mins > 0 ? `${mins}m` : 'CHECK-ONLY';
+            const dateBadge = isSingleDayTodoTemplate(t) && t.startDate ? ` · @${t.startDate}` : '';
             const spanTitle = document.createElement('span');
-            spanTitle.textContent = `${t.title} (${t.instances || 1}x · ${durBadge})`;
+            spanTitle.textContent = `${t.title} (${t.instances || 1}x · ${durBadge}${dateBadge})`;
 
-            const taskActions = document.createElement('div');
-            taskActions.className = 'action-btns';
-            taskActions.style.display = 'flex';
-
-            const btnEdit = document.createElement('button');
-            btnEdit.className = 'icon-btn';
-            btnEdit.textContent = '[EDIT]';
-            btnEdit.onclick = () => editTask(t.id);
-
-            const btnDel = document.createElement('button');
-            btnDel.className = 'icon-btn delete';
-            btnDel.textContent = '[X]';
-            btnDel.onclick = () => deleteTask(t.id);
-
-            taskActions.appendChild(btnEdit);
-            taskActions.appendChild(btnDel);
-            taskRow.appendChild(spanTitle);
-            taskRow.appendChild(taskActions);
+            leftTask.appendChild(spanTitle);
+            taskRow.appendChild(leftTask);
             tasksWrap.appendChild(taskRow);
         });
 
@@ -652,6 +1167,110 @@ function renderManager() {
 
     container.appendChild(frag);
 }
+
+function renderRoutinesManagerList() {
+    const cont = document.getElementById('routines-manager-list');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (!Array.isArray(routinesData) || routinesData.length === 0) {
+        cont.innerHTML = '<div class="empty-state">[ NO ROUTINES CONFIGURED ]</div>';
+        return;
+    }
+
+    routinesData.forEach((r, idx) => {
+        const box = document.createElement('div');
+        box.className = 'cfg-box';
+        box.style.borderLeft = `3px solid ${r.color || '#ffffff'}`;
+
+        const secSummary = (r.sections || []).map(s => `${s.title} (${(s.items || []).length})`).join(' · ');
+        const schedBadge = r.type === 'timed' && r.timeWindows?.length
+            ? `TIMED: ${r.timeWindows.map(w => w.start + '-' + w.end).join(', ')}`
+            : `FREQ: ${(r.frequency || 'all').toUpperCase()}${!r.noTimer && r.timerMinutes ? ' · ' + r.timerMinutes + 'm' : ''}`;
+
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong style="font-size:var(--font-sm); color:var(--text-main); text-transform:uppercase;">${escapeHtml(r.title)}</strong>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:8px;">[${escapeHtml(schedBadge)}]</span>
+                    <div style="font-size:var(--font-xs); color:var(--text-muted); margin-top:4px;">${escapeHtml(secSummary || 'No sub-sections')}</div>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn btn-sm btn-edit-rtn">[EDIT]</button>
+                    <button type="button" class="icon-btn delete btn-del-rtn">[X]</button>
+                </div>
+            </div>
+        `;
+
+        box.querySelector('.btn-edit-rtn').onclick = () => editRoutine(r.id);
+        box.querySelector('.btn-del-rtn').onclick = () => {
+            routinesData.splice(idx, 1);
+            saveData();
+            renderRoutinesManagerList();
+            renderTasks();
+            if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        };
+
+        cont.appendChild(box);
+    });
+}
+
+function renderMedsManagerList() {
+    const cont = document.getElementById('meds-manager-list');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    const meds = templates.filter(t => t.type === 'medicine');
+    if (meds.length === 0) {
+        cont.innerHTML = '<div class="empty-state">[ NO MEDICINES CONFIGURED — CLICK "+ NEW MEDICINE" ABOVE ]</div>';
+        return;
+    }
+
+    meds.forEach(m => {
+        const linkedRtn = (routinesData || []).find(r => r.id === m.routineId) || routinesData[0];
+        const freqDesc = m.frequency === 'interval'
+            ? `Every ${m.intervalDays || 14} days (from ${m.startDate})`
+            : (m.frequency === 'specific' ? 'Specific days' : 'Every day');
+
+        const row = document.createElement('div');
+        row.className = 'cfg-box';
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-left:3px solid #4c5b73;';
+
+        row.innerHTML = `
+            <div>
+                <strong style="color:var(--text-main); font-size:var(--font-sm);">${escapeHtml(m.title)}</strong>
+                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:8px;">➔ Injected in: <strong>${escapeHtml(linkedRtn ? linkedRtn.title : 'Evening Routine')}</strong></span>
+                <div style="font-size:var(--font-xs); color:var(--text-muted); margin-top:3px;">
+                    ${escapeHtml(freqDesc)} · ${m.instances || 1} dose(s) · Alert ${m.alertDays || 7}d before runout
+                </div>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:4px; font-size:var(--font-xs);">
+                    <span style="color:var(--text-dim);">STOCK:</span>
+                    <input type="number" class="form-control form-control-sm no-spinners med-stock-quick" style="width:65px; text-align:center;" value="${m.stock ?? 0}">
+                </div>
+                <button type="button" class="btn btn-sm btn-edit-med">[EDIT]</button>
+                <button type="button" class="icon-btn delete btn-del-med">[X]</button>
+            </div>
+        `;
+
+        row.querySelector('.med-stock-quick').onchange = (e) => {
+            m.stock = Math.max(0, parseInt(e.target.value, 10) || 0);
+            recalculateMedicineAlerts(m);
+            saveData();
+            renderTasks();
+            if (typeof renderCalendar === 'function') renderCalendar();
+        };
+        row.querySelector('.btn-edit-med').onclick = () => editMedicine(m.id);
+        row.querySelector('.btn-del-med').onclick = () => deleteTask(m.id);
+
+        cont.appendChild(row);
+    });
+}
+
+// ============================================================================
+// RENDER PRINCIPALE TASKS: 4 COLONNE (FIXED, FLEXIBLE, ROUTINES, TO-DO)
+// ============================================================================
 
 function renderTasks() {
     renderPriorityBanner();
@@ -692,18 +1311,8 @@ function renderTasks() {
             const timeBadge = (e.start && e.end) ? `[${e.start}-${e.end}] ` : '';
             title.textContent = `${timeBadge}${e.title}`;
 
-            const actions = document.createElement('div');
-            actions.className = 'task-quick-actions';
-
-            const delBtn = document.createElement('button');
-            delBtn.className = 'icon-btn delete';
-            delBtn.textContent = '[X]';
-            delBtn.onclick = () => deleteEvent(e.id);
-
-            actions.appendChild(delBtn);
             left.appendChild(title);
             item.appendChild(left);
-            item.appendChild(actions);
             eventGroup.appendChild(item);
         });
         schedFrag.appendChild(eventGroup);
@@ -712,17 +1321,23 @@ function renderTasks() {
     syncCategoryOrder();
 
     categoryOrder.forEach(cat => {
-        const activeTasks = templates.filter(t => t.category === cat && isTaskActiveOnDate(t, selectedDateStr));
+        const activeTasks = templates.filter(t =>
+            t.category === cat &&
+            t.type !== 'medicine' &&
+            !isSingleDayTodoTemplate(t) &&
+            isTaskActiveOnDate(t, selectedDateStr)
+        );
+
         if (activeTasks.length > 0) {
-            const isTaskScheduledOnDay = (t) => {
+            const isTaskFixedOnDay = (t) => {
                 if (t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0)) return true;
                 return customBlocksToday.some(b => b.templateId === t.id);
             };
 
-            const schedTasks = activeTasks.filter(t => isTaskScheduledOnDay(t));
-            const flexTasks = activeTasks.filter(t => !isTaskScheduledOnDay(t));
+            const fixedTasks = activeTasks.filter(t => isTaskFixedOnDay(t));
+            const flexTasks = activeTasks.filter(t => !isTaskFixedOnDay(t));
 
-            const createGroup = (tasks, isScheduledGroup) => {
+            const createPureGroup = (tasks, isFixedGroup) => {
                 const groupDiv = document.createElement('div');
                 groupDiv.className = 'category-group';
 
@@ -748,7 +1363,7 @@ function renderTasks() {
 
                     const taskMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, selectedDateStr) : (t.timerMinutes || 0);
                     let timePrefix = '';
-                    if (isScheduledGroup) {
+                    if (isFixedGroup) {
                         const customTimes = customBlocksToday.filter(b => b.templateId === t.id).map(b => `${b.start}-${b.end}`);
                         if (customTimes.length > 0) {
                             timePrefix = `[${customTimes.join(', ')}] `;
@@ -757,41 +1372,12 @@ function renderTasks() {
                             if (matchingTw) timePrefix = `[${matchingTw.start}] `;
                         }
                     }
-                    const minSuffix = (!isScheduledGroup && taskMins > 0) ? ` (${taskMins}m)` : '';
+                    const minSuffix = (!isFixedGroup && taskMins > 0) ? ` (${taskMins}m)` : '';
                     titleDiv.textContent = `${timePrefix}${t.title}${minSuffix}`;
                     leftDiv.appendChild(titleDiv);
 
-                    const quickActions = document.createElement('div');
-                    quickActions.className = 'task-quick-actions';
-
-                    if (t.type !== 'medicine') {
-                        if (taskMins > 0) {
-                            const btnFocus = document.createElement('button');
-                            btnFocus.className = 'icon-btn';
-                            btnFocus.title = `Start ${taskMins}m Focus timer on ${t.title}`;
-                            btnFocus.textContent = '[▶]';
-                            btnFocus.onclick = () => quickStartTaskFocus(t.id);
-                            quickActions.appendChild(btnFocus);
-                        }
-
-                        const btnEdit = document.createElement('button');
-                        btnEdit.className = 'icon-btn';
-                        btnEdit.title = 'Edit task';
-                        btnEdit.textContent = '[✎]';
-                        btnEdit.onclick = () => editTask(t.id);
-                        quickActions.appendChild(btnEdit);
-                    }
-
-                    const btnDel = document.createElement('button');
-                    btnDel.className = 'icon-btn delete';
-                    btnDel.title = 'Delete task';
-                    btnDel.textContent = '[×]';
-                    btnDel.onclick = () => deleteTask(t.id);
-                    quickActions.appendChild(btnDel);
-
                     const instContainer = document.createElement('div');
                     instContainer.className = 'instances-container';
-                    instContainer.appendChild(quickActions);
 
                     for (let i = 0; i < instancesCount; i++) {
                         const cb = document.createElement('div');
@@ -807,8 +1393,8 @@ function renderTasks() {
                 return groupDiv;
             };
 
-            if (schedTasks.length > 0) { hasSched = true; schedFrag.appendChild(createGroup(schedTasks, true)); }
-            if (flexTasks.length > 0) { hasFlex = true; flexFrag.appendChild(createGroup(flexTasks, false)); }
+            if (fixedTasks.length > 0) { hasSched = true; schedFrag.appendChild(createPureGroup(fixedTasks, true)); }
+            if (flexTasks.length > 0) { hasFlex = true; flexFrag.appendChild(createPureGroup(flexTasks, false)); }
         }
     });
 
@@ -817,9 +1403,268 @@ function renderTasks() {
 
     if (hasFlex) flexContainer.appendChild(flexFrag);
     else flexContainer.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
+
+    renderRoutinesColumn();
+    renderTodoColumn();
 }
 
-// --- INBOX COMPATTA ---
+// --- COLONNA 3: ROUTINES + INIEZIONE AUTOMATICA MEDICINE ---
+
+function isRoutineActiveOnDate(routine, dateStr) {
+    if (!routine) return false;
+    if (routine.startDate && dateStr < routine.startDate) return false;
+    if (routine.endDate && dateStr > routine.endDate) return false;
+
+    const dayOfWeek = parseLocalDate(dateStr).getDay();
+    if (routine.type === 'timed' && Array.isArray(routine.timeWindows) && routine.timeWindows.length > 0) {
+        return routine.timeWindows.some(tw => tw.days && tw.days.includes(dayOfWeek));
+    }
+
+    const freq = routine.frequency || 'all';
+    if (freq === 'all') return true;
+    if (freq === 'weekdays') return dayOfWeek >= 1 && dayOfWeek <= 5;
+    if (freq === 'weekends' || freq === 'weekend') return dayOfWeek === 0 || dayOfWeek === 6;
+    if (freq === 'specific' && Array.isArray(routine.daysOfWeek)) {
+        return routine.daysOfWeek.includes(dayOfWeek);
+    }
+    return true;
+}
+
+function getRoutineLogStorageKey(routine, dateStr) {
+    if ((routine.frequency === 'weekends' || routine.frequency === 'weekend') && typeof getWeekStart === 'function') {
+        return 'wk_' + formatDate(getWeekStart(dateStr));
+    }
+    return dateStr;
+}
+
+function toggleRoutineStepCheckbox(routineId, stepId, dateStr = selectedDateStr) {
+    const routine = (routinesData || []).find(r => r.id === routineId);
+    if (!routine) return;
+
+    const logKey = getRoutineLogStorageKey(routine, dateStr);
+    if (!routineLogs[logKey]) routineLogs[logKey] = {};
+    routineLogs[logKey][stepId] = !routineLogs[logKey][stepId];
+
+    saveData();
+    renderRoutinesColumn();
+}
+
+function renderRoutinesColumn() {
+    const container = document.getElementById('routines-tasks-list');
+    const progBadge = document.getElementById('routines-progress-badge');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const activeRoutines = (routinesData || []).filter(r => isRoutineActiveOnDate(r, selectedDateStr));
+    const activeMedsToday = templates.filter(t => t.type === 'medicine' && isTaskActiveOnDate(t, selectedDateStr));
+
+    let totalSteps = 0;
+    let completedSteps = 0;
+
+    if (activeRoutines.length === 0 && activeMedsToday.length === 0) {
+        container.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
+        if (progBadge) progBadge.textContent = '0/0';
+        return;
+    }
+
+    const frag = document.createDocumentFragment();
+    const defaultEveningRtnId = activeRoutines.find(r => r.id === 'rtn_evening')?.id || activeRoutines[0]?.id;
+
+    activeRoutines.forEach(routine => {
+        const logKey = getRoutineLogStorageKey(routine, selectedDateStr);
+        const rLog = routineLogs[logKey] || {};
+
+        const injectedMeds = activeMedsToday.filter(m => {
+            if (m.routineId) return m.routineId === routine.id;
+            return routine.id === defaultEveningRtnId;
+        });
+
+        let rTotal = 0;
+        let rDone = 0;
+
+        injectedMeds.forEach(m => {
+            const inst = m.instances || 1;
+            const mLog = (logs[selectedDateStr] && logs[selectedDateStr][m.id]) || Array(inst).fill(false);
+            rTotal += inst;
+            totalSteps += inst;
+            const c = mLog.filter(Boolean).length;
+            rDone += c;
+            completedSteps += c;
+        });
+
+        (routine.sections || []).forEach(sec => {
+            (sec.items || []).forEach(it => {
+                rTotal++;
+                totalSteps++;
+                if (rLog[it.id]) {
+                    rDone++;
+                    completedSteps++;
+                }
+            });
+        });
+
+        const card = document.createElement('div');
+        card.className = 'category-group';
+        card.style.borderLeft = `3px solid ${routine.color || '#ffffff'}`;
+
+        const header = document.createElement('div');
+        header.className = 'category-header-wrap';
+        header.innerHTML = `
+            <div class="category-title">${escapeHtml(routine.title)}</div>
+            <span style="font-size:var(--font-xs); font-weight:bold; color:${rDone === rTotal && rTotal > 0 ? 'var(--accent-green)' : 'var(--text-dim)'}; font-variant-numeric:tabular-nums;">
+                ${rDone}/${rTotal}
+            </span>
+        `;
+        card.appendChild(header);
+
+        // Sotto-sezione automatica // MEDICINE
+        if (injectedMeds.length > 0) {
+            const medSec = document.createElement('div');
+            medSec.className = 'routine-subsection';
+            medSec.innerHTML = `<div class="routine-subsection-title">// MEDICINE</div>`;
+
+            injectedMeds.forEach(m => {
+                const inst = m.instances || 1;
+                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][m.id]) || Array(inst).fill(false);
+                const row = document.createElement('div');
+                row.className = 'task-item';
+
+                const left = document.createElement('div');
+                left.className = 'task-left';
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'task-title';
+                const lowStock = (m.stock || 0) <= (m.alertDays || 7);
+                titleEl.innerHTML = `${escapeHtml(m.title)} <span style="font-size:0.65rem; color:${lowStock ? 'var(--accent-red)' : 'var(--text-dim)'};">(${m.stock ?? 0})</span>`;
+                left.appendChild(titleEl);
+
+                const instCont = document.createElement('div');
+                instCont.className = 'instances-container';
+                for (let i = 0; i < inst; i++) {
+                    const cb = document.createElement('div');
+                    cb.className = `check-box ${currentLog[i] ? 'checked' : ''}`;
+                    cb.onclick = () => toggleTask(m.id, i);
+                    instCont.appendChild(cb);
+                }
+
+                row.appendChild(left);
+                row.appendChild(instCont);
+                medSec.appendChild(row);
+            });
+
+            card.appendChild(medSec);
+        }
+
+        // Sotto-sezioni della Routine (solo checkbox pura)
+        (routine.sections || []).forEach(sec => {
+            if (!sec.items || sec.items.length === 0) return;
+            const secBlock = document.createElement('div');
+            secBlock.className = 'routine-subsection';
+
+            const secTitle = document.createElement('div');
+            secTitle.className = 'routine-subsection-title';
+            secTitle.textContent = `// ${sec.title}`;
+            secBlock.appendChild(secTitle);
+
+            sec.items.forEach(item => {
+                const isChecked = Boolean(rLog[item.id]);
+                const row = document.createElement('div');
+                row.className = 'task-item';
+
+                const left = document.createElement('div');
+                left.className = 'task-left';
+
+                const titleEl = document.createElement('div');
+                titleEl.className = 'task-title';
+                if (isChecked) {
+                    titleEl.style.textDecoration = 'line-through';
+                    titleEl.style.color = 'var(--text-dim)';
+                }
+                titleEl.textContent = item.title;
+                left.appendChild(titleEl);
+
+                const right = document.createElement('div');
+                right.className = 'instances-container';
+
+                const cb = document.createElement('div');
+                cb.className = `check-box ${isChecked ? 'checked' : ''}`;
+                cb.onclick = () => toggleRoutineStepCheckbox(routine.id, item.id, selectedDateStr);
+                right.appendChild(cb);
+
+                row.appendChild(left);
+                row.appendChild(right);
+                secBlock.appendChild(row);
+            });
+
+            card.appendChild(secBlock);
+        });
+
+        frag.appendChild(card);
+    });
+
+    container.appendChild(frag);
+    if (progBadge) progBadge.textContent = `${completedSteps}/${totalSteps}`;
+}
+
+// --- COLONNA 4: TO-DO (ASSEGNATE AL GIORNO + GENERATORE/CODA DA ASSEGNARE) ---
+
+function renderTodoColumn() {
+    const assignedCont = document.getElementById('assigned-todos-list');
+    const dateBadge = document.getElementById('todo-col-date-badge');
+    if (dateBadge) dateBadge.textContent = selectedDateStr;
+
+    if (assignedCont) {
+        assignedCont.innerHTML = '';
+        const assignedToday = templates.filter(t => isSingleDayTodoTemplate(t) && isTaskActiveOnDate(t, selectedDateStr));
+
+        if (assignedToday.length === 0) {
+            assignedCont.innerHTML = `<div class="empty-state">[ NO TO-DO FOR ${selectedDateStr} ]</div>`;
+        } else {
+            const groupDiv = document.createElement('div');
+            groupDiv.className = 'category-group';
+            groupDiv.innerHTML = `<div class="category-header-wrap"><div class="category-title">Assigned // ${selectedDateStr}</div></div>`;
+
+            assignedToday.forEach(t => {
+                const taskItem = document.createElement('div');
+                taskItem.className = 'task-item';
+                const instancesCount = t.instances || 1;
+                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(instancesCount).fill(false);
+                const isAllChecked = currentLog.every(Boolean);
+
+                const leftDiv = document.createElement('div');
+                leftDiv.className = 'task-left';
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'task-title';
+                if (isAllChecked) {
+                    titleDiv.style.textDecoration = 'line-through';
+                    titleDiv.style.color = 'var(--text-dim)';
+                }
+                titleDiv.textContent = t.title;
+                leftDiv.appendChild(titleDiv);
+
+                const instContainer = document.createElement('div');
+                instContainer.className = 'instances-container';
+
+                for (let i = 0; i < instancesCount; i++) {
+                    const cb = document.createElement('div');
+                    cb.className = `check-box ${currentLog[i] ? 'checked' : ''}`;
+                    cb.onclick = () => toggleTask(t.id, i);
+                    instContainer.appendChild(cb);
+                }
+
+                taskItem.appendChild(leftDiv);
+                taskItem.appendChild(instContainer);
+                groupDiv.appendChild(taskItem);
+            });
+
+            assignedCont.appendChild(groupDiv);
+        }
+    }
+
+    renderGeneralTodos();
+}
+
 function addGeneralTask(e) {
     if (e.key === 'Enter') {
         e.preventDefault();
@@ -839,7 +1684,7 @@ function addGeneralTask(e) {
         generalTodos.push({ id: 'todo_' + Date.now(), title: title });
         saveData();
         renderGeneralTodos();
-        if (typeof showToast === 'function') showToast(`[INBOX] Added "${title}"`);
+        if (typeof showToast === 'function') showToast(`[TO-DO] Added "${title}" to queue`);
         e.target.value = '';
     }
 }
@@ -858,15 +1703,21 @@ function deleteGeneralTodo(id) {
 }
 
 function renderGeneralTodos() {
-    const inboxBtn = document.getElementById('btn-inbox-toggle');
-    if (inboxBtn) inboxBtn.textContent = `[INBOX (${generalTodos.length}) ▼]`;
+    const countEl = document.getElementById('unassigned-todo-count');
+    if (countEl) countEl.textContent = `${generalTodos.length}`;
+
+    const assignBtn = document.getElementById('btn-assign-todos');
+    if (assignBtn) {
+        assignBtn.style.display = selectedTodos.size > 0 ? 'block' : 'none';
+        assignBtn.textContent = `[ASSIGN SELECTED (${selectedTodos.size}) TO DATE]`;
+    }
 
     const container = document.getElementById('general-todo-list');
     if (!container) return;
     container.innerHTML = '';
 
     if (generalTodos.length === 0) {
-        container.innerHTML = '<span class="empty-state">[ NO GENERAL TASKS PENDING ]</span>';
+        container.innerHTML = '<span class="empty-state" style="padding: 4px 0;">[ QUEUE EMPTY ]</span>';
         return;
     }
 
@@ -875,7 +1726,7 @@ function renderGeneralTodos() {
         const isSelected = selectedTodos.has(t.id);
         const item = document.createElement('div');
         item.className = 'task-item';
-        item.style.cssText = `padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid ${isSelected ? 'var(--text-main)' : 'rgba(255,255,255,0.05)'}; cursor: pointer;`;
+        item.style.cssText = `padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid ${isSelected ? 'var(--text-main)' : 'rgba(255,255,255,0.05)'}; cursor: pointer;`;
         item.onclick = () => toggleTodoSelection(t.id);
 
         const left = document.createElement('div');
@@ -894,7 +1745,7 @@ function renderGeneralTodos() {
 
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[X]';
+        delBtn.textContent = '[×]';
         delBtn.onclick = (ev) => { ev.stopPropagation(); deleteGeneralTodo(t.id); };
 
         item.appendChild(left);
@@ -905,19 +1756,14 @@ function renderGeneralTodos() {
 }
 
 function openAssignModal() {
-    if (selectedTodos.size === 0) {
-        alert("Please select at least one task!");
-        return;
-    }
+    if (selectedTodos.size === 0) return;
     const dateInput = document.getElementById('assign-date');
-    dateInput.value = selectedDateStr;
-    dateInput.min = todayStr;
-    document.getElementById('todo-dropdown-content').classList.remove('show');
+    if (dateInput) dateInput.value = selectedDateStr;
     closeModals();
     document.getElementById('assignModal').style.display = 'flex';
 }
 
-document.getElementById('assignForm').addEventListener('submit', function(e) {
+document.getElementById('assignForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const dateStr = document.getElementById('assign-date').value;
     const dayIndex = parseLocalDate(dateStr).getDay();
@@ -930,11 +1776,12 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
         if (task) {
             templates.push({
                 id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                isTodo: true,
                 category: catName,
                 title: task.title,
                 instances: 1,
-                timerMinutes: 25,
-                noTimer: false,
+                timerMinutes: 0,
+                noTimer: true,
                 frequency: 'specific',
                 daysOfWeek: [dayIndex],
                 startDate: dateStr,
@@ -950,13 +1797,12 @@ document.getElementById('assignForm').addEventListener('submit', function(e) {
     selectedTodos.clear();
     saveData();
     closeModals();
-    renderGeneralTodos();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 });
 
 // ============================================================================
-// CONSISTENCY TRACKER & TASK-DRIVEN REAL FOCUS LEDGER
+// CONSISTENCY TRACKER & FOCUS LEDGER
 // ============================================================================
 
 function openTrackerModal() {
@@ -1122,7 +1968,6 @@ function renderFocusLedger() {
         }
     });
 
-    // Integra eventuali sessioni Pomodoro da focusLogs di task rimosse dal database
     if (Array.isArray(focusLogs)) {
         focusLogs.forEach(fl => {
             if (!fl || !fl.date || !fl.minutes) return;
@@ -1155,7 +2000,7 @@ function renderFocusLedger() {
     summaryEl.textContent = `TODAY: ${fmtH(totalMinsToday)} | WEEK: ${fmtH(totalMinsWeek)} | ALL-TIME: ${fmtH(totalMinsAll)}`;
 
     if (completedHistoryEntries.length === 0) {
-        container.innerHTML = '<div class="empty-state">[ NO MEASURED TASKS COMPLETED YET — CHECK OFF A TIMED TASK OR COMPLETE A FOCUS SESSION ]</div>';
+        container.innerHTML = '<div class="empty-state">[ NO MEASURED TASKS COMPLETED YET ]</div>';
         return;
     }
 
@@ -1237,7 +2082,7 @@ function renderPriorityBanner() {
 }
 
 // ============================================================================
-// EVENING BUILDER: PLAN TOMORROW (TIMELINE GIORNALIERA 06:30-24:00 & BLOCCHI PROPORZIONALI)
+// EVENING BUILDER: PLAN TOMORROW (CON SUPPORTO SNAP-TO-PHASE 5A)
 // ============================================================================
 
 function openPlanTomorrowModal() {
@@ -1254,7 +2099,6 @@ function saveTomorrowPriority(val) {
     if (selectedDateStr === tomorrowStr) renderPriorityBanner();
 }
 
-// Piazza uno o più blocchi di una Task sulla Timeline di Domani all'orario scelto
 function placeTaskBlockOnTomorrowTimeline(templateId, startTimeStr, blocksMultiplier = 1) {
     const t = templates.find(x => x.id === templateId);
     if (!t) return;
@@ -1303,7 +2147,6 @@ function moveTomorrowTimelineBlock(blockId, newStartTimeStr, isFixedTemplate = f
     if (isFixedTemplate) {
         const t = templates.find(x => x.id === blockId);
         if (!t) return;
-        // Nasconde l'orario fisso di default per domani e crea il blocco spostato
         plannerExceptions[`${t.id}_${tomorrowStr}_${oldStartStr}`] = true;
         placeTaskBlockOnTomorrowTimeline(t.id, newStartTimeStr, 1);
         return;
@@ -1336,11 +2179,12 @@ function assignInboxItemToTomorrow(todoId) {
 
     templates.push({
         id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+        isTodo: true,
         category: catName,
         title: item.title,
         instances: 1,
-        timerMinutes: 25,
-        noTimer: false,
+        timerMinutes: 0,
+        noTimer: true,
         frequency: 'specific',
         daysOfWeek: [tmwDayIdx],
         startDate: tomorrowStr,
@@ -1353,7 +2197,6 @@ function assignInboxItemToTomorrow(todoId) {
     generalTodos = generalTodos.filter(x => x.id !== todoId);
     selectedTodos.delete(todoId);
     saveData();
-    renderGeneralTodos();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     renderPlanTomorrowModal();
@@ -1430,10 +2273,9 @@ function renderPlanTomorrowModal() {
     const prioInput = document.getElementById('plan-tmw-priority');
     if (prioInput) prioInput.value = dailyPriorities[tomorrowStr] || '';
 
-    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
     const customBlocks = Array.isArray(ephemeralData[tomorrowStr]) ? ephemeralData[tomorrowStr] : [];
+    const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
 
-    // 1. Render Blocchi Task Disponibili per Domani (proporzionali e trascinabili sulla Timeline)
     const availCont = document.getElementById('plan-tmw-available-blocks');
     if (availCont) {
         availCont.innerHTML = '';
@@ -1468,7 +2310,7 @@ function renderPlanTomorrowModal() {
                 leftInfo.style.cssText = 'flex: 1; min-width: 0;';
                 const badgeText = unitMins > 0
                     ? `${unitMins}m/block · ${remainingBlocks}/${totalInstances} left`
-                    : `CHECK-ONLY ROUTINE`;
+                    : `CHECK-ONLY`;
 
                 leftInfo.innerHTML = `
                     <div style="font-weight:bold; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
@@ -1480,7 +2322,6 @@ function renderPlanTomorrowModal() {
                 const rightControls = document.createElement('div');
                 rightControls.style.cssText = 'display: flex; align-items: center; gap: 5px; flex-shrink: 0;';
 
-                // Se ha blocchi con minuti da piazzare sulla timeline
                 let multSelect = null;
                 if (unitMins > 0 && remainingBlocks > 0) {
                     if (remainingBlocks > 1) {
@@ -1495,6 +2336,20 @@ function renderPlanTomorrowModal() {
                         }
                         rightControls.appendChild(multSelect);
                     }
+
+                    // Selettore rapido Fase del Giorno per Domani (5A)
+                    const phaseSel = document.createElement('select');
+                    phaseSel.className = 'form-control form-control-sm';
+                    phaseSel.style.cssText = 'width: 92px; padding: 2px 4px; font-size: 0.65rem;';
+                    phaseSel.innerHTML = `<option value="">[PHASE ▼]</option>` +
+                        phases.map(p => `<option value="${p.id}">${p.short}</option>`).join('');
+                    phaseSel.onchange = () => {
+                        if (phaseSel.value && typeof scheduleTaskInDayPhase === 'function') {
+                            const mult = multSelect ? parseInt(multSelect.value, 10) : 1;
+                            scheduleTaskInDayPhase(t.id, tomorrowStr, phaseSel.value, mult);
+                        }
+                    };
+                    rightControls.appendChild(phaseSel);
 
                     const timeInp = document.createElement('input');
                     timeInp.type = 'time';
@@ -1540,12 +2395,11 @@ function renderPlanTomorrowModal() {
         if (badgeEl) badgeEl.textContent = `${(totalCommittedMins / 60).toFixed(1)}H TOTAL`;
     }
 
-    // 2. General To-Do Inbox (unica fonte di spostamento rapido)
     const inboxCont = document.getElementById('plan-tmw-inbox');
     if (inboxCont) {
         inboxCont.innerHTML = '';
         if (generalTodos.length === 0) {
-            inboxCont.innerHTML = '<div class="empty-state">[ INBOX EMPTY ]</div>';
+            inboxCont.innerHTML = '<div class="empty-state">[ QUEUE EMPTY ]</div>';
         } else {
             generalTodos.forEach(item => {
                 const row = document.createElement('div');
@@ -1561,7 +2415,6 @@ function renderPlanTomorrowModal() {
         }
     }
 
-    // 3. Disegna la Timeline Giornaliera di Domani (06:30 - 24:00)
     renderTomorrowOneDayTimeline();
 }
 
@@ -1570,7 +2423,7 @@ function renderTomorrowOneDayTimeline() {
     const canvasCol = document.getElementById('plan-tmw-day-canvas');
     if (!labelsCol || !canvasCol) return;
 
-    const startHour = 6.5; // 06:30
+    const startHour = 6.5;
     const totalHeight = (24 - startHour) * tmwTimelineZoom;
 
     labelsCol.innerHTML = '';
@@ -1593,7 +2446,10 @@ function renderTomorrowOneDayTimeline() {
     canvasCol.innerHTML = '';
     canvasCol.style.height = `${totalHeight}px`;
 
-    // Linee orizzontali ogni 30 minuti per riferimento visivo preciso
+    if (typeof appendDayPhaseBandsToColumn === 'function') {
+        appendDayPhaseBandsToColumn(canvasCol, tmwTimelineZoom, true);
+    }
+
     for (let half = 13; half <= 48; half++) {
         const hDec = half / 2;
         const line = document.createElement('div');
@@ -1603,7 +2459,6 @@ function renderTomorrowOneDayTimeline() {
         canvasCol.appendChild(line);
     }
 
-    // Indicatore visivo dell'orario durante il Drag & Drop sulla Timeline
     const dropIndicator = document.createElement('div');
     dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border-top: 2px solid var(--text-main); z-index: 60; pointer-events:none;';
     const dropBadge = document.createElement('span');
@@ -1615,7 +2470,6 @@ function renderTomorrowOneDayTimeline() {
         const rect = canvasCol.getBoundingClientRect();
         const relY = Math.max(0, Math.min(totalHeight, clientY - rect.top));
         const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
-        // Snap preciso a multipli di 5 minuti (perfetto per task da 10m come Duolingo o 30m come Algebra)
         const snappedMins = Math.round(rawMins / 5) * 5;
         return minutesToTimeStr(snappedMins);
     };
@@ -1651,7 +2505,6 @@ function renderTomorrowOneDayTimeline() {
 
     const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
 
-    // 1. Ghost Layers di domani sullo sfondo
     referenceLayers.forEach(ref => {
         if (ref && refToggles[ref.id]) {
             (ref.timeWindows || []).forEach(tw => {
@@ -1668,7 +2521,6 @@ function renderTomorrowOneDayTimeline() {
         }
     });
 
-    // 2. Raccoglie tutti i blocchi di domani (Task fisse + Blocchi Proporzionali piazzati + Eventi)
     const timelineBlocks = [];
 
     templates.forEach(t => {

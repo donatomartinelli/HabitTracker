@@ -86,8 +86,6 @@
         </div>
 
         <div class="header-right">
-            <button id="btn-quick-switcher" class="btn btn-sm" onclick="openQuickSwitcherModal()" title="Quick View & Module Switcher (Shortcut: V)">[VIEW // V]</button>
-            <button id="btn-hud-mode" class="btn btn-sm" onclick="toggleHudMode()" title="Toggle 56px Always-on-Top HUD Bar (Shortcut: Alt+H)">[HUD]</button>
             <button class="btn btn-sm" onclick="openSettingsModal()" title="Settings & System Controls (Shortcut: ,)">[SETTINGS]</button>
             <button id="btn-minimize-app" class="icon-btn win-ctrl-btn" title="Minimize Window">[-]</button>
             <button id="btn-close-app" class="icon-btn delete win-ctrl-btn" title="Close Application">[X]</button>
@@ -135,7 +133,6 @@
                     <span class="section-label">Monthly Calendar</span>
                     <div style="display: flex; gap: 6px;">
                         <button class="btn btn-sm" onclick="jumpToDate(todayStr)">[TODAY]</button>
-                        <button class="btn btn-sm" onclick="openJournal(selectedDateStr)">[JOURNAL // J]</button>
                     </div>
                 </div>
 
@@ -159,32 +156,60 @@
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0;">
                 <div id="daily-priority-banner" class="daily-priority-banner" style="display: none;"></div>
 
-                <div class="section-header-row">
+                <div class="section-header-row" style="flex-wrap: wrap; gap: 8px;">
                     <div>
-                        <span class="section-label">Daily Tasks</span>
+                        <span class="section-label">Tasks</span>
                         <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
                     </div>
 
-                    <div style="display: flex; gap: 6px; align-items: center;">
-                        <div class="dropdown">
-                            <button class="btn btn-sm dropdown-btn" id="btn-inbox-toggle" onclick="document.getElementById('todo-dropdown-content').classList.toggle('show')">[INBOX (0) ▼]</button>
-                            <div id="todo-dropdown-content" class="dropdown-content todo-dropdown-box" onclick="event.stopPropagation()">
-                                <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-bottom: 8px;" placeholder="+ Quick inbox item (or 'comprare X')..." onkeydown="addGeneralTask(event)">
-                                <div id="general-todo-list" class="todo-dropdown-list"></div>
-                                <button class="btn btn-primary btn-sm" style="width: 100%;" onclick="openAssignModal()">Assign Selected to Date</button>
-                            </div>
-                        </div>
+                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()" title="Build & Start Focus Playlist">[▶ FOCUS PLAYLIST]</button>
+                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()" title="Manage Tasks, Routines, Medicines & Create New">[TASKS ⚙]</button>
                     </div>
                 </div>
                 
                 <div id="today-tasks" class="daily-columns-wrap" style="flex: 1;">
+                    <!-- 1. FIXED -->
                     <div id="scheduled-tasks-col" style="flex: 1; min-width: 0;">
-                        <div class="sub-column-header">Scheduled</div>
+                        <div class="sub-column-header">Fixed</div>
                         <div id="scheduled-tasks-list"></div>
                     </div>
+
+                    <!-- 2. FLEXIBLE -->
                     <div id="flexible-tasks-col" style="flex: 1; min-width: 0;">
                         <div class="sub-column-header">Flexible</div>
                         <div id="flexible-tasks-list"></div>
+                    </div>
+
+                    <!-- 3. ROUTINES -->
+                    <div id="routines-tasks-col" style="flex: 1; min-width: 0;">
+                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>Routines</span>
+                            <span id="routines-progress-badge" style="font-size: 0.65rem; color: var(--text-main); font-weight: bold;">0/0</span>
+                        </div>
+                        <div id="routines-tasks-list"></div>
+                    </div>
+
+                    <!-- 4. TO-DO (Assegnate al giorno + Generatore/Coda da assegnare) -->
+                    <div id="todo-tasks-col" style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
+                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <span>To-Do</span>
+                            <span id="todo-col-date-badge" style="font-size: 0.65rem; color: var(--text-dim);"></span>
+                        </div>
+
+                        <!-- Parte Superiore: To-Do assegnate alla data selezionata (e memoria storica nei giorni passati) -->
+                        <div id="assigned-todos-list" style="margin-bottom: 14px;"></div>
+
+                        <!-- Parte Inferiore: Generazione nuove To-Do e Coda non assegnate -->
+                        <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: auto;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                                <span style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Unassigned Queue</span>
+                                <span id="unassigned-todo-count" style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold;">0</span>
+                            </div>
+                            <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-bottom: 8px;" placeholder="+ Generate To-Do (Enter)..." onkeydown="addGeneralTask(event)">
+                            <div id="general-todo-list" style="display: flex; flex-direction: column; gap: 5px; max-height: 200px; overflow-y: auto; margin-bottom: 8px;"></div>
+                            <button type="button" id="btn-assign-todos" class="btn btn-primary btn-sm" style="width: 100%; display: none;" onclick="openAssignModal()">[ASSIGN SELECTED TO DATE]</button>
+                        </div>
                     </div>
                 </div>
             </div>

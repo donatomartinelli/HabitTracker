@@ -529,9 +529,6 @@ window.addEventListener('DOMContentLoaded', () => {
             case 'p':
             case 'P':
                 e.preventDefault(); openPlanTomorrowModal(); break;
-            case 'j':
-            case 'J':
-                e.preventDefault(); openJournal(selectedDateStr); break;
             case 's':
             case 'S':
                 e.preventDefault();

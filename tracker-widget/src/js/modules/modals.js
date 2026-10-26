@@ -6,19 +6,6 @@ function initModalsHtml() {
     if (!root) return;
 
     root.innerHTML = `
-    <!-- 1. Journal Modal -->
-    <div id="journalModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 600px; height: 70vh; display: flex; flex-direction: column;">
-            <h2 id="journal-title">Journal</h2>
-            <input type="hidden" id="journal-date-hidden">
-            <p class="modal-subtitle">Write your daily log, reflections, or review.</p>
-            <textarea id="journal-text" class="form-control" style="flex: 1; resize: none; line-height: 1.5; padding: 15px;" placeholder="Log entry..."></textarea>
-            <div class="modal-actions">
-                <button class="btn" onclick="closeModals()">Close [Esc]</button>
-                <button class="btn btn-primary" onclick="saveJournal()">Save Log</button>
-            </div>
-        </div>
-    </div>
 
     <!-- 2. Pomodoro Timer Overlay -->
     <div id="pomodoroOverlay" class="pomodoro-overlay" style="z-index: 2500;">
@@ -68,13 +55,16 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 5. Combined Creation Modal (Habits, Events, Medicines) -->
+    <!-- 5. Combined Creation Modal (Habits, Routines, Events, Medicines) -->
     <div id="creationModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content">
-            <h2>Add to Planner</h2>
+        <div class="modal-content" style="width: 780px; max-width: 95%;">
+            <h2 id="creation-modal-title">Add to Planner &amp; Tasks</h2>
             <div class="task-type-toggle" style="margin-bottom: 20px;">
                 <label class="type-radio">
                     <input type="radio" name="creation-type" value="habit" checked onchange="toggleCreationType()"> Habit / Task
+                </label>
+                <label class="type-radio">
+                    <input type="radio" name="creation-type" value="routine" onchange="toggleCreationType()"> Routine
                 </label>
                 <label class="type-radio">
                     <input type="radio" name="creation-type" value="event" onchange="toggleCreationType()"> Single Event
@@ -84,15 +74,16 @@ function initModalsHtml() {
                 </label>
             </div>
 
+            <!-- FORM 1: HABIT / TASK -->
             <form id="habitForm">
                 <input type="hidden" id="h-id">
                 <div class="form-group">
                     <label>Category / Calendar</label>
-                    <input type="text" id="h-category" class="form-control" placeholder="e.g. French, Studio, Routine" required>
+                    <input type="text" id="h-category" class="form-control" placeholder="e.g. French, Studio, General" required>
                 </div>
                 <div class="form-group">
                     <label>Task Name</label>
-                    <input type="text" id="h-title" class="form-control" placeholder="e.g. Duolingo, Analisi II, Log transactions" required>
+                    <input type="text" id="h-title" class="form-control" placeholder="e.g. Duolingo, Analisi II" required>
                 </div>
                 <div class="form-group">
                     <label>Color</label>
@@ -122,7 +113,7 @@ function initModalsHtml() {
                     <label>Schedule Mode</label>
                     <div class="task-type-toggle">
                         <label class="type-radio">
-                            <input type="radio" name="h-type" value="timed" onchange="toggleHabitType()"> Timed (Grid)
+                            <input type="radio" name="h-type" value="timed" onchange="toggleHabitType()"> Timed (Fixed)
                         </label>
                         <label class="type-radio">
                             <input type="radio" name="h-type" value="untimed" checked onchange="toggleHabitType()"> Untimed (Flexible)
@@ -144,7 +135,7 @@ function initModalsHtml() {
                                 <input type="radio" name="h-timer-mode" value="measured" checked onchange="toggleTaskTimerMode()"> Focus Timer (Measured)
                             </label>
                             <label class="type-radio">
-                                <input type="radio" name="h-timer-mode" value="checkonly" onchange="toggleTaskTimerMode()"> Check-Only Routine (No Timer)
+                                <input type="radio" name="h-timer-mode" value="checkonly" onchange="toggleTaskTimerMode()"> Check-Only (No Timer)
                             </label>
                         </div>
                     </div>
@@ -179,10 +170,109 @@ function initModalsHtml() {
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Habit</button>
+                    <button type="submit" class="btn btn-primary">Save Task</button>
                 </div>
             </form>
 
+            <!-- FORM 2: ROUTINE (UNIFORMATO ALLE TASK + SOTTO-SEZIONI 1A & 2A) -->
+            <form id="routineForm" style="display: none;">
+                <input type="hidden" id="rtn-id">
+                <div class="form-group">
+                    <label>Routine Name</label>
+                    <input type="text" id="rtn-title" class="form-control" placeholder="e.g. Morning Routine, Evening Routine, Weekly Routine" required>
+                </div>
+                <div class="form-group">
+                    <label>Color</label>
+                    <div class="color-palette" id="rtn-color-palette">
+                        <div class="color-circle active" style="background: #b08d43;" data-color="#b08d43" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background: #4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background: #5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background: #ffffff;" data-color="#ffffff" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle custom-color-btn" onclick="document.getElementById('rtn-color').click()">+</div>
+                    </div>
+                    <input type="color" id="rtn-color" style="display: none;" value="#b08d43" onchange="updateCustomColor(this, 'rtn-color')">
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Start Date</label>
+                        <input type="date" id="rtn-startdate" class="form-control" required>
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label>End Date (optional)</label>
+                        <input type="date" id="rtn-enddate" class="form-control">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Schedule Mode</label>
+                    <div class="task-type-toggle">
+                        <label class="type-radio">
+                            <input type="radio" name="rtn-type" value="timed" onchange="toggleRoutineScheduleType()"> Timed (Block on Planner)
+                        </label>
+                        <label class="type-radio">
+                            <input type="radio" name="rtn-type" value="untimed" checked onchange="toggleRoutineScheduleType()"> Untimed (Checklist)
+                        </label>
+                    </div>
+                </div>
+                <div id="rtn-timed-section" style="display: none;">
+                    <div class="form-group">
+                        <label>Time Windows &amp; Days (Shows Routine Block on Weekly Planner)</label>
+                        <div id="rtn-time-windows-container"></div>
+                        <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addRoutineTimeWindow()">+ Add Time Window</button>
+                    </div>
+                </div>
+                <div id="rtn-untimed-section">
+                    <div class="form-group">
+                        <label>Duration / Focus Mode</label>
+                        <div class="task-type-toggle">
+                            <label class="type-radio">
+                                <input type="radio" name="rtn-timer-mode" value="measured" onchange="toggleRoutineTimerMode()"> Focus Timer (Measured)
+                            </label>
+                            <label class="type-radio">
+                                <input type="radio" name="rtn-timer-mode" value="checkonly" checked onchange="toggleRoutineTimerMode()"> Check-Only (No Timer)
+                            </label>
+                        </div>
+                    </div>
+                    <div class="form-group" id="rtn-timer-group" style="display: none;">
+                        <label>Total Routine Duration (Minutes)</label>
+                        <input type="number" id="rtn-timer" class="form-control no-spinners" value="20" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Frequency</label>
+                        <select id="rtn-frequency" class="form-control" onchange="toggleRoutineDays()">
+                            <option value="all">Every day</option>
+                            <option value="weekdays">Weekdays (Mon-Fri)</option>
+                            <option value="weekends">Weekends (Sat-Sun)</option>
+                            <option value="specific">Specific days</option>
+                        </select>
+                    </div>
+                    <div class="form-group days-checkboxes" id="rtn-days-container" style="display: none; gap: 10px;">
+                        <label class="day-check"><input type="checkbox" value="1"> Mon</label>
+                        <label class="day-check"><input type="checkbox" value="2"> Tue</label>
+                        <label class="day-check"><input type="checkbox" value="3"> Wed</label>
+                        <label class="day-check"><input type="checkbox" value="4"> Thu</label>
+                        <label class="day-check"><input type="checkbox" value="5"> Fri</label>
+                        <label class="day-check"><input type="checkbox" value="6"> Sat</label>
+                        <label class="day-check"><input type="checkbox" value="0"> Sun</label>
+                    </div>
+                </div>
+
+                <!-- COSTRUTTORE SOTTO-SEZIONI E VOCI DELLA ROUTINE (2A) -->
+                <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 14px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                        <label style="margin-bottom: 0;">Sub-Sections &amp; Checklist Steps</label>
+                        <button type="button" class="btn btn-sm" onclick="addRoutineFormSubsection()">[+ ADD SUB-SECTION]</button>
+                    </div>
+                    <div id="rtn-subsections-builder" style="display: flex; flex-direction: column; gap: 10px; max-height: 260px; overflow-y: auto; padding-right: 4px;"></div>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Routine</button>
+                </div>
+            </form>
+
+            <!-- FORM 3: SINGLE EVENT -->
             <form id="eventForm" style="display: none;">
                 <div class="form-group">
                     <label>Event Name</label>
@@ -219,14 +309,20 @@ function initModalsHtml() {
                 </div>
             </form>
 
+            <!-- FORM 4: MEDICINE (CON SCORTE, ALERT CALENDARIO, INTERVALLO GIORNI E INIEZIONE ROUTINE) -->
             <form id="medicineForm" style="display: none;">
+                <input type="hidden" id="med-id">
                 <div class="form-group">
                     <label>Medicine Name</label>
-                    <input type="text" id="med-title" class="form-control" placeholder="e.g. Vitamin D" required>
+                    <input type="text" id="med-title" class="form-control" placeholder="e.g. Minoxidil, Finasteride, Vitamina D" required>
+                </div>
+                <div class="form-group">
+                    <label>Inject into Routine (Appears under // MEDICINE)</label>
+                    <select id="med-routine-select" class="form-control"></select>
                 </div>
                 <div style="display: flex; gap: 15px;">
                     <div class="form-group" style="flex: 1;">
-                        <label>Doses per day</label>
+                        <label>Doses per intake</label>
                         <input type="number" id="med-instances" class="form-control no-spinners" value="1" min="1" required>
                     </div>
                     <div class="form-group" style="flex: 1;">
@@ -243,6 +339,29 @@ function initModalsHtml() {
                         <label>Alert Days Before Runout</label>
                         <input type="number" id="med-alert" class="form-control no-spinners" value="7" min="1" required>
                     </div>
+                </div>
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Frequency</label>
+                        <select id="med-frequency" class="form-control" onchange="toggleMedFrequencyInputs()">
+                            <option value="all">Every day</option>
+                            <option value="interval">Every N days (e.g. Every 14 days / 2 weeks)</option>
+                            <option value="specific">Specific days of week</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1; display: none;" id="med-interval-group">
+                        <label>Interval (Every X Days)</label>
+                        <input type="number" id="med-interval-days" class="form-control no-spinners" value="14" min="1">
+                    </div>
+                </div>
+                <div class="form-group days-checkboxes" id="med-days-container" style="display: none; gap: 10px;">
+                    <label class="day-check"><input type="checkbox" value="1"> Mon</label>
+                    <label class="day-check"><input type="checkbox" value="2"> Tue</label>
+                    <label class="day-check"><input type="checkbox" value="3"> Wed</label>
+                    <label class="day-check"><input type="checkbox" value="4"> Thu</label>
+                    <label class="day-check"><input type="checkbox" value="5"> Fri</label>
+                    <label class="day-check"><input type="checkbox" value="6"> Sat</label>
+                    <label class="day-check"><input type="checkbox" value="0"> Sun</label>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
@@ -270,25 +389,88 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 7. Unified Settings & System Control Modal (4 Tabs) -->
+    <!-- 6B. DEDICATED TASKS SETTINGS MODAL ([TASKS ⚙] - Scelta 3B) -->
+    <div id="tasksSettingsModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content settings-modal-box">
+            <div class="settings-top-bar">
+                <div>
+                    <h2 style="margin: 0; border: none; padding: 0;">Tasks, Routines &amp; Medicines Settings</h2>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">MANAGE CATEGORIES, ASSIGN DAY PHASES, EDIT ROUTINES &amp; MEDICINE STOCK</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal()">[+ NEW TASK / ROUTINE / EVENT / MED]</button>
+                    <button type="button" class="btn btn-sm" onclick="closeModals(); renderTasks();">[ESC // CLOSE]</button>
+                </div>
+            </div>
+
+            <div class="settings-body-split">
+                <div class="settings-sidebar">
+                    <div>
+                        <button type="button" class="settings-nav-btn tasks-cfg-nav active" data-tab="tcfg-tasks" onclick="switchTasksConfigTab('tcfg-tasks')">1. Habits, Cats &amp; Phases</button>
+                        <button type="button" class="settings-nav-btn tasks-cfg-nav" data-tab="tcfg-routines" onclick="switchTasksConfigTab('tcfg-routines')">2. Routines</button>
+                        <button type="button" class="settings-nav-btn tasks-cfg-nav" data-tab="tcfg-meds" onclick="switchTasksConfigTab('tcfg-meds')">3. Medicines &amp; Stock</button>
+                    </div>
+                    <div style="padding: 0 16px; font-size: 0.65rem; color: var(--text-dim);">
+                        MAIN VIEW IS PURE CHECKBOXES. EDIT &amp; SNAP PHASES HERE.
+                    </div>
+                </div>
+
+                <!-- TAB 1: HABITS & CATEGORIES (Con modalità [EDIT] a monte - Scelta 3A) -->
+                <div id="tcfg-tasks" class="settings-tab-panel tasks-cfg-panel active">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                        <span class="section-label">Categories &amp; Tasks</span>
+                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                            <button type="button" id="btn-tcfg-toggle-edit" class="btn btn-sm" onclick="toggleTasksManagerEditMode()">[EDIT]</button>
+                            <button type="button" id="btn-tcfg-edit-one" class="btn btn-sm" style="display: none;" onclick="editSelectedManagerItem()" disabled>[EDIT SELECTED]</button>
+                            <button type="button" id="btn-tcfg-delete-many" class="btn btn-danger btn-sm" style="display: none;" onclick="deleteSelectedManagerItems()" disabled>[X DELETE (0)]</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal('habit')">[+ NEW TASK]</button>
+                        </div>
+                    </div>
+                    <div id="manager-list" class="manager-list" style="margin-bottom: 8px;"></div>
+                    <div class="quick-add-task new-calendar-add">
+                        <span>+</span>
+                        <input type="text" placeholder="Create new category and press Enter..." onkeypress="quickAddCalendar(event)">
+                    </div>
+                </div>
+
+                <!-- TAB 2: ROUTINES -->
+                <div id="tcfg-routines" class="settings-tab-panel tasks-cfg-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="section-label">Configured Routines &amp; Sub-Sections</span>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal('routine')">[+ NEW ROUTINE]</button>
+                    </div>
+                    <div id="routines-manager-list" class="manager-list"></div>
+                </div>
+
+                <!-- TAB 3: MEDICINES & STOCK -->
+                <div id="tcfg-meds" class="settings-tab-panel tasks-cfg-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="section-label">Medicines (Injected into Routines + Calendar Alerts)</span>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal('medicine')">[+ NEW MEDICINE]</button>
+                    </div>
+                    <div id="meds-manager-list" class="manager-list"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 7. Global System Settings & Workspace Modal (Senza Habits & Cats) -->
     <div id="managerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content settings-modal-box">
             <div class="settings-top-bar">
                 <div>
                     <h2 style="margin: 0; border: none; padding: 0;">System Settings &amp; Workspace</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE LAYOUTS, ACTIONS, SONY AUDIO KEYS, HABITS &amp; BACKUPS</span>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE LAYOUTS, ALIASES, SONY AUDIO KEYS &amp; BACKUPS</span>
                 </div>
                 <button class="btn btn-sm" onclick="closeModals(); renderTasks();">[ESC // CLOSE]</button>
             </div>
 
             <div class="settings-body-split">
-                <!-- Sidebar Navigazione Tab -->
                 <div class="settings-sidebar">
                     <div>
-                        <button type="button" class="settings-nav-btn active" data-tab="tab-workspace" onclick="switchSettingsTab('tab-workspace')">1. Workspace &amp; UI</button>
-                        <button type="button" class="settings-nav-btn" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. Sony Audio Pipeline</button>
-                        <button type="button" class="settings-nav-btn" data-tab="tab-habits" onclick="switchSettingsTab('tab-habits')">3. Habits &amp; Cats</button>
-                        <button type="button" class="settings-nav-btn" data-tab="tab-system" onclick="switchSettingsTab('tab-system')">4. Data &amp; Manual</button>
+                        <button type="button" class="settings-nav-btn sys-cfg-nav active" data-tab="tab-workspace" onclick="switchSettingsTab('tab-workspace')">1. Workspace &amp; UI</button>
+                        <button type="button" class="settings-nav-btn sys-cfg-nav" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. Sony Audio Pipeline</button>
+                        <button type="button" class="settings-nav-btn sys-cfg-nav" data-tab="tab-system" onclick="switchSettingsTab('tab-system')">3. Data &amp; Manual</button>
                     </div>
                     <div style="padding: 0 16px; font-size: 0.65rem; color: var(--text-dim);">
                         SHORTCUTS: [E] EDIT · [0] ZERO · [P] PLAN · [R] RED · [?] HELP
@@ -296,15 +478,14 @@ function initModalsHtml() {
                 </div>
 
                 <!-- TAB 1: APPEARANCE, QUICK ACTIONS & WORKSPACE VIEWS -->
-                <div id="tab-workspace" class="settings-tab-panel active">
+                <div id="tab-workspace" class="settings-tab-panel sys-cfg-panel active">
                     <div class="cfg-box">
                         <div class="sub-column-header">Quick System Actions &amp; Builders</div>
                         <div style="display: flex; flex-wrap: wrap; gap: 8px;">
                             <button type="button" class="btn btn-sm" onclick="closeModals(); toggleLayoutEditMode();">[EDIT LAYOUT // E]</button>
                             <button type="button" class="btn btn-sm" onclick="closeModals(); setQuadrantCount(0);">[0 // ZERO-UI MODE]</button>
                             <button type="button" class="btn btn-sm" onclick="openPlanTomorrowModal()">[PLAN TOMORROW // P]</button>
-                            <button type="button" class="btn btn-sm" onclick="openTimerModal()">[▶ FOCUS BUILDER]</button>
-                            <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal()">[+ NEW HABIT / EVENT / MED]</button>
+                            <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()">[TASKS &amp; ROUTINES ⚙]</button>
                         </div>
                     </div>
 
@@ -336,8 +517,8 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <!-- TAB 2: SONY RECORDER PIPELINE (GEMINI AUDIO TRANSCRIPTION) -->
-                <div id="tab-ai" class="settings-tab-panel">
+                <!-- TAB 2: SONY RECORDER PIPELINE -->
+                <div id="tab-ai" class="settings-tab-panel sys-cfg-panel">
                     <div class="cfg-box">
                         <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
                             <span>Primary Gemini API Key (Fallback for Audio Pipeline)</span>
@@ -365,25 +546,12 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <!-- TAB 3: HABITS & CATEGORIES -->
-                <div id="tab-habits" class="settings-tab-panel">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span class="section-label">Manage Categories &amp; Habits</span>
-                        <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal()">[+ ADD HABIT / EVENT / MED]</button>
-                    </div>
-                    <div id="manager-list" class="manager-list" style="margin-bottom: 8px;"></div>
-                    <div class="quick-add-task new-calendar-add">
-                        <span>+</span>
-                        <input type="text" placeholder="Create new category and press Enter..." onkeypress="quickAddCalendar(event)">
-                    </div>
-                </div>
-
-                <!-- TAB 4: DATA & SYSTEM MANUAL -->
-                <div id="tab-system" class="settings-tab-panel">
+                <!-- TAB 3: DATA & SYSTEM MANUAL -->
+                <div id="tab-system" class="settings-tab-panel sys-cfg-panel">
                     <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
                         <div>
                             <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Database JSON Backup</div>
-                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">Export or restore all habits, logs, notes, diet, gym and finances</div>
+                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">Export or restore all habits, routines, logs, notes, diet, gym and finances</div>
                         </div>
                         <div style="display: flex; gap: 10px;">
                             <button type="button" class="btn btn-sm" onclick="exportData()">[EXPORT JSON]</button>
@@ -895,6 +1063,56 @@ function initModalsHtml() {
             <div id="qs-body-content" style="display:flex; flex-direction:column; gap:14px; max-height:62vh; overflow-y:auto;"></div>
         </div>
     </div>
+
+    <!-- 21. Routines Manager Modal -->
+    <div id="routinesManagerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 780px; max-width: 96%; max-height: 88vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px;">
+                <div>
+                    <h2 style="margin: 0; border: none; padding: 0;">Routines &amp; Sub-Sections Manager</h2>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE MORNING, EVENING, WEEKLY ROUTINES, MEDICINE STOCK &amp; ACTION TRIGGERS</span>
+                </div>
+                <button type="button" class="btn btn-sm" onclick="closeModals()">[ESC]</button>
+            </div>
+
+            <div style="display: flex; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); align-items: center;">
+                <input type="text" id="new-routine-name-inp" class="form-control form-control-sm" style="flex: 1;" placeholder="New Routine Name (e.g. Pre-Exam Routine, Gym Prep)..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addNewRoutineFromModal();}">
+                <select id="new-routine-freq-sel" class="form-control form-control-sm" style="width: 170px;">
+                    <option value="all">Every Day</option>
+                    <option value="weekend">Weekend (Sat–Sun)</option>
+                    <option value="sunday">Sunday Only</option>
+                    <option value="weekdays">Weekdays (Mon–Fri)</option>
+                </select>
+                <button type="button" class="btn btn-primary btn-sm" onclick="addNewRoutineFromModal()">[+ CREATE ROUTINE]</button>
+            </div>
+
+            <div id="routines-manager-body" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 6px;"></div>
+
+            <div class="modal-actions" style="margin-top: 12px;">
+                <button type="button" class="btn btn-primary" onclick="closeModals(); renderTasks();">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 22. Weekly Planning Builder Modal (Sunday Night Strategy) -->
+    <div id="weeklyPlanModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
+        <div class="modal-content" style="width: 1180px; max-width: 98vw; max-height: 90vh; display: flex; flex-direction: column;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px;">
+                <div>
+                    <h2 style="margin: 0; border: none; padding: 0;">Weekly Strategy Builder // Assign Tasks by Day Phase</h2>
+                    <span style="font-size: var(--font-xs); color: var(--text-dim);">SET DAILY #1 PRIORITIES &amp; SNAP TASKS INTO DAY PHASES (EARLY AM, LATE AM, EARLY PM, LATE PM, EVENING)</span>
+                </div>
+                <span id="weekly-plan-range-label" style="font-size: var(--font-xs); color: var(--text-main); font-weight: bold; padding: 4px 10px; border: 1px solid var(--border-color);">WEEK</span>
+            </div>
+
+            <div id="weekly-plan-days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; flex: 1; overflow-y: auto; padding-bottom: 6px;"></div>
+
+            <div class="modal-actions" style="margin-top: 12px;">
+                <button type="button" class="btn" onclick="closeModals()">Close</button>
+                <button type="button" class="btn btn-primary" onclick="closeModals(); renderWeeklyPlanner(); renderTasks();">[LOCK WEEKLY PLAN]</button>
+            </div>
+        </div>
+    </div>
     `;
 }
 
@@ -1240,10 +1458,19 @@ const labelEl = document.getElementById('opacity-val');
 if (labelEl) labelEl.innerText = savedOpacity;
 
 function switchSettingsTab(tabId) {
-    document.querySelectorAll('.settings-nav-btn').forEach(btn => {
+    document.querySelectorAll('.sys-cfg-nav').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabId);
     });
-    document.querySelectorAll('.settings-tab-panel').forEach(panel => {
+    document.querySelectorAll('.sys-cfg-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === tabId);
+    });
+}
+
+function switchTasksConfigTab(tabId) {
+    document.querySelectorAll('.tasks-cfg-nav').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+    document.querySelectorAll('.tasks-cfg-panel').forEach(panel => {
         panel.classList.toggle('active', panel.id === tabId);
     });
 }

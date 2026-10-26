@@ -1,4 +1,4 @@
-// --- ATOMIC MODULE 1: CALENDAR & JOURNAL ---
+// --- ATOMIC MODULE 1: CALENDAR ---
 
 function selectDate(dateStr) {
     selectedDateStr = dateStr;
@@ -67,7 +67,6 @@ function renderCalendar() {
         }
 
         dayCell.onclick = () => selectDate(cellDateStr);
-        dayCell.ondblclick = () => openJournal(cellDateStr);
         frag.appendChild(dayCell);
     }
 
@@ -80,51 +79,26 @@ function renderCalendarDaySummary() {
     const cont = document.getElementById('calendar-day-summary');
     if (!cont) return;
 
-    if (lbl) lbl.textContent = `OVERVIEW // ${selectedDateStr}`;
+    if (lbl) lbl.textContent = `EVENTS // ${selectedDateStr}`;
     cont.innerHTML = '';
 
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
-    const stats = getStatsForDate(selectedDateStr);
-    const hasJournal = !!(journals[selectedDateStr] && journals[selectedDateStr].trim());
 
-    const statsRow = document.createElement('div');
-    statsRow.style.cssText = 'font-size: var(--font-xs); color: var(--text-muted); padding: 6px 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.015); display: flex; justify-content: space-between;';
-    statsRow.innerHTML = `
-        <span>TASKS COMPLETED: <strong style="color:var(--text-main);">${stats.completed}/${stats.total}</strong></span>
-        <span style="color:${hasJournal ? 'var(--accent-green)' : 'var(--text-dim)'};">${hasJournal ? '[JOURNAL WRITTEN]' : '[NO JOURNAL]'}</span>
-    `;
-    cont.appendChild(statsRow);
-
-    if (dayEvents.length > 0) {
-        dayEvents.forEach(e => {
-            const evRow = document.createElement('div');
-            evRow.style.cssText = `font-size: var(--font-xs); padding: 6px 8px; border: 1px solid var(--border-color); border-left: 3px solid ${e.color}; display: flex; justify-content: space-between; align-items: center;`;
-            const timeBadge = (e.start && e.end) ? `[${e.start}-${e.end}] ` : '';
-            evRow.innerHTML = `<strong style="color:${e.color};">${escapeHtml(timeBadge + e.title)}</strong>`;
-            const delBtn = document.createElement('button');
-            delBtn.className = 'icon-btn delete';
-            delBtn.textContent = '[X]';
-            delBtn.onclick = () => deleteEvent(e.id);
-            evRow.appendChild(delBtn);
-            cont.appendChild(evRow);
-        });
+    if (dayEvents.length === 0) {
+        cont.innerHTML = `<div class="empty-state">[ NO EVENTS FOR THIS DATE ]</div>`;
+        return;
     }
-}
 
-function openJournal(dateStr) {
-    document.getElementById('journal-title').innerText = `Journal // ${dateStr}`;
-    document.getElementById('journal-date-hidden').value = dateStr;
-    document.getElementById('journal-text').value = journals[dateStr] || '';
-    closeModals();
-    document.getElementById('journalModal').style.display = 'flex';
-}
-
-function saveJournal() {
-    const dateStr = document.getElementById('journal-date-hidden').value;
-    const text = document.getElementById('journal-text').value;
-    journals[dateStr] = text;
-    saveData();
-    closeModals();
-    renderCalendarDaySummary();
-    if (typeof showToast === 'function') showToast(`[JOURNAL] Saved entry for ${dateStr}`);
+    dayEvents.forEach(e => {
+        const evRow = document.createElement('div');
+        evRow.style.cssText = `font-size: var(--font-xs); padding: 6px 8px; border: 1px solid var(--border-color); border-left: 3px solid ${e.color}; display: flex; justify-content: space-between; align-items: center;`;
+        const timeBadge = (e.start && e.end) ? `[${e.start}-${e.end}] ` : '';
+        evRow.innerHTML = `<strong style="color:${e.color};">${escapeHtml(timeBadge + e.title)}</strong>`;
+        const delBtn = document.createElement('button');
+        delBtn.className = 'icon-btn delete';
+        delBtn.textContent = '[X]';
+        delBtn.onclick = () => deleteEvent(e.id);
+        evRow.appendChild(delBtn);
+        cont.appendChild(evRow);
+    });
 }

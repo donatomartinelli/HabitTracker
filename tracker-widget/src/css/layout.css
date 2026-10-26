@@ -328,10 +328,10 @@
 }
 
 /* --- SETTINGS MODAL CON SIDEBAR A TAB --- */
-.settings-modal-box {
-    width: 860px;
-    max-width: 95vw;
-    height: 78vh;
+.modal-content.settings-modal-box {
+    width: 1180px !important;
+    max-width: 96vw !important;
+    height: 86vh !important;
     padding: 0 !important;
     display: flex;
     flex-direction: column;

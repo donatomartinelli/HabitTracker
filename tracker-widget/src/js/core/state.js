@@ -98,6 +98,101 @@ const DEFAULT_UNI_DATA = {
     taxes: []
 };
 
+const DAY_PHASES = [
+    { id: 'early_am', label: 'EARLY MORNING',   short: 'EARLY AM', start: '06:30', end: '09:30', startDec: 6.5,  endDec: 9.5 },
+    { id: 'late_am',  label: 'LATE MORNING',    short: 'LATE AM',  start: '09:30', end: '13:00', startDec: 9.5,  endDec: 13.0 },
+    { id: 'early_pm', label: 'EARLY AFTERNOON', short: 'EARLY PM', start: '13:00', end: '16:30', startDec: 13.0, endDec: 16.5 },
+    { id: 'late_pm',  label: 'LATE AFTERNOON',  short: 'LATE PM',  start: '16:30', end: '20:00', startDec: 16.5, endDec: 20.0 },
+    { id: 'evening',  label: 'EVENING',         short: 'EVENING',  start: '20:00', end: '24:00', startDec: 20.0, endDec: 24.0 }
+];
+
+const DEFAULT_ROUTINES_DATA = [
+    {
+        id: 'rtn_morning',
+        title: 'Morning Routine',
+        color: '#b08d43',
+        startDate: '2026-01-01',
+        endDate: null,
+        type: 'untimed',
+        noTimer: true,
+        timerMinutes: 20,
+        frequency: 'all',
+        daysOfWeek: [],
+        timeWindows: [],
+        sections: [
+            {
+                id: 'sec_m_1',
+                title: 'Avvio',
+                items: [
+                    { id: 'ri_m1', title: 'Acqua + Luce naturale' },
+                    { id: 'ri_m2', title: 'Skincare viso mattina' }
+                ]
+            }
+        ]
+    },
+    {
+        id: 'rtn_evening',
+        title: 'Evening Routine',
+        color: '#4c5b73',
+        startDate: '2026-01-01',
+        endDate: null,
+        type: 'untimed',
+        noTimer: true,
+        timerMinutes: 25,
+        frequency: 'all',
+        daysOfWeek: [],
+        timeWindows: [],
+        sections: [
+            {
+                id: 'sec_e_close',
+                title: 'Chiusura & System',
+                items: [
+                    { id: 'ri_e_tx', title: 'Log in transactions' },
+                    { id: 'ri_e_sony', title: 'Sync recorder & gestione note' },
+                    { id: 'ri_e_plan', title: 'Pianificazione giorno dopo' }
+                ]
+            }
+        ]
+    },
+    {
+        id: 'rtn_weekly',
+        title: 'Weekly Routine',
+        color: '#5f7a61',
+        startDate: '2026-01-01',
+        endDate: null,
+        type: 'untimed',
+        noTimer: true,
+        timerMinutes: 45,
+        frequency: 'weekends',
+        daysOfWeek: [6, 0],
+        timeWindows: [],
+        sections: [
+            {
+                id: 'sec_w_home',
+                title: 'Casa',
+                items: [
+                    { id: 'ri_w_wash', title: 'Fare lavatrici' }
+                ]
+            },
+            {
+                id: 'sec_w_groom',
+                title: 'Grooming',
+                items: [
+                    { id: 'ri_w_shower', title: 'Doccia' },
+                    { id: 'ri_w_shave', title: 'Rasatura barba + crema' }
+                ]
+            },
+            {
+                id: 'sec_w_plan',
+                title: 'Domenica Sera',
+                items: [
+                    { id: 'ri_w_weekplan', title: 'Pianificazione della settimana' }
+                ]
+            }
+        ]
+    }
+];
+
 const DEFAULT_LAYOUT_TREE = {
     id: 'root_split',
     type: 'split',
@@ -121,7 +216,7 @@ const ALL_STORAGE_KEYS = [
     'tracker_uni_data',
     'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio', 'tracker_extracted_notes',
     'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view',
-    'tracker_custom_aliases'
+    'tracker_custom_aliases', 'tracker_routines', 'tracker_routine_logs'
 ];
 
 function safeJsonParse(rawStr, fallbackVal) {
@@ -326,7 +421,9 @@ function migrateAndInitData() {
         'tracker_layout_tree': DEFAULT_LAYOUT_TREE,
         'tracker_workspace_presets': [],
         'tracker_startup_view': 'last',
-        'tracker_custom_aliases': {}
+        'tracker_custom_aliases': {},
+        'tracker_routines': DEFAULT_ROUTINES_DATA,
+        'tracker_routine_logs': {}
     };
 
     for (let key in defaults) {
@@ -356,6 +453,8 @@ let generalTodos = safeJsonParse(localStorage.getItem('tracker_general_todo'), [
 let plannerExceptions = safeJsonParse(localStorage.getItem('tracker_planner_exceptions'), {});
 let focusLogs = safeJsonParse(localStorage.getItem('tracker_focus_logs'), []);
 let dailyPriorities = safeJsonParse(localStorage.getItem('tracker_daily_priorities'), {});
+let routinesData = safeJsonParse(localStorage.getItem('tracker_routines'), DEFAULT_ROUTINES_DATA);
+let routineLogs = safeJsonParse(localStorage.getItem('tracker_routine_logs'), {});
 let selectedTodos = new Set();
 
 // Money
@@ -423,7 +522,9 @@ function saveData() {
         'tracker_planner_exceptions': plannerExceptions,
         'tracker_focus_logs': focusLogs,
         'tracker_daily_priorities': dailyPriorities,
-        'tracker_processed_audio': processedAudioFiles
+        'tracker_processed_audio': processedAudioFiles,
+        'tracker_routines': routinesData,
+        'tracker_routine_logs': routineLogs
     });
 }
 
@@ -656,8 +757,9 @@ function syncCategoryOrder() {
 syncCategoryOrder();
 
 function isTaskActiveOnDate(template, dateStr) {
+    if (!template) return false;
     if (template.exceptions && template.exceptions.includes(dateStr)) return false;
-    if (dateStr < template.startDate) return false;
+    if (template.startDate && dateStr < template.startDate) return false;
     if (template.endDate && dateStr > template.endDate) return false;
 
     const dateObj = parseLocalDate(dateStr);
@@ -676,6 +778,12 @@ function isTaskActiveOnDate(template, dateStr) {
     if (template.frequency === 'weekdays' && dayOfWeek >= 1 && dayOfWeek <= 5) return true;
     if (template.frequency === 'weekends' && (dayOfWeek === 0 || dayOfWeek === 6)) return true;
     if (template.frequency === 'specific' && template.daysOfWeek && template.daysOfWeek.includes(dayOfWeek)) return true;
+    if (template.frequency === 'interval') {
+        const startD = parseLocalDate(template.startDate || todayStr);
+        const diffDays = Math.round((dateObj - startD) / (1000 * 60 * 60 * 24));
+        const step = Math.max(1, parseInt(template.intervalDays, 10) || 14);
+        return diffDays >= 0 && (diffDays % step === 0);
+    }
 
     return false;
 }
@@ -739,7 +847,9 @@ function buildBackupObject() {
         'tracker_layout_tree': JSON.stringify(layoutTree),
         'tracker_workspace_presets': JSON.stringify(workspacePresets),
         'tracker_startup_view': startupView,
-        'tracker_custom_aliases': JSON.stringify(customAliases)
+        'tracker_custom_aliases': JSON.stringify(customAliases),
+        'tracker_routines': JSON.stringify(routinesData),
+        'tracker_routine_logs': JSON.stringify(routineLogs)
     };
 }
 

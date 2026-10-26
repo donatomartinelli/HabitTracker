@@ -1000,3 +1000,66 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     gap: 8px;
     flex-wrap: wrap;
 }
+
+/* --- ROUTINES, SUB-SECTIONS & ACTION TRIGGERS --- */
+/* --- ROUTINES SUB-SECTIONS & DAY PHASES --- */
+.routine-subsection {
+    margin-top: 8px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.routine-subsection:first-of-type {
+    margin-top: 4px;
+    padding-top: 0;
+    border-top: none;
+}
+
+.routine-subsection-title {
+    font-size: 0.65rem;
+    color: var(--text-dim);
+    font-weight: bold;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 4px;
+}
+
+.planner-phase-band {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
+    background: transparent;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.planner-phase-band.alt {
+    background: rgba(255, 255, 255, 0.018);
+}
+
+.planner-phase-watermark {
+    position: absolute;
+    top: 3px;
+    right: 5px;
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.22);
+    font-weight: bold;
+    letter-spacing: 0.6px;
+    pointer-events: none;
+    text-transform: uppercase;
+}
+
+.planner-phase-side-tag {
+    position: absolute;
+    left: 2px;
+    transform: translateY(-50%);
+    font-size: 0.55rem;
+    color: var(--text-dim);
+    background: #050505;
+    border: 1px solid #222;
+    padding: 1px 3px;
+    font-weight: bold;
+    letter-spacing: 0.4px;
+    pointer-events: auto;
+}
