@@ -257,7 +257,7 @@ function confirmStagingCommands() {
     let executedCount = 0;
     let shouldKeepBarOpen = false;
     let openedModal = false;
-    const modalCommands = ['?', 'help', 'plan', 'ledger', 'stats', 'food', 'macros', 'vault', 'settings', 'cfg'];
+    const modalCommands = ['?', 'help', 'ledger', 'stats', 'food', 'macros', 'vault', 'settings', 'cfg'];
 
     validCmds.forEach(cmd => {
         const firstWord = cmd.split(/\s+/)[0].toLowerCase();
@@ -435,7 +435,7 @@ window.addEventListener('DOMContentLoaded', () => {
                 // Esecuzione diretta 0ms
                 const isInspection = typeof isInspectionOnlyCommand === 'function' && isInspectionOnlyCommand(rawVal);
                 const firstWord = rawVal.split(/\s+/)[0].toLowerCase();
-                const modalCommands = ['?', 'help', 'plan', 'ledger', 'stats', 'food', 'macros', 'vault', 'settings', 'cfg'];
+                const modalCommands = ['?', 'help', 'ledger', 'stats', 'food', 'macros', 'vault', 'settings', 'cfg'];
 
                 const ok = executeTerminalCommand(rawVal);
                 const answerBox = document.getElementById('terminal-ai-answer');

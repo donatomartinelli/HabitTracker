@@ -1063,3 +1063,57 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     letter-spacing: 0.4px;
     pointer-events: auto;
 }
+
+/* --- MANIGLIA RESIZE INFERIORE SULLA TIMELINE DEL DAY PLANNER --- */
+.plan-block-resize-handle {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 6px;
+    cursor: ns-resize;
+    background: transparent;
+    z-index: 20;
+}
+
+.plan-block-resize-handle:hover {
+    background: rgba(255, 255, 255, 0.35);
+}
+
+.plan-draggable-card:hover {
+    border-color: var(--text-main) !important;
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+/* --- COLONNA DELLE 5 FASI A SINISTRA DEGLI ORARI (WEEKLY & DAY PLANNER) --- */
+.planner-phase-labels {
+    width: 58px;
+    flex-shrink: 0;
+    position: relative;
+    border-right: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.01);
+    user-select: none;
+}
+
+.planner-phase-block-label {
+    position: absolute;
+    left: 0;
+    right: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 4px;
+    text-align: center;
+    font-size: 0.56rem;
+    font-weight: bold;
+    color: var(--text-dim);
+    letter-spacing: 0.5px;
+    line-height: 1.15;
+    text-transform: uppercase;
+}
+
+.planner-phase-block-label.alt {
+    background: rgba(255, 255, 255, 0.018);
+    color: var(--text-muted);
+}

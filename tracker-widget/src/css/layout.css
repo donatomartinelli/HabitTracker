@@ -574,23 +574,28 @@ body.layout-edit-mode .layout {
     }
 }
 
+/* Nascosta nella vista normale: zero banner Q1/Q2 sopra i moduli */
 .quadrant-bar {
+    display: none;
     height: 28px;
     flex-shrink: 0;
-    display: flex;
     justify-content: space-between;
     align-items: center;
     padding: 0 10px;
-    background: #060606;
-    border-bottom: 1px solid var(--border-color);
+    background: #0e0e0e;
+    border-bottom: 1px dashed var(--border-bright);
     font-size: var(--font-xs);
     user-select: none;
     cursor: grab;
 }
 
+/* Appare SOLO quando attivi Edit Mode (tasto E) */
 body.layout-edit-mode .quadrant-bar {
-    background: #0e0e0e;
-    border-bottom-color: var(--border-bright);
+    display: flex;
+}
+
+body.layout-edit-mode .quadrant-body {
+    cursor: grab;
 }
 
 .quadrant-bar-left {
