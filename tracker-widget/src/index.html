@@ -154,7 +154,6 @@
         <!-- 2. MODULO ATOMICO: TASKS -->
         <div id="module-tasks" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0;">
-                <div id="daily-priority-banner" class="daily-priority-banner" style="display: none;"></div>
 
                 <div class="section-header-row" style="flex-wrap: wrap; gap: 8px;">
                     <div>
@@ -452,6 +451,77 @@
         <!-- 9. MODULO ATOMICO: UNIVERSITY (CON SOTTO-MODULI COMPONIBILI) -->
         <div id="module-uni" class="module-container">
             <div id="uni-main-root" class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;"></div>
+        </div>
+
+        <!-- 10. MODULO ATOMICO: DAY PLANNER (VIEW MODE & EDIT MODE) -->
+        <div id="module-plan" class="module-container">
+            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;">
+                <!-- TOP BAR: SWITCH VIEW/EDIT + SELETTORE DATA & STRISCIA 7 GIORNI -->
+                <div class="section-header-row" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span class="section-label" style="color: var(--text-main);">Day Planner</span>
+                        <label class="notes-toggle" title="Switch between Day View and Day Edit Builder">
+                            <input type="checkbox" id="day-plan-mode-checkbox" onchange="toggleDayPlanMode()">
+                            <span class="notes-slider">
+                                <span class="t-label write">VIEW</span>
+                                <span class="t-label browse">EDIT</span>
+                            </span>
+                        </label>
+                        <span id="plan-mod-date-label" style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold; padding: 2px 8px; border: 1px solid var(--border-bright);">YYYY-MM-DD</span>
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-sm" onclick="setPlanBuilderDate(todayStr)">[TODAY]</button>
+                        <button type="button" id="btn-plan-prev-day" class="btn btn-sm" onclick="shiftPlanBuilderDate(-1)">[&lt;]</button>
+                        <div id="plan-week-strip" style="display: flex; gap: 3px; align-items: center;"></div>
+                        <button type="button" class="btn btn-sm" onclick="shiftPlanBuilderDate(1)">[&gt;]</button>
+                    </div>
+                </div>
+
+                <!-- CORPO: IN "VIEW" MOSTRA SOLO LA TIMELINE DEL GIORNO; IN "EDIT" MOSTRA ANCHE IL BUILDER A SINISTRA -->
+                <div style="display: flex; gap: 16px; flex: 1; min-height: 0; overflow: hidden;">
+                    <!-- COLONNA SINISTRA (Visibile solo in modalità EDIT) -->
+                    <div id="plan-mod-left-col" style="display: none; width: 42%; min-width: 220px; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 6px; border-right: 1px solid var(--border-color);">
+                        <div>
+                            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>1. Ghost Layers</span>
+                                <span style="font-size: 0.6rem; color: var(--text-dim);">TOGGLE BANNER · CLICK TO LOCK</span>
+                            </div>
+                            <div id="plan-mod-transports" style="display: flex; flex-direction: column; gap: 4px;"></div>
+                        </div>
+
+                        <div>
+                            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>2. Flexible Tasks (Drag to Grid)</span>
+                                <span id="plan-mod-workload-badge" style="color: var(--text-main); font-weight: bold; font-size: 0.65rem;">0.0H</span>
+                            </div>
+                            <div id="plan-mod-available-blocks" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                        </div>
+
+                        <div>
+                            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
+                                <span>3. To-Do (Drag ➔ 15m Block)</span>
+                                <span style="font-size: 0.6rem; color: var(--text-dim);">DRAG BOTTOM EDGE TO RESIZE</span>
+                            </div>
+                            <div id="plan-mod-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
+                        </div>
+                    </div>
+
+                    <!-- COLONNA DESTRA: TIMELINE GIORNALIERA (Con Colonna Fasi + Colonna Orari + Linea Ora Attuale) -->
+                    <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
+                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0;">
+                            <span id="plan-mod-timeline-title">DAY SCHEDULE (06:30 – 24:00)</span>
+                            <span id="plan-mod-timeline-hint" style="color: var(--text-dim); font-size: 0.62rem;">SWITCH TO [EDIT] TO DRAG &amp; LOCK BLOCKS</span>
+                        </div>
+
+                        <div id="plan-mod-timeline-scroll" style="flex: 1; display: flex; overflow-y: auto; position: relative; border: 1px solid var(--border-color); background: rgba(255,255,255,0.01); padding-top: 10px; user-select: none;">
+                            <div id="plan-mod-phase-labels" class="planner-phase-labels"></div>
+                            <div id="plan-mod-time-labels" class="planner-time-labels"></div>
+                            <div id="plan-mod-day-canvas" class="planner-col-absolute" style="flex: 1; position: relative;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
     </div> <!-- FINE MAGAZZINO 9 MODULI -->

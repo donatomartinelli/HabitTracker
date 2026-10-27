@@ -1,21 +1,32 @@
 // --- js/modules/tasks.js ---
-// Atomic Module 2: Tasks (4 Colonne: Fixed, Flexible, Routines, To-Do), Iniezione Medicine, [TASKS ⚙] con [EDIT] a monte & Plan Tomorrow
+// Atomic Module 2 (Tasks: Fixed, Flexible, Routines, To-Do) & Atomic Module 10 (Day Planner: Any Day >= Today, Transports Lock, Custom Mouse Drag & Resize)
 
 let deleteTargetType = '';
 let deleteTargetId = '';
-let tmwTimelineZoom = 46; // 46px per ora nella Timeline di Plan Tomorrow
+let tmwTimelineZoom = 46; // 46px per ora nella Timeline del Day Planner
+let planBuilderDateStr = ''; // Data attiva nel modulo Day Planner (sempre >= todayStr)
 
 // Stato per la modalità [EDIT] a monte in [TASKS ⚙] (Scelta 3A)
 let isTasksManagerEditMode = false;
 let selectedManagerCats = new Set();
 let selectedManagerTasks = new Set();
 
+// Stato per il motore Custom Mouse Drag & Resize sulla Timeline del Day Planner (3A & 4B)
+let planTimelineDragState = null;
+let planTimelineGhostEl = null;
+
+function ensurePlanBuilderDateValid() {
+    if (!planBuilderDateStr || planBuilderDateStr < todayStr) {
+        planBuilderDateStr = (selectedDateStr && selectedDateStr >= todayStr) ? selectedDateStr : todayStr;
+    }
+    return planBuilderDateStr;
+}
+
 function isSingleDayTodoTemplate(t) {
     if (!t) return false;
     return t.category === 'General To-Do' || t.isTodo === true;
 }
 
-// 2B. Nasconde automaticamente in [TASKS ⚙] le To-Do dei giorni passati o già completate
 function shouldShowTaskInSettingsManager(t) {
     if (!t || t.type === 'medicine') return false;
     if (isSingleDayTodoTemplate(t)) {
@@ -40,7 +51,6 @@ function toggleTask(templateId, instanceIndex) {
 
     const wasChecked = Boolean(logs[selectedDateStr][templateId][instanceIndex]);
 
-    // PONTE BIDIREZIONALE PALESTRA: se stai spuntando la task "Palestra", apre il modale di revisione pesi/ripetizioni
     if (!wasChecked && typeof isGymRoutineTask === 'function' && isGymRoutineTask(targetTemplate)) {
         if (typeof openGymWorkoutReviewModal === 'function') {
             openGymWorkoutReviewModal(selectedDateStr, nextWorkoutDay);
@@ -133,6 +143,7 @@ function quickAddTask(event, categoryName) {
         renderTracker();
         if (typeof renderCalendar === 'function') renderCalendar();
         if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        renderDayPlannerModule();
     }
 }
 
@@ -164,6 +175,7 @@ function quickAddCalendar(event) {
         renderTracker();
         if (typeof renderCalendar === 'function') renderCalendar();
         if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        renderDayPlannerModule();
     }
 }
 
@@ -380,6 +392,7 @@ function deleteEvent(id) {
     renderTasks();
     if (typeof renderCalendar === 'function') renderCalendar();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    renderDayPlannerModule();
 }
 
 function openRenameModal(oldName) {
@@ -389,7 +402,7 @@ function openRenameModal(oldName) {
     document.getElementById('renameModal').style.display = 'flex';
 }
 
-document.getElementById('renameForm').addEventListener('submit', function(e) {
+document.getElementById('renameForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const oldName = document.getElementById('r-old-name').value;
     const newName = document.getElementById('r-new-name').value.trim();
@@ -402,6 +415,7 @@ document.getElementById('renameForm').addEventListener('submit', function(e) {
         renderTasks();
         renderManager();
         if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        renderDayPlannerModule();
     }
     closeModals();
 });
@@ -482,6 +496,7 @@ function confirmDelete(mode) {
     if (typeof renderCalendar === 'function') renderCalendar();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     if (typeof renderAvailableTasksForFocus === 'function') renderAvailableTasksForFocus();
+    renderDayPlannerModule();
 }
 
 function toggleHabitType() {
@@ -525,7 +540,6 @@ function openCreationModal(defaultTab = 'habit') {
     addHabitTimeWindow();
     toggleDays();
 
-    // Reset Routine Form
     const rtnForm = document.getElementById('routineForm');
     if (rtnForm) {
         rtnForm.reset();
@@ -547,13 +561,11 @@ function openCreationModal(defaultTab = 'habit') {
         }
     }
 
-    // Reset Event Form
     document.getElementById('eventForm').reset();
     document.getElementById('e-date').value = selectedDateStr;
     document.getElementById('e-color').value = '#b84b4b';
     updateCustomColor(document.getElementById('e-color'), 'e-color');
 
-    // Reset Medicine Form
     const medForm = document.getElementById('medicineForm');
     if (medForm) {
         medForm.reset();
@@ -582,6 +594,7 @@ function openTasksSettingsModal(defaultTab = 'tcfg-tasks') {
     renderManager();
     renderRoutinesManagerList();
     renderMedsManagerList();
+    renderGhostLayersManagerList();
     closeModals();
     if (typeof switchTasksConfigTab === 'function') switchTasksConfigTab(defaultTab);
     const modal = document.getElementById('tasksSettingsModal');
@@ -783,6 +796,7 @@ document.getElementById('habitForm')?.addEventListener('submit', function(e) {
     if (typeof renderCalendar === 'function') renderCalendar();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     if (typeof renderAvailableTasksForFocus === 'function') renderAvailableTasksForFocus();
+    renderDayPlannerModule();
 });
 
 document.getElementById('routineForm')?.addEventListener('submit', function(e) {
@@ -878,6 +892,7 @@ document.getElementById('routineForm')?.addEventListener('submit', function(e) {
     closeModals();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    renderDayPlannerModule();
 });
 
 document.getElementById('eventForm')?.addEventListener('submit', function(e) {
@@ -899,6 +914,7 @@ document.getElementById('eventForm')?.addEventListener('submit', function(e) {
     renderTasks();
     if (typeof renderCalendar === 'function') renderCalendar();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    renderDayPlannerModule();
 });
 
 document.getElementById('medicineForm')?.addEventListener('submit', function(e) {
@@ -1209,6 +1225,7 @@ function renderRoutinesManagerList() {
             renderRoutinesManagerList();
             renderTasks();
             if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+            renderDayPlannerModule();
         };
 
         cont.appendChild(box);
@@ -1268,12 +1285,55 @@ function renderMedsManagerList() {
     });
 }
 
+function renderGhostLayersManagerList() {
+    const cont = document.getElementById('ghosts-manager-list');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    if (!Array.isArray(referenceLayers) || referenceLayers.length === 0) {
+        cont.innerHTML = '<div class="empty-state">[ NO GHOST LAYERS CONFIGURED — CLICK "+ NEW GHOST LAYER" ABOVE ]</div>';
+        return;
+    }
+
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    referenceLayers.forEach(ref => {
+        const box = document.createElement('div');
+        box.className = 'cfg-box';
+        box.style.borderLeft = `3px solid ${ref.color || '#444444'}`;
+
+        const slotsSummary = (ref.timeWindows || []).map(tw => {
+            const dStr = (tw.days || []).map(d => dayNames[d]).join(',');
+            return `${tw.start}–${tw.end} (${dStr})`;
+        }).join('  ·  ');
+
+        box.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+                <div style="flex:1; min-width:0;">
+                    <strong style="font-size:var(--font-sm); color:var(--text-main); text-transform:uppercase;">${escapeHtml(ref.title)}</strong>
+                    <div style="font-size:var(--font-xs); color:var(--text-muted); margin-top:4px; word-break:break-word;">
+                        ${escapeHtml(slotsSummary || 'No time windows')}
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; flex-shrink:0;">
+                    <button type="button" class="btn btn-sm btn-edit-ghost">[EDIT]</button>
+                    <button type="button" class="icon-btn delete btn-del-ghost">[X]</button>
+                </div>
+            </div>
+        `;
+
+        box.querySelector('.btn-edit-ghost').onclick = () => openReferenceModal(ref.id);
+        box.querySelector('.btn-del-ghost').onclick = () => deleteReference(ref.id);
+
+        cont.appendChild(box);
+    });
+}
+
 // ============================================================================
 // RENDER PRINCIPALE TASKS: 4 COLONNE (FIXED, FLEXIBLE, ROUTINES, TO-DO)
 // ============================================================================
 
 function renderTasks() {
-    renderPriorityBanner();
     const dateBadge = document.getElementById('tasks-date-badge');
     if (dateBadge) dateBadge.textContent = `// ${selectedDateStr}`;
 
@@ -1290,6 +1350,7 @@ function renderTasks() {
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
     const selectedDayIdx = parseLocalDate(selectedDateStr).getDay();
     const customBlocksToday = Array.isArray(ephemeralData[selectedDateStr]) ? ephemeralData[selectedDateStr] : [];
+    const confirmedTransportsToday = customBlocksToday.filter(b => b.isTransport);
 
     if (dayEvents.length > 0) {
         hasSched = true;
@@ -1316,6 +1377,32 @@ function renderTasks() {
             eventGroup.appendChild(item);
         });
         schedFrag.appendChild(eventGroup);
+    }
+
+    // Mostra in Fixed anche i Treni / Trasporti confermati nel Day Planner per questo giorno
+    if (confirmedTransportsToday.length > 0) {
+        hasSched = true;
+        const trGroup = document.createElement('div');
+        trGroup.className = 'category-group';
+        trGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title" style="color: var(--text-dim);">Transports</div></div>`;
+
+        confirmedTransportsToday.forEach(tr => {
+            const item = document.createElement('div');
+            item.className = 'task-item';
+            item.style.cssText = `border-left: 3px solid ${tr.color || '#ffffff'}; padding-left: 10px;`;
+
+            const left = document.createElement('div');
+            left.className = 'task-left';
+
+            const title = document.createElement('div');
+            title.className = 'task-title';
+            title.textContent = `[${tr.start}-${tr.end}] ${tr.title}`;
+
+            left.appendChild(title);
+            item.appendChild(left);
+            trGroup.appendChild(item);
+        });
+        schedFrag.appendChild(trGroup);
     }
 
     syncCategoryOrder();
@@ -1517,7 +1604,6 @@ function renderRoutinesColumn() {
         `;
         card.appendChild(header);
 
-        // Sotto-sezione automatica // MEDICINE
         if (injectedMeds.length > 0) {
             const medSec = document.createElement('div');
             medSec.className = 'routine-subsection';
@@ -1555,7 +1641,6 @@ function renderRoutinesColumn() {
             card.appendChild(medSec);
         }
 
-        // Sotto-sezioni della Routine (solo checkbox pura)
         (routine.sections || []).forEach(sec => {
             if (!sec.items || sec.items.length === 0) return;
             const secBlock = document.createElement('div');
@@ -1613,6 +1698,8 @@ function renderTodoColumn() {
     const dateBadge = document.getElementById('todo-col-date-badge');
     if (dateBadge) dateBadge.textContent = selectedDateStr;
 
+    const customBlocksToday = Array.isArray(ephemeralData[selectedDateStr]) ? ephemeralData[selectedDateStr] : [];
+
     if (assignedCont) {
         assignedCont.innerHTML = '';
         const assignedToday = templates.filter(t => isSingleDayTodoTemplate(t) && isTaskActiveOnDate(t, selectedDateStr));
@@ -1640,7 +1727,10 @@ function renderTodoColumn() {
                     titleDiv.style.textDecoration = 'line-through';
                     titleDiv.style.color = 'var(--text-dim)';
                 }
-                titleDiv.textContent = t.title;
+
+                const schedBlock = customBlocksToday.find(b => b.templateId === t.id);
+                const timePrefix = schedBlock ? `[${schedBlock.start}-${schedBlock.end}] ` : '';
+                titleDiv.textContent = `${timePrefix}${t.title}`;
                 leftDiv.appendChild(titleDiv);
 
                 const instContainer = document.createElement('div');
@@ -1684,6 +1774,7 @@ function addGeneralTask(e) {
         generalTodos.push({ id: 'todo_' + Date.now(), title: title });
         saveData();
         renderGeneralTodos();
+        renderDayPlannerModule();
         if (typeof showToast === 'function') showToast(`[TO-DO] Added "${title}" to queue`);
         e.target.value = '';
     }
@@ -1700,6 +1791,7 @@ function deleteGeneralTodo(id) {
     selectedTodos.delete(id);
     saveData();
     renderGeneralTodos();
+    renderDayPlannerModule();
 }
 
 function renderGeneralTodos() {
@@ -1780,7 +1872,7 @@ document.getElementById('assignForm')?.addEventListener('submit', function(e) {
                 category: catName,
                 title: task.title,
                 instances: 1,
-                timerMinutes: 0,
+                timerMinutes: 15,
                 noTimer: true,
                 frequency: 'specific',
                 daysOfWeek: [dayIndex],
@@ -1799,6 +1891,7 @@ document.getElementById('assignForm')?.addEventListener('submit', function(e) {
     closeModals();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    renderDayPlannerModule();
 });
 
 // ============================================================================
@@ -2054,84 +2147,193 @@ function renderFocusLedger() {
     container.appendChild(recentList);
 }
 
-function renderPriorityBanner() {
-    const banner = document.getElementById('daily-priority-banner');
-    if (!banner) return;
-    const prio = (dailyPriorities[selectedDateStr] || '').trim();
-    if (!prio) {
-        banner.style.display = 'none';
-        banner.innerHTML = '';
-        return;
-    }
-    banner.style.display = 'flex';
-    banner.innerHTML = `
-        <div>
-            <span style="color: var(--text-dim); font-weight: bold; margin-right: 8px;">[#1 PRIORITY // ${selectedDateStr}]:</span>
-            <strong style="color: var(--text-main); font-size: var(--font-sm);">${escapeHtml(prio)}</strong>
-        </div>
-    `;
-    const clearBtn = document.createElement('button');
-    clearBtn.className = 'icon-btn delete';
-    clearBtn.textContent = '[CLEAR]';
-    clearBtn.onclick = () => {
-        delete dailyPriorities[selectedDateStr];
-        saveData();
-        renderPriorityBanner();
-    };
-    banner.appendChild(clearBtn);
-}
-
 // ============================================================================
-// EVENING BUILDER: PLAN TOMORROW (CON SUPPORTO SNAP-TO-PHASE 5A)
+// MODULO ATOMICO 10: DAY PLANNER (1A, 2B, 3A DA 15 MIN, 4B CUSTOM MOUSE DRAG & RESIZE)
 // ============================================================================
 
+// Compatibilità con scorciatoia P, comando DSL `plan` e vecchi alias: monta il modulo Day Planner
 function openPlanTomorrowModal() {
     closeModals();
-    renderPlanTomorrowModal();
-    document.getElementById('planTomorrowModal').style.display = 'flex';
+    if (!planBuilderDateStr || planBuilderDateStr < todayStr) {
+        planBuilderDateStr = tomorrowStr;
+    }
+    if (typeof summonModule === 'function') {
+        summonModule('plan');
+    }
+    renderDayPlannerModule();
 }
 
-function saveTomorrowPriority(val) {
-    const clean = val.trim();
-    if (clean) dailyPriorities[tomorrowStr] = clean;
-    else delete dailyPriorities[tomorrowStr];
+let currentDayPlanMode = 'view'; // 'view' | 'edit'
+
+function toggleDayPlanMode(forceMode = null) {
+    const cb = document.getElementById('day-plan-mode-checkbox');
+    if (forceMode === 'edit' && cb) cb.checked = true;
+    else if (forceMode === 'view' && cb) cb.checked = false;
+
+    currentDayPlanMode = (cb && cb.checked) ? 'edit' : 'view';
+    const leftCol = document.getElementById('plan-mod-left-col');
+    const hintEl = document.getElementById('plan-mod-timeline-hint');
+
+    if (leftCol) {
+        leftCol.style.display = currentDayPlanMode === 'edit' ? 'flex' : 'none';
+    }
+    if (hintEl) {
+        hintEl.textContent = currentDayPlanMode === 'edit'
+            ? 'DRAG TO MOVE · DRAG BOTTOM TO RESIZE · RIGHT-CLICK TO REMOVE'
+            : 'DAY VIEW MODE // SWITCH TO [EDIT] TO MODIFY';
+    }
+    renderDayPlannerModule();
+}
+
+function setPlanBuilderDate(dateStr) {
+    const clamped = (!dateStr || dateStr < todayStr) ? todayStr : dateStr;
+    planBuilderDateStr = clamped;
+    if (typeof selectDate === 'function' && selectedDateStr !== clamped) {
+        selectDate(clamped);
+    } else {
+        renderDayPlannerModule();
+    }
+}
+
+function shiftPlanBuilderDate(daysOffset) {
+    ensurePlanBuilderDateValid();
+    const d = parseLocalDate(planBuilderDateStr);
+    d.setDate(d.getDate() + daysOffset);
+    const nextStr = formatDate(d);
+    setPlanBuilderDate(nextStr < todayStr ? todayStr : nextStr);
+}
+
+function togglePlanGhostLayer(refId) {
+    refToggles[refId] = !refToggles[refId];
     saveData();
-    if (selectedDateStr === tomorrowStr) renderPriorityBanner();
+    renderDayPlannerModule();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }
 
-function placeTaskBlockOnTomorrowTimeline(templateId, startTimeStr, blocksMultiplier = 1) {
-    const t = templates.find(x => x.id === templateId);
-    if (!t) return;
-
-    const unitMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, tomorrowStr) : (t.timerMinutes || 25);
-    const count = Math.max(1, parseInt(blocksMultiplier, 10) || 1);
-    const totalDurationMins = Math.max(5, unitMins * count);
-
-    const startMins = timeToMinutes(startTimeStr);
-    const endMins = Math.min(24 * 60, startMins + totalDurationMins);
-    const finalStartStr = minutesToTimeStr(startMins);
-    const finalEndStr = minutesToTimeStr(endMins);
-
-    if (!Array.isArray(ephemeralData[tomorrowStr])) {
-        ephemeralData[tomorrowStr] = [];
+// 2B. Fissa o sblocca un Treno / Ghost Layer nel piano del giorno selezionato
+function toggleConfirmTransportSlot(dateStr, refId, refTitle, color, startStr, endStr) {
+    if (!Array.isArray(ephemeralData[dateStr])) {
+        ephemeralData[dateStr] = [];
     }
 
-    ephemeralData[tomorrowStr].push({
+    const existingIdx = ephemeralData[dateStr].findIndex(b =>
+        b.isTransport && b.refId === refId && b.start === startStr && b.end === endStr
+    );
+
+    if (existingIdx !== -1) {
+        ephemeralData[dateStr].splice(existingIdx, 1);
+        if (typeof showToast === 'function') {
+            showToast(`[TRANSPORT UNLOCKED] Removed "${refTitle} (${startStr}-${endStr})" from ${dateStr}`);
+        }
+    } else {
+        const durMins = Math.max(5, timeToMinutes(endStr) - timeToMinutes(startStr));
+        ephemeralData[dateStr].push({
+            id: 'tr_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            isTransport: true,
+            refId: refId,
+            title: refTitle,
+            category: 'Transport',
+            color: color || '#4c5b73',
+            start: startStr,
+            end: endStr,
+            minutes: durMins,
+            blocksUsed: 1
+        });
+        if (typeof showToast === 'function') {
+            showToast(`[TRANSPORT LOCKED] "${refTitle} (${startStr}-${endStr})" fixed on ${dateStr}`);
+        }
+    }
+
+    saveData();
+    renderDayPlannerModule();
+    renderTasks();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+}
+
+// Piazza un blocco (Flexible Task o To-Do da 15m) sulla Timeline del giorno `targetDateStr`
+function placeItemOnDayTimeline(payload, targetDateStr, startTimeStr) {
+    if (!Array.isArray(ephemeralData[targetDateStr])) {
+        ephemeralData[targetDateStr] = [];
+    }
+
+    // Caso 1: To-Do dalla coda Unassigned -> La assegna a `targetDateStr` e la piazza a 15 minuti
+    if (payload.sourceType === 'unassigned_todo') {
+        const todoItem = generalTodos.find(x => x.id === payload.todoId);
+        if (!todoItem) return;
+
+        const dayIdx = parseLocalDate(targetDateStr).getDay();
+        const catName = 'General To-Do';
+        if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+
+        const newTemplateId = 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000);
+        templates.push({
+            id: newTemplateId,
+            isTodo: true,
+            category: catName,
+            title: todoItem.title,
+            instances: 1,
+            timerMinutes: 15,
+            noTimer: true,
+            frequency: 'specific',
+            daysOfWeek: [dayIdx],
+            startDate: targetDateStr,
+            endDate: targetDateStr,
+            color: '#ffffff',
+            type: 'untimed',
+            timeWindows: []
+        });
+
+        generalTodos = generalTodos.filter(x => x.id !== payload.todoId);
+        selectedTodos.delete(payload.todoId);
+
+        const startMins = timeToMinutes(startTimeStr);
+        const endMins = Math.min(24 * 60, startMins + 15);
+        ephemeralData[targetDateStr].push({
+            id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            templateId: newTemplateId,
+            title: todoItem.title,
+            category: 'To-Do',
+            color: '#ffffff',
+            start: minutesToTimeStr(startMins),
+            end: minutesToTimeStr(endMins),
+            minutes: endMins - startMins,
+            blocksUsed: 1
+        });
+
+        saveData();
+        renderDayPlannerModule();
+        renderTasks();
+        if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        return;
+    }
+
+    // Caso 2: Task Flexible o To-Do già assegnata al giorno
+    const t = templates.find(x => x.id === payload.templateId);
+    if (!t) return;
+
+    const isTodo = isSingleDayTodoTemplate(t);
+    const rawMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, targetDateStr) : (t.timerMinutes || 0);
+    const durationMins = isTodo ? 15 : Math.max(5, rawMins > 0 ? rawMins : 15);
+
+    const startMins = timeToMinutes(startTimeStr);
+    const endMins = Math.min(24 * 60, startMins + durationMins);
+
+    ephemeralData[targetDateStr].push({
         id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
         templateId: t.id,
-        title: count > 1 ? `${t.title} (${count}x)` : t.title,
-        category: t.category,
+        title: t.title,
+        category: isTodo ? 'To-Do' : t.category,
         color: t.color || '#ffffff',
-        start: finalStartStr,
-        end: finalEndStr,
-        minutes: totalDurationMins,
-        blocksUsed: count
+        start: minutesToTimeStr(startMins),
+        end: minutesToTimeStr(endMins),
+        minutes: endMins - startMins,
+        blocksUsed: 1
     });
 
     saveData();
+    renderDayPlannerModule();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-    renderPlanTomorrowModal();
 }
 
 function removeTomorrowTimelineBlock(dateStr, blockId) {
@@ -2140,291 +2342,293 @@ function removeTomorrowTimelineBlock(dateStr, blockId) {
     saveData();
     renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-    if (dateStr === tomorrowStr) renderPlanTomorrowModal();
-}
-
-function moveTomorrowTimelineBlock(blockId, newStartTimeStr, isFixedTemplate = false, oldStartStr = '') {
-    if (isFixedTemplate) {
-        const t = templates.find(x => x.id === blockId);
-        if (!t) return;
-        plannerExceptions[`${t.id}_${tomorrowStr}_${oldStartStr}`] = true;
-        placeTaskBlockOnTomorrowTimeline(t.id, newStartTimeStr, 1);
-        return;
-    }
-
-    const list = ephemeralData[tomorrowStr];
-    if (!Array.isArray(list)) return;
-    const b = list.find(x => x.id === blockId);
-    if (!b) return;
-
-    const dur = b.minutes || (timeToMinutes(b.end) - timeToMinutes(b.start)) || 25;
-    const startMins = timeToMinutes(newStartTimeStr);
-    const endMins = Math.min(24 * 60, startMins + dur);
-    b.start = minutesToTimeStr(startMins);
-    b.end = minutesToTimeStr(endMins);
-
-    saveData();
-    renderTasks();
-    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-    renderPlanTomorrowModal();
-}
-
-function assignInboxItemToTomorrow(todoId) {
-    const item = generalTodos.find(x => x.id === todoId);
-    if (!item) return;
-
-    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
-    const catName = 'General To-Do';
-    if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
-
-    templates.push({
-        id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-        isTodo: true,
-        category: catName,
-        title: item.title,
-        instances: 1,
-        timerMinutes: 0,
-        noTimer: true,
-        frequency: 'specific',
-        daysOfWeek: [tmwDayIdx],
-        startDate: tomorrowStr,
-        endDate: tomorrowStr,
-        color: '#ffffff',
-        type: 'untimed',
-        timeWindows: []
-    });
-
-    generalTodos = generalTodos.filter(x => x.id !== todoId);
-    selectedTodos.delete(todoId);
-    saveData();
-    renderTasks();
-    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-    renderPlanTomorrowModal();
-}
-
-function addQuickTomorrowTask() {
-    const titleEl = document.getElementById('plan-tmw-new-title');
-    const minsEl = document.getElementById('plan-tmw-new-mins');
-    const startEl = document.getElementById('plan-tmw-new-start');
-    if (!titleEl) return;
-
-    const title = titleEl.value.trim();
-    if (!title) return;
-
-    const mins = Math.max(5, parseInt(minsEl ? minsEl.value : 30, 10) || 30);
-    const startVal = startEl ? startEl.value : '';
-    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
-
-    const catName = 'Planned';
-    if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
-
-    const newTaskId = 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-    templates.push({
-        id: newTaskId,
-        category: catName,
-        title: title,
-        instances: 1,
-        timerMinutes: mins,
-        noTimer: false,
-        frequency: 'specific',
-        daysOfWeek: [tmwDayIdx],
-        startDate: tomorrowStr,
-        endDate: tomorrowStr,
-        color: '#ffffff',
-        type: 'untimed',
-        timeWindows: []
-    });
-
-    titleEl.value = '';
-    if (startEl) startEl.value = '';
-
-    saveData();
-    if (startVal) {
-        placeTaskBlockOnTomorrowTimeline(newTaskId, startVal, 1);
-    } else {
-        renderTasks();
-        if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-        renderPlanTomorrowModal();
-    }
-}
-
-function skipTaskOnTomorrow(templateId) {
-    const t = templates.find(x => x.id === templateId);
-    if (!t) return;
-    if (t.startDate === tomorrowStr && t.endDate === tomorrowStr) {
-        templates = templates.filter(x => x.id !== templateId);
-    } else {
-        if (!t.exceptions) t.exceptions = [];
-        if (!t.exceptions.includes(tomorrowStr)) t.exceptions.push(tomorrowStr);
-    }
-    if (Array.isArray(ephemeralData[tomorrowStr])) {
-        ephemeralData[tomorrowStr] = ephemeralData[tomorrowStr].filter(b => b.templateId !== templateId);
-    }
-    saveData();
-    renderTasks();
-    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-    renderPlanTomorrowModal();
+    renderDayPlannerModule();
 }
 
 function renderPlanTomorrowModal() {
-    const dateLbl = document.getElementById('plan-tmw-date-label');
-    if (dateLbl) dateLbl.textContent = `TOMORROW // ${tomorrowStr}`;
+    renderDayPlannerModule();
+}
 
-    const prioInput = document.getElementById('plan-tmw-priority');
-    if (prioInput) prioInput.value = dailyPriorities[tomorrowStr] || '';
+function renderDayPlannerModule() {
+    const targetDate = ensurePlanBuilderDateValid();
+    const dateLbl = document.getElementById('plan-mod-date-label');
+    const prevBtn = document.getElementById('btn-plan-prev-day');
+    const weekStrip = document.getElementById('plan-week-strip');
+    if (!dateLbl || !weekStrip) return;
 
-    const customBlocks = Array.isArray(ephemeralData[tomorrowStr]) ? ephemeralData[tomorrowStr] : [];
-    const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
+    const dayNamesFull = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const targetDateObj = parseLocalDate(targetDate);
+    const targetDayIdx = targetDateObj.getDay();
 
-    const availCont = document.getElementById('plan-tmw-available-blocks');
+    dateLbl.textContent = `${dayNamesFull[targetDayIdx]} // ${targetDate}${targetDate === todayStr ? ' (TODAY)' : (targetDate === tomorrowStr ? ' (TOMORROW)' : '')}`;
+    if (prevBtn) prevBtn.disabled = (targetDate <= todayStr);
+
+    // 1A. Striscia dei 7 giorni della settimana corrente/visualizzata
+    weekStrip.innerHTML = '';
+    const mondayObj = typeof getWeekStart === 'function' ? getWeekStart(targetDate) : new Date(targetDateObj);
+    const stripLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
+
+    for (let i = 0; i < 7; i++) {
+        const d = new Date(mondayObj);
+        d.setDate(mondayObj.getDate() + i);
+        const dStr = formatDate(d);
+        const isPast = dStr < todayStr;
+        const isSelected = dStr === targetDate;
+
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = `btn btn-sm ${isSelected ? 'btn-primary' : ''}`;
+        btn.style.cssText = `padding: 3px 7px; font-size: 0.65rem; ${isPast ? 'opacity: 0.3; cursor: not-allowed;' : ''}`;
+        btn.disabled = isPast;
+        btn.textContent = `${stripLabels[i]} ${String(d.getDate()).padStart(2, '0')}`;
+        btn.onclick = () => {
+            if (!isPast) setPlanBuilderDate(dStr);
+        };
+        weekStrip.appendChild(btn);
+    }
+
+    const customBlocks = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
+
+    // 1. SEZIONE GHOST LAYERS (Banner compatto con Toggle + Click per Lockare)
+    const trCont = document.getElementById('plan-mod-transports');
+    if (trCont) {
+        trCont.innerHTML = '';
+        let hasAnyGhost = false;
+
+        referenceLayers.forEach(ref => {
+            if (!ref || !Array.isArray(ref.timeWindows)) return;
+            const slotsToday = ref.timeWindows.filter(tw => tw.days && tw.days.includes(targetDayIdx));
+            if (slotsToday.length === 0) return;
+
+            hasAnyGhost = true;
+            const isVisible = Boolean(refToggles[ref.id]);
+            const lockedSlotsCount = slotsToday.filter(tw =>
+                customBlocks.some(b => b.isTransport && b.refId === ref.id && b.start === tw.start && b.end === tw.end)
+            ).length;
+
+            const refBox = document.createElement('div');
+            refBox.style.cssText = `padding: 5px 8px; border: 1px solid ${isVisible ? 'var(--border-color)' : 'rgba(255,255,255,0.05)'}; border-left: 2px solid ${ref.color || '#4c5b73'}; background: rgba(255,255,255,${isVisible ? '0.02' : '0.005'}); opacity: ${isVisible || lockedSlotsCount > 0 ? '0.9' : '0.45'}; transition: opacity 0.15s, border-color 0.15s;`;
+
+            // Banner Header con Toggle
+            const bannerRow = document.createElement('div');
+            bannerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; gap: 6px;';
+            bannerRow.onclick = () => togglePlanGhostLayer(ref.id);
+
+            const lockedBadge = lockedSlotsCount > 0
+                ? `<span style="color: var(--accent-green); font-size: 0.6rem; margin-left: 6px;">[${lockedSlotsCount} LOCKED]</span>`
+                : '';
+
+            bannerRow.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
+                    <div class="check-box ${isVisible ? 'checked' : ''}" style="width: 11px; height: 11px;"></div>
+                    <span style="font-size: var(--font-xs); color: ${isVisible ? 'var(--text-muted)' : 'var(--text-dim)'}; font-weight: bold; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${escapeHtml(ref.title)}
+                    </span>
+                    ${lockedBadge}
+                </div>
+                <span style="font-size: 0.58rem; color: var(--text-dim); flex-shrink: 0;">
+                    ${isVisible ? '[HIDE ▲]' : `[SHOW ${slotsToday.length} ▼]`}
+                </span>
+            `;
+            refBox.appendChild(bannerRow);
+
+            // Mostra i chip degli orari da lockare SOLO se il toggle del Ghost Layer è attivo
+            if (isVisible) {
+                const chipsWrap = document.createElement('div');
+                chipsWrap.style.cssText = 'display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; padding-top: 5px; border-top: 1px dotted rgba(255,255,255,0.06);';
+
+                slotsToday.forEach(tw => {
+                    const isConfirmed = customBlocks.some(b =>
+                        b.isTransport && b.refId === ref.id && b.start === tw.start && b.end === tw.end
+                    );
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = `btn btn-sm ${isConfirmed ? 'btn-primary' : ''}`;
+                    chip.style.cssText = `padding: 1px 6px; font-size: 0.62rem; font-variant-numeric: tabular-nums; ${!isConfirmed ? 'border-style: dashed; opacity: 0.7;' : ''}`;
+                    chip.textContent = `${isConfirmed ? '🔒 ' : ''}${tw.start}–${tw.end}`;
+                    chip.title = isConfirmed ? 'Click to unlock from day plan' : 'Click to lock in place on timeline';
+                    chip.onclick = (e) => {
+                        e.stopPropagation();
+                        toggleConfirmTransportSlot(targetDate, ref.id, ref.title, ref.color, tw.start, tw.end);
+                    };
+                    chipsWrap.appendChild(chip);
+                });
+
+                refBox.appendChild(chipsWrap);
+            }
+
+            trCont.appendChild(refBox);
+        });
+
+        if (!hasAnyGhost) {
+            trCont.innerHTML = `<div class="empty-state" style="padding: 4px 0;">[ NO GHOST LAYERS ON ${dayNamesFull[targetDayIdx]} ]</div>`;
+        }
+    }
+
+    // 2. SEZIONE FLEXIBLE TASKS (SOLO FLEXIBLE, ZERO FIXED, DRAG PURO 4B)
+    const availCont = document.getElementById('plan-mod-available-blocks');
     if (availCont) {
         availCont.innerHTML = '';
-        const activeTmwTasks = templates.filter(t => isTaskActiveOnDate(t, tomorrowStr) && t.type !== 'medicine');
+
+        // Filtra SOLO le task flessibili (esclude le task con orario fisso, le medicine e le To-Do)
+        const flexTasksForDay = templates.filter(t => {
+            if (!t || t.type === 'medicine' || isSingleDayTodoTemplate(t)) return false;
+            if (t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0)) return false;
+            return isTaskActiveOnDate(t, targetDate);
+        });
 
         let totalCommittedMins = 0;
 
-        if (activeTmwTasks.length === 0) {
-            availCont.innerHTML = '<div class="empty-state">[ NO TASKS ACTIVE FOR TOMORROW ]</div>';
+        if (flexTasksForDay.length === 0) {
+            availCont.innerHTML = '<div class="empty-state" style="padding: 4px 0;">[ NO FLEXIBLE TASKS FOR THIS DAY ]</div>';
         } else {
-            activeTmwTasks.forEach(t => {
-                const unitMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, tomorrowStr) : (t.timerMinutes || 0);
-                const isFixedTimed = (t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0));
+            flexTasksForDay.forEach(t => {
+                const rawMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, targetDate) : (t.timerMinutes || 0);
+                const unitMins = rawMins > 0 ? rawMins : 15;
                 const totalInstances = t.instances || 1;
                 const usedBlocks = customBlocks
                     .filter(b => b.templateId === t.id)
                     .reduce((acc, b) => acc + (b.blocksUsed || 1), 0);
-                const remainingBlocks = isFixedTimed ? 0 : Math.max(0, totalInstances - usedBlocks);
+                const remainingBlocks = Math.max(0, totalInstances - usedBlocks);
 
                 totalCommittedMins += totalInstances * unitMins;
 
                 const row = document.createElement('div');
-                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-left: 3px solid ${t.color || '#fff'}; font-size: var(--font-xs); gap: 8px;`;
+                row.className = 'plan-draggable-card';
+                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-left: 3px solid ${t.color || '#fff'}; font-size: var(--font-xs); opacity: ${remainingBlocks > 0 ? '1' : '0.4'}; cursor: ${remainingBlocks > 0 ? 'grab' : 'default'}; user-select: none;`;
 
-                if (unitMins > 0 && remainingBlocks > 0) {
-                    row.draggable = true;
-                    row.style.cursor = 'grab';
-                    row.title = 'Drag onto the timeline on the right!';
-                }
-
-                const leftInfo = document.createElement('div');
-                leftInfo.style.cssText = 'flex: 1; min-width: 0;';
-                const badgeText = unitMins > 0
-                    ? `${unitMins}m/block · ${remainingBlocks}/${totalInstances} left`
-                    : `CHECK-ONLY`;
-
-                leftInfo.innerHTML = `
-                    <div style="font-weight:bold; color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        <span style="color:var(--text-dim);">[${escapeHtml(t.category)}]</span> ${escapeHtml(t.title)}
+                row.innerHTML = `
+                    <div style="flex: 1; min-width: 0;">
+                        <div style="font-weight: bold; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            <span style="color: var(--text-dim);">[${escapeHtml(t.category)}]</span> ${escapeHtml(t.title)}
+                        </div>
+                        <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 2px;">
+                            ${unitMins}m/block · <strong>${remainingBlocks}/${totalInstances} remaining</strong>
+                        </div>
                     </div>
-                    <div style="font-size:0.65rem; color:var(--text-dim); margin-top:2px;">${badgeText}</div>
+                    <span style="font-size: 0.65rem; color: var(--text-dim); font-weight: bold;">${remainingBlocks > 0 ? '[:: DRAG]' : '[PLACED]'}</span>
                 `;
 
-                const rightControls = document.createElement('div');
-                rightControls.style.cssText = 'display: flex; align-items: center; gap: 5px; flex-shrink: 0;';
-
-                let multSelect = null;
-                if (unitMins > 0 && remainingBlocks > 0) {
-                    if (remainingBlocks > 1) {
-                        multSelect = document.createElement('select');
-                        multSelect.className = 'form-control form-control-sm';
-                        multSelect.style.cssText = 'width: 68px; padding: 2px 4px; font-size: 0.65rem;';
-                        for (let k = 1; k <= remainingBlocks; k++) {
-                            const opt = document.createElement('option');
-                            opt.value = k;
-                            opt.textContent = `${k}x (${k * unitMins}m)`;
-                            multSelect.appendChild(opt);
-                        }
-                        rightControls.appendChild(multSelect);
-                    }
-
-                    // Selettore rapido Fase del Giorno per Domani (5A)
-                    const phaseSel = document.createElement('select');
-                    phaseSel.className = 'form-control form-control-sm';
-                    phaseSel.style.cssText = 'width: 92px; padding: 2px 4px; font-size: 0.65rem;';
-                    phaseSel.innerHTML = `<option value="">[PHASE ▼]</option>` +
-                        phases.map(p => `<option value="${p.id}">${p.short}</option>`).join('');
-                    phaseSel.onchange = () => {
-                        if (phaseSel.value && typeof scheduleTaskInDayPhase === 'function') {
-                            const mult = multSelect ? parseInt(multSelect.value, 10) : 1;
-                            scheduleTaskInDayPhase(t.id, tomorrowStr, phaseSel.value, mult);
-                        }
-                    };
-                    rightControls.appendChild(phaseSel);
-
-                    const timeInp = document.createElement('input');
-                    timeInp.type = 'time';
-                    timeInp.value = '09:00';
-                    timeInp.className = 'form-control form-control-sm';
-                    timeInp.style.cssText = 'width: 78px; padding: 2px 4px; font-size: 0.65rem;';
-
-                    const placeBtn = document.createElement('button');
-                    placeBtn.className = 'btn btn-sm';
-                    placeBtn.textContent = '[-> GRID]';
-                    placeBtn.onclick = () => {
-                        const mult = multSelect ? parseInt(multSelect.value, 10) : 1;
-                        placeTaskBlockOnTomorrowTimeline(t.id, timeInp.value || '09:00', mult);
-                    };
-
-                    rightControls.appendChild(timeInp);
-                    rightControls.appendChild(placeBtn);
-
-                    row.ondragstart = (ev) => {
-                        const mult = multSelect ? parseInt(multSelect.value, 10) : 1;
-                        ev.dataTransfer.setData('text/plain', JSON.stringify({
-                            kind: 'new_block',
-                            templateId: t.id,
-                            multiplier: mult
-                        }));
-                    };
+                if (remainingBlocks > 0) {
+                    bindPlanTimelineDragSource(row, {
+                        kind: 'new_item',
+                        sourceType: 'flexible_task',
+                        templateId: t.id,
+                        title: t.title,
+                        durationMins: unitMins,
+                        color: t.color || '#ffffff'
+                    });
                 }
 
-                const skipBtn = document.createElement('button');
-                skipBtn.className = 'icon-btn delete';
-                skipBtn.title = 'Skip this task tomorrow';
-                skipBtn.textContent = '[SKIP]';
-                skipBtn.onclick = () => skipTaskOnTomorrow(t.id);
-                rightControls.appendChild(skipBtn);
-
-                row.appendChild(leftInfo);
-                row.appendChild(rightControls);
                 availCont.appendChild(row);
             });
         }
 
-        const badgeEl = document.getElementById('plan-tmw-workload-badge');
-        if (badgeEl) badgeEl.textContent = `${(totalCommittedMins / 60).toFixed(1)}H TOTAL`;
+        const badgeEl = document.getElementById('plan-mod-workload-badge');
+        if (badgeEl) badgeEl.textContent = `${(totalCommittedMins / 60).toFixed(1)}H FLEX`;
     }
 
-    const inboxCont = document.getElementById('plan-tmw-inbox');
+    // 3. SEZIONE TO-DO (ASSEGNATE AL GIORNO NON PIAZZATE + CODA UNASSIGNED -> DRAG 15 MIN)
+    const inboxCont = document.getElementById('plan-mod-inbox');
     if (inboxCont) {
         inboxCont.innerHTML = '';
-        if (generalTodos.length === 0) {
-            inboxCont.innerHTML = '<div class="empty-state">[ QUEUE EMPTY ]</div>';
+
+        const assignedUnplacedTodos = templates.filter(t =>
+            isSingleDayTodoTemplate(t) &&
+            isTaskActiveOnDate(t, targetDate) &&
+            !customBlocks.some(b => b.templateId === t.id)
+        );
+
+        if (assignedUnplacedTodos.length === 0 && generalTodos.length === 0) {
+            inboxCont.innerHTML = '<div class="empty-state" style="padding: 4px 0;">[ NO TO-DO IN QUEUE ]</div>';
         } else {
+            assignedUnplacedTodos.forEach(t => {
+                const row = document.createElement('div');
+                row.className = 'plan-draggable-card';
+                row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-bright); border-left: 3px solid #ffffff; font-size: var(--font-xs); cursor: grab; user-select: none;';
+                row.innerHTML = `
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><strong>[ASSIGNED]</strong> ${escapeHtml(t.title)}</span>
+                    <span style="font-size: 0.62rem; color: var(--text-dim); flex-shrink: 0; margin-left: 6px;">[:: 15m]</span>
+                `;
+                bindPlanTimelineDragSource(row, {
+                    kind: 'new_item',
+                    sourceType: 'assigned_todo',
+                    templateId: t.id,
+                    title: t.title,
+                    durationMins: 15,
+                    color: '#ffffff'
+                });
+                inboxCont.appendChild(row);
+            });
+
             generalTodos.forEach(item => {
                 const row = document.createElement('div');
-                row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); font-size: var(--font-xs);';
-                row.innerHTML = `<span>${escapeHtml(item.title)}</span>`;
-                const btn = document.createElement('button');
-                btn.className = 'btn btn-sm';
-                btn.textContent = '[+ ADD TO TMW]';
-                btn.onclick = () => assignInboxItemToTomorrow(item.id);
-                row.appendChild(btn);
+                row.className = 'plan-draggable-card';
+                row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); font-size: var(--font-xs); cursor: grab; user-select: none;';
+                row.innerHTML = `
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.title)}</span>
+                    <span style="font-size: 0.62rem; color: var(--text-dim); flex-shrink: 0; margin-left: 6px;">[:: DRAG 15m]</span>
+                `;
+                bindPlanTimelineDragSource(row, {
+                    kind: 'new_item',
+                    sourceType: 'unassigned_todo',
+                    todoId: item.id,
+                    title: item.title,
+                    durationMins: 15,
+                    color: '#ffffff'
+                });
                 inboxCont.appendChild(row);
             });
         }
     }
 
-    renderTomorrowOneDayTimeline();
+    renderDayPlannerTimelineCanvas(targetDate);
 }
 
-function renderTomorrowOneDayTimeline() {
-    const labelsCol = document.getElementById('plan-tmw-time-labels');
-    const canvasCol = document.getElementById('plan-tmw-day-canvas');
+// ============================================================================
+// TIMELINE GIORNALIERA INTERATTIVA + CUSTOM MOUSE DRAG & RESIZE (3A & 4B)
+// ============================================================================
+
+function ensurePlanTimelineGhostEl() {
+    if (!planTimelineGhostEl) {
+        planTimelineGhostEl = document.createElement('div');
+        planTimelineGhostEl.className = 'custom-drag-ghost';
+        document.body.appendChild(planTimelineGhostEl);
+    }
+    return planTimelineGhostEl;
+}
+
+function bindPlanTimelineDragSource(el, payload) {
+    el.addEventListener('mousedown', (e) => {
+        if (e.button !== 0) return;
+        if (['BUTTON', 'INPUT', 'SELECT'].includes(e.target.tagName)) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        planTimelineDragState = {
+            mode: payload.kind, // 'new_item' | 'move_block' | 'resize_block'
+            payload: payload,
+            startX: e.clientX,
+            startY: e.clientY,
+            isDragging: false,
+            currentSnappedTime: null,
+            currentDurationMins: payload.durationMins || 15
+        };
+    });
+}
+
+function renderDayPlannerTimelineCanvas(targetDate) {
+    const labelsCol = document.getElementById('plan-mod-time-labels');
+    const canvasCol = document.getElementById('plan-mod-day-canvas');
     if (!labelsCol || !canvasCol) return;
 
-    const startHour = 6.5;
+    const startHour = 6.5; // 06:30
     const totalHeight = (24 - startHour) * tmwTimelineZoom;
+
+    const phaseCol = document.getElementById('plan-mod-phase-labels');
+    if (typeof renderPhaseLabelsColumn === 'function') {
+        renderPhaseLabelsColumn(phaseCol, tmwTimelineZoom);
+    }
 
     labelsCol.innerHTML = '';
     labelsCol.style.height = `${totalHeight}px`;
@@ -2459,77 +2663,60 @@ function renderTomorrowOneDayTimeline() {
         canvasCol.appendChild(line);
     }
 
+    // Indicatore visivo di posizionamento durante il trascinamento col mouse
     const dropIndicator = document.createElement('div');
-    dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border-top: 2px solid var(--text-main); z-index: 60; pointer-events:none;';
+    dropIndicator.id = 'plan-mod-drop-indicator';
+    dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border: 1px dashed var(--text-main); background: rgba(255,255,255,0.12); z-index: 80; pointer-events:none;';
     const dropBadge = document.createElement('span');
-    dropBadge.style.cssText = 'position:absolute; right:6px; top:-18px; background:#000; color:var(--text-main); border:1px solid var(--text-main); font-size:var(--font-xs); padding:1px 6px; font-weight:bold;';
+    dropBadge.id = 'plan-mod-drop-badge';
+    dropBadge.style.cssText = 'position:absolute; right:6px; top:2px; background:#000; color:var(--text-main); border:1px solid var(--text-main); font-size:0.65rem; padding:1px 6px; font-weight:bold;';
     dropIndicator.appendChild(dropBadge);
     canvasCol.appendChild(dropIndicator);
 
-    const calcSnappedTimeFromY = (clientY) => {
-        const rect = canvasCol.getBoundingClientRect();
-        const relY = Math.max(0, Math.min(totalHeight, clientY - rect.top));
-        const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
-        const snappedMins = Math.round(rawMins / 5) * 5;
-        return minutesToTimeStr(snappedMins);
-    };
+    const dayIdx = parseLocalDate(targetDate).getDay();
+    const customBlocks = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
 
-    canvasCol.ondragover = (ev) => {
-        ev.preventDefault();
-        const tStr = calcSnappedTimeFromY(ev.clientY);
-        const topPx = timeToPx(tStr, tmwTimelineZoom);
-        dropIndicator.style.display = 'block';
-        dropIndicator.style.top = `${topPx}px`;
-        dropBadge.textContent = `DROP AT ${tStr}`;
-    };
-
-    canvasCol.ondragleave = () => {
-        dropIndicator.style.display = 'none';
-    };
-
-    canvasCol.ondrop = (ev) => {
-        ev.preventDefault();
-        dropIndicator.style.display = 'none';
-        const targetTimeStr = calcSnappedTimeFromY(ev.clientY);
-        try {
-            const payload = JSON.parse(ev.dataTransfer.getData('text/plain'));
-            if (payload.kind === 'new_block') {
-                placeTaskBlockOnTomorrowTimeline(payload.templateId, targetTimeStr, payload.multiplier || 1);
-            } else if (payload.kind === 'move_ephemeral') {
-                moveTomorrowTimelineBlock(payload.blockId, targetTimeStr, false);
-            } else if (payload.kind === 'move_fixed') {
-                moveTomorrowTimelineBlock(payload.templateId, targetTimeStr, true, payload.oldStart);
-            }
-        } catch (e) {}
-    };
-
-    const tmwDayIdx = parseLocalDate(tomorrowStr).getDay();
-
+    // 1. Ghost Layers sulla Timeline: visibili SOLO se il toggle del layer è attivo (refToggles[ref.id])
     referenceLayers.forEach(ref => {
-        if (ref && refToggles[ref.id]) {
-            (ref.timeWindows || []).forEach(tw => {
-                if (tw.days && tw.days.includes(tmwDayIdx)) {
-                    const top = timeToPx(tw.start, tmwTimelineZoom);
-                    const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 8);
-                    const block = document.createElement('div');
-                    block.className = 'block-absolute block-ref';
-                    block.style.cssText = `top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, 0.14)}; padding: 2px 6px; color: var(--text-dim);`;
-                    block.textContent = `[GHOST] ${ref.title} (${tw.start}-${tw.end})`;
-                    canvasCol.appendChild(block);
-                }
-            });
-        }
+        if (!ref || !refToggles[ref.id] || !Array.isArray(ref.timeWindows)) return;
+        ref.timeWindows.forEach(tw => {
+            if (tw.days && tw.days.includes(dayIdx)) {
+                const alreadyConfirmed = customBlocks.some(b =>
+                    b.isTransport && b.refId === ref.id && b.start === tw.start && b.end === tw.end
+                );
+                if (alreadyConfirmed) return;
+
+                const top = timeToPx(tw.start, tmwTimelineZoom);
+                const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 12);
+                const block = document.createElement('div');
+                block.className = 'block-absolute block-ref';
+                block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: pointer; display: flex; justify-content: space-between; align-items: center; z-index: 3; transition: opacity 0.15s, border-color 0.15s;`;
+                block.title = 'Click to lock this Ghost Layer slot in place';
+                block.onmouseenter = () => { block.style.opacity = '0.95'; block.style.borderColor = 'var(--text-main)'; };
+                block.onmouseleave = () => { block.style.opacity = '0.55'; block.style.borderColor = ref.color || '#555'; };
+                block.innerHTML = `
+                    <span style="font-size:0.62rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
+                    <span style="font-size:0.58rem; color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>
+                `;
+                block.onclick = (e) => {
+                    e.stopPropagation();
+                    toggleConfirmTransportSlot(targetDate, ref.id, ref.title, ref.color, tw.start, tw.end);
+                };
+                canvasCol.appendChild(block);
+            }
+        });
     });
 
+    // 2. Raccoglie tutti i blocchi attivi (Fixed Tasks, Timed Routines, Ephemeral/Transports, Events)
     const timelineBlocks = [];
 
     templates.forEach(t => {
-        if (t && isTaskActiveOnDate(t, tomorrowStr) && t.timeWindows && t.timeWindows.length > 0) {
+        if (t && isTaskActiveOnDate(t, targetDate) && t.timeWindows && t.timeWindows.length > 0) {
             t.timeWindows.forEach(tw => {
-                if (tw.days && tw.days.includes(tmwDayIdx)) {
-                    if (plannerExceptions[`${t.id}_${tomorrowStr}_${tw.start}`]) return;
+                if (tw.days && tw.days.includes(dayIdx)) {
+                    if (plannerExceptions[`${t.id}_${targetDate}_${tw.start}`]) return;
                     const top = timeToPx(tw.start, tmwTimelineZoom);
-                    const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 8);
+                    const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 10);
                     const durMins = timeToMinutes(tw.end) - timeToMinutes(tw.start);
                     timelineBlocks.push({
                         kind: 'fixed_task',
@@ -2547,14 +2734,36 @@ function renderTomorrowOneDayTimeline() {
         }
     });
 
-    const customBlocks = Array.isArray(ephemeralData[tomorrowStr]) ? ephemeralData[tomorrowStr] : [];
+    (routinesData || []).forEach(r => {
+        if (r && r.type === 'timed' && isRoutineActiveOnDate(r, targetDate) && Array.isArray(r.timeWindows)) {
+            r.timeWindows.forEach(tw => {
+                if (tw.days && tw.days.includes(dayIdx)) {
+                    const top = timeToPx(tw.start, tmwTimelineZoom);
+                    const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 10);
+                    timelineBlocks.push({
+                        kind: 'routine',
+                        id: r.id,
+                        title: r.title,
+                        category: 'Routine',
+                        color: r.color || '#b08d43',
+                        start: tw.start,
+                        end: tw.end,
+                        minutes: timeToMinutes(tw.end) - timeToMinutes(tw.start),
+                        top, height, bottom: top + height
+                    });
+                }
+            });
+        }
+    });
+
     customBlocks.forEach(cb => {
         const top = timeToPx(cb.start, tmwTimelineZoom);
-        const height = Math.max(timeToPx(cb.end, tmwTimelineZoom) - top, 8);
+        const height = Math.max(timeToPx(cb.end, tmwTimelineZoom) - top, 10);
         timelineBlocks.push({
             kind: 'ephemeral_task',
             id: cb.id,
             templateId: cb.templateId,
+            isTransport: cb.isTransport,
             title: cb.title,
             category: cb.category || 'Planned',
             color: cb.color || '#ffffff',
@@ -2566,7 +2775,7 @@ function renderTomorrowOneDayTimeline() {
     });
 
     specificEvents.forEach(e => {
-        if (e && e.date === tomorrowStr && e.start && e.end) {
+        if (e && e.date === targetDate && e.start && e.end) {
             const top = timeToPx(e.start, tmwTimelineZoom);
             const height = Math.max(timeToPx(e.end, tmwTimelineZoom) - top, 10);
             timelineBlocks.push({
@@ -2603,57 +2812,206 @@ function renderTomorrowOneDayTimeline() {
             justify-content: space-between;
             align-items: center;
             padding: ${isSmall ? '0 6px' : '3px 8px'};
-            font-size: ${isSmall ? '0.64rem' : 'var(--font-xs)'};
-            cursor: grab;
+            font-size: ${isSmall ? '0.62rem' : 'var(--font-xs)'};
+            cursor: ${b.kind === 'ephemeral_task' ? 'grab' : 'default'};
+            z-index: 10;
         `;
 
-        block.draggable = (b.kind !== 'event');
-        block.ondragstart = (ev) => {
-            if (b.kind === 'ephemeral_task') {
-                ev.dataTransfer.setData('text/plain', JSON.stringify({
-                    kind: 'move_ephemeral',
-                    blockId: b.id
-                }));
-            } else if (b.kind === 'fixed_task') {
-                ev.dataTransfer.setData('text/plain', JSON.stringify({
-                    kind: 'move_fixed',
-                    templateId: b.id,
-                    oldStart: b.start
-                }));
-            }
-        };
-
         const infoSpan = document.createElement('span');
-        infoSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
-        infoSpan.innerHTML = `<strong>[${b.start}–${b.end}] ${escapeHtml(b.title)}</strong> <span style="opacity:0.75;">(${b.minutes}m · ${escapeHtml(b.category)})</span>`;
+        infoSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none;';
+        const trPrefix = b.isTransport ? '🚆 ' : '';
+        infoSpan.innerHTML = `<strong>[${b.start}–${b.end}] ${trPrefix}${escapeHtml(b.title)}</strong> <span style="opacity:0.75;">(${b.minutes}m)</span>`;
         block.appendChild(infoSpan);
 
         const removeBlockAction = (ev) => {
             ev.preventDefault();
             ev.stopPropagation();
             if (b.kind === 'ephemeral_task') {
-                removeTomorrowTimelineBlock(tomorrowStr, b.id);
+                removeTomorrowTimelineBlock(targetDate, b.id);
             } else if (b.kind === 'fixed_task') {
-                plannerExceptions[`${b.id}_${tomorrowStr}_${b.start}`] = true;
+                plannerExceptions[`${b.id}_${targetDate}_${b.start}`] = true;
                 saveData();
                 renderWeeklyPlanner();
-                renderPlanTomorrowModal();
+                renderDayPlannerModule();
             }
         };
 
         block.oncontextmenu = removeBlockAction;
 
-        if (!isSmall && b.kind !== 'event') {
+        if (b.kind === 'ephemeral_task') {
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.style.fontSize = '0.65rem';
+            delBtn.style.cssText = 'font-size: 0.65rem; z-index: 15;';
             delBtn.textContent = '[×]';
             delBtn.onclick = removeBlockAction;
             block.appendChild(delBtn);
+
+            // Trascinamento per spostare d'orario il blocco
+            bindPlanTimelineDragSource(block, {
+                kind: 'move_block',
+                blockId: b.id,
+                title: b.title,
+                durationMins: b.minutes
+            });
+
+            // 3A. Maniglia inferiore per allungare / accorciare la durata (Resize Handle)
+            const resizeHandle = document.createElement('div');
+            resizeHandle.className = 'plan-block-resize-handle';
+            resizeHandle.title = 'Drag bottom edge to resize duration';
+            resizeHandle.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                planTimelineDragState = {
+                    mode: 'resize_block',
+                    payload: {
+                        blockId: b.id,
+                        title: b.title,
+                        startTimeStr: b.start,
+                        startMins: timeToMinutes(b.start),
+                        durationMins: b.minutes
+                    },
+                    startX: e.clientX,
+                    startY: e.clientY,
+                    isDragging: true,
+                    currentSnappedTime: b.start,
+                    currentDurationMins: b.minutes
+                };
+                document.body.style.cursor = 'ns-resize';
+            });
+            block.appendChild(resizeHandle);
         }
 
         canvasCol.appendChild(block);
     });
+
+    if (typeof drawCurrentTimeLine === 'function') {
+        drawCurrentTimeLine();
+    }
 }
+
+// Listener globali per il motore Custom Mouse Drag & Resize sulla Timeline del Day Planner
+window.addEventListener('mousemove', (e) => {
+    if (!planTimelineDragState) return;
+
+    const dist = Math.hypot(e.clientX - planTimelineDragState.startX, e.clientY - planTimelineDragState.startY);
+    if (!planTimelineDragState.isDragging && dist > 5) {
+        planTimelineDragState.isDragging = true;
+        if (planTimelineDragState.mode !== 'resize_block') {
+            const ghost = ensurePlanTimelineGhostEl();
+            ghost.textContent = `[:: ${planTimelineDragState.payload.title}]`;
+            ghost.style.display = 'block';
+            document.body.style.cursor = 'grabbing';
+        }
+    }
+
+    if (!planTimelineDragState.isDragging) return;
+
+    if (planTimelineDragState.mode !== 'resize_block' && planTimelineGhostEl) {
+        planTimelineGhostEl.style.left = `${e.clientX + 12}px`;
+        planTimelineGhostEl.style.top = `${e.clientY + 12}px`;
+    }
+
+    const canvasCol = document.getElementById('plan-mod-day-canvas');
+    const indicator = document.getElementById('plan-mod-drop-indicator');
+    const badge = document.getElementById('plan-mod-drop-badge');
+    if (!canvasCol || !indicator || !badge) return;
+
+    const rect = canvasCol.getBoundingClientRect();
+    const startHour = 6.5;
+    const totalHeight = (24 - startHour) * tmwTimelineZoom;
+
+    if (planTimelineDragState.mode === 'resize_block') {
+        const relY = Math.max(0, Math.min(totalHeight, e.clientY - rect.top));
+        const hoverMins = Math.round((((relY / tmwTimelineZoom) + startHour) * 60) / 5) * 5;
+        const startMins = planTimelineDragState.payload.startMins;
+        const newDur = Math.max(5, Math.min(24 * 60 - startMins, hoverMins - startMins));
+
+        planTimelineDragState.currentDurationMins = newDur;
+        const endStr = minutesToTimeStr(startMins + newDur);
+        const topPx = timeToPx(planTimelineDragState.payload.startTimeStr, tmwTimelineZoom);
+        const heightPx = Math.max(8, (newDur / 60) * tmwTimelineZoom);
+
+        indicator.style.display = 'block';
+        indicator.style.top = `${topPx}px`;
+        indicator.style.height = `${heightPx}px`;
+        badge.textContent = `${planTimelineDragState.payload.startTimeStr}–${endStr} (${newDur}m)`;
+        return;
+    }
+
+    // Modalità 'new_item' o 'move_block': verifica se il cursore è sopra la Timeline
+    if (e.clientX >= rect.left - 30 && e.clientX <= rect.right + 30 && e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        const relY = Math.max(0, Math.min(totalHeight, e.clientY - rect.top));
+        const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
+        const snappedMins = Math.max(390, Math.min(24 * 60 - 5, Math.round(rawMins / 5) * 5));
+        const snappedTimeStr = minutesToTimeStr(snappedMins);
+        const dur = planTimelineDragState.currentDurationMins || 15;
+        const endStr = minutesToTimeStr(Math.min(24 * 60, snappedMins + dur));
+
+        planTimelineDragState.currentSnappedTime = snappedTimeStr;
+
+        const topPx = timeToPx(snappedTimeStr, tmwTimelineZoom);
+        const heightPx = Math.max(10, (dur / 60) * tmwTimelineZoom);
+
+        indicator.style.display = 'block';
+        indicator.style.top = `${topPx}px`;
+        indicator.style.height = `${heightPx}px`;
+        badge.textContent = `DROP ${snappedTimeStr}–${endStr} (${dur}m)`;
+    } else {
+        planTimelineDragState.currentSnappedTime = null;
+        indicator.style.display = 'none';
+    }
+});
+
+window.addEventListener('mouseup', () => {
+    if (!planTimelineDragState) return;
+
+    const state = planTimelineDragState;
+    planTimelineDragState = null;
+
+    if (planTimelineGhostEl) planTimelineGhostEl.style.display = 'none';
+    const indicator = document.getElementById('plan-mod-drop-indicator');
+    if (indicator) indicator.style.display = 'none';
+    document.body.style.cursor = '';
+
+    if (!state.isDragging) return;
+
+    const targetDate = ensurePlanBuilderDateValid();
+    const list = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
+
+    if (state.mode === 'resize_block') {
+        const b = list.find(x => x.id === state.payload.blockId);
+        if (b && state.currentDurationMins >= 5) {
+            const startMins = timeToMinutes(b.start);
+            const endMins = Math.min(24 * 60, startMins + state.currentDurationMins);
+            b.end = minutesToTimeStr(endMins);
+            b.minutes = endMins - startMins;
+            saveData();
+            renderDayPlannerModule();
+            renderTasks();
+            if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        }
+        return;
+    }
+
+    if (state.mode === 'move_block' && state.currentSnappedTime) {
+        const b = list.find(x => x.id === state.payload.blockId);
+        if (b) {
+            const dur = b.minutes || 15;
+            const startMins = timeToMinutes(state.currentSnappedTime);
+            const endMins = Math.min(24 * 60, startMins + dur);
+            b.start = minutesToTimeStr(startMins);
+            b.end = minutesToTimeStr(endMins);
+            saveData();
+            renderDayPlannerModule();
+            renderTasks();
+            if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        }
+        return;
+    }
+
+    if (state.mode === 'new_item' && state.currentSnappedTime) {
+        placeItemOnDayTimeline(state.payload, targetDate, state.currentSnappedTime);
+    }
+});
 
 renderTracker();

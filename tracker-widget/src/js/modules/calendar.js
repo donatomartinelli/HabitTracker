@@ -2,9 +2,13 @@
 
 function selectDate(dateStr) {
     selectedDateStr = dateStr;
+    if (typeof planBuilderDateStr !== 'undefined') {
+        planBuilderDateStr = dateStr < todayStr ? todayStr : dateStr;
+    }
     renderCalendar();
     if (typeof renderTasks === 'function') renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
     if (typeof renderDiet === 'function') renderDiet();
 }
 

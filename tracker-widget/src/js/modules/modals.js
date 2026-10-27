@@ -409,6 +409,7 @@ function initModalsHtml() {
                         <button type="button" class="settings-nav-btn tasks-cfg-nav active" data-tab="tcfg-tasks" onclick="switchTasksConfigTab('tcfg-tasks')">1. Habits, Cats &amp; Phases</button>
                         <button type="button" class="settings-nav-btn tasks-cfg-nav" data-tab="tcfg-routines" onclick="switchTasksConfigTab('tcfg-routines')">2. Routines</button>
                         <button type="button" class="settings-nav-btn tasks-cfg-nav" data-tab="tcfg-meds" onclick="switchTasksConfigTab('tcfg-meds')">3. Medicines &amp; Stock</button>
+                        <button type="button" class="settings-nav-btn tasks-cfg-nav" data-tab="tcfg-ghosts" onclick="switchTasksConfigTab('tcfg-ghosts')">4. Ghost Layers</button>
                     </div>
                     <div style="padding: 0 16px; font-size: 0.65rem; color: var(--text-dim);">
                         MAIN VIEW IS PURE CHECKBOXES. EDIT &amp; SNAP PHASES HERE.
@@ -449,6 +450,15 @@ function initModalsHtml() {
                         <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal('medicine')">[+ NEW MEDICINE]</button>
                     </div>
                     <div id="meds-manager-list" class="manager-list"></div>
+                </div>
+
+                <!-- TAB 4: GHOST LAYERS (CREAZIONE, MODIFICA & ELIMINAZIONE) -->
+                <div id="tcfg-ghosts" class="settings-tab-panel tasks-cfg-panel">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span class="section-label">Ghost Layers (Trains, Transports &amp; Reference Schedules)</span>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openReferenceModal()">[+ NEW GHOST LAYER]</button>
+                    </div>
+                    <div id="ghosts-manager-list" class="manager-list"></div>
                 </div>
             </div>
         </div>
@@ -626,69 +636,6 @@ function initModalsHtml() {
                     <button type="submit" class="btn btn-primary">Confirm</button>
                 </div>
             </form>
-        </div>
-    </div>
-
-    <!-- 12. Evening Builder: Plan Tomorrow Modal -->
-    <div id="planTomorrowModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 960px; max-width: 96%; height: 88vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px; flex-shrink: 0;">
-                <div>
-                    <h2 style="margin: 0; border: none; padding: 0;">Evening Builder // 1-Day Timeline (06:30 – 24:00)</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">Drag task blocks onto the timeline or choose start time. Block height matches exact minutes.</span>
-                </div>
-                <span id="plan-tmw-date-label" style="font-size: var(--font-sm); color: var(--text-main); font-weight: bold; padding: 4px 10px; border: 1px solid var(--border-color);">YYYY-MM-DD</span>
-            </div>
-
-            <div style="display: flex; gap: 20px; flex: 1; overflow: hidden; min-height: 0;">
-                <div style="width: 44%; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 8px; border-right: 1px solid var(--border-color);">
-                    <div class="form-group" style="margin-bottom: 0;">
-                        <label>Tomorrow's #1 Priority / Main Objective</label>
-                        <input type="text" id="plan-tmw-priority" class="form-control form-control-sm" placeholder="e.g. Complete Analysis II proofs..." oninput="saveTomorrowPriority(this.value)">
-                    </div>
-
-                    <div>
-                        <div class="sub-column-header" style="display:flex; justify-content:space-between;">
-                            <span>1. Tomorrow's Task Blocks (Drag to Timeline)</span>
-                            <span id="plan-tmw-workload-badge" style="color:var(--text-main); font-weight:bold;">0.0H</span>
-                        </div>
-                        <div id="plan-tmw-available-blocks" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-
-                    <div>
-                        <div class="sub-column-header">2. General To-Do Inbox (Move to Tomorrow)</div>
-                        <div id="plan-tmw-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                    </div>
-
-                    <div style="border-top: 1px solid var(--border-color); padding-top: 10px;">
-                        <div class="sub-column-header">3. Create New Task Block for Tomorrow</div>
-                        <div style="display: flex; gap: 6px; align-items: center;">
-                            <input type="text" id="plan-tmw-new-title" class="form-control form-control-sm" style="flex: 1;" placeholder="Task title..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addQuickTomorrowTask();}">
-                            <input type="number" id="plan-tmw-new-mins" class="form-control form-control-sm no-spinners" style="width: 58px; text-align:center;" value="30" min="5" step="5" title="Duration in minutes">
-                            <span style="font-size:var(--font-xs); color:var(--text-dim);">MIN</span>
-                            <input type="time" id="plan-tmw-new-start" class="form-control form-control-sm" style="width: 88px;" title="Optional start time">
-                            <button type="button" class="btn btn-primary btn-sm" onclick="addQuickTomorrowTask()">[+ ADD]</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
-                    <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0;">
-                        <span>TOMORROW'S TIMELINE (06:30 – 24:00)</span>
-                        <span style="color: var(--text-dim); font-size: 0.65rem;">DRAG BLOCKS TO SCHEDULE OR MOVE · RIGHT-CLICK TO UNSCHEDULE</span>
-                    </div>
-
-                    <div id="plan-tmw-timeline-scroll" style="flex: 1; display: flex; overflow-y: auto; position: relative; border: 1px solid var(--border-color); background: rgba(255,255,255,0.01); padding-top: 10px;">
-                        <div id="plan-tmw-time-labels" class="planner-time-labels" style="width: 48px;"></div>
-                        <div id="plan-tmw-day-canvas" class="planner-col-absolute" style="flex: 1; position: relative;"></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-actions" style="margin-top: 14px; flex-shrink: 0;">
-                <button type="button" class="btn" onclick="closeModals()">Close</button>
-                <button type="button" class="btn btn-primary" onclick="closeModals(); jumpToDate(tomorrowStr);">Lock Plan &amp; View Tomorrow [&gt;]</button>
-            </div>
         </div>
     </div>
 
@@ -1094,25 +1041,6 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 22. Weekly Planning Builder Modal (Sunday Night Strategy) -->
-    <div id="weeklyPlanModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 1180px; max-width: 98vw; max-height: 90vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 14px;">
-                <div>
-                    <h2 style="margin: 0; border: none; padding: 0;">Weekly Strategy Builder // Assign Tasks by Day Phase</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">SET DAILY #1 PRIORITIES &amp; SNAP TASKS INTO DAY PHASES (EARLY AM, LATE AM, EARLY PM, LATE PM, EVENING)</span>
-                </div>
-                <span id="weekly-plan-range-label" style="font-size: var(--font-xs); color: var(--text-main); font-weight: bold; padding: 4px 10px; border: 1px solid var(--border-color);">WEEK</span>
-            </div>
-
-            <div id="weekly-plan-days-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; flex: 1; overflow-y: auto; padding-bottom: 6px;"></div>
-
-            <div class="modal-actions" style="margin-top: 12px;">
-                <button type="button" class="btn" onclick="closeModals()">Close</button>
-                <button type="button" class="btn btn-primary" onclick="closeModals(); renderWeeklyPlanner(); renderTasks();">[LOCK WEEKLY PLAN]</button>
-            </div>
-        </div>
-    </div>
     `;
 }
 

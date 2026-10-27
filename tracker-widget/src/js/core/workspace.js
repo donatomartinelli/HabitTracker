@@ -1,5 +1,5 @@
 // --- js/core/workspace.js ---
-// Tiling Window Manager: Custom Mouse Drag & Snap (Zero Cursor Block), Unlimited Split Panes & Startup View Selector
+// Tiling Window Manager: Custom Mouse Drag & Snap, Unlimited Split Panes, Edit-Only Drag Bar & HUD Mode
 
 const dashboardModules = {
     'calendar': {
@@ -12,7 +12,6 @@ const dashboardModules = {
     'tasks': {
         name: 'Tasks',
         id: 'module-tasks',
-        // Comprimibile fino a 1/8 della larghezza dello schermo
         minW: () => Math.max(155, Math.floor(window.innerWidth * 0.125)),
         minH: () => 145,
         render: () => { if (typeof renderTasks === 'function') renderTasks(); if (typeof renderGeneralTodos === 'function') renderGeneralTodos(); }
@@ -27,10 +26,16 @@ const dashboardModules = {
     'planner': {
         name: 'Weekly Planner',
         id: 'module-planner',
-        // Non comprimibile sotto il 35% dello schermo (~420px)
         minW: () => Math.max(420, Math.floor(window.innerWidth * 0.35)),
         minH: () => 210,
         render: () => { if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner(); }
+    },
+    'plan': {
+        name: 'Day Planner',
+        id: 'module-plan',
+        minW: () => 360,
+        minH: () => 210,
+        render: () => { if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule(); }
     },
     'diet': {
         name: 'Diet & Macros',
@@ -77,7 +82,6 @@ const dashboardModules = {
 const ALL_MODULE_KEYS = Object.keys(dashboardModules);
 let isLayoutEditMode = false;
 
-// Stato per il Custom Pointer Drag & Snap (niente più HTML5 draggable bloccato da WebView2)
 let pointerDragCandidate = null;
 let isPointerDragging = false;
 let currentSnapAction = null;
@@ -107,7 +111,7 @@ function makeSplitNode(dir, ratio, childA, childB) {
     return {
         id: 'split_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
         type: 'split',
-        dir: dir, // 'row' (affiancati SX/DX) | 'col' (impilati SOPRA/SOTTO)
+        dir: dir,
         ratio: Math.max(0.125, Math.min(0.875, ratio || 0.5)),
         children: [childA, childB]
     };
@@ -229,7 +233,7 @@ function getSubtreeMinHeight(node) {
 }
 
 // ============================================================================
-// SCELTA SCHERMATA DI AVVIO (STARTUP VIEW: COSA SI APRE QUANDO APRI L'APP)
+// SCELTA SCHERMATA DI AVVIO (STARTUP VIEW)
 // ============================================================================
 
 function applyStartupViewPreferenceOnBoot() {
@@ -309,16 +313,14 @@ function toggleLayoutEditMode(forceState = null) {
     }
     renderEditDockChips();
     if (typeof showToast === 'function' && isLayoutEditMode) {
-        showToast('[EDIT MODE] Click modules to add/tile, or hold & drag onto screen edges/corners!');
+        showToast('[EDIT MODE] Grab any module or top bar to drag & snap!');
     }
 }
 
-// Quando clicchi un modulo (o lo aggiungi senza trascinare), divide automaticamente il riquadro più grande senza alcun limite di 2 moduli!
 function addModuleToTilingLayout(modKey) {
     if (!dashboardModules[modKey]) return;
     const leaves = collectLeafPanes(layoutTree);
 
-    // Se è già presente a schermo e sei in modalità EDIT, cliccarlo di nuovo lo rimuove (toggle)
     if (leaves.some(l => l.module === modKey)) {
         if (isLayoutEditMode && leaves.length > 1) {
             layoutTree = removePaneByModule(layoutTree, modKey);
@@ -335,7 +337,6 @@ function addModuleToTilingLayout(modKey) {
         return;
     }
 
-    // Trova il riquadro attualmente più ampio sullo schermo e lo divide in 2 per inserire il nuovo modulo (fino a tutti e 7!)
     let largestPaneId = leaves[leaves.length - 1].id;
     let largestArea = -1;
     let splitDirection = 'row';
@@ -373,7 +374,6 @@ function renderEditDockChips() {
         chip.textContent = `${isMounted ? '✓ ' : '+ '}${dashboardModules[modKey].name.toUpperCase()}`;
         chip.title = 'Click to add/toggle, or hold & drag onto screen to snap!';
 
-        // Usa il nostro motore Mouse Drag & Click (zero blocchi del cursore!)
         bindCustomPointerDragSource(chip, modKey, null, () => {
             addModuleToTilingLayout(modKey);
         });
@@ -400,14 +400,12 @@ function renderQuadrantLayout() {
     renderEditDockChips();
     updateWorkspaceDropdownUI();
 
-    // CASO 0: MODALITÀ ZERO-UI
     if (!layoutTree || leaves.length === 0) {
         layoutTree = null;
         saveWorkspaceState();
         return;
     }
 
-    // CASO 1..N: COSTRUISCE L'ALBERO DI FINESTRE E RESIZERS
     let paneCounter = { val: 0 };
     const domTree = buildTilingDomNode(layoutTree, paneCounter, leaves.length);
     if (domTree) wrapper.appendChild(domTree);
@@ -432,9 +430,9 @@ function renderQuadrantLayout() {
 function buildTilingDomNode(node, paneCounter, totalPanes) {
     if (!node) return null;
 
+    // 1. NODO SINGOLO (PANE)
     if (node.type === 'pane') {
         paneCounter.val++;
-        const qIndex = paneCounter.val;
         const modKey = node.module;
         const modInfo = dashboardModules[modKey];
         if (!modInfo) return null;
@@ -445,7 +443,7 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         cell.dataset.module = modKey;
         cell.style.flex = '1 1 0%';
 
-        // Barra superiore: Q1 [Notes] ... [×] (Trascinabile col mouse per fare Snap!)
+        // Barra visibile SOLO in modalità [EDIT] (nascosta nella vista normale)
         const bar = document.createElement('div');
         bar.className = 'quadrant-bar';
         bindCustomPointerDragSource(bar, modKey, node.id, null);
@@ -453,14 +451,9 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         const leftPart = document.createElement('div');
         leftPart.className = 'quadrant-bar-left';
 
-        const tag = document.createElement('span');
-        tag.className = 'quadrant-tag';
-        tag.textContent = `Q${qIndex}`;
-
-        const staticTitle = document.createElement('span');
-        staticTitle.className = 'quadrant-title-static';
-        staticTitle.textContent = `[${modInfo.name}]`;
-        staticTitle.title = 'Hold & drag this bar to snap window, or click [EDIT]';
+        const dragHint = document.createElement('span');
+        dragHint.style.cssText = 'color: var(--text-dim); font-weight: bold;';
+        dragHint.textContent = '[:: DRAG]';
 
         const select = document.createElement('select');
         select.className = 'quadrant-select';
@@ -474,30 +467,16 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         });
         select.onchange = () => changePaneModuleById(node.id, select.value);
 
-        leftPart.appendChild(tag);
-        leftPart.appendChild(staticTitle);
+        leftPart.appendChild(dragHint);
         leftPart.appendChild(select);
 
         const rightActions = document.createElement('div');
         rightActions.className = 'quadrant-bar-actions';
 
-        if (totalPanes > 1) {
-            const maxBtn = document.createElement('button');
-            maxBtn.className = 'icon-btn';
-            maxBtn.style.fontSize = '0.68rem';
-            maxBtn.title = 'Maximize this window to Full Screen';
-            maxBtn.textContent = '[MAX]';
-            maxBtn.onclick = () => {
-                layoutTree = makePaneNode(modKey);
-                renderQuadrantLayout();
-            };
-            rightActions.appendChild(maxBtn);
-        }
-
         const closeBtn = document.createElement('button');
         closeBtn.className = 'icon-btn delete';
         closeBtn.style.fontSize = '0.72rem';
-        closeBtn.title = 'Close this window';
+        closeBtn.title = 'Remove this module from layout';
         closeBtn.textContent = '[×]';
         closeBtn.onclick = () => {
             layoutTree = removePaneById(layoutTree, node.id);
@@ -511,6 +490,21 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         const body = document.createElement('div');
         body.className = 'quadrant-body';
 
+        // Quando sei in modalità [EDIT], puoi afferrare e trascinare il modulo da qualsiasi punto
+        body.addEventListener('mousedown', (e) => {
+            if (!isLayoutEditMode || e.button !== 0) return;
+            if (['SELECT', 'BUTTON', 'INPUT', 'TEXTAREA', 'OPTION'].includes(e.target.tagName)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            pointerDragCandidate = {
+                module: modKey,
+                sourcePaneId: node.id,
+                startX: e.clientX,
+                startY: e.clientY,
+                onClick: null
+            };
+        }, true);
+
         const modElement = document.getElementById(modInfo.id);
         if (modElement) body.appendChild(modElement);
 
@@ -519,9 +513,10 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         return cell;
     }
 
-    if (node.type === 'split') {
+    // 2. NODO COMPOSTO (SPLIT CON 2 O PIÙ VISTE)
+    if (node.type === 'split' && Array.isArray(node.children)) {
         const splitEl = document.createElement('div');
-        splitEl.className = `tiling-split dir-${node.dir}`;
+        splitEl.className = `tiling-split dir-${node.dir || 'row'}`;
         splitEl.style.flex = '1 1 0%';
 
         const childEl0 = buildTilingDomNode(node.children[0], paneCounter, totalPanes);
@@ -533,7 +528,7 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         childEl1.style.flex = `${1 - r} 1 0%`;
 
         const resizer = document.createElement('div');
-        resizer.className = node.dir === 'row' ? 'resizer-vertical' : 'resizer-horizontal';
+        resizer.className = (node.dir || 'row') === 'row' ? 'resizer-vertical' : 'resizer-horizontal';
         resizer.title = 'Drag to resize';
 
         attachSplitResizer(resizer, splitEl, node, childEl0, childEl1);
@@ -610,6 +605,7 @@ function attachSplitResizer(resizerEl, splitEl, splitNode, childEl0, childEl1) {
             document.body.style.cursor = '';
             saveWorkspaceState();
             if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+            if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
             if (activeSlots.includes('money') && typeof drawSteppedChart === 'function') {
                 setTimeout(drawSteppedChart, 15);
             }
@@ -621,7 +617,7 @@ function attachSplitResizer(resizerEl, splitEl, splitNode, childEl0, childEl1) {
 }
 
 // ============================================================================
-// MOTORE CUSTOM MOUSE DRAG & SNAP STILE WINDOWS (ZERO BLOCCO DEL CURSORE!)
+// MOTORE CUSTOM MOUSE DRAG & SNAP STILE WINDOWS
 // ============================================================================
 
 function bindCustomPointerDragSource(el, modKey, sourcePaneId, onClickCallback) {
@@ -713,7 +709,6 @@ function computePointerSnapTarget(clientX, clientY) {
         return;
     }
 
-    // 1. I 4 ANGOLI DELLO SCHERMO -> QUARTO DI SCHERMO (1/4) STILE WINDOWS
     const cornerT = 0.16;
     if (gx < cornerT && gy < cornerT) {
         currentSnapAction = { scope: 'screen_corner', corner: 'tl' };
@@ -736,7 +731,6 @@ function computePointerSnapTarget(clientX, clientY) {
         return;
     }
 
-    // 2. BORDI ESTERNI GLOBALI DELLO SCHERMO (Metà Sinistra, Metà Destra, Metà Sopra, Metà Sotto)
     const outerEdgeT = 0.07;
     if (gx < outerEdgeT) {
         currentSnapAction = { scope: 'root_edge', edge: 'left' };
@@ -759,7 +753,6 @@ function computePointerSnapTarget(clientX, clientY) {
         return;
     }
 
-    // 3. SNAP INTERNO SU QUALSIASI FINESTRA SPECIFICA (Divide quella finestra a metà o fa Swap al centro)
     const targetEl = document.elementFromPoint(clientX, clientY);
     const paneEl = targetEl ? targetEl.closest('.quadrant-cell') : null;
     if (!paneEl) {
@@ -811,8 +804,8 @@ function hideSnapPreview() {
 }
 
 function getOptimalInitialRatio(modLeft, modRight) {
-    if (modLeft === 'tasks' && modRight === 'planner') return 0.32;
-    if (modLeft === 'planner' && modRight === 'tasks') return 0.68;
+    if (modLeft === 'tasks' && modRight === 'planner') return 0.38;
+    if (modLeft === 'planner' && modRight === 'tasks') return 0.62;
     return 0.5;
 }
 
@@ -843,7 +836,6 @@ function executeSnapDrop(modKey, action) {
         return;
     }
 
-    // Bordo esterno globale dello schermo
     if (action.scope === 'root_edge') {
         const newPane = makePaneNode(modKey);
         const dir = (action.edge === 'left' || action.edge === 'right') ? 'row' : 'col';
@@ -855,7 +847,6 @@ function executeSnapDrop(modKey, action) {
         return;
     }
 
-    // Angolo 1/4 dello schermo
     if (action.scope === 'screen_corner') {
         const newPane = makePaneNode(modKey);
         const corner = action.corner;
@@ -878,7 +869,6 @@ function executeSnapDrop(modKey, action) {
         return;
     }
 
-    // Split su una singola finestra esistente
     if (action.scope === 'pane') {
         const newPane = makePaneNode(modKey);
         const stillHasTarget = collectLeafPanes(cleanTree).some(l => l.id === action.paneId);
@@ -919,8 +909,6 @@ function changePaneModuleById(paneId, newModKey) {
     renderQuadrantLayout();
 }
 
-// --- FUNZIONI CHIAMATE DA SCORCIATOIE, ZERO-UI E AI ---
-
 function setQuadrantCount(targetCount) {
     const n = parseInt(targetCount, 10) || 0;
     if (n <= 0) {
@@ -953,7 +941,7 @@ function switchModule(side, rawModKey) {
 }
 
 // ============================================================================
-// MENU VIEW ▼: SCELTA COSA SI APRE ALL'AVVIO (STARTUP) + VISTE SALVATE
+// MENU WORKSPACE NELLA FINESTRA SETTINGS
 // ============================================================================
 
 function updateWorkspaceDropdownUI() {
@@ -1145,6 +1133,9 @@ function resolveModuleKeyFromText(rawText) {
         'note': 'notes',
         'weekly planner': 'planner',
         'week': 'planner',
+        'day planner': 'plan',
+        'plan tomorrow': 'plan',
+        'plan': 'plan',
         'monthly calendar': 'calendar',
         'cal': 'calendar',
         'diet & macros': 'diet',
@@ -1167,7 +1158,6 @@ function resolveModuleKeyFromText(rawText) {
     return null;
 }
 
-// Sostituisce completamente il layout attuale con l'elenco di moduli scelto (es. ['notes', 'tasks'])
 function setModulesView(modKeysArray) {
     const validMods = [];
     (modKeysArray || []).forEach(k => {
@@ -1247,7 +1237,6 @@ async function toggleHudMode(forceState = null) {
     const nextState = forceState !== null ? Boolean(forceState) : !isHudMode;
 
     if (nextState && !isHudMode) {
-        // Salva le dimensioni normali correnti prima di collassare a 56px
         if (window.innerHeight > 120) {
             savedNormalWindowSize = {
                 width: Math.max(600, window.innerWidth || 1100),
@@ -1266,18 +1255,11 @@ async function toggleHudMode(forceState = null) {
         await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, false);
     }
 
-    const hudBtn = document.getElementById('btn-hud-mode');
-    if (hudBtn) {
-        hudBtn.textContent = isHudMode ? '[HUD: ON]' : '[HUD]';
-        hudBtn.classList.toggle('btn-primary', isHudMode);
-    }
-
     if (typeof showToast === 'function' && !isHudMode) {
         showToast('[HUD] Full Workspace Restored');
     }
 }
 
-// Espande temporaneamente la finestra Tauri quando si apre la barra comandi o un modale in modalità HUD
 async function setHudTemporaryExpansion(shouldExpand) {
     if (!isHudMode) return;
     if (shouldExpand && !isHudTempExpanded) {

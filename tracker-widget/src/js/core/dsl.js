@@ -656,15 +656,11 @@ function renderInstantGymSummary() {
 
 function renderInstantScheduleSummary(targetDateStr) {
     const dayIdx = parseLocalDate(targetDateStr).getDay();
-    const prio = dailyPriorities[targetDateStr] || '';
     const activeTasks = templates.filter(t => isTaskActiveOnDate(t, targetDateStr));
     const dayEvents = specificEvents.filter(e => e.date === targetDateStr);
     const customBlocks = Array.isArray(ephemeralData[targetDateStr]) ? ephemeralData[targetDateStr] : [];
 
     let html = '';
-    if (prio) {
-        html += `<div style="padding:5px 8px; border-left:3px solid var(--text-main); background:rgba(255,255,255,0.04); font-size:var(--font-xs);"><strong>#1 PRIORITY:</strong> ${escapeHtml(prio)}</div>`;
-    }
 
     dayEvents.forEach(ev => {
         const tBadge = (ev.start && ev.end) ? `[${ev.start}-${ev.end}] ` : '[EVENT] ';

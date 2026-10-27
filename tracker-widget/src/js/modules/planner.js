@@ -1,5 +1,5 @@
 // --- js/modules/planner.js ---
-// Atomic Module 4: Weekly Planner (06:30 - 24:00), 5 Day Phases (4A), Snap-to-Phase Engine (5A) & Proportional Blocks
+// Atomic Module 4: Weekly Planner (06:30 - 24:00), Left Phase Column (Auto-Injected), No Bottom Footer & Editable Ghost Layers
 
 const PLANNER_START_HOUR = 6.5; // 06:30
 let plannerZoom = 42;
@@ -64,7 +64,6 @@ function timeToPx(timeStr, zoomVal = plannerZoom) {
     return ((h + (m / 60)) - PLANNER_START_HOUR) * zoomVal;
 }
 
-// Restituisce i metadati della Fase del Giorno in base all'orario "HH:MM"
 function getDayPhaseForTime(timeStr) {
     const mins = timeToMinutes(timeStr);
     const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
@@ -76,116 +75,29 @@ function getDayPhaseForTime(timeStr) {
     return phases[phases.length - 1] || { id: 'evening', short: 'EVENING', start: '20:00', end: '24:00' };
 }
 
-// 5A. MOTORE SNAP-TO-PHASE: Trova il primo slot libero dentro la Fase scelta in una data specifica
-function findFirstFreeSlotInPhase(dateStr, phaseId, durationMins) {
+// Popola la colonna dedicata delle 5 Fasi a sinistra della colonna degli orari
+function renderPhaseLabelsColumn(phaseColEl, zoomVal) {
+    if (!phaseColEl) return;
+    const totalHeight = (24 - PLANNER_START_HOUR) * zoomVal;
+    phaseColEl.innerHTML = '';
+    phaseColEl.style.height = `${totalHeight}px`;
+
     const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
-    const phase = phases.find(p => p.id === phaseId) || phases[0];
-    if (!phase) return '09:00';
+    phases.forEach((ph, idx) => {
+        const topPx = (ph.startDec - PLANNER_START_HOUR) * zoomVal;
+        const heightPx = (ph.endDec - ph.startDec) * zoomVal;
 
-    const pStartMins = timeToMinutes(phase.start);
-    const pEndMins = timeToMinutes(phase.end);
-    const dayIdx = parseLocalDate(dateStr).getDay();
-
-    const occupied = [];
-
-    // 1. Task fisse con timeWindows attive in quel giorno
-    templates.forEach(t => {
-        if (t && isTaskActiveOnDate(t, dateStr) && Array.isArray(t.timeWindows)) {
-            t.timeWindows.forEach(tw => {
-                if (tw.days && tw.days.includes(dayIdx)) {
-                    if (plannerExceptions[`${t.id}_${dateStr}_${tw.start}`]) return;
-                    occupied.push({ start: timeToMinutes(tw.start), end: timeToMinutes(tw.end) });
-                }
-            });
-        }
+        const box = document.createElement('div');
+        box.className = `planner-phase-block-label ${idx % 2 === 1 ? 'alt' : ''}`;
+        box.style.cssText = `top: ${topPx}px; height: ${heightPx}px;`;
+        box.title = `${ph.label} (${ph.start} – ${ph.end})`;
+        box.innerHTML = `<span>${escapeHtml(ph.short)}</span>`;
+        phaseColEl.appendChild(box);
     });
-
-    // 2. Blocchi ephemeral già piazzati in quella data
-    const customBlocks = Array.isArray(ephemeralData[dateStr]) ? ephemeralData[dateStr] : [];
-    customBlocks.forEach(cb => {
-        occupied.push({ start: timeToMinutes(cb.start), end: timeToMinutes(cb.end) });
-    });
-
-    // 3. Eventi con orario in quella data
-    specificEvents.forEach(e => {
-        if (e && e.date === dateStr && e.start && e.end) {
-            occupied.push({ start: timeToMinutes(e.start), end: timeToMinutes(e.end) });
-        }
-    });
-
-    occupied.sort((a, b) => a.start - b.start);
-
-    // Cerca il primo spazio libero di almeno `durationMins` a step di 5 minuti dentro la fase
-    let candidateStart = pStartMins;
-    while (candidateStart + durationMins <= pEndMins) {
-        const candidateEnd = candidateStart + durationMins;
-        const conflict = occupied.find(iv => candidateStart < iv.end && candidateEnd > iv.start);
-        if (!conflict) {
-            return minutesToTimeStr(candidateStart);
-        }
-        // Salta direttamente alla fine del blocco in conflitto (arrotondato a 5 min)
-        candidateStart = Math.ceil(conflict.end / 5) * 5;
-    }
-
-    // Se la fase è piena ma c'è spazio prima della fine giornata, accoda subito dopo l'ultimo impegno della fase
-    if (candidateStart < 24 * 60 - 10) {
-        return minutesToTimeStr(Math.min(24 * 60 - durationMins, candidateStart));
-    }
-    return phase.start;
 }
 
-// 5A. Piazza automaticamente una Task nella Fase del Giorno scelta (su qualsiasi data: oggi, domani, settimana)
-function scheduleTaskInDayPhase(templateId, dateStr, phaseId, blocksMultiplier = 1) {
-    const t = templates.find(x => x.id === templateId);
-    if (!t) return false;
-
-    const unitMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, dateStr) : (t.timerMinutes || 25);
-    const count = Math.max(1, parseInt(blocksMultiplier, 10) || 1);
-    const totalDurationMins = Math.max(10, (unitMins > 0 ? unitMins : 25) * count);
-
-    const startTimeStr = findFirstFreeSlotInPhase(dateStr, phaseId, totalDurationMins);
-    const startMins = timeToMinutes(startTimeStr);
-    const endMins = Math.min(24 * 60, startMins + totalDurationMins);
-    const finalStartStr = minutesToTimeStr(startMins);
-    const finalEndStr = minutesToTimeStr(endMins);
-
-    if (!Array.isArray(ephemeralData[dateStr])) {
-        ephemeralData[dateStr] = [];
-    }
-
-    const phaseObj = (typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : []).find(p => p.id === phaseId);
-
-    ephemeralData[dateStr].push({
-        id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-        templateId: t.id,
-        title: count > 1 ? `${t.title} (${count}x)` : t.title,
-        category: t.category,
-        color: t.color || '#ffffff',
-        start: finalStartStr,
-        end: finalEndStr,
-        minutes: totalDurationMins,
-        blocksUsed: count,
-        phaseId: phaseId
-    });
-
-    saveData();
-    if (typeof renderTasks === 'function') renderTasks();
-    renderWeeklyPlanner();
-    if (typeof renderPlanTomorrowModal === 'function' && document.getElementById('planTomorrowModal')?.style.display === 'flex') {
-        renderPlanTomorrowModal();
-    }
-    if (typeof renderWeeklyPlanModal === 'function' && document.getElementById('weeklyPlanModal')?.style.display === 'flex') {
-        renderWeeklyPlanModal();
-    }
-
-    if (typeof showToast === 'function') {
-        showToast(`[${phaseObj ? phaseObj.short : 'PHASE'}] "${t.title}" scheduled at ${finalStartStr}–${finalEndStr} (${dateStr})`);
-    }
-    return true;
-}
-
-// Costruisce le bande visive e i divisori delle 5 Fasi del Giorno su una colonna del Planner o della Timeline
-function appendDayPhaseBandsToColumn(colEl, zoomVal, showPhaseLabels = false) {
+// Disegna dentro le colonne della griglia SOLO le linee divisorie orizzontali delle fasi (zero scritte interne)
+function appendDayPhaseBandsToColumn(colEl, zoomVal) {
     const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
     phases.forEach((ph, idx) => {
         const topPx = (ph.startDec - PLANNER_START_HOUR) * zoomVal;
@@ -194,14 +106,6 @@ function appendDayPhaseBandsToColumn(colEl, zoomVal, showPhaseLabels = false) {
         const band = document.createElement('div');
         band.className = `planner-phase-band ${idx % 2 === 1 ? 'alt' : ''}`;
         band.style.cssText = `top:${topPx}px; height:${heightPx}px;`;
-
-        if (showPhaseLabels) {
-            const tag = document.createElement('span');
-            tag.className = 'planner-phase-watermark';
-            tag.textContent = `${ph.short} // ${ph.start}–${ph.end}`;
-            band.appendChild(tag);
-        }
-
         colEl.appendChild(band);
     });
 }
@@ -250,21 +154,35 @@ function renderWeeklyPlanner() {
     try {
         const sidebar = document.getElementById('reference-toggles-list');
         const headerRow = document.getElementById('planner-header');
+        const scrollArea = document.getElementById('planner-scroll');
         const timeLabels = document.getElementById('planner-time-labels');
         const grid = document.getElementById('planner-grid');
-        const fixedFooter = document.getElementById('planner-fixed-footer');
 
         if (!sidebar || !headerRow || !timeLabels || !grid) return;
+
+        // Auto-inietta la colonna delle Fasi a sinistra degli orari se mancante in index.html
+        let phaseLabels = document.getElementById('planner-phase-labels');
+        if (!phaseLabels && scrollArea) {
+            phaseLabels = document.createElement('div');
+            phaseLabels.id = 'planner-phase-labels';
+            phaseLabels.className = 'planner-phase-labels';
+            scrollArea.insertBefore(phaseLabels, timeLabels);
+        }
+
+        // Allinea l'header alle 2 colonne di sinistra (58px Fasi + 45px Orari = 103px) e rimuove il vecchio footer
+        headerRow.style.paddingLeft = '103px';
+        const oldFooter = document.getElementById('planner-fixed-footer');
+        if (oldFooter) oldFooter.remove();
 
         sidebar.innerHTML = '';
         referenceLayers.forEach(ref => {
             if (!ref || !ref.id) return;
             const wrap = document.createElement('div');
             wrap.className = 'ref-toggle-wrap';
-            wrap.style.cssText = `border-left: 2px solid ${ref.color}; margin-bottom: 5px;`;
+            wrap.style.cssText = `border-left: 2px solid ${ref.color}; margin-bottom: 5px; justify-content: space-between;`;
 
             const lbl = document.createElement('label');
-            lbl.style.cssText = 'display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 5px; flex: 1;';
+            lbl.style.cssText = 'display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 5px; flex: 1; min-width: 0;';
 
             const cb = document.createElement('input');
             cb.type = 'checkbox';
@@ -272,23 +190,46 @@ function renderWeeklyPlanner() {
             cb.onchange = () => toggleReference(ref.id, cb.checked);
 
             const spanTxt = document.createElement('span');
+            spanTxt.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
             spanTxt.textContent = ref.title;
 
             lbl.appendChild(cb);
             lbl.appendChild(spanTxt);
 
+            const actBox = document.createElement('div');
+            actBox.style.cssText = 'display:flex; gap:4px; align-items:center;';
+
+            const editBtn = document.createElement('button');
+            editBtn.className = 'icon-btn';
+            editBtn.style.fontSize = '0.65rem';
+            editBtn.textContent = '[EDIT]';
+            editBtn.onclick = (e) => {
+                e.stopPropagation();
+                openReferenceModal(ref.id);
+            };
+
             const delBtn = document.createElement('button');
             delBtn.className = 'ref-del-btn';
             delBtn.textContent = '[X]';
-            delBtn.onclick = () => deleteReference(ref.id);
+            delBtn.onclick = (e) => {
+                e.stopPropagation();
+                deleteReference(ref.id);
+            };
+
+            actBox.appendChild(editBtn);
+            actBox.appendChild(delBtn);
 
             wrap.appendChild(lbl);
-            wrap.appendChild(delBtn);
+            wrap.appendChild(actBox);
             sidebar.appendChild(wrap);
         });
 
         const totalGridHeight = (24 - PLANNER_START_HOUR) * plannerZoom;
 
+        // 1. Colonna delle 5 Fasi a sinistra degli orari
+        renderPhaseLabelsColumn(phaseLabels, plannerZoom);
+
+        // 2. Colonna degli orari (06:30 - 23:00)
         timeLabels.innerHTML = '';
         timeLabels.style.height = `${totalGridHeight}px`;
 
@@ -306,22 +247,8 @@ function renderWeeklyPlanner() {
             timeLabels.appendChild(tl);
         }
 
-        // 4A. Indicatori verticali delle 5 Fasi nella colonna orari
-        const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
-        phases.forEach(ph => {
-            const midDec = (ph.startDec + ph.endDec) / 2;
-            const midPx = (midDec - PLANNER_START_HOUR) * plannerZoom;
-            const pBadge = document.createElement('div');
-            pBadge.className = 'planner-phase-side-tag';
-            pBadge.style.top = `${midPx}px`;
-            pBadge.title = `${ph.label} (${ph.start} – ${ph.end})`;
-            pBadge.textContent = ph.short.replace('EARLY ', 'E-').replace('LATE ', 'L-').replace('EVENING', 'EVE');
-            timeLabels.appendChild(pBadge);
-        });
-
         headerRow.innerHTML = '';
         grid.innerHTML = '';
-        if (fixedFooter) fixedFooter.innerHTML = '';
 
         const weekStart = getWeekStart(selectedDateStr);
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
@@ -340,48 +267,13 @@ function renderWeeklyPlanner() {
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
             headerRow.appendChild(headerCell);
 
-            if (fixedFooter) {
-                const footerCell = document.createElement('div');
-                footerCell.style.cssText = 'flex: 1; border-right: 1px solid var(--border-color); padding: 4px; display: flex; flex-direction: column; gap: 3px; min-width: 0;';
-                if (i === 6) footerCell.style.borderRight = 'none';
-
-                const dayCustomBlocks = Array.isArray(ephemeralData[loopDateStr]) ? ephemeralData[loopDateStr] : [];
-
-                specificEvents.forEach(e => {
-                    if (e && e.date === loopDateStr && (!e.start || !e.end)) {
-                        const badge = document.createElement('div');
-                        badge.className = 'flexible-task-badge';
-                        badge.style.borderLeft = `2px solid ${e.color}`;
-                        badge.textContent = `[*] ${e.title}`;
-                        footerCell.appendChild(badge);
-                    }
-                });
-
-                templates.forEach(t => {
-                    if (t && isTaskActiveOnDate(t, loopDateStr)) {
-                        const isFlex = (t.type === 'untimed' || (!t.type && (!t.timeWindows || t.timeWindows.length === 0)));
-                        const placedCount = dayCustomBlocks.filter(b => b.templateId === t.id).length;
-                        if (isFlex && placedCount < (t.instances || 1)) {
-                            const badge = document.createElement('div');
-                            badge.className = 'flexible-task-badge';
-                            badge.style.borderLeft = `2px solid ${t.color || '#fff'}`;
-                            const rem = (t.instances || 1) - placedCount;
-                            badge.textContent = `${t.title}${rem > 1 ? ' x' + rem : ''}`;
-                            footerCell.appendChild(badge);
-                        }
-                    }
-                });
-
-                fixedFooter.appendChild(footerCell);
-            }
-
             const dayCol = document.createElement('div');
             dayCol.className = 'planner-col-absolute';
             dayCol.style.height = `${totalGridHeight}px`;
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
 
-            // 4A. Bande visive e divisori delle 5 Fasi (con watermark sulla prima colonna o sul giorno selezionato)
-            appendDayPhaseBandsToColumn(dayCol, plannerZoom, i === 0 || isToday);
+            // Linee divisorie delle 5 Fasi (senza scritte dentro la griglia)
+            appendDayPhaseBandsToColumn(dayCol, plannerZoom);
 
             const line630 = document.createElement('div');
             line630.className = 'grid-line-abs';
@@ -395,11 +287,18 @@ function renderWeeklyPlanner() {
                 dayCol.appendChild(line);
             }
 
+            const customDayBlocks = Array.isArray(ephemeralData[loopDateStr]) ? ephemeralData[loopDateStr] : [];
+
             // 1. Ghost Layers
             referenceLayers.forEach(ref => {
                 if (ref && refToggles[ref.id]) {
                     (ref.timeWindows || []).forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
+                            const isLocked = customDayBlocks.some(b =>
+                                b.isTransport && b.refId === ref.id && b.start === tw.start && b.end === tw.end
+                            );
+                            if (isLocked) return;
+
                             const top = timeToPx(tw.start);
                             const height = Math.max(timeToPx(tw.end) - top, 6);
                             if (top + height > 0) {
@@ -438,22 +337,16 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            // Routine in modalità Timed (1A: mostra l'intera Routine come blocco unico sul Weekly Planner)
             (routinesData || []).forEach(r => {
-                if (r && r.type === 'timed' && isRoutineActiveOnDate(r, loopDateStr) && Array.isArray(r.timeWindows)) {
+                if (r && r.type === 'timed' && typeof isRoutineActiveOnDate === 'function' && isRoutineActiveOnDate(r, loopDateStr) && Array.isArray(r.timeWindows)) {
                     r.timeWindows.forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
                             const top = timeToPx(tw.start);
                             const height = Math.max(timeToPx(tw.end) - top, 7);
                             if (top + height > 0) {
                                 dayBlocks.push({
-                                    kind: 'routine',
-                                    id: r.id,
-                                    title: r.title,
-                                    category: 'Routine',
-                                    color: r.color || '#b08d43',
-                                    start: tw.start,
-                                    end: tw.end,
+                                    kind: 'routine', id: r.id, title: r.title, category: 'Routine',
+                                    color: r.color || '#b08d43', start: tw.start, end: tw.end,
                                     top, height, bottom: top + height
                                 });
                             }
@@ -461,8 +354,7 @@ function renderWeeklyPlanner() {
                     });
                 }
             });
-            
-            const customDayBlocks = Array.isArray(ephemeralData[loopDateStr]) ? ephemeralData[loopDateStr] : [];
+
             customDayBlocks.forEach(cb => {
                 const top = timeToPx(cb.start);
                 const height = Math.max(timeToPx(cb.end) - top, 7);
@@ -471,6 +363,7 @@ function renderWeeklyPlanner() {
                         kind: 'ephemeral',
                         id: cb.id,
                         templateId: cb.templateId,
+                        isTransport: cb.isTransport,
                         title: cb.title,
                         category: cb.category || 'Planned',
                         color: cb.color || '#ffffff',
@@ -517,7 +410,7 @@ function renderWeeklyPlanner() {
                 `;
 
                 const bTag = document.createElement('b');
-                bTag.textContent = b.title;
+                bTag.textContent = (b.isTransport ? '🚆 ' : '') + b.title;
                 block.appendChild(bTag);
 
                 const phaseMeta = getDayPhaseForTime(b.start);
@@ -542,13 +435,12 @@ function renderWeeklyPlanner() {
             grid.appendChild(dayCol);
         }
 
-        const scrollArea = document.getElementById('planner-scroll');
         if (scrollArea) {
             if (!document.getElementById('planner-hover-line')) {
                 const hl = document.createElement('div');
                 hl.id = 'planner-hover-line';
                 hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px solid rgba(255,255,255,0.3); pointer-events:none; z-index:50;';
-                hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:2px; top:-9px; width:40px; text-align:center; background:#050505; color:#fff; font-size:var(--font-xs); padding:1px 0; border: 1px solid #444; z-index:100;"></div>';
+                hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:60px; top:-9px; width:40px; text-align:center; background:#050505; color:#fff; font-size:var(--font-xs); padding:1px 0; border: 1px solid #444; z-index:100;"></div>';
                 scrollArea.appendChild(hl);
 
                 scrollArea.addEventListener('mousemove', function(e) {
@@ -618,12 +510,15 @@ function drawCurrentTimeLine() {
     const m = now.getMinutes();
     const curHourDec = h + (m / 60);
 
+    if (curHourDec < PLANNER_START_HOUR) return;
+
+    // 1. Weekly Planner
     const weekStart = getWeekStart(selectedDateStr);
     const daysDiff = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24));
 
     if (daysDiff >= 0 && daysDiff < 7) {
         const cols = document.querySelectorAll('#planner-grid .planner-col-absolute');
-        if (cols[daysDiff] && curHourDec >= PLANNER_START_HOUR) {
+        if (cols[daysDiff]) {
             const top = (curHourDec - PLANNER_START_HOUR) * plannerZoom;
             const line = document.createElement('div');
             line.className = 'current-time-line';
@@ -637,13 +532,24 @@ function drawCurrentTimeLine() {
             }
         }
     }
+
+    // 2. Day Planner
+    const dayPlanCanvas = document.getElementById('plan-mod-day-canvas');
+    if (dayPlanCanvas && typeof planBuilderDateStr !== 'undefined' && planBuilderDateStr === todayStr) {
+        const topDay = (curHourDec - PLANNER_START_HOUR) * (typeof tmwTimelineZoom !== 'undefined' ? tmwTimelineZoom : 46);
+        const lineDay = document.createElement('div');
+        lineDay.className = 'current-time-line';
+        lineDay.style.top = `${topDay}px`;
+        dayPlanCanvas.appendChild(lineDay);
+    }
 }
 
 setInterval(drawCurrentTimeLine, 60000);
 
-// --- GHOST LAYERS CRUD ---
+// --- GHOST LAYERS CRUD (CREAZIONE E MODIFICA COMPLETA) ---
 function addRefTimeWindow(start = '', end = '', days = []) {
     const container = document.getElementById('ref-time-windows-container');
+    if (!container) return;
     const div = document.createElement('div');
     div.className = 'ref-time-window-row';
     div.style.cssText = 'border: 1px solid #333; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.02);';
@@ -672,19 +578,43 @@ function addRefTimeWindow(start = '', end = '', days = []) {
     container.appendChild(div);
 }
 
-function openReferenceModal() {
-    document.getElementById('referenceForm').reset();
-    document.getElementById('ref-id').value = "";
-    document.getElementById('ref-time-windows-container').innerHTML = '';
-    addRefTimeWindow();
-    document.getElementById('r-color').value = '#444444';
-    updateCustomColor(document.getElementById('r-color'), 'r-color');
+function openReferenceModal(refId = null) {
+    const form = document.getElementById('referenceForm');
+    if (!form) return;
+    form.reset();
+
+    const cont = document.getElementById('ref-time-windows-container');
+    if (cont) cont.innerHTML = '';
+
+    if (refId) {
+        const ref = referenceLayers.find(x => x.id === refId);
+        if (!ref) return;
+        document.getElementById('ref-id').value = ref.id;
+        document.getElementById('ref-title').value = ref.title;
+        const cInp = document.getElementById('r-color');
+        cInp.value = ref.color || '#444444';
+        updateCustomColor(cInp, 'r-color');
+
+        if (Array.isArray(ref.timeWindows) && ref.timeWindows.length > 0) {
+            ref.timeWindows.forEach(tw => addRefTimeWindow(tw.start, tw.end, tw.days || []));
+        } else {
+            addRefTimeWindow();
+        }
+    } else {
+        document.getElementById('ref-id').value = "";
+        addRefTimeWindow();
+        const cInp = document.getElementById('r-color');
+        cInp.value = '#444444';
+        updateCustomColor(cInp, 'r-color');
+    }
+
     closeModals();
     document.getElementById('referenceModal').style.display = 'flex';
 }
 
-document.getElementById('referenceForm').addEventListener('submit', function(e) {
+document.getElementById('referenceForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
+    const existingId = document.getElementById('ref-id').value;
     const title = document.getElementById('ref-title').value.trim();
     const color = document.getElementById('r-color').value || '#444444';
     let timeWindows = [];
@@ -702,18 +632,24 @@ document.getElementById('referenceForm').addEventListener('submit', function(e) 
         return;
     }
 
-    const id = document.getElementById('ref-id').value || 'r_' + Date.now();
-    if (document.getElementById('ref-id').value) {
-        const ref = referenceLayers.find(x => x.id === id);
-        if (ref) { ref.title = title; ref.timeWindows = timeWindows; ref.color = color; }
+    if (existingId) {
+        const ref = referenceLayers.find(x => x.id === existingId);
+        if (ref) {
+            ref.title = title;
+            ref.timeWindows = timeWindows;
+            ref.color = color;
+        }
     } else {
-        referenceLayers.push({ id, title, timeWindows, color, opacity: '0.8' });
-        refToggles[id] = true;
+        const newId = 'r_' + Date.now();
+        referenceLayers.push({ id: newId, title, timeWindows, color, opacity: '0.8' });
+        refToggles[newId] = true;
     }
 
     saveData();
     closeModals();
     renderWeeklyPlanner();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+    if (typeof renderGhostLayersManagerList === 'function') renderGhostLayersManagerList();
 });
 
 function deleteReference(id) {
@@ -725,11 +661,12 @@ function deleteReference(id) {
     document.getElementById('btn-del-single').style.display = 'none';
     document.getElementById('btn-del-future').style.display = 'none';
     closeModals();
-    document.getElementById('referenceModal').style.display = 'flex';
+    document.getElementById('deleteModal').style.display = 'flex';
 }
 
 function toggleReference(id, checked) {
     refToggles[id] = checked;
     saveData();
     renderWeeklyPlanner();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
 }
