@@ -1538,19 +1538,14 @@ function toggleRoutineStepCheckbox(routineId, stepId, dateStr = selectedDateStr)
 
 function renderRoutinesColumn() {
     const container = document.getElementById('routines-tasks-list');
-    const progBadge = document.getElementById('routines-progress-badge');
     if (!container) return;
 
     container.innerHTML = '';
     const activeRoutines = (routinesData || []).filter(r => isRoutineActiveOnDate(r, selectedDateStr));
     const activeMedsToday = templates.filter(t => t.type === 'medicine' && isTaskActiveOnDate(t, selectedDateStr));
 
-    let totalSteps = 0;
-    let completedSteps = 0;
-
     if (activeRoutines.length === 0 && activeMedsToday.length === 0) {
         container.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
-        if (progBadge) progBadge.textContent = '0/0';
         return;
     }
 
@@ -1566,42 +1561,13 @@ function renderRoutinesColumn() {
             return routine.id === defaultEveningRtnId;
         });
 
-        let rTotal = 0;
-        let rDone = 0;
-
-        injectedMeds.forEach(m => {
-            const inst = m.instances || 1;
-            const mLog = (logs[selectedDateStr] && logs[selectedDateStr][m.id]) || Array(inst).fill(false);
-            rTotal += inst;
-            totalSteps += inst;
-            const c = mLog.filter(Boolean).length;
-            rDone += c;
-            completedSteps += c;
-        });
-
-        (routine.sections || []).forEach(sec => {
-            (sec.items || []).forEach(it => {
-                rTotal++;
-                totalSteps++;
-                if (rLog[it.id]) {
-                    rDone++;
-                    completedSteps++;
-                }
-            });
-        });
-
         const card = document.createElement('div');
         card.className = 'category-group';
         card.style.borderLeft = `3px solid ${routine.color || '#ffffff'}`;
 
         const header = document.createElement('div');
         header.className = 'category-header-wrap';
-        header.innerHTML = `
-            <div class="category-title">${escapeHtml(routine.title)}</div>
-            <span style="font-size:var(--font-xs); font-weight:bold; color:${rDone === rTotal && rTotal > 0 ? 'var(--accent-green)' : 'var(--text-dim)'}; font-variant-numeric:tabular-nums;">
-                ${rDone}/${rTotal}
-            </span>
-        `;
+        header.innerHTML = `<div class="category-title">${escapeHtml(routine.title)}</div>`;
         card.appendChild(header);
 
         if (injectedMeds.length > 0) {
@@ -1688,16 +1654,10 @@ function renderRoutinesColumn() {
     });
 
     container.appendChild(frag);
-    if (progBadge) progBadge.textContent = `${completedSteps}/${totalSteps}`;
 }
-
-// --- COLONNA 4: TO-DO (ASSEGNATE AL GIORNO + GENERATORE/CODA DA ASSEGNARE) ---
 
 function renderTodoColumn() {
     const assignedCont = document.getElementById('assigned-todos-list');
-    const dateBadge = document.getElementById('todo-col-date-badge');
-    if (dateBadge) dateBadge.textContent = selectedDateStr;
-
     const customBlocksToday = Array.isArray(ephemeralData[selectedDateStr]) ? ephemeralData[selectedDateStr] : [];
 
     if (assignedCont) {
@@ -1705,11 +1665,11 @@ function renderTodoColumn() {
         const assignedToday = templates.filter(t => isSingleDayTodoTemplate(t) && isTaskActiveOnDate(t, selectedDateStr));
 
         if (assignedToday.length === 0) {
-            assignedCont.innerHTML = `<div class="empty-state">[ NO TO-DO FOR ${selectedDateStr} ]</div>`;
+            assignedCont.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
         } else {
             const groupDiv = document.createElement('div');
             groupDiv.className = 'category-group';
-            groupDiv.innerHTML = `<div class="category-header-wrap"><div class="category-title">Assigned // ${selectedDateStr}</div></div>`;
+            groupDiv.style.marginBottom = '0';
 
             assignedToday.forEach(t => {
                 const taskItem = document.createElement('div');
@@ -1751,8 +1711,6 @@ function renderTodoColumn() {
             assignedCont.appendChild(groupDiv);
         }
     }
-
-    renderGeneralTodos();
 }
 
 function addGeneralTask(e) {
@@ -1771,11 +1729,31 @@ function addGeneralTask(e) {
             return;
         }
 
-        generalTodos.push({ id: 'todo_' + Date.now(), title: title });
+        const dayIndex = parseLocalDate(selectedDateStr).getDay();
+        const catName = 'General To-Do';
+        if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+
+        templates.push({
+            id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+            isTodo: true,
+            category: catName,
+            title: title,
+            instances: 1,
+            timerMinutes: 15,
+            noTimer: true,
+            frequency: 'specific',
+            daysOfWeek: [dayIndex],
+            startDate: selectedDateStr,
+            endDate: selectedDateStr,
+            color: '#ffffff',
+            type: 'untimed',
+            timeWindows: []
+        });
+
         saveData();
-        renderGeneralTodos();
+        renderTasks();
         renderDayPlannerModule();
-        if (typeof showToast === 'function') showToast(`[TO-DO] Added "${title}" to queue`);
+        if (typeof showToast === 'function') showToast(`[TO-DO] Added "${title}" on ${selectedDateStr}`);
         e.target.value = '';
     }
 }
@@ -2172,15 +2150,8 @@ function toggleDayPlanMode(forceMode = null) {
 
     currentDayPlanMode = (cb && cb.checked) ? 'edit' : 'view';
     const leftCol = document.getElementById('plan-mod-left-col');
-    const hintEl = document.getElementById('plan-mod-timeline-hint');
-
     if (leftCol) {
         leftCol.style.display = currentDayPlanMode === 'edit' ? 'flex' : 'none';
-    }
-    if (hintEl) {
-        hintEl.textContent = currentDayPlanMode === 'edit'
-            ? 'DRAG TO MOVE · DRAG BOTTOM TO RESIZE · RIGHT-CLICK TO REMOVE'
-            : 'DAY VIEW MODE // SWITCH TO [EDIT] TO MODIFY';
     }
     renderDayPlannerModule();
 }
@@ -2352,40 +2323,13 @@ function renderPlanTomorrowModal() {
 function renderDayPlannerModule() {
     const targetDate = ensurePlanBuilderDateValid();
     const dateLbl = document.getElementById('plan-mod-date-label');
-    const prevBtn = document.getElementById('btn-plan-prev-day');
-    const weekStrip = document.getElementById('plan-week-strip');
-    if (!dateLbl || !weekStrip) return;
+    if (!dateLbl) return;
 
     const dayNamesFull = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const targetDateObj = parseLocalDate(targetDate);
     const targetDayIdx = targetDateObj.getDay();
 
-    dateLbl.textContent = `${dayNamesFull[targetDayIdx]} // ${targetDate}${targetDate === todayStr ? ' (TODAY)' : (targetDate === tomorrowStr ? ' (TOMORROW)' : '')}`;
-    if (prevBtn) prevBtn.disabled = (targetDate <= todayStr);
-
-    // 1A. Striscia dei 7 giorni della settimana corrente/visualizzata
-    weekStrip.innerHTML = '';
-    const mondayObj = typeof getWeekStart === 'function' ? getWeekStart(targetDate) : new Date(targetDateObj);
-    const stripLabels = ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'];
-
-    for (let i = 0; i < 7; i++) {
-        const d = new Date(mondayObj);
-        d.setDate(mondayObj.getDate() + i);
-        const dStr = formatDate(d);
-        const isPast = dStr < todayStr;
-        const isSelected = dStr === targetDate;
-
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = `btn btn-sm ${isSelected ? 'btn-primary' : ''}`;
-        btn.style.cssText = `padding: 3px 7px; font-size: 0.65rem; ${isPast ? 'opacity: 0.3; cursor: not-allowed;' : ''}`;
-        btn.disabled = isPast;
-        btn.textContent = `${stripLabels[i]} ${String(d.getDate()).padStart(2, '0')}`;
-        btn.onclick = () => {
-            if (!isPast) setPlanBuilderDate(dStr);
-        };
-        weekStrip.appendChild(btn);
-    }
+    dateLbl.textContent = `// ${targetDate}`;
 
     const customBlocks = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
 
@@ -2409,7 +2353,6 @@ function renderDayPlannerModule() {
             const refBox = document.createElement('div');
             refBox.style.cssText = `padding: 5px 8px; border: 1px solid ${isVisible ? 'var(--border-color)' : 'rgba(255,255,255,0.05)'}; border-left: 2px solid ${ref.color || '#4c5b73'}; background: rgba(255,255,255,${isVisible ? '0.02' : '0.005'}); opacity: ${isVisible || lockedSlotsCount > 0 ? '0.9' : '0.45'}; transition: opacity 0.15s, border-color 0.15s;`;
 
-            // Banner Header con Toggle
             const bannerRow = document.createElement('div');
             bannerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; gap: 6px;';
             bannerRow.onclick = () => togglePlanGhostLayer(ref.id);
@@ -2432,7 +2375,6 @@ function renderDayPlannerModule() {
             `;
             refBox.appendChild(bannerRow);
 
-            // Mostra i chip degli orari da lockare SOLO se il toggle del Ghost Layer è attivo
             if (isVisible) {
                 const chipsWrap = document.createElement('div');
                 chipsWrap.style.cssText = 'display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; padding-top: 5px; border-top: 1px dotted rgba(255,255,255,0.06);';
@@ -2465,12 +2407,11 @@ function renderDayPlannerModule() {
         }
     }
 
-    // 2. SEZIONE FLEXIBLE TASKS (SOLO FLEXIBLE, ZERO FIXED, DRAG PURO 4B)
+    // 2. SEZIONE FLEXIBLE TASKS
     const availCont = document.getElementById('plan-mod-available-blocks');
     if (availCont) {
         availCont.innerHTML = '';
 
-        // Filtra SOLO le task flessibili (esclude le task con orario fisso, le medicine e le To-Do)
         const flexTasksForDay = templates.filter(t => {
             if (!t || t.type === 'medicine' || isSingleDayTodoTemplate(t)) return false;
             if (t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0)) return false;
@@ -2528,7 +2469,7 @@ function renderDayPlannerModule() {
         if (badgeEl) badgeEl.textContent = `${(totalCommittedMins / 60).toFixed(1)}H FLEX`;
     }
 
-    // 3. SEZIONE TO-DO (ASSEGNATE AL GIORNO NON PIAZZATE + CODA UNASSIGNED -> DRAG 15 MIN)
+    // 3. SEZIONE TO-DO
     const inboxCont = document.getElementById('plan-mod-inbox');
     if (inboxCont) {
         inboxCont.innerHTML = '';

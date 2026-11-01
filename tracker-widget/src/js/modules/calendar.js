@@ -22,12 +22,12 @@ function renderCalendar() {
     if (!grid) return;
 
     const monthNames = [
-        "January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
+        "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+        "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
     ];
     const monthNameEl = document.getElementById('calendar-month-name');
     if (monthNameEl) {
-        monthNameEl.innerText = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+        monthNameEl.innerText = `// ${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
     }
 
     grid.innerHTML = '';

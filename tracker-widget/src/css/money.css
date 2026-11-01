@@ -1,24 +1,22 @@
-/* --- MONEY DASHBOARD 2.0: FLOWS & MONTHLY ENVELOPES --- */
+/* --- MONEY DASHBOARD 3.0: SUB-MODULES, INLINE EDIT, CATEGORY ANALYTICS & INCUBATOR --- */
 .money-top-bar {
     flex: 0 0 auto;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
+    flex-direction: column;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 14px;
-    gap: 16px;
-    flex-wrap: wrap;
+    padding-bottom: 10px;
+    gap: 10px;
 }
 
 .balance-cards-row {
     display: flex;
-    gap: 24px;
+    gap: 20px;
     align-items: baseline;
     flex-wrap: wrap;
 }
 
 .hero-balance {
-    font-size: var(--font-xl);
+    font-size: 1.45rem;
     font-weight: bold;
     color: var(--text-main);
     line-height: 1;
@@ -26,32 +24,11 @@
 }
 
 .spendable-balance {
-    font-size: 1.55rem;
+    font-size: 1.45rem;
     font-weight: bold;
     color: var(--accent-green);
     line-height: 1;
     font-variant-numeric: tabular-nums;
-}
-
-.cashflow-pills-row {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    flex-wrap: wrap;
-}
-
-.cashflow-pill {
-    font-size: var(--font-xs);
-    padding: 4px 8px;
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.02);
-    font-variant-numeric: tabular-nums;
-}
-
-.balance-sub-breakdown {
-    font-size: var(--font-xs);
-    color: var(--text-dim);
-    margin-top: 6px;
 }
 
 /* --- SALVADANAI / BUDGET MENSILI (BARRE ORIZZONTALI) --- */
@@ -62,13 +39,14 @@
 }
 
 .vault-envelope-row {
+    position: relative;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color);
     border-left: 3px solid var(--text-main);
-    padding: 10px 14px;
+    padding: 9px 12px;
     display: flex;
     flex-direction: column;
-    gap: 7px;
+    gap: 6px;
     transition: border-color 0.15s, background 0.15s;
 }
 
@@ -93,7 +71,7 @@
 .vault-env-title-wrap {
     display: flex;
     align-items: baseline;
-    gap: 10px;
+    gap: 8px;
 }
 
 .vault-name {
@@ -104,7 +82,7 @@
 }
 
 .vault-rule-badge {
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     color: var(--text-dim);
     text-transform: uppercase;
     padding: 1px 5px;
@@ -114,7 +92,7 @@
 .vault-env-numbers {
     display: flex;
     align-items: baseline;
-    gap: 12px;
+    gap: 10px;
     font-variant-numeric: tabular-nums;
 }
 
@@ -135,7 +113,7 @@
 
 .vault-progress-track {
     width: 100%;
-    height: 7px;
+    height: 6px;
     background: #111111;
     border: 1px solid #2a2a2a;
     position: relative;
@@ -157,10 +135,10 @@
 .money-chart-box {
     flex: 0 0 auto;
     width: 100%;
-    height: 115px;
+    height: 105px;
     background: rgba(255, 255, 255, 0.015);
     border: 1px solid var(--border-color);
-    padding: 24px 12px 20px;
+    padding: 22px 12px 18px;
     display: flex;
     flex-direction: column;
     justify-content: flex-end;
@@ -174,16 +152,17 @@
     right: 10px;
     display: flex;
     justify-content: space-between;
-    font-size: var(--font-xs);
+    font-size: 0.65rem;
     color: var(--text-dim);
     pointer-events: none;
 }
 
-.chart-meta-top { top: 5px; }
-.chart-meta-bottom { bottom: 4px; }
+.chart-meta-top { top: 4px; }
+.chart-meta-bottom { bottom: 3px; }
 
-/* --- TRANSACTION ROWS & TAGS --- */
+/* --- TRANSACTION ROWS CON HOVER TOOLS & INLINE EDIT --- */
 .m-item-row {
+    position: relative;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -191,16 +170,29 @@
     border: 1px solid var(--border-color);
     padding: 7px 11px;
     border-left: 3px solid #666;
-    transition: background 0.15s;
+    transition: background 0.15s, border-color 0.15s;
+    gap: 10px;
 }
 
 .m-item-row:hover {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.045);
+    border-color: var(--border-bright);
 }
 
 .m-item-row.out { border-left-color: var(--accent-red); }
 .m-item-row.in { border-left-color: var(--accent-green); }
-.m-item-row.idea { border-left-color: var(--accent-gold); }
+
+.m-row-hover-tools {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    margin-left: 8px;
+}
+
+.m-item-row:hover .m-row-hover-tools,
+.task-item:hover .m-row-hover-tools {
+    display: flex;
+}
 
 .m-title {
     font-weight: bold;
@@ -210,13 +202,19 @@
 
 .m-cat-badge {
     display: inline-block;
-    font-size: 0.65rem;
+    font-size: 0.62rem;
     padding: 1px 5px;
     border: 1px solid #444;
     color: var(--text-muted);
     text-transform: uppercase;
     margin-right: 6px;
     background: rgba(255, 255, 255, 0.04);
+    cursor: pointer;
+}
+
+.m-cat-badge:hover {
+    border-color: var(--text-main);
+    color: var(--text-main);
 }
 
 .m-vault-linked-badge {
@@ -230,7 +228,7 @@
 }
 
 .m-sub {
-    font-size: var(--font-xs);
+    font-size: 0.65rem;
     color: var(--text-dim);
     margin-top: 2px;
     text-transform: uppercase;
@@ -240,7 +238,84 @@
     font-size: var(--font-sm);
     font-weight: bold;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .m-amt.pos { color: var(--accent-green); }
 .m-amt.neg { color: var(--accent-red); }
+
+/* --- STATISTICHE CATEGORIE --- */
+.m-cat-stat-row {
+    display: grid;
+    grid-template-columns: 140px 1fr 195px auto;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 10px;
+    background: rgba(255, 255, 255, 0.018);
+    border: 1px solid var(--border-color);
+    font-size: var(--font-xs);
+    transition: background 0.12s;
+}
+
+.m-cat-stat-row:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+/* --- TENDINA CATEGORIE SUL BADGE TRANSAZIONE --- */
+.m-cat-dropdown-wrap {
+    position: relative;
+    display: inline-block;
+}
+
+.m-cat-popover {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    width: 215px;
+    background: #060606;
+    border: 1px solid var(--text-main);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.96);
+    z-index: 600;
+    display: flex;
+    flex-direction: column;
+}
+
+.m-cat-popover-list {
+    max-height: 185px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.m-cat-popover-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 10px;
+    font-size: var(--font-xs);
+    color: var(--text-muted);
+    border-bottom: 1px dotted rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+    text-transform: uppercase;
+}
+
+.m-cat-popover-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--text-main);
+}
+
+.m-cat-popover-item.active {
+    color: var(--text-main);
+    font-weight: bold;
+    background: rgba(255, 255, 255, 0.05);
+    border-left: 2px solid var(--text-main);
+    padding-left: 8px;
+}
+
+.m-cat-popover-add {
+    display: flex;
+    gap: 4px;
+    padding: 6px;
+    background: #020202;
+    border-top: 1px solid var(--border-color);
+}

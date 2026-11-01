@@ -30,22 +30,26 @@
     
     <!-- HEADER GLOBALE MINIMALISTA -->
     <!-- HEADER GLOBALE MINIMALISTA -->
+    <!-- HEADER GLOBALE MINIMALISTA -->
     <header class="app-header">
         <div class="header-left">
             <h1 id="global-clock">00:00 // DAY 00</h1>
 
+            <!-- STRISCIA TELEMETRIA VISIBILE IN MODALITÀ HUD WIDGET -->
+            <div id="hud-widget-strip" class="hud-widget-strip" style="display: none;"></div>
+
             <!-- FOCUS TIMER INLINE (Controllato da js/modules/focus.js) -->
             <div id="header-inline-focus" class="header-inline-focus" style="display: none;">
-                <div id="header-focus-pill" class="header-focus-pill" ondblclick="openFullscreenFocusOverlay()" title="Double-click to expand Fullscreen">
+                <div id="header-focus-pill" class="header-focus-pill" ondblclick="openFullscreenFocusOverlay()">
                     <span id="header-focus-icon" class="header-focus-icon">▶</span>
                     <span id="header-focus-time" class="header-focus-time">25:00</span>
                     <span class="header-focus-sep">//</span>
                     <span id="header-focus-title" class="header-focus-title">TASK</span>
                     <div class="header-focus-actions">
                         <button type="button" id="btn-header-focus-pause" class="header-focus-btn" onclick="togglePomodoroPause()">[PAUSE]</button>
-                        <button type="button" class="header-focus-btn" onclick="skipPomodoroPhase()" title="Skip & Check off">[SKIP]</button>
-                        <button type="button" class="header-focus-btn" onclick="openFullscreenFocusOverlay()" title="Fullscreen Overlay">[FULL]</button>
-                        <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()" title="Abort Session">[×]</button>
+                        <button type="button" class="header-focus-btn" onclick="skipPomodoroPhase()">[SKIP]</button>
+                        <button type="button" class="header-focus-btn" onclick="openFullscreenFocusOverlay()">[FULL]</button>
+                        <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()">[×]</button>
                     </div>
                 </div>
             </div>
@@ -55,30 +59,23 @@
         <div id="header-ask-slot" class="header-ask-slot">
             <div id="ask-bar-container" class="ask-bar-container" onclick="if(!isAskBarExpanded) openTerminal()">
                 <div class="ask-input-row">
-                    <input type="text" id="terminal-input" class="ask-bar-input" placeholder="Type command (? for help)" autocomplete="off">
+                    <input type="text" id="terminal-input" class="ask-bar-input" placeholder="Command..." autocomplete="off">
                 </div>
 
-                <!-- Anteprima Live del Comando -->
                 <div id="terminal-live-preview" class="terminal-live-preview" style="display: none;"></div>
-
-                <!-- Tendina Suggerimenti & Autocompletamento Contestuale [TAB] -->
                 <div id="terminal-suggestions" class="terminal-suggestions-list" style="display: none;"></div>
-
-                <!-- Scheda Riepilogo Istantaneo Locale (diet, gym, uni, today, tomorrow, bal) -->
                 <div id="terminal-ai-answer" class="ask-ai-answer" style="display: none;"></div>
 
-                <!-- Staging Area Azioni Impilate (Shift+Enter o separatore ;) -->
                 <div id="terminal-staging" class="terminal-staging-box">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <span style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Staged Commands Queue:</span>
-                        <span style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold;">[SHIFT+ENTER TO ADD MORE]</span>
+                        <span style="font-size: var(--font-xs); color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Staged Queue</span>
                     </div>
                     <div id="staging-cmd-list" class="staging-cmd-list"></div>
                     <div class="staging-actions-bar">
-                        <span style="font-size: var(--font-xs); color: var(--text-dim);">Press <strong style="color:var(--text-main);">[ENTER]</strong> (on empty input) to execute all | <strong style="color:var(--text-main);">[ESC]</strong> to clear</span>
+                        <span></span>
                         <div style="display: flex; gap: 8px;">
                             <button type="button" class="btn btn-danger btn-sm" onclick="cancelStaging()">[CLEAR]</button>
-                            <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[EXECUTE ALL // ENTER]</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="confirmStagingCommands()">[EXECUTE]</button>
                         </div>
                     </div>
                 </div>
@@ -86,7 +83,7 @@
         </div>
 
         <div class="header-right">
-            <button class="btn btn-sm" onclick="openSettingsModal()" title="Settings & System Controls (Shortcut: ,)">[SETTINGS]</button>
+            <button id="btn-settings-app" class="icon-btn win-ctrl-btn" onclick="openSettingsModal()" title="Settings (Shortcut: ,)">[⚙]</button>
             <button id="btn-minimize-app" class="icon-btn win-ctrl-btn" title="Minimize Window">[-]</button>
             <button id="btn-close-app" class="icon-btn delete win-ctrl-btn" title="Close Application">[X]</button>
         </div>
@@ -100,14 +97,11 @@
     <!-- BACKDROP SCURO QUANDO LA BARRA SCENDE AL CENTRO-ALTO -->
     <div id="terminalOverlay" class="ask-backdrop-overlay" onclick="if(event.target === this) closeTerminal()"></div>
 
-    <!-- BARRA MODULI TRASCINABILI (Visibile quando premi [EDIT]) -->
+    <!-- BARRA MODULI TRASCINABILI (Visibile quando premi E) -->
     <div id="edit-dock-bar" class="edit-dock-bar">
-        <div style="display:flex; align-items:center; gap:10px; overflow:hidden;">
-            <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold; white-space:nowrap;">DRAG TO SNAP (EDGES / CORNERS / CENTER):</span>
-            <div id="edit-dock-chips" class="edit-dock-chips"></div>
-        </div>
+        <div id="edit-dock-chips" class="edit-dock-chips"></div>
         <div style="display:flex; align-items:center; gap:6px; flex-shrink:0;">
-            <input type="text" id="dock-preset-name" class="form-control form-control-sm" style="width:140px;" placeholder="Save layout name..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('dock-preset-name');}">
+            <input type="text" id="dock-preset-name" class="form-control form-control-sm" style="width:140px;" placeholder="View name..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('dock-preset-name');}">
             <button class="btn btn-primary btn-sm" onclick="saveCurrentWorkspacePreset('dock-preset-name')">[SAVE VIEW]</button>
             <button class="btn btn-sm" onclick="toggleLayoutEditMode(false)">[DONE]</button>
         </div>
@@ -130,16 +124,14 @@
         <div id="module-calendar" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
                 <div class="section-header-row" style="margin-bottom: 0;">
-                    <span class="section-label">Monthly Calendar</span>
-                    <div style="display: flex; gap: 6px;">
-                        <button class="btn btn-sm" onclick="jumpToDate(todayStr)">[TODAY]</button>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">[&lt;]</button>
+                        <button type="button" class="btn btn-sm" onclick="changeMonth(1)">[&gt;]</button>
                     </div>
-                </div>
-
-                <div class="calendar-header">
-                    <button class="nav-btn" onclick="changeMonth(-1)">[&lt; PREV]</button>
-                    <span id="calendar-month-name">MONTH YEAR</span>
-                    <button class="nav-btn" onclick="changeMonth(1)">[NEXT &gt;]</button>
+                    <div>
+                        <span class="section-label">Monthly Calendar</span>
+                        <span id="calendar-month-name" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px; text-transform: uppercase;">// MONTH YEAR</span>
+                    </div>
                 </div>
 
                 <div class="month-grid" id="calendar-grid"></div>
@@ -161,55 +153,42 @@
                         <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
                     </div>
 
-                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()" title="Build & Start Focus Playlist">[▶ FOCUS PLAYLIST]</button>
-                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()" title="Manage Tasks, Routines, Medicines & Create New">[TASKS ⚙]</button>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()" title="Build & Start Focus Playlist">[▶]</button>
+                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()" title="Manage Tasks, Routines, Medicines & Create New">[⚙]</button>
                     </div>
                 </div>
                 
-                <div id="today-tasks" class="daily-columns-wrap" style="flex: 1;">
-                    <!-- 1. FIXED -->
-                    <div id="scheduled-tasks-col" style="flex: 1; min-width: 0;">
-                        <div class="sub-column-header">Fixed</div>
-                        <div id="scheduled-tasks-list"></div>
-                    </div>
-
-                    <!-- 2. FLEXIBLE -->
-                    <div id="flexible-tasks-col" style="flex: 1; min-width: 0;">
-                        <div class="sub-column-header">Flexible</div>
-                        <div id="flexible-tasks-list"></div>
-                    </div>
-
-                    <!-- 3. ROUTINES -->
-                    <div id="routines-tasks-col" style="flex: 1; min-width: 0;">
-                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Routines</span>
-                            <span id="routines-progress-badge" style="font-size: 0.65rem; color: var(--text-main); font-weight: bold;">0/0</span>
-                        </div>
-                        <div id="routines-tasks-list"></div>
-                    </div>
-
-                    <!-- 4. TO-DO (Assegnate al giorno + Generatore/Coda da assegnare) -->
-                    <div id="todo-tasks-col" style="flex: 1; min-width: 0; display: flex; flex-direction: column;">
-                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>To-Do</span>
-                            <span id="todo-col-date-badge" style="font-size: 0.65rem; color: var(--text-dim);"></span>
+                <!-- LAYOUT MOSAICO A 2 COLONNE: (FIXED + ROUTINES) A SINISTRA | (FLEXIBLE + TO-DO) A DESTRA -->
+                <div id="today-tasks" class="daily-columns-wrap" style="flex: 1; align-items: flex-start;">
+                    
+                    <!-- COLONNA SINISTRA: FIXED + ROUTINES SUBITO SOTTO -->
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
+                        <div id="scheduled-tasks-col">
+                            <div class="sub-column-header">Fixed</div>
+                            <div id="scheduled-tasks-list"></div>
                         </div>
 
-                        <!-- Parte Superiore: To-Do assegnate alla data selezionata (e memoria storica nei giorni passati) -->
-                        <div id="assigned-todos-list" style="margin-bottom: 14px;"></div>
-
-                        <!-- Parte Inferiore: Generazione nuove To-Do e Coda non assegnate -->
-                        <div style="border-top: 1px solid var(--border-color); padding-top: 10px; margin-top: auto;">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
-                                <span style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; font-weight: bold;">Unassigned Queue</span>
-                                <span id="unassigned-todo-count" style="font-size: 0.65rem; color: var(--text-muted); font-weight: bold;">0</span>
-                            </div>
-                            <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-bottom: 8px;" placeholder="+ Generate To-Do (Enter)..." onkeydown="addGeneralTask(event)">
-                            <div id="general-todo-list" style="display: flex; flex-direction: column; gap: 5px; max-height: 200px; overflow-y: auto; margin-bottom: 8px;"></div>
-                            <button type="button" id="btn-assign-todos" class="btn btn-primary btn-sm" style="width: 100%; display: none;" onclick="openAssignModal()">[ASSIGN SELECTED TO DATE]</button>
+                        <div id="routines-tasks-col">
+                            <div class="sub-column-header">Routines</div>
+                            <div id="routines-tasks-list"></div>
                         </div>
                     </div>
+
+                    <!-- COLONNA DESTRA: FLEXIBLE + TO-DO SUBITO SOTTO -->
+                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
+                        <div id="flexible-tasks-col">
+                            <div class="sub-column-header">Flexible</div>
+                            <div id="flexible-tasks-list"></div>
+                        </div>
+
+                        <div id="todo-tasks-col">
+                            <div class="sub-column-header">To-Do</div>
+                            <div id="assigned-todos-list"></div>
+                            <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-top: 8px;" placeholder="+ Add To-Do (Enter)..." onkeydown="addGeneralTask(event)">
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -219,7 +198,10 @@
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 10px; overflow: hidden;">
                 <div class="notes-controls" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
                     <div style="display: flex; gap: 12px; align-items: center;">
-                        <span class="section-label" style="color: var(--text-main);">Notes Workspace</span>
+                        <div>
+                            <span class="section-label">Notes</span>
+                            <span id="notes-active-cat-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px; text-transform: uppercase;">// GENERAL</span>
+                        </div>
                         <label class="notes-toggle">
                             <input type="checkbox" id="notes-mode-checkbox" onchange="toggleNotesMode()">
                             <span class="notes-slider">
@@ -231,37 +213,34 @@
                     </div>
 
                     <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 120px;" placeholder="Filter text..." oninput="filterNotesView(this.value)">
-                        <button type="button" id="btn-top-generate-actions" class="btn btn-sm" onclick="triggerBatchAiExtraction()" title="Select cards in BROWSE mode and click to extract actions from all selected cards">[✦ GENERATE ACTIONS]</button>
-                        <button type="button" class="btn btn-sm" onclick="triggerSonyUsbOrFolderSync()" title="Auto-Sync from Sony Recorder (VOICE/A/) or choose folder">[SYNC SONY]</button>
-                        <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
-                        <label class="btn btn-sm" style="cursor: pointer; margin: 0;" title="Select audio files manually">
-                            [+ AUDIO]
-                            <input type="file" id="sony-files-input" accept="audio/*,.mp3,.wav,.m4a,.ogg,.aac" multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
-                        </label>
+                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 120px;" placeholder="Filter..." oninput="filterNotesView(this.value)">
+                        <button type="button" id="btn-notes-select-mode" class="btn btn-sm" style="display: none;" onclick="toggleNoteSelectionMode()" title="Select cards for Actions, Merge, Move or Delete (or Shift+Click any card)">[SELECT]</button>
                         <select id="note-category" class="form-control form-control-sm" style="width: 135px; font-weight: bold;" onchange="onNoteCategoryChange()"></select>
-                        <button class="btn btn-sm" onclick="openManageNotesModal()" title="Manage Note Categories">[CATS]</button>
+                        <button type="button" class="btn btn-sm" onclick="openManageNotesModal()" title="Manage Note Categories">[⚙]</button>
+                        <!-- Input nascosto mantenuto per compatibilità col comando DSL 'sony' -->
+                        <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
                     </div>
                 </div>
 
-                <!-- BARRA OPERAZIONI SU CELLE SELEZIONATE (1A, 2A, 4A: compare quando selezioni 1+ celle in BROWSE) -->
+                <!-- BARRA OPERAZIONI (Compare solo quando attivi [SELECT] o fai Shift+Click su una nota) -->
                 <div id="notes-batch-bar" class="note-batch-bar" style="display: none;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <strong id="notes-selected-count" style="color: var(--text-main); font-size: var(--font-xs);">0 SELECTED</strong>
                         <button type="button" class="btn btn-sm" onclick="selectAllVisibleNotes()">[ALL]</button>
-                        <button type="button" class="btn btn-sm" onclick="clearNoteSelection()">[NONE]</button>
+                        <button type="button" class="btn btn-sm" onclick="clearNoteSelection()">[DONE]</button>
                     </div>
                     <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                        <button type="button" id="btn-batch-ai" class="btn btn-primary btn-sm" onclick="triggerBatchAiExtraction()">[✦ GENERATE ACTIONS]</button>
-                        <button type="button" id="btn-batch-merge" class="btn btn-sm" onclick="mergeSelectedNoteCards()" title="Merge selected cards into a single clean note">[MERGE]</button>
-                        <select id="batch-move-select" class="form-control form-control-sm" style="width: 145px;" onchange="if(this.value){ moveSelectedNoteCardsTo(this.value); this.value=''; }">
+                        <button type="button" id="btn-batch-ai" class="btn btn-primary btn-sm" onclick="triggerBatchAiExtraction()" disabled>[✦ GENERATE ACTIONS]</button>
+                        <button type="button" id="btn-batch-inbox" class="btn btn-sm" onclick="sendSelectedNoteCardsToInbox()" disabled>[-> INBOX]</button>
+                        <button type="button" id="btn-batch-merge" class="btn btn-sm" onclick="mergeSelectedNoteCards()" title="Merge selected cards into a single clean note" disabled>[MERGE]</button>
+                        <select id="batch-move-select" class="form-control form-control-sm" style="width: 140px;" onchange="if(this.value){ moveSelectedNoteCardsTo(this.value); this.value=''; }" disabled>
                             <option value="">[➔ MOVE TO...]</option>
                         </select>
-                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteSelectedNoteCards()">[DELETE]</button>
+                        <button type="button" id="btn-batch-del" class="btn btn-danger btn-sm" onclick="deleteSelectedNoteCards()" disabled>[DELETE]</button>
                     </div>
                 </div>
 
-                <!-- STAGING AREA UNIFICATA PER ESTRAZIONE AZIONI MULTI-CELLA -->
+                <!-- STAGING AREA UNIFICATA PER ESTRAZIONE AZIONI -->
                 <div id="notes-batch-ai-drawer" class="note-ai-drawer" style="display: none; flex-shrink: 0; max-height: 45%; overflow-y: auto;"></div>
 
                 <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
@@ -276,7 +255,10 @@
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 12px;">
                 <div id="view-planner" class="tracker-content active" style="flex: 1; display: flex; flex-direction: column; margin-top: 0; gap: 0; overflow: hidden;">
                     <div class="section-header-row" style="padding-bottom: 10px; margin-bottom: 0;">
-                        <span class="section-label">Weekly Planner (06:30 – 24:00)</span>
+                        <div>
+                            <span class="section-label">Weekly Planner</span>
+                            <span id="planner-week-range-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
+                        </div>
                         <div style="display: flex; gap: 6px;">
                             <div class="dropdown">
                                 <button class="btn btn-sm dropdown-btn" onclick="document.getElementById('ghost-dropdown').classList.toggle('show')">[GHOST LAYERS ▼]</button>
@@ -294,7 +276,6 @@
                             <div class="planner-time-labels" id="planner-time-labels"></div>
                             <div class="planner-grid-absolute" id="planner-grid"></div>
                         </div>
-                        <div id="planner-fixed-footer" style="display: flex; padding-left: 45px; border-top: 1px solid var(--border-color); background: rgba(255,255,255,0.015); min-height: 54px; max-height: 88px; overflow-y: auto; flex-shrink: 0;"></div>
                     </div>
                 </div>
             </div>
@@ -340,85 +321,15 @@
             <div id="gym-main-root" class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;"></div>
         </div>
 
-        <!-- 7. MODULO ATOMICO: MONEY -->
-        <div id="module-money" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow: hidden;">
-                <div class="money-top-bar">
-                    <div>
-                        <div class="balance-cards-row">
-                            <div>
-                                <div class="section-label" style="margin-bottom: 4px; color: var(--accent-green);">Spendable (Unallocated Free)</div>
-                                <div class="spendable-balance">€ <span id="m-spendable-display">0.00</span></div>
-                            </div>
-                            <div style="border-left: 1px solid var(--border-color); padding-left: 18px;">
-                                <div class="section-label" style="margin-bottom: 4px;">Total Account Balance</div>
-                                <div class="hero-balance" style="font-size: 1.55rem;">€ <span id="m-balance-display">0.00</span></div>
-                            </div>
-                        </div>
-                        <div id="m-balance-breakdown" class="balance-sub-breakdown">ALLOCATED IN VAULTS: €0.00 | PENDING FIXED BILLS: €0.00</div>
-                    </div>
-
-                    <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 8px;">
-                        <div id="m-monthly-cashflow" class="cashflow-pills-row"></div>
-                        <div style="display: flex; gap: 8px;">
-                            <button class="btn btn-primary btn-sm" onclick="openTransactionModal('in')">[+ IN]</button>
-                            <button class="btn btn-danger btn-sm" onclick="openTransactionModal('out')">[- OUT]</button>
-                            <button class="btn btn-sm" onclick="openVaultModal()">[+ VAULT]</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; padding-right: 6px;">
-                    <div style="display: flex; flex-direction: column; flex: 0 0 auto;">
-                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                            <span>Monthly Vaults &amp; Auto-Deduct Envelopes (e.g. Amazon)</span>
-                            <span style="font-size: 0.65rem; color: var(--text-dim);">EXPENSES MATCHING VAULT NAME DEDUCT DIRECTLY &amp; ROLLOVER NEXT CYCLE</span>
-                        </div>
-                        <div id="m-vaults-container" class="vaults-list-horizontal"></div>
-                    </div>
-
-                    <div class="money-chart-box" id="m-chart-box">
-                        <div class="chart-meta-top">
-                            <span>BALANCE STEP HISTORY (30 TX)</span>
-                            <span id="m-chart-hover-info" style="color: var(--text-main); font-weight: bold;"></span>
-                            <span id="m-chart-max">MAX: €0.00</span>
-                        </div>
-                        <svg id="m-chart-svg" width="100%" height="100%" preserveAspectRatio="none" style="overflow: visible;">
-                            <polyline id="m-chart-line" fill="none" stroke="var(--text-main)" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
-                        </svg>
-                        <div class="chart-meta-bottom">
-                            <span id="m-chart-start">START: €0.00</span>
-                            <span id="m-chart-min">MIN: €0.00</span>
-                        </div>
-                    </div>
-
-                    <div style="display: flex; flex-direction: row; gap: 16px; flex: 1; min-height: 0;">
-                        <div style="flex: 3; display: flex; flex-direction: column; min-width: 0;">
-                            <div class="sub-column-header">Recent Transactions</div>
-                            <div id="m-history-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                        </div>
-
-                        <div style="flex: 2; display: flex; flex-direction: column; gap: 16px; min-width: 0;">
-                            <div>
-                                <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Fixed Recurring Bills</span>
-                                    <button class="icon-btn" onclick="openRecurringModal()" title="Add recurring payment">[+]</button>
-                                </div>
-                                <div id="m-recurring-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                            </div>
-
-                            <div>
-                                <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span>Purchase Ideas Incubator</span>
-                                    <button class="icon-btn" onclick="openWishlistModal()" title="Add purchase idea">[+]</button>
-                                </div>
-                                <div id="m-wishlist-container" style="display: flex; flex-direction: column; gap: 6px;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- 7. MODULO ATOMICO: MONEY & I SUOI 7 SOTTO-MODULI ATOMICI -->
+        <div id="module-money" class="module-container"></div>
+        <div id="module-m-summary" class="module-container"></div>
+        <div id="module-m-vaults" class="module-container"></div>
+        <div id="module-m-chart" class="module-container"></div>
+        <div id="module-m-tx" class="module-container"></div>
+        <div id="module-m-bills" class="module-container"></div>
+        <div id="module-m-analytics" class="module-container"></div>
+        <div id="module-m-incubator" class="module-container"></div>
 
         <!-- 8. MODULO ATOMICO: TODAY STREAK & CONSISTENCY -->
         <div id="module-streak" class="module-container">
@@ -456,10 +367,14 @@
         <!-- 10. MODULO ATOMICO: DAY PLANNER (VIEW MODE & EDIT MODE) -->
         <div id="module-plan" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;">
-                <!-- TOP BAR: SWITCH VIEW/EDIT + SELETTORE DATA & STRISCIA 7 GIORNI -->
-                <div class="section-header-row" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
-                    <div style="display: flex; align-items: center; gap: 12px;">
-                        <span class="section-label" style="color: var(--text-main);">Day Planner</span>
+                <!-- TOP BAR PULITA: DAY PLANNER // DATA A SINISTRA, TOGGLE VIEW/EDIT A DESTRA -->
+                <div class="section-header-row" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
+                    <div>
+                        <span class="section-label">Day Planner</span>
+                        <span id="plan-mod-date-label" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
+                    </div>
+
+                    <div style="display: flex; align-items: center;">
                         <label class="notes-toggle" title="Switch between Day View and Day Edit Builder">
                             <input type="checkbox" id="day-plan-mode-checkbox" onchange="toggleDayPlanMode()">
                             <span class="notes-slider">
@@ -467,14 +382,6 @@
                                 <span class="t-label browse">EDIT</span>
                             </span>
                         </label>
-                        <span id="plan-mod-date-label" style="font-size: var(--font-xs); color: var(--accent-green); font-weight: bold; padding: 2px 8px; border: 1px solid var(--border-bright);">YYYY-MM-DD</span>
-                    </div>
-
-                    <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-sm" onclick="setPlanBuilderDate(todayStr)">[TODAY]</button>
-                        <button type="button" id="btn-plan-prev-day" class="btn btn-sm" onclick="shiftPlanBuilderDate(-1)">[&lt;]</button>
-                        <div id="plan-week-strip" style="display: flex; gap: 3px; align-items: center;"></div>
-                        <button type="button" class="btn btn-sm" onclick="shiftPlanBuilderDate(1)">[&gt;]</button>
                     </div>
                 </div>
 
@@ -507,13 +414,8 @@
                         </div>
                     </div>
 
-                    <!-- COLONNA DESTRA: TIMELINE GIORNALIERA (Con Colonna Fasi + Colonna Orari + Linea Ora Attuale) -->
+                    <!-- COLONNA DESTRA: TIMELINE GIORNALIERA DIRETTA SENZA INTESTAZIONI SUPERFLUE -->
                     <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
-                        <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; flex-shrink: 0;">
-                            <span id="plan-mod-timeline-title">DAY SCHEDULE (06:30 – 24:00)</span>
-                            <span id="plan-mod-timeline-hint" style="color: var(--text-dim); font-size: 0.62rem;">SWITCH TO [EDIT] TO DRAG &amp; LOCK BLOCKS</span>
-                        </div>
-
                         <div id="plan-mod-timeline-scroll" style="flex: 1; display: flex; overflow-y: auto; position: relative; border: 1px solid var(--border-color); background: rgba(255,255,255,0.01); padding-top: 10px; user-select: none;">
                             <div id="plan-mod-phase-labels" class="planner-phase-labels"></div>
                             <div id="plan-mod-time-labels" class="planner-time-labels"></div>
