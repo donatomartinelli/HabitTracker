@@ -1003,13 +1003,61 @@ body.layout-edit-mode .quadrant-title-static {
     gap: 10px;
 }
 
-/* --- MODALITÀ HUD TOP-BAR (56PX ALWAYS-ON-TOP) --- */
+/* --- MODALITÀ HUD FLOATING WIDGET COMPATTA --- */
+.hud-widget-strip {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    border-left: 1px solid var(--border-color);
+    padding-left: 10px;
+}
+
+.hud-strip-pill {
+    padding: 2px 6px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
+}
+
+.hud-strip-pill strong {
+    color: var(--text-main);
+}
+
 body.hud-mode:not(.hud-temp-expanded) #app-content-wrapper,
 body.hud-mode:not(.hud-temp-expanded) #edit-dock-bar {
     display: none !important;
 }
 
-body.hud-mode .app-header {
-    background: #000000;
-    border-bottom: 1px solid var(--border-bright);
+body.hud-mode:not(.hud-temp-expanded) .app-header {
+    height: 44px;
+    padding: 0 12px;
+    background: #030303;
+    border: 1px solid var(--border-bright);
+}
+
+body.hud-mode:not(.hud-temp-expanded) #global-clock {
+    font-size: var(--font-sm);
+}
+
+body.hud-mode:not(.hud-temp-expanded) .hud-widget-strip {
+    display: flex;
+}
+
+body.hud-mode:not(.hud-temp-expanded) .header-ask-slot,
+body.hud-mode:not(.hud-temp-expanded) .ask-bar-container:not(.expanded) {
+    width: 195px;
+    height: 28px;
+}
+
+body.hud-mode:not(.hud-temp-expanded) .ask-bar-container:not(.expanded) .ask-input-row {
+    height: 26px;
+    padding: 0 8px;
+}
+
+body.hud-mode:not(.hud-temp-expanded) .header-right {
+    gap: 4px;
 }

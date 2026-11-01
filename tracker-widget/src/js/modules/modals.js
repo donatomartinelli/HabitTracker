@@ -652,8 +652,7 @@ function initModalsHtml() {
                     </div>
                     <div class="form-group" style="flex: 1;" id="m-trans-cat-group">
                         <label>Category</label>
-                        <input type="text" id="m-trans-cat" list="m-cat-datalist" class="form-control" placeholder="e.g. Treno, Cinema">
-                        <datalist id="m-cat-datalist"></datalist>
+                        <select id="m-trans-cat" class="form-control" onchange="handleModalCatSelectChange(this)"></select>
                     </div>
                 </div>
                 <div class="form-group">
@@ -1242,6 +1241,8 @@ function commitQuickSwitcherStaged() {
     setModulesView(toMount);
 }
 
+let qsExpandedMacroKey = null;
+
 function renderQuickSwitcherContent(filterStr = '') {
     const body = document.getElementById('qs-body-content');
     const stagedBar = document.getElementById('qs-staged-bar');
@@ -1251,7 +1252,7 @@ function renderQuickSwitcherContent(filterStr = '') {
     if (stagedBar && stagedList) {
         if (qsStagedModules.length > 0) {
             stagedBar.style.display = 'flex';
-            stagedList.textContent = qsStagedModules.map(k => dashboardModules[k].name).join(' + ');
+            stagedList.textContent = qsStagedModules.map(k => dashboardModules[k]?.name.replace(' (Full Suite)', '') || k).join(' + ');
         } else {
             stagedBar.style.display = 'none';
         }
@@ -1260,7 +1261,7 @@ function renderQuickSwitcherContent(filterStr = '') {
     const q = (filterStr || '').trim().toLowerCase();
     body.innerHTML = '';
 
-    // 1. VISTE SALVATE (PRESETS)
+    // 1. VISTE SALVATE (PRESETS) — Invariato
     const matchingPresets = (workspacePresets || []).filter(p => !q || p.name.toLowerCase().includes(q));
     const presetsSection = document.createElement('div');
     presetsSection.innerHTML = `<div class="sub-column-header">1. Saved Custom Views (Click to Replace Screen)</div>`;
@@ -1271,14 +1272,14 @@ function renderQuickSwitcherContent(filterStr = '') {
         const grid = document.createElement('div');
         grid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
         matchingPresets.forEach(p => {
-            const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => dashboardModules[l.module]?.name || l.module) : [];
+            const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => dashboardModules[l.module]?.name.replace(/^.*?:\s*/, '') || l.module) : [];
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn';
             btn.style.cssText = 'text-align:left; padding:10px 12px; display:flex; flex-direction:column; gap:4px;';
             btn.innerHTML = `
                 <strong style="color:var(--text-main); font-size:var(--font-sm);">${escapeHtml(p.name)}</strong>
-                <span style="color:var(--text-dim); font-size:0.65rem; text-transform:none;">${escapeHtml(pLeaves.join(' + ') || 'ZERO-UI')}</span>
+                <span style="color:var(--text-dim); font-size:0.65rem; text-transform:none; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(pLeaves.join(' + ') || 'ZERO-UI')}</span>
             `;
             btn.onclick = () => {
                 closeModals();
@@ -1291,30 +1292,48 @@ function renderQuickSwitcherContent(filterStr = '') {
     }
     body.appendChild(presetsSection);
 
-    // 2. GRIGLIA DEI 9 MODULI SINGOLI (Click = Apri subito · Shift+Click = Combina più schede)
+    // 2. MACRO-MODULI (Con pulsante [▾] per aprire la tendina dei Micro-Moduli)
     const modSection = document.createElement('div');
-    modSection.innerHTML = `<div class="sub-column-header">2. Atomic Modules (Click = Open Single · Shift+Click = Combine Multiple)</div>`;
+    modSection.innerHTML = `<div class="sub-column-header">2. Macro Modules (Click = Open Default · [▾] = Pick Micro-Module · Shift+Click = Combine)</div>`;
     const modGrid = document.createElement('div');
     modGrid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
 
-    ALL_MODULE_KEYS
-        .filter(k => !q || k.includes(q) || dashboardModules[k].name.toLowerCase().includes(q))
+    const primaryList = typeof PRIMARY_MODULE_KEYS !== 'undefined' ? PRIMARY_MODULE_KEYS : ALL_MODULE_KEYS;
+
+    primaryList
+        .filter(k => {
+            if (!q) return true;
+            const subKeys = (typeof MACRO_SUBMODULES_MAP !== 'undefined' && MACRO_SUBMODULES_MAP[k]) ? MACRO_SUBMODULES_MAP[k] : [];
+            const subMatches = subKeys.some(sk => sk.includes(q) || dashboardModules[sk].name.toLowerCase().includes(q));
+            return k.includes(q) || dashboardModules[k].name.toLowerCase().includes(q) || subMatches;
+        })
         .forEach(k => {
+            const subKeys = (typeof MACRO_SUBMODULES_MAP !== 'undefined' && MACRO_SUBMODULES_MAP[k]) ? MACRO_SUBMODULES_MAP[k] : [];
+            const hasSubs = subKeys.length > 0;
             const isStaged = qsStagedModules.includes(k);
-            const isCurrentlyMounted = activeSlots.includes(k);
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = `btn ${isStaged ? 'btn-primary' : ''}`;
-            btn.style.cssText = 'text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center;';
-            btn.innerHTML = `
-                <div>
-                    <div style="font-weight:bold; font-size:var(--font-xs);">${escapeHtml(dashboardModules[k].name)}</div>
+            const isCurrentlyMounted = activeSlots.includes(k) || subKeys.some(sk => activeSlots.includes(sk));
+            const cleanMacroName = dashboardModules[k].name.replace(' (Full Suite)', '');
+
+            const cardWrap = document.createElement('div');
+            cardWrap.style.cssText = 'display:flex; flex-direction:column; position:relative;';
+
+            const topRow = document.createElement('div');
+            topRow.style.cssText = 'display:flex; width:100%;';
+
+            const mainBtn = document.createElement('button');
+            mainBtn.type = 'button';
+            mainBtn.className = `btn ${isStaged ? 'btn-primary' : ''}`;
+            mainBtn.style.cssText = 'flex:1; text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; min-width:0;';
+            mainBtn.innerHTML = `
+                <div style="min-width:0;">
+                    <div style="font-weight:bold; font-size:var(--font-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(cleanMacroName)}</div>
                     <div style="font-size:0.62rem; opacity:0.65;">cmd: ${escapeHtml(k)}</div>
                 </div>
-                <span style="font-size:0.65rem;">${isStaged ? '[+ STAGED]' : (isCurrentlyMounted ? '[ACTIVE]' : '')}</span>
+                <span style="font-size:0.62rem; margin-left:4px;">${isStaged ? '[+ STAGED]' : (isCurrentlyMounted ? '[ACTIVE]' : '')}</span>
             `;
-            btn.onclick = (e) => {
-                if (e.shiftKey) {
+
+            mainBtn.onclick = (e) => {
+                if (e.shiftKey || e.altKey) {
                     const idx = qsStagedModules.indexOf(k);
                     if (idx !== -1) qsStagedModules.splice(idx, 1);
                     else qsStagedModules.push(k);
@@ -1327,7 +1346,79 @@ function renderQuickSwitcherContent(filterStr = '') {
                     setModulesView([k]);
                 }
             };
-            modGrid.appendChild(btn);
+            topRow.appendChild(mainBtn);
+
+            if (hasSubs) {
+                const isExpanded = (qsExpandedMacroKey === k) || (q && subKeys.some(sk => dashboardModules[sk].name.toLowerCase().includes(q)));
+                const dropBtn = document.createElement('button');
+                dropBtn.type = 'button';
+                dropBtn.className = `btn ${isExpanded ? 'btn-primary' : ''}`;
+                dropBtn.style.cssText = 'padding: 0 10px; margin-left: -1px; font-size: 0.72rem;';
+                dropBtn.textContent = isExpanded ? '▴' : '▾';
+                dropBtn.title = `Choose a specific ${cleanMacroName} Micro-Module`;
+                dropBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    qsExpandedMacroKey = (qsExpandedMacroKey === k) ? null : k;
+                    renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
+                };
+                topRow.appendChild(dropBtn);
+                cardWrap.appendChild(topRow);
+
+                if (isExpanded) {
+                    const subTray = document.createElement('div');
+                    subTray.style.cssText = 'border: 1px solid var(--text-main); border-top: none; background: #070707; padding: 6px; display: flex; flex-direction: column; gap: 4px;';
+
+                    subKeys.forEach(sk => {
+                        const subStaged = qsStagedModules.includes(sk);
+                        const subMounted = activeSlots.includes(sk);
+                        const shortSubName = dashboardModules[sk].name.replace(/^.*?:\s*/, '');
+
+                        const subBtn = document.createElement('button');
+                        subBtn.type = 'button';
+                        subBtn.className = `btn btn-sm ${subStaged ? 'btn-primary' : ''}`;
+                        subBtn.style.cssText = 'text-align:left; display:flex; justify-content:space-between; align-items:center; padding: 5px 8px;';
+                        subBtn.innerHTML = `
+                            <span>↳ ${escapeHtml(shortSubName)}</span>
+                            <span style="font-size:0.6rem; opacity:0.75;">${subStaged ? '[+ STAGED]' : (subMounted ? '[ON]' : '')}</span>
+                        `;
+                        subBtn.onclick = (ev) => {
+                            ev.stopPropagation();
+                            if (ev.shiftKey || ev.altKey) {
+                                const idx = qsStagedModules.indexOf(sk);
+                                if (idx !== -1) qsStagedModules.splice(idx, 1);
+                                else qsStagedModules.push(sk);
+                                renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
+                            } else if (qsStagedModules.length > 0) {
+                                if (!qsStagedModules.includes(sk)) qsStagedModules.push(sk);
+                                commitQuickSwitcherStaged();
+                            } else {
+                                closeModals();
+                                setModulesView([sk]);
+                            }
+                        };
+                        subTray.appendChild(subBtn);
+                    });
+
+                    const saveDefBtn = document.createElement('button');
+                    saveDefBtn.type = 'button';
+                    saveDefBtn.className = 'btn btn-sm';
+                    saveDefBtn.style.cssText = 'margin-top:4px; border-style:dashed; font-size:0.6rem; color:var(--accent-gold); border-color:var(--accent-gold);';
+                    saveDefBtn.textContent = `[★ SET CURRENT SCREEN AS ${cleanMacroName.toUpperCase()} DEFAULT]`;
+                    saveDefBtn.onclick = (ev) => {
+                        ev.stopPropagation();
+                        if (typeof saveCurrentAsMacroDefault === 'function') {
+                            saveCurrentAsMacroDefault(k);
+                        }
+                    };
+                    subTray.appendChild(saveDefBtn);
+
+                    cardWrap.appendChild(subTray);
+                }
+            } else {
+                cardWrap.appendChild(topRow);
+            }
+
+            modGrid.appendChild(cardWrap);
         });
 
     modSection.appendChild(modGrid);

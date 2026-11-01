@@ -321,8 +321,9 @@ async function checkAndSyncSonyUsbVoiceA(isManualClick = false) {
             noteCategories.push(targetCat);
         }
 
+        // I file sono già stati spostati da VOICE/A/ a SonyArchive e caricati in RAM: il registratore può essere scollegato subito!
         if (typeof showToast === 'function') {
-            showToast(`[SONY PIPELINE] Transcribing ${pendingFiles.length} audio file(s)...`);
+            showToast(`[SONY USB] Trasferimento completato (${pendingFiles.length} file) — Puoi staccare il registratore! Trascrizione in corso...`);
         }
 
         for (let i = 0; i < pendingFiles.length; i++) {

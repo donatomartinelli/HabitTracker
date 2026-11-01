@@ -1,5 +1,5 @@
 // --- js/core/workspace.js ---
-// Tiling Window Manager: Custom Mouse Drag & Snap, Unlimited Split Panes, Edit-Only Drag Bar & HUD Mode
+// Tiling Window Manager: Custom Mouse Drag & Snap, Fractal Micro-Modules, Floating Dock Menus & Centered HUD Widget
 
 const dashboardModules = {
     'calendar': {
@@ -56,7 +56,56 @@ const dashboardModules = {
         id: 'module-money',
         minW: () => 250,
         minH: () => 170,
-        render: () => { if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard(); }
+        render: () => { if (typeof renderMoneyAllActivePanes === 'function') renderMoneyAllActivePanes(); }
+    },
+    'm_summary': {
+        name: 'Money: Summary',
+        id: 'module-m-summary',
+        minW: () => 220,
+        minH: () => 105,
+        render: () => { if (typeof renderMoneyAtomSummary === 'function') renderMoneyAtomSummary(); }
+    },
+    'm_vaults': {
+        name: 'Money: Vaults',
+        id: 'module-m-vaults',
+        minW: () => 220,
+        minH: () => 130,
+        render: () => { if (typeof renderMoneyAtomVaults === 'function') renderMoneyAtomVaults(); }
+    },
+    'm_chart': {
+        name: 'Money: Chart',
+        id: 'module-m-chart',
+        minW: () => 220,
+        minH: () => 125,
+        render: () => { if (typeof renderMoneyAtomChart === 'function') renderMoneyAtomChart(); }
+    },
+    'm_tx': {
+        name: 'Money: Transactions',
+        id: 'module-m-tx',
+        minW: () => 240,
+        minH: () => 150,
+        render: () => { if (typeof renderMoneyAtomTransactions === 'function') renderMoneyAtomTransactions(); }
+    },
+    'm_bills': {
+        name: 'Money: Bills',
+        id: 'module-m-bills',
+        minW: () => 200,
+        minH: () => 130,
+        render: () => { if (typeof renderMoneyAtomBills === 'function') renderMoneyAtomBills(); }
+    },
+    'm_analytics': {
+        name: 'Money: Analytics & Cats',
+        id: 'module-m-analytics',
+        minW: () => 260,
+        minH: () => 170,
+        render: () => { if (typeof renderMoneyAtomAnalytics === 'function') renderMoneyAtomAnalytics(); }
+    },
+    'm_incubator': {
+        name: 'Money: Incubator',
+        id: 'module-m-incubator',
+        minW: () => 250,
+        minH: () => 160,
+        render: () => { if (typeof renderMoneyAtomIncubator === 'function') renderMoneyAtomIncubator(); }
     },
     'streak': {
         name: 'Today & Streak',
@@ -79,13 +128,189 @@ const dashboardModules = {
     }
 };
 
+const PRIMARY_MODULE_KEYS = ['calendar', 'tasks', 'notes', 'planner', 'plan', 'diet', 'gym', 'money', 'streak', 'uni'];
 const ALL_MODULE_KEYS = Object.keys(dashboardModules);
+
+const MACRO_SUBMODULES_MAP = {
+    'money': ['m_summary', 'm_vaults', 'm_chart', 'm_tx', 'm_bills', 'm_analytics', 'm_incubator']
+};
+
+let macroDefaultTrees = safeJsonParse(localStorage.getItem('tracker_macro_default_trees'), {});
 let isLayoutEditMode = false;
 
 let pointerDragCandidate = null;
 let isPointerDragging = false;
 let currentSnapAction = null;
 let dragGhostEl = null;
+let floatingDockPopoverEl = null;
+
+function saveMacroDefaultTrees() {
+    if (typeof persistKeysMap === 'function') {
+        persistKeysMap({ 'tracker_macro_default_trees': macroDefaultTrees });
+    } else {
+        localStorage.setItem('tracker_macro_default_trees', JSON.stringify(macroDefaultTrees));
+    }
+}
+
+function getMacroDefaultSubtree(macroKey) {
+    if (macroDefaultTrees[macroKey]) {
+        return JSON.parse(JSON.stringify(macroDefaultTrees[macroKey]));
+    }
+    if (macroKey === 'money') {
+        return makeSplitNode('col', 0.22,
+            makePaneNode('m_summary'),
+            makeSplitNode('col', 0.42,
+                makeSplitNode('row', 0.52, makePaneNode('m_vaults'), makePaneNode('m_chart')),
+                makeSplitNode('row', 0.62, makePaneNode('m_tx'), makePaneNode('m_bills'))
+            )
+        );
+    }
+    return makePaneNode(macroKey);
+}
+
+function createDefaultMoneySubtree() {
+    return getMacroDefaultSubtree('money');
+}
+
+function saveCurrentAsMacroDefault(macroKey) {
+    const allowedSubs = MACRO_SUBMODULES_MAP[macroKey] || [];
+    if (!layoutTree || allowedSubs.length === 0) return;
+
+    const filterSubtreeByMacro = (node) => {
+        if (!node) return null;
+        if (node.type === 'pane') {
+            return allowedSubs.includes(node.module) ? JSON.parse(JSON.stringify(node)) : null;
+        }
+        if (node.type === 'split' && Array.isArray(node.children)) {
+            const c0 = filterSubtreeByMacro(node.children[0]);
+            const c1 = filterSubtreeByMacro(node.children[1]);
+            if (!c0 && !c1) return null;
+            if (!c0) return c1;
+            if (!c1) return c0;
+            return {
+                id: 'split_' + Math.random().toString(36).slice(2, 9),
+                type: 'split',
+                dir: node.dir,
+                ratio: node.ratio,
+                children: [c0, c1]
+            };
+        }
+        return null;
+    };
+
+    const extracted = filterSubtreeByMacro(layoutTree);
+    if (!extracted) {
+        if (typeof showToast === 'function') {
+            showToast(`[DEFAULT VIEW] Mount at least one ${dashboardModules[macroKey].name} micro-module first!`);
+        }
+        return;
+    }
+
+    macroDefaultTrees[macroKey] = extracted;
+    saveMacroDefaultTrees();
+    if (typeof showToast === 'function') {
+        const count = collectLeafPanes(extracted).length;
+        showToast(`[★ DEFAULT SAVED] "${dashboardModules[macroKey].name}" (${count} micro-modules)`);
+    }
+}
+
+// Pop-up hover per vedere i moduli che compongono una Saved View senza testo fisso
+function showPresetModulesHoverPopup(e, presetName, modulesListStr) {
+    const tooltip = document.getElementById('planner-tooltip');
+    if (!tooltip) return;
+    tooltip.innerHTML = `<strong style="display:block; margin-bottom:2px; color:var(--text-main);">${escapeHtml(presetName)}</strong><span style="color:var(--text-muted);">${escapeHtml(modulesListStr)}</span>`;
+    tooltip.style.display = 'block';
+    tooltip.style.left = (e.clientX + 14) + 'px';
+    tooltip.style.top = (e.clientY + 14) + 'px';
+}
+
+function movePresetModulesHoverPopup(e) {
+    const tooltip = document.getElementById('planner-tooltip');
+    if (tooltip && tooltip.style.display === 'block') {
+        tooltip.style.left = (e.clientX + 14) + 'px';
+        tooltip.style.top = (e.clientY + 14) + 'px';
+    }
+}
+
+function hidePresetModulesHoverPopup() {
+    const tooltip = document.getElementById('planner-tooltip');
+    if (tooltip) tooltip.style.display = 'none';
+}
+
+// --- MENU A TENDINA FLOTTANTE PER MICRO-MODULI NELLA DOCK [EDIT] (ZERO CLIPPING) ---
+
+function closeFloatingDockPopover() {
+    if (floatingDockPopoverEl) {
+        floatingDockPopoverEl.remove();
+        floatingDockPopoverEl = null;
+    }
+}
+
+function openFloatingDockPopover(anchorBtn, modKey) {
+    if (floatingDockPopoverEl && floatingDockPopoverEl.dataset.modKey === modKey) {
+        closeFloatingDockPopover();
+        return;
+    }
+    closeFloatingDockPopover();
+
+    const subKeys = MACRO_SUBMODULES_MAP[modKey] || [];
+    if (subKeys.length === 0) return;
+
+    const activeLeafMods = new Set(collectLeafPanes(layoutTree).map(p => p.module));
+    const rect = anchorBtn.getBoundingClientRect();
+
+    const menu = document.createElement('div');
+    menu.dataset.modKey = modKey;
+    menu.style.cssText = `
+        position: fixed;
+        top: ${Math.round(rect.bottom + 4)}px;
+        left: ${Math.round(Math.max(8, rect.left - 80))}px;
+        min-width: 215px;
+        background: #060606;
+        border: 1px solid var(--text-main);
+        padding: 6px;
+        z-index: 9500;
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.96);
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    `;
+
+    subKeys.forEach(sk => {
+        const subMounted = activeLeafMods.has(sk);
+        const subRow = document.createElement('div');
+        subRow.className = `draggable-mod-chip ${subMounted ? 'in-use' : ''}`;
+        subRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
+        subRow.innerHTML = `<span>${subMounted ? '✓ ' : '+ '}${escapeHtml(dashboardModules[sk].name.replace(/^.*?:\s*/, ''))}</span>`;
+
+        bindCustomPointerDragSource(subRow, sk, null, () => {
+            addModuleToTilingLayout(sk);
+            closeFloatingDockPopover();
+        });
+        menu.appendChild(subRow);
+    });
+
+    const setDefBtn = document.createElement('button');
+    setDefBtn.type = 'button';
+    setDefBtn.className = 'btn btn-primary btn-sm';
+    setDefBtn.style.cssText = 'width: 100%; margin-top: 2px; font-size: 0.62rem;';
+    setDefBtn.textContent = '[★ SET AS DEFAULT]';
+    setDefBtn.onclick = (e) => {
+        e.stopPropagation();
+        saveCurrentAsMacroDefault(modKey);
+        closeFloatingDockPopover();
+    };
+    menu.appendChild(setDefBtn);
+
+    document.body.appendChild(menu);
+    floatingDockPopoverEl = menu;
+}
+
+document.addEventListener('mousedown', (e) => {
+    if (floatingDockPopoverEl && !floatingDockPopoverEl.contains(e.target) && !e.target.closest('.dock-sub-drop-btn')) {
+        closeFloatingDockPopover();
+    }
+});
 
 function ensureDragGhostElement() {
     if (!dragGhostEl) {
@@ -136,6 +361,9 @@ function sanitizeLayoutTree(node, seenModules = new Set()) {
         let mod = node.module;
         if (mod === 'daily') mod = 'tasks';
         if (mod === 'health') mod = 'diet';
+        if (MACRO_SUBMODULES_MAP[mod]) {
+            return sanitizeLayoutTree(getMacroDefaultSubtree(mod), seenModules);
+        }
         if (!dashboardModules[mod] || seenModules.has(mod)) return null;
         seenModules.add(mod);
         node.module = mod;
@@ -248,7 +476,7 @@ function applyStartupViewPreferenceOnBoot() {
     if (startupView.startsWith('mod:')) {
         const modKey = startupView.slice(4);
         if (dashboardModules[modKey]) {
-            layoutTree = makePaneNode(modKey);
+            layoutTree = sanitizeLayoutTree(makePaneNode(modKey), new Set());
             return;
         }
     }
@@ -272,13 +500,13 @@ function setStartupViewPreference(modeStr) {
     if (startupView === 'zero') label = '0 // Zero-UI Mode';
     else if (startupView.startsWith('mod:')) {
         const m = dashboardModules[startupView.slice(4)];
-        if (m) label = `Single Module: ${m.name}`;
+        if (m) label = m.name;
     } else if (startupView.startsWith('preset:')) {
         const p = workspacePresets.find(x => x.id === startupView.slice(7));
-        if (p) label = `Saved View "${p.name}"`;
+        if (p) label = p.name;
     }
     if (typeof showToast === 'function') {
-        showToast(`[STARTUP DEFAULT] App will now open on: ${label}`);
+        showToast(`[STARTUP] ${label}`);
     }
 }
 
@@ -306,19 +534,59 @@ function returnAllModulesToRegistry() {
 function toggleLayoutEditMode(forceState = null) {
     isLayoutEditMode = forceState !== null ? Boolean(forceState) : !isLayoutEditMode;
     document.body.classList.toggle('layout-edit-mode', isLayoutEditMode);
-    const btn = document.getElementById('btn-edit-layout');
-    if (btn) {
-        btn.textContent = isLayoutEditMode ? '[EDIT: ON]' : '[EDIT]';
-        btn.classList.toggle('btn-primary', isLayoutEditMode);
-    }
+    if (!isLayoutEditMode) closeFloatingDockPopover();
     renderEditDockChips();
-    if (typeof showToast === 'function' && isLayoutEditMode) {
-        showToast('[EDIT MODE] Grab any module or top bar to drag & snap!');
-    }
+}
+
+function renderEditDockChips() {
+    const cont = document.getElementById('edit-dock-chips');
+    if (!cont) return;
+    cont.innerHTML = '';
+
+    const activeLeafMods = new Set(collectLeafPanes(layoutTree).map(p => p.module));
+
+    PRIMARY_MODULE_KEYS.forEach(modKey => {
+        const subKeys = MACRO_SUBMODULES_MAP[modKey] || [];
+        const isMounted = activeLeafMods.has(modKey) || subKeys.some(sk => activeLeafMods.has(sk));
+
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'display:inline-flex; align-items:center; flex-shrink:0;';
+
+        const chip = document.createElement('div');
+        chip.className = `draggable-mod-chip ${isMounted ? 'in-use' : ''}`;
+        chip.textContent = `${isMounted ? '✓ ' : '+ '}${dashboardModules[modKey].name.toUpperCase()}`;
+
+        bindCustomPointerDragSource(chip, modKey, null, () => {
+            addModuleToTilingLayout(modKey);
+        });
+        wrap.appendChild(chip);
+
+        if (subKeys.length > 0) {
+            const dropBtn = document.createElement('button');
+            dropBtn.type = 'button';
+            dropBtn.className = 'btn btn-sm dock-sub-drop-btn';
+            dropBtn.style.cssText = 'padding: 4px 6px; margin-left: -1px; font-size: 0.65rem; border-color: var(--border-bright);';
+            dropBtn.textContent = '▾';
+            dropBtn.onclick = (e) => {
+                e.stopPropagation();
+                openFloatingDockPopover(dropBtn, modKey);
+            };
+            wrap.appendChild(dropBtn);
+        }
+
+        cont.appendChild(wrap);
+    });
 }
 
 function addModuleToTilingLayout(modKey) {
     if (!dashboardModules[modKey]) return;
+
+    if (MACRO_SUBMODULES_MAP[modKey]) {
+        layoutTree = getMacroDefaultSubtree(modKey);
+        renderQuadrantLayout();
+        return;
+    }
+
     const leaves = collectLeafPanes(layoutTree);
 
     if (leaves.some(l => l.module === modKey)) {
@@ -360,28 +628,6 @@ function addModuleToTilingLayout(modKey) {
     renderQuadrantLayout();
 }
 
-function renderEditDockChips() {
-    const cont = document.getElementById('edit-dock-chips');
-    if (!cont) return;
-    cont.innerHTML = '';
-
-    const activeLeafMods = new Set(collectLeafPanes(layoutTree).map(p => p.module));
-
-    ALL_MODULE_KEYS.forEach(modKey => {
-        const isMounted = activeLeafMods.has(modKey);
-        const chip = document.createElement('div');
-        chip.className = `draggable-mod-chip ${isMounted ? 'in-use' : ''}`;
-        chip.textContent = `${isMounted ? '✓ ' : '+ '}${dashboardModules[modKey].name.toUpperCase()}`;
-        chip.title = 'Click to add/toggle, or hold & drag onto screen to snap!';
-
-        bindCustomPointerDragSource(chip, modKey, null, () => {
-            addModuleToTilingLayout(modKey);
-        });
-
-        cont.appendChild(chip);
-    });
-}
-
 function renderQuadrantLayout() {
     const wrapper = document.getElementById('app-content-wrapper');
     if (!wrapper) return;
@@ -399,6 +645,7 @@ function renderQuadrantLayout() {
 
     renderEditDockChips();
     updateWorkspaceDropdownUI();
+    updateHudWidgetStrip();
 
     if (!layoutTree || leaves.length === 0) {
         layoutTree = null;
@@ -415,7 +662,7 @@ function renderQuadrantLayout() {
         if (modInfo) {
             try {
                 modInfo.render();
-                if (leaf.module === 'money' && typeof drawSteppedChart === 'function') {
+                if ((leaf.module === 'm_chart' || leaf.module === 'money') && typeof drawSteppedChart === 'function') {
                     setTimeout(drawSteppedChart, 20);
                 }
             } catch (err) {
@@ -430,7 +677,6 @@ function renderQuadrantLayout() {
 function buildTilingDomNode(node, paneCounter, totalPanes) {
     if (!node) return null;
 
-    // 1. NODO SINGOLO (PANE)
     if (node.type === 'pane') {
         paneCounter.val++;
         const modKey = node.module;
@@ -443,7 +689,6 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         cell.dataset.module = modKey;
         cell.style.flex = '1 1 0%';
 
-        // Barra visibile SOLO in modalità [EDIT] (nascosta nella vista normale)
         const bar = document.createElement('div');
         bar.className = 'quadrant-bar';
         bindCustomPointerDragSource(bar, modKey, node.id, null);
@@ -453,7 +698,7 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
 
         const dragHint = document.createElement('span');
         dragHint.style.cssText = 'color: var(--text-dim); font-weight: bold;';
-        dragHint.textContent = '[:: DRAG]';
+        dragHint.textContent = '[::]';
 
         const select = document.createElement('select');
         select.className = 'quadrant-select';
@@ -476,7 +721,6 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         const closeBtn = document.createElement('button');
         closeBtn.className = 'icon-btn delete';
         closeBtn.style.fontSize = '0.72rem';
-        closeBtn.title = 'Remove this module from layout';
         closeBtn.textContent = '[×]';
         closeBtn.onclick = () => {
             layoutTree = removePaneById(layoutTree, node.id);
@@ -490,7 +734,6 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         const body = document.createElement('div');
         body.className = 'quadrant-body';
 
-        // Quando sei in modalità [EDIT], puoi afferrare e trascinare il modulo da qualsiasi punto
         body.addEventListener('mousedown', (e) => {
             if (!isLayoutEditMode || e.button !== 0) return;
             if (['SELECT', 'BUTTON', 'INPUT', 'TEXTAREA', 'OPTION'].includes(e.target.tagName)) return;
@@ -513,7 +756,6 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         return cell;
     }
 
-    // 2. NODO COMPOSTO (SPLIT CON 2 O PIÙ VISTE)
     if (node.type === 'split' && Array.isArray(node.children)) {
         const splitEl = document.createElement('div');
         splitEl.className = `tiling-split dir-${node.dir || 'row'}`;
@@ -529,7 +771,6 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
 
         const resizer = document.createElement('div');
         resizer.className = (node.dir || 'row') === 'row' ? 'resizer-vertical' : 'resizer-horizontal';
-        resizer.title = 'Drag to resize';
 
         attachSplitResizer(resizer, splitEl, node, childEl0, childEl1);
 
@@ -584,8 +825,8 @@ function attachSplitResizer(resizerEl, splitEl, splitNode, childEl0, childEl1) {
                 const minH0 = getSubtreeMinHeight(splitNode.children[0]);
                 const minH1 = getSubtreeMinHeight(splitNode.children[1]);
 
-                let minRatio = Math.max(0.15, minH0 / totalH);
-                let maxRatio = Math.min(0.85, (totalH - minH1) / totalH);
+                let minRatio = Math.max(0.12, minH0 / totalH);
+                let maxRatio = Math.min(0.88, (totalH - minH1) / totalH);
                 if (minRatio > maxRatio) minRatio = maxRatio = 0.5;
 
                 const rawRatio = (moveEvent.clientY - rect.top) / totalH;
@@ -606,7 +847,7 @@ function attachSplitResizer(resizerEl, splitEl, splitNode, childEl0, childEl1) {
             saveWorkspaceState();
             if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
             if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
-            if (activeSlots.includes('money') && typeof drawSteppedChart === 'function') {
+            if ((activeSlots.includes('m_chart') || activeSlots.includes('money')) && typeof drawSteppedChart === 'function') {
                 setTimeout(drawSteppedChart, 15);
             }
         };
@@ -617,7 +858,7 @@ function attachSplitResizer(resizerEl, splitEl, splitNode, childEl0, childEl1) {
 }
 
 // ============================================================================
-// MOTORE CUSTOM MOUSE DRAG & SNAP STILE WINDOWS
+// MOTORE CUSTOM MOUSE DRAG & SNAP
 // ============================================================================
 
 function bindCustomPointerDragSource(el, modKey, sourcePaneId, onClickCallback) {
@@ -643,6 +884,7 @@ function initCustomPointerDragEngine() {
         const dist = Math.hypot(e.clientX - pointerDragCandidate.startX, e.clientY - pointerDragCandidate.startY);
         if (!isPointerDragging && dist > 6) {
             isPointerDragging = true;
+            closeFloatingDockPopover();
             const ghost = ensureDragGhostElement();
             const modName = dashboardModules[pointerDragCandidate.module]?.name || pointerDragCandidate.module;
             ghost.textContent = `[:: ${modName.toUpperCase()}]`;
@@ -712,44 +954,44 @@ function computePointerSnapTarget(clientX, clientY) {
     const cornerT = 0.16;
     if (gx < cornerT && gy < cornerT) {
         currentSnapAction = { scope: 'screen_corner', corner: 'tl' };
-        showSnapPreview(wrapRect.left, wrapRect.top, wrapRect.width / 2, wrapRect.height / 2, 'TOP-LEFT QUARTER (1/4)');
+        showSnapPreview(wrapRect.left, wrapRect.top, wrapRect.width / 2, wrapRect.height / 2, 'TOP-LEFT');
         return;
     }
     if (gx > (1 - cornerT) && gy < cornerT) {
         currentSnapAction = { scope: 'screen_corner', corner: 'tr' };
-        showSnapPreview(wrapRect.left + wrapRect.width / 2, wrapRect.top, wrapRect.width / 2, wrapRect.height / 2, 'TOP-RIGHT QUARTER (1/4)');
+        showSnapPreview(wrapRect.left + wrapRect.width / 2, wrapRect.top, wrapRect.width / 2, wrapRect.height / 2, 'TOP-RIGHT');
         return;
     }
     if (gx < cornerT && gy > (1 - cornerT)) {
         currentSnapAction = { scope: 'screen_corner', corner: 'bl' };
-        showSnapPreview(wrapRect.left, wrapRect.top + wrapRect.height / 2, wrapRect.width / 2, wrapRect.height / 2, 'BOTTOM-LEFT QUARTER (1/4)');
+        showSnapPreview(wrapRect.left, wrapRect.top + wrapRect.height / 2, wrapRect.width / 2, wrapRect.height / 2, 'BOTTOM-LEFT');
         return;
     }
     if (gx > (1 - cornerT) && gy > (1 - cornerT)) {
         currentSnapAction = { scope: 'screen_corner', corner: 'br' };
-        showSnapPreview(wrapRect.left + wrapRect.width / 2, wrapRect.top + wrapRect.height / 2, wrapRect.width / 2, wrapRect.height / 2, 'BOTTOM-RIGHT QUARTER (1/4)');
+        showSnapPreview(wrapRect.left + wrapRect.width / 2, wrapRect.top + wrapRect.height / 2, wrapRect.width / 2, wrapRect.height / 2, 'BOTTOM-RIGHT');
         return;
     }
 
     const outerEdgeT = 0.07;
     if (gx < outerEdgeT) {
         currentSnapAction = { scope: 'root_edge', edge: 'left' };
-        showSnapPreview(wrapRect.left, wrapRect.top, wrapRect.width / 2, wrapRect.height, 'FULL LEFT HALF');
+        showSnapPreview(wrapRect.left, wrapRect.top, wrapRect.width / 2, wrapRect.height, 'LEFT HALF');
         return;
     }
     if (gx > (1 - outerEdgeT)) {
         currentSnapAction = { scope: 'root_edge', edge: 'right' };
-        showSnapPreview(wrapRect.left + wrapRect.width / 2, wrapRect.top, wrapRect.width / 2, wrapRect.height, 'FULL RIGHT HALF');
+        showSnapPreview(wrapRect.left + wrapRect.width / 2, wrapRect.top, wrapRect.width / 2, wrapRect.height, 'RIGHT HALF');
         return;
     }
     if (gy < outerEdgeT) {
         currentSnapAction = { scope: 'root_edge', edge: 'top' };
-        showSnapPreview(wrapRect.left, wrapRect.top, wrapRect.width, wrapRect.height / 2, 'FULL TOP HALF');
+        showSnapPreview(wrapRect.left, wrapRect.top, wrapRect.width, wrapRect.height / 2, 'TOP HALF');
         return;
     }
     if (gy > (1 - outerEdgeT)) {
         currentSnapAction = { scope: 'root_edge', edge: 'bottom' };
-        showSnapPreview(wrapRect.left, wrapRect.top + wrapRect.height / 2, wrapRect.width, wrapRect.height / 2, 'FULL BOTTOM HALF');
+        showSnapPreview(wrapRect.left, wrapRect.top + wrapRect.height / 2, wrapRect.width, wrapRect.height / 2, 'BOTTOM HALF');
         return;
     }
 
@@ -781,7 +1023,7 @@ function computePointerSnapTarget(clientX, clientY) {
         showSnapPreview(pRect.left, pRect.top + pRect.height / 2, pRect.width, pRect.height / 2, 'SPLIT BOTTOM');
     } else {
         currentSnapAction = { scope: 'pane', paneId, zone: 'center' };
-        showSnapPreview(pRect.left, pRect.top, pRect.width, pRect.height, 'SWAP / REPLACE');
+        showSnapPreview(pRect.left, pRect.top, pRect.width, pRect.height, 'REPLACE');
     }
 }
 
@@ -812,14 +1054,21 @@ function getOptimalInitialRatio(modLeft, modRight) {
 function executeSnapDrop(modKey, action) {
     if (!dashboardModules[modKey] || !action) return;
 
+    const createNodeForDrop = (k) => MACRO_SUBMODULES_MAP[k] ? getMacroDefaultSubtree(k) : makePaneNode(k);
+
     if (action.scope === 'root_empty' || !layoutTree) {
-        layoutTree = makePaneNode(modKey);
+        layoutTree = createNodeForDrop(modKey);
         renderQuadrantLayout();
         return;
     }
 
     if (action.scope === 'pane' && action.zone === 'center') {
-        changePaneModuleById(action.paneId, modKey);
+        if (MACRO_SUBMODULES_MAP[modKey]) {
+            layoutTree = replacePaneNode(layoutTree, action.paneId, () => getMacroDefaultSubtree(modKey));
+            renderQuadrantLayout();
+        } else {
+            changePaneModuleById(action.paneId, modKey);
+        }
         return;
     }
 
@@ -831,13 +1080,13 @@ function executeSnapDrop(modKey, action) {
 
     let cleanTree = removePaneByModule(layoutTree, modKey);
     if (!cleanTree) {
-        layoutTree = makePaneNode(modKey);
+        layoutTree = createNodeForDrop(modKey);
         renderQuadrantLayout();
         return;
     }
 
     if (action.scope === 'root_edge') {
-        const newPane = makePaneNode(modKey);
+        const newPane = createNodeForDrop(modKey);
         const dir = (action.edge === 'left' || action.edge === 'right') ? 'row' : 'col';
         const isFirst = (action.edge === 'left' || action.edge === 'top');
         layoutTree = isFirst
@@ -848,7 +1097,7 @@ function executeSnapDrop(modKey, action) {
     }
 
     if (action.scope === 'screen_corner') {
-        const newPane = makePaneNode(modKey);
+        const newPane = createNodeForDrop(modKey);
         const corner = action.corner;
         const isLeft = (corner === 'tl' || corner === 'bl');
         const isTop = (corner === 'tl' || corner === 'tr');
@@ -870,7 +1119,7 @@ function executeSnapDrop(modKey, action) {
     }
 
     if (action.scope === 'pane') {
-        const newPane = makePaneNode(modKey);
+        const newPane = createNodeForDrop(modKey);
         const stillHasTarget = collectLeafPanes(cleanTree).some(l => l.id === action.paneId);
 
         if (!stillHasTarget) {
@@ -897,6 +1146,11 @@ function executeSnapDrop(modKey, action) {
 
 function changePaneModuleById(paneId, newModKey) {
     if (!dashboardModules[newModKey]) return;
+    if (MACRO_SUBMODULES_MAP[newModKey]) {
+        layoutTree = replacePaneNode(layoutTree, paneId, () => getMacroDefaultSubtree(newModKey));
+        renderQuadrantLayout();
+        return;
+    }
     const leaves = collectLeafPanes(layoutTree);
     const targetLeaf = leaves.find(l => l.id === paneId);
     if (!targetLeaf) return;
@@ -932,7 +1186,7 @@ function switchModule(side, rawModKey) {
     if (!dashboardModules[modKey]) return;
     const leaves = collectLeafPanes(layoutTree);
     if (leaves.length === 0) {
-        layoutTree = makePaneNode(modKey);
+        layoutTree = MACRO_SUBMODULES_MAP[modKey] ? getMacroDefaultSubtree(modKey) : makePaneNode(modKey);
         renderQuadrantLayout();
         return;
     }
@@ -941,7 +1195,7 @@ function switchModule(side, rawModKey) {
 }
 
 // ============================================================================
-// MENU WORKSPACE NELLA FINESTRA SETTINGS
+// MENU WORKSPACE NELLA FINESTRA SETTINGS (SENZA DESCRIZIONI FISSE, HOVER POPUP)
 // ============================================================================
 
 function updateWorkspaceDropdownUI() {
@@ -952,68 +1206,82 @@ function updateWorkspaceDropdownUI() {
     const isZeroStartup = (startupView === 'zero');
     const currentSingleStartupMod = startupView.startsWith('mod:') ? startupView.slice(4) : '';
 
-    let singleModOptionsHtml = `<option value="">-- Pick Single Module --</option>`;
+    let singleModOptionsHtml = `<option value="">-- Module --</option>`;
     ALL_MODULE_KEYS.forEach(k => {
-        singleModOptionsHtml += `<option value="mod:${k}" ${currentSingleStartupMod === k ? 'selected' : ''}>Open Only: ${dashboardModules[k].name}</option>`;
+        singleModOptionsHtml += `<option value="mod:${k}" ${currentSingleStartupMod === k ? 'selected' : ''}>${dashboardModules[k].name}</option>`;
     });
 
     let html = `
         <div style="padding: 7px 12px; font-size: 0.65rem; color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase;">
-            1. On App Launch (Startup Default)
+            Startup Default
         </div>
         <div class="startup-option-row ${isLastStartup ? 'active' : ''}" onclick="setStartupViewPreference('last')">
             <span>Restore Last Active Layout</span>
-            <span>${isLastStartup ? '[★ ACTIVE]' : '[SET]'}</span>
+            <span>${isLastStartup ? '[★]' : '[SET]'}</span>
         </div>
         <div class="startup-option-row ${isZeroStartup ? 'active' : ''}" onclick="setStartupViewPreference('zero')">
-            <span>0 // Zero-UI Empty Canvas</span>
-            <span>${isZeroStartup ? '[★ ACTIVE]' : '[SET]'}</span>
+            <span>0 // Zero-UI</span>
+            <span>${isZeroStartup ? '[★]' : '[SET]'}</span>
         </div>
         <div style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <span style="font-size:var(--font-xs); color:var(--text-muted);">Single Module at Startup:</span>
+            <span style="font-size:var(--font-xs); color:var(--text-muted);">Single Module:</span>
             <select class="form-control form-control-sm" style="width:180px; padding:3px 6px;" onchange="if(this.value) setStartupViewPreference(this.value)">
                 ${singleModOptionsHtml}
             </select>
         </div>
 
         <div style="padding: 7px 12px; font-size: 0.65rem; color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase; margin-top: 6px;">
-            2. Saved Custom Views (Click name to load · ★ for Startup)
+            Saved Views
         </div>
-    `;
-
-    if (workspacePresets.length === 0) {
-        html += `<div style="padding: 12px; font-size: var(--font-xs); color: var(--text-dim);">No saved views yet. Save your current tiling layout below.</div>`;
-    } else {
-        workspacePresets.forEach(p => {
-            const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => l.module.toUpperCase()) : [];
-            const desc = pLeaves.length === 0 ? 'ZERO-UI' : pLeaves.join(' + ');
-            const isPresetStartup = (startupView === `preset:${p.id}`);
-
-            html += `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; gap: 8px;">
-                    <div style="cursor:pointer; flex:1; min-width:0;" onclick="applyWorkspacePreset('${p.id}')">
-                        <div style="font-size: var(--font-xs); font-weight: bold; color: var(--text-main); overflow:hidden; text-overflow:ellipsis;">${escapeHtml(p.name)}</div>
-                        <div style="font-size: 0.65rem; color: var(--text-dim); overflow:hidden; text-overflow:ellipsis;">${escapeHtml(desc)}</div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
-                        <button class="startup-star-btn ${isPresetStartup ? 'active' : ''}" onclick="setStartupViewPreference('preset:${p.id}')" title="Open this view automatically when the app starts">
-                            ${isPresetStartup ? '★ STARTUP' : '☆ STARTUP'}
-                        </button>
-                        <button class="icon-btn delete" onclick="deleteWorkspacePreset('${p.id}')" title="Delete saved view">[X]</button>
-                    </div>
-                </div>
-            `;
-        });
-    }
-
-    html += `
+        <div id="settings-saved-views-list"></div>
         <div style="padding: 10px; background: #030303; display: flex; gap: 6px; border-top: 1px solid var(--border-color);">
-            <input type="text" id="new-preset-name-input" class="form-control form-control-sm" placeholder="Save current layout as..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('new-preset-name-input');}">
+            <input type="text" id="new-preset-name-input" class="form-control form-control-sm" placeholder="View name..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('new-preset-name-input');}">
             <button class="btn btn-primary btn-sm" onclick="saveCurrentWorkspacePreset('new-preset-name-input')">[SAVE VIEW]</button>
         </div>
     `;
 
     dropEl.innerHTML = html;
+
+    const listContainer = dropEl.querySelector('#settings-saved-views-list');
+    if (workspacePresets.length === 0) {
+        listContainer.innerHTML = `<div style="padding: 12px; font-size: var(--font-xs); color: var(--text-dim);">[ NONE ]</div>`;
+    } else {
+        workspacePresets.forEach(p => {
+            const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => dashboardModules[l.module]?.name || l.module.toUpperCase()) : [];
+            const desc = pLeaves.length === 0 ? 'ZERO-UI' : pLeaves.join(' + ');
+            const isPresetStartup = (startupView === `preset:${p.id}`);
+
+            const row = document.createElement('div');
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; gap: 8px;';
+            row.onmouseenter = (e) => showPresetModulesHoverPopup(e, p.name, desc);
+            row.onmousemove = movePresetModulesHoverPopup;
+            row.onmouseleave = hidePresetModulesHoverPopup;
+
+            const nameDiv = document.createElement('div');
+            nameDiv.style.cssText = 'cursor:pointer; flex:1; min-width:0; font-size: var(--font-xs); font-weight: bold; color: var(--text-main); overflow:hidden; text-overflow:ellipsis;';
+            nameDiv.textContent = p.name;
+            nameDiv.onclick = () => {
+                hidePresetModulesHoverPopup();
+                applyWorkspacePreset(p.id);
+            };
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.style.cssText = 'display:flex; align-items:center; gap:4px; flex-shrink:0;';
+            actionsDiv.innerHTML = `
+                <button class="startup-star-btn ${isPresetStartup ? 'active' : ''}">${isPresetStartup ? '★' : '☆'}</button>
+                <button class="icon-btn delete">[X]</button>
+            `;
+            actionsDiv.children[0].onclick = () => setStartupViewPreference(`preset:${p.id}`);
+            actionsDiv.children[1].onclick = () => {
+                hidePresetModulesHoverPopup();
+                deleteWorkspacePreset(p.id);
+            };
+
+            row.appendChild(nameDiv);
+            row.appendChild(actionsDiv);
+            listContainer.appendChild(row);
+        });
+    }
 }
 
 function applyWorkspacePreset(presetId) {
@@ -1027,7 +1295,7 @@ function applyWorkspacePreset(presetId) {
     const dropEl = document.getElementById('dropdown-workspaces');
     if (dropEl) dropEl.classList.remove('show');
     renderQuadrantLayout();
-    if (typeof showToast === 'function') showToast(`[VIEW] Loaded "${p.name}"`);
+    if (typeof showToast === 'function') showToast(`[VIEW] ${p.name}`);
 }
 
 function saveCurrentWorkspacePreset(inputId = 'new-preset-name-input') {
@@ -1050,7 +1318,7 @@ function saveCurrentWorkspacePreset(inputId = 'new-preset-name-input') {
     if (inp) inp.value = '';
     saveWorkspaceState();
     updateWorkspaceDropdownUI();
-    if (typeof showToast === 'function') showToast(`[VIEW] Saved "${name}"`);
+    if (typeof showToast === 'function') showToast(`[SAVED] "${name}"`);
 }
 
 function deleteWorkspacePreset(presetId) {
@@ -1085,6 +1353,74 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+// ============================================================================
+// TELEMETRIA LIVE PER IL WIDGET HUD & OROLOGIO GLOBALE
+// ============================================================================
+
+function getNextScheduledBlockLabelForToday() {
+    const now = getNow();
+    const curMins = now.getHours() * 60 + now.getMinutes();
+    const dayIdx = now.getDay();
+    const candidates = [];
+
+    if (typeof templates !== 'undefined') {
+        templates.forEach(t => {
+            if (t && isTaskActiveOnDate(t, todayStr) && Array.isArray(t.timeWindows)) {
+                t.timeWindows.forEach(tw => {
+                    if (tw.days && tw.days.includes(dayIdx) && tw.start && tw.end) {
+                        const [sh, sm] = tw.start.split(':').map(Number);
+                        const [eh, em] = tw.end.split(':').map(Number);
+                        const sMins = sh * 60 + (sm || 0);
+                        const eMins = eh * 60 + (em || 0);
+                        if (eMins >= curMins) {
+                            candidates.push({ startMins: sMins, endMins: eMins, start: tw.start, title: t.title });
+                        }
+                    }
+                });
+            }
+        });
+    }
+
+    if (typeof ephemeralData !== 'undefined' && Array.isArray(ephemeralData[todayStr])) {
+        ephemeralData[todayStr].forEach(b => {
+            if (b.start && b.end) {
+                const [sh, sm] = b.start.split(':').map(Number);
+                const [eh, em] = b.end.split(':').map(Number);
+                const sMins = sh * 60 + (sm || 0);
+                const eMins = eh * 60 + (em || 0);
+                if (eMins >= curMins) {
+                    candidates.push({ startMins: sMins, endMins: eMins, start: b.start, title: b.title });
+                }
+            }
+        });
+    }
+
+    if (candidates.length === 0) return null;
+    candidates.sort((a, b) => a.startMins - b.startMins);
+    const best = candidates[0];
+    const isNow = curMins >= best.startMins && curMins <= best.endMins;
+    return `${isNow ? 'NOW' : best.start} ${best.title.toUpperCase()}`;
+}
+
+function updateHudWidgetStrip() {
+    const strip = document.getElementById('hud-widget-strip');
+    if (!strip) return;
+
+    const st = typeof getStatsForDate === 'function' ? getStatsForDate(todayStr) : { completed: 0, total: 0 };
+    const nextItem = getNextScheduledBlockLabelForToday();
+    const spendableVal = typeof getMoneyAllocationMetrics === 'function'
+        ? getMoneyAllocationMetrics().spendable
+        : (typeof mBalance !== 'undefined' ? mBalance : 0);
+
+    let html = `<span class="hud-strip-pill">TASKS <strong>${st.completed}/${st.total}</strong></span>`;
+    if (nextItem) {
+        html += `<span class="hud-strip-pill" style="max-width:145px; overflow:hidden; text-overflow:ellipsis;"><strong>${escapeHtml(nextItem)}</strong></span>`;
+    }
+    html += `<span class="hud-strip-pill"><strong style="color:${spendableVal < 0 ? 'var(--accent-red)' : 'var(--accent-green)'};">€${Number(spendableVal || 0).toFixed(0)}</strong></span>`;
+
+    strip.innerHTML = html;
+}
+
 function updateGlobalClock() {
     const clockEl = document.getElementById('global-clock');
     if (!clockEl) return;
@@ -1108,6 +1444,7 @@ function updateGlobalClock() {
     const dayNum = now.getDate().toString().padStart(2, '0');
 
     clockEl.innerText = `${timeStr} // ${dayName} ${dayNum}`;
+    if (isHudMode) updateHudWidgetStrip();
 }
 
 setInterval(updateGlobalClock, 1000);
@@ -1145,7 +1482,25 @@ function resolveModuleKeyFromText(rawText) {
         'palestra': 'gym',
         'today & streak': 'streak',
         'consistency': 'streak',
-        'university': 'uni'
+        'university': 'uni',
+        'money summary': 'm_summary',
+        'summary': 'm_summary',
+        'money vaults': 'm_vaults',
+        'vaults': 'm_vaults',
+        'money chart': 'm_chart',
+        'chart': 'm_chart',
+        'money transactions': 'm_tx',
+        'money tx': 'm_tx',
+        'transactions': 'm_tx',
+        'tx': 'm_tx',
+        'money bills': 'm_bills',
+        'bills': 'm_bills',
+        'money analytics': 'm_analytics',
+        'analytics': 'm_analytics',
+        'cats': 'm_analytics',
+        'money incubator': 'm_incubator',
+        'incubator': 'm_incubator',
+        'wishlist': 'm_incubator'
     };
     if (aliasesMap[q]) return aliasesMap[q];
 
@@ -1173,12 +1528,17 @@ function setModulesView(modKeysArray) {
         toggleHudMode(false);
     }
 
+    const makeNodeForKey = (k) => {
+        if (MACRO_SUBMODULES_MAP[k]) return getMacroDefaultSubtree(k);
+        return makePaneNode(k);
+    };
+
     const buildBalancedSubtree = (keys, depth = 0) => {
-        if (keys.length === 1) return makePaneNode(keys[0]);
+        if (keys.length === 1) return makeNodeForKey(keys[0]);
         if (keys.length === 2) {
             const dir = (depth % 2 === 0) ? 'row' : 'col';
             const ratio = dir === 'row' ? getOptimalInitialRatio(keys[0], keys[1]) : 0.5;
-            return makeSplitNode(dir, ratio, makePaneNode(keys[0]), makePaneNode(keys[1]));
+            return makeSplitNode(dir, ratio, makeNodeForKey(keys[0]), makeNodeForKey(keys[1]));
         }
         const mid = Math.ceil(keys.length / 2);
         const leftKeys = keys.slice(0, mid);
@@ -1199,14 +1559,18 @@ function setModulesView(modKeysArray) {
 }
 
 // ============================================================================
-// MODALITÀ HUD TOP-BAR (56px ALWAYS-ON-TOP + AUTO-ESPANSIONE POPUP/TERMINALE)
+// MODALITÀ HUD FLOATING WIDGET (780x44px CENTRATO A METÀ SCHERMO + RIPRISTINO POSIZIONE)
 // ============================================================================
 
 let isHudMode = false;
 let isHudTempExpanded = false;
 let savedNormalWindowSize = { width: 1100, height: 620 };
+let savedNormalWindowPos = null;
 
-async function applyTauriWindowGeometry(width, height, alwaysOnTop = null) {
+const HUD_WIDGET_WIDTH = 780;
+const HUD_WIDGET_HEIGHT = 44;
+
+async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, targetX = null, targetY = null) {
     try {
         const tauriObj = window.__TAURI__;
         if (!tauriObj || !tauriObj.window) return;
@@ -1228,9 +1592,25 @@ async function applyTauriWindowGeometry(width, height, alwaysOnTop = null) {
                 await appWin.setSize({ type: 'Logical', width: Math.round(width), height: Math.round(height) });
             }
         }
+
+        if (targetX !== null && targetY !== null && typeof appWin.setPosition === 'function') {
+            const LogicalPosCtor = (tauriObj.dpi && tauriObj.dpi.LogicalPosition)
+                || (tauriObj.window && tauriObj.window.LogicalPosition);
+            if (LogicalPosCtor) {
+                await appWin.setPosition(new LogicalPosCtor(Math.round(targetX), Math.round(targetY)));
+            } else {
+                await appWin.setPosition({ type: 'Logical', x: Math.round(targetX), y: Math.round(targetY) });
+            }
+        }
     } catch (err) {
-        console.warn('[HUD MODE] Tauri window resize warning:', err);
+        console.warn('[HUD MODE] Tauri window geometry warning:', err);
     }
+}
+
+function getCenteredHudCoordinates(widgetW) {
+    const screenW = (window.screen && (window.screen.availWidth || window.screen.width)) || 1920;
+    const centeredX = Math.max(0, Math.round((screenW - widgetW) / 2));
+    return { x: centeredX, y: 12 };
 }
 
 async function toggleHudMode(forceState = null) {
@@ -1242,21 +1622,27 @@ async function toggleHudMode(forceState = null) {
                 width: Math.max(600, window.innerWidth || 1100),
                 height: Math.max(400, window.innerHeight || 620)
             };
+            savedNormalWindowPos = {
+                x: typeof window.screenX === 'number' ? window.screenX : 100,
+                y: typeof window.screenY === 'number' ? window.screenY : 80
+            };
         }
         isHudMode = true;
         isHudTempExpanded = false;
+        updateHudWidgetStrip();
         document.body.classList.add('hud-mode');
         document.body.classList.remove('hud-temp-expanded');
-        await applyTauriWindowGeometry(savedNormalWindowSize.width, 56, true);
+
+        const pos = getCenteredHudCoordinates(HUD_WIDGET_WIDTH);
+        await applyTauriWindowGeometry(HUD_WIDGET_WIDTH, HUD_WIDGET_HEIGHT, true, pos.x, pos.y);
     } else if (!nextState && isHudMode) {
         isHudMode = false;
         isHudTempExpanded = false;
         document.body.classList.remove('hud-mode', 'hud-temp-expanded');
-        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, false);
-    }
 
-    if (typeof showToast === 'function' && !isHudMode) {
-        showToast('[HUD] Full Workspace Restored');
+        const restoreX = savedNormalWindowPos ? savedNormalWindowPos.x : null;
+        const restoreY = savedNormalWindowPos ? savedNormalWindowPos.y : null;
+        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, false, restoreX, restoreY);
     }
 }
 
@@ -1265,15 +1651,17 @@ async function setHudTemporaryExpansion(shouldExpand) {
     if (shouldExpand && !isHudTempExpanded) {
         isHudTempExpanded = true;
         document.body.classList.add('hud-temp-expanded');
-        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, true);
+        const pos = getCenteredHudCoordinates(savedNormalWindowSize.width);
+        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, true, pos.x, 40);
     } else if (!shouldExpand && isHudTempExpanded) {
         isHudTempExpanded = false;
         document.body.classList.remove('hud-temp-expanded');
-        await applyTauriWindowGeometry(savedNormalWindowSize.width, 56, true);
+        const pos = getCenteredHudCoordinates(HUD_WIDGET_WIDTH);
+        await applyTauriWindowGeometry(HUD_WIDGET_WIDTH, HUD_WIDGET_HEIGHT, true, pos.x, pos.y);
     }
 }
 
-// Scorciatoie Globali per HUD (H) e Quick-Switcher (V)
+// Scorciatoie Globali per HUD (H / Alt+H) e Quick-Switcher (V)
 document.addEventListener('keydown', (e) => {
     if (e.altKey && (e.key === 'h' || e.key === 'H')) {
         e.preventDefault();

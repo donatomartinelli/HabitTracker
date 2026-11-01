@@ -1,8 +1,10 @@
 // --- js/modules/notes.js ---
-// ATOMIC MODULE 3: STANDALONE NOTES, MULTI-SELECT, MERGE, SPLIT AT CURSOR, CATEGORY ROUTING & AUTO-ARCHIVE TO "EXTRACTED"
+// ATOMIC MODULE 3: CLEAN 2-COLUMN MASONRY NOTES, ON-DEMAND SELECTION, COLLAPSIBLE LONG CARDS, INLINE SPLIT & AUTO-ARCHIVE
 
 let currentNoteMode = 'write';
+let isNoteSelectMode = false;
 let selectedNoteStorageIndices = new Set();
+let expandedNoteCardsSet = new Set();
 
 function ensureBrowseContainerExists() {
     let browseCont = document.getElementById('notes-browse-container');
@@ -19,7 +21,6 @@ function ensureBrowseContainerExists() {
     return browseCont;
 }
 
-// Garantisce che General, Registrazioni ed Extracted esistano sempre, senza resuscitare categorie eliminate
 function ensureNoteCategoriesSynced() {
     if (!Array.isArray(noteCategories) || noteCategories.length === 0) {
         noteCategories = ['General', 'Registrazioni', 'Extracted'];
@@ -51,8 +52,14 @@ function ensureNoteCategoriesSynced() {
         select.value = noteCategories[0] || 'General';
     }
 
-    populateBatchMoveSelect(select.value);
-    return select.value || 'General';
+    const activeCat = select.value || 'General';
+    const catBadge = document.getElementById('notes-active-cat-badge');
+    if (catBadge) {
+        catBadge.textContent = `// ${activeCat.toUpperCase()}`;
+    }
+
+    populateBatchMoveSelect(activeCat);
+    return activeCat;
 }
 
 function populateBatchMoveSelect(currentCat) {
@@ -75,11 +82,12 @@ function populateBatchMoveSelect(currentCat) {
 
 function onNoteCategoryChange() {
     selectedNoteStorageIndices.clear();
+    expandedNoteCardsSet.clear();
+    isNoteSelectMode = false;
     closeBatchAiDrawer();
     refreshNotesView();
 }
 
-// Parsing in card: mantiene i blocchi header === [data // file] === e separa per \n\n+
 function parseCategoryIntoCards(rawText) {
     const text = (rawText || '').trim();
     if (!text) return [];
@@ -142,9 +150,22 @@ function toggleNotesMode() {
     }
 
     currentNoteMode = nextMode;
+    isNoteSelectMode = false;
     selectedNoteStorageIndices.clear();
     closeBatchAiDrawer();
     refreshNotesView();
+}
+
+function toggleNoteSelectionMode(forceState = null) {
+    isNoteSelectMode = forceState !== null ? Boolean(forceState) : !isNoteSelectMode;
+    if (!isNoteSelectMode) {
+        selectedNoteStorageIndices.clear();
+        closeBatchAiDrawer();
+    }
+    const cat = document.getElementById('note-category')?.value || 'General';
+    const q = (document.getElementById('note-search-input')?.value || '').trim();
+    renderBrowseCards(cat, q);
+    updateBatchSelectionBarUI();
 }
 
 function refreshNotesView() {
@@ -155,12 +176,16 @@ function refreshNotesView() {
     const textEl = document.getElementById('note-text');
     const browseCont = ensureBrowseContainerExists();
     const searchEl = document.getElementById('note-search-input');
+    const selectBtn = document.getElementById('btn-notes-select-mode');
     if (!textEl) return;
 
     const activeFilter = searchEl ? searchEl.value.trim() : '';
 
     if (currentNoteMode === 'write') {
         if (browseCont) browseCont.style.display = 'none';
+        if (selectBtn) selectBtn.style.display = 'none';
+        isNoteSelectMode = false;
+        selectedNoteStorageIndices.clear();
         updateBatchSelectionBarUI();
         closeBatchAiDrawer();
         textEl.style.display = 'block';
@@ -169,6 +194,7 @@ function refreshNotesView() {
         textEl.placeholder = `Write a new note in [${cat}] and press Enter (Shift+Enter for new line)... Use - for lists, [ ] for checkboxes, @YYYY-MM-DD or @domani for date links.`;
     } else {
         textEl.style.display = 'none';
+        if (selectBtn) selectBtn.style.display = 'inline-block';
         if (browseCont) {
             browseCont.style.display = 'flex';
             renderBrowseCards(cat, activeFilter);
@@ -190,7 +216,9 @@ function filterNotesView(query) {
     if (currentNoteMode === 'browse') {
         const textEl = document.getElementById('note-text');
         const browseCont = ensureBrowseContainerExists();
+        const selectBtn = document.getElementById('btn-notes-select-mode');
         if (textEl) textEl.style.display = 'none';
+        if (selectBtn) selectBtn.style.display = 'inline-block';
         if (browseCont) {
             browseCont.style.display = 'flex';
             renderBrowseCards(cat, cleanQ);
@@ -200,13 +228,17 @@ function filterNotesView(query) {
 }
 
 // ============================================================================
-// SELEZIONE MULTIPLA CELLE (1A), UNIONE PULITA (2A) & SPOSTAMENTO CATEGORIE (4A)
+// SELEZIONE MULTIPLA ON-DEMAND, MERGE, INBOX & MOVE
 // ============================================================================
 
 function toggleNoteCardSelection(storageIdx, forceState = null) {
     const shouldSelect = forceState !== null ? Boolean(forceState) : !selectedNoteStorageIndices.has(storageIdx);
-    if (shouldSelect) selectedNoteStorageIndices.add(storageIdx);
-    else selectedNoteStorageIndices.delete(storageIdx);
+    if (shouldSelect) {
+        selectedNoteStorageIndices.add(storageIdx);
+        isNoteSelectMode = true;
+    } else {
+        selectedNoteStorageIndices.delete(storageIdx);
+    }
 
     const cat = document.getElementById('note-category')?.value || 'General';
     const searchEl = document.getElementById('note-search-input');
@@ -215,6 +247,7 @@ function toggleNoteCardSelection(storageIdx, forceState = null) {
 }
 
 function selectAllVisibleNotes() {
+    isNoteSelectMode = true;
     const cat = document.getElementById('note-category')?.value || 'General';
     const allCards = parseCategoryIntoCards(notesContent[cat] || '');
     const q = (document.getElementById('note-search-input')?.value || '').trim().toLowerCase();
@@ -230,6 +263,8 @@ function selectAllVisibleNotes() {
 
 function clearNoteSelection() {
     selectedNoteStorageIndices.clear();
+    isNoteSelectMode = false;
+    closeBatchAiDrawer();
     const cat = document.getElementById('note-category')?.value || 'General';
     const q = (document.getElementById('note-search-input')?.value || '').trim();
     renderBrowseCards(cat, q);
@@ -239,35 +274,42 @@ function clearNoteSelection() {
 function updateBatchSelectionBarUI() {
     const bar = document.getElementById('notes-batch-bar');
     const countEl = document.getElementById('notes-selected-count');
+    const selectModeBtn = document.getElementById('btn-notes-select-mode');
     const btnMerge = document.getElementById('btn-batch-merge');
     const btnAi = document.getElementById('btn-batch-ai');
-    const topBtnAi = document.getElementById('btn-top-generate-actions');
+    const btnInbox = document.getElementById('btn-batch-inbox');
+    const btnDel = document.getElementById('btn-batch-del');
+    const moveSel = document.getElementById('batch-move-select');
 
     const count = selectedNoteStorageIndices.size;
+    const showBar = currentNoteMode === 'browse' && (isNoteSelectMode || count > 0);
 
-    if (topBtnAi) {
-        topBtnAi.textContent = count > 0 ? `[✦ GENERATE ACTIONS (${count})]` : `[✦ GENERATE ACTIONS]`;
-        topBtnAi.classList.toggle('btn-primary', count > 0);
+    if (selectModeBtn) {
+        selectModeBtn.textContent = showBar ? '[DONE]' : '[SELECT]';
+        selectModeBtn.classList.toggle('btn-primary', showBar);
     }
 
     if (!bar) return;
-    if (currentNoteMode !== 'browse' || count === 0) {
+    if (!showBar) {
         bar.style.display = 'none';
         return;
     }
 
     bar.style.display = 'flex';
-    if (countEl) countEl.textContent = `${count} SELECTED`;
+    if (countEl) countEl.textContent = count > 0 ? `${count} SELECTED` : 'CLICK CARDS TO SELECT';
+    if (btnAi) {
+        btnAi.disabled = count === 0;
+        btnAi.textContent = count > 0 ? `[✦ GENERATE ACTIONS (${count})]` : `[✦ GENERATE ACTIONS]`;
+    }
+    if (btnInbox) btnInbox.disabled = count === 0;
     if (btnMerge) {
         btnMerge.disabled = count < 2;
-        btnMerge.textContent = `[MERGE (${count})]`;
+        btnMerge.textContent = count >= 2 ? `[MERGE (${count})]` : `[MERGE]`;
     }
-    if (btnAi) {
-        btnAi.textContent = `[✦ GENERATE ACTIONS (${count})]`;
-    }
+    if (moveSel) moveSel.disabled = count === 0;
+    if (btnDel) btnDel.disabled = count === 0;
 }
 
-// 2A. Unione pulita di più celle selezionate in una sola cella
 function mergeSelectedNoteCards() {
     if (selectedNoteStorageIndices.size < 2) {
         if (typeof showToast === 'function') showToast('[MERGE] Select at least 2 notes to merge');
@@ -277,7 +319,6 @@ function mergeSelectedNoteCards() {
     const cat = document.getElementById('note-category')?.value || 'General';
     const allCards = parseCategoryIntoCards(notesContent[cat] || '');
 
-    // Ordina gli indici in ordine cronologico crescente
     const sortedIndices = Array.from(selectedNoteStorageIndices)
         .filter(idx => idx >= 0 && idx < allCards.length)
         .sort((a, b) => a - b);
@@ -287,7 +328,6 @@ function mergeSelectedNoteCards() {
     const firstIdx = sortedIndices[0];
     const firstCard = allCards[firstIdx];
 
-    // Unisce solo i corpi puliti separati da una riga vuota, rimuovendo eventuali header intermedi
     const mergedBody = sortedIndices
         .map(idx => (allCards[idx].body || '').trim())
         .filter(Boolean)
@@ -302,13 +342,13 @@ function mergeSelectedNoteCards() {
             : mergedBody
     };
 
-    // Rimuove le altre card unite partendo dal fondo
     for (let i = sortedIndices.length - 1; i >= 1; i--) {
         allCards.splice(sortedIndices[i], 1);
     }
 
     notesContent[cat] = rebuildCategoryFromCards(allCards);
     selectedNoteStorageIndices.clear();
+    isNoteSelectMode = false;
     saveData();
 
     ensureNoteCategoriesSynced();
@@ -321,7 +361,6 @@ function mergeSelectedNoteCards() {
     }
 }
 
-// 4A. Sposta una o più card dalla categoria corrente verso un'altra categoria (o ne crea una nuova al volo)
 function moveNoteCardsToCategory(sourceCat, indicesArray, targetCatRaw) {
     if (!sourceCat || !Array.isArray(indicesArray) || indicesArray.length === 0) return false;
 
@@ -346,12 +385,10 @@ function moveNoteCardsToCategory(sourceCat, indicesArray, targetCatRaw) {
 
     if (validAsc.length === 0) return false;
 
-    // Aggiunge le card in coda alla categoria di destinazione
     validAsc.forEach(idx => {
         targetCards.push(sourceCards[idx]);
     });
 
-    // Rimuove le card dalla categoria sorgente partendo dall'indice più alto
     for (let i = validAsc.length - 1; i >= 0; i--) {
         sourceCards.splice(validAsc[i], 1);
     }
@@ -359,6 +396,7 @@ function moveNoteCardsToCategory(sourceCat, indicesArray, targetCatRaw) {
     notesContent[sourceCat] = rebuildCategoryFromCards(sourceCards);
     notesContent[targetCat] = rebuildCategoryFromCards(targetCards);
     selectedNoteStorageIndices.clear();
+    isNoteSelectMode = false;
 
     saveData();
     ensureNoteCategoriesSynced();
@@ -379,6 +417,63 @@ function moveSelectedNoteCardsTo(targetCatRaw) {
     }
 }
 
+function sendSelectedNoteCardsToInbox() {
+    if (selectedNoteStorageIndices.size === 0) return;
+    const cat = document.getElementById('note-category')?.value || 'General';
+    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
+    const sortedIndices = Array.from(selectedNoteStorageIndices)
+        .filter(idx => idx >= 0 && idx < allCards.length)
+        .sort((a, b) => a - b);
+
+    if (sortedIndices.length === 0) return;
+
+    const dayIndex = parseLocalDate(selectedDateStr).getDay();
+    const todoCatName = 'General To-Do';
+    if (!categoryOrder.includes(todoCatName)) categoryOrder.push(todoCatName);
+
+    sortedIndices.forEach(idx => {
+        const cleanLine = (allCards[idx].body || '').replace(/\s+/g, ' ').trim();
+        if (!cleanLine) return;
+
+        if (cleanLine.toLowerCase().startsWith('comprare ')) {
+            const itemTitle = cleanLine.substring(9).trim();
+            mWishlist.push({ id: 'mw_' + Date.now() + '_' + idx, title: itemTitle, cost: '', order: mWishlist.length });
+        } else {
+            templates.push({
+                id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                isTodo: true,
+                category: todoCatName,
+                title: cleanLine,
+                instances: 1,
+                timerMinutes: 15,
+                noTimer: true,
+                frequency: 'specific',
+                daysOfWeek: [dayIndex],
+                startDate: selectedDateStr,
+                endDate: selectedDateStr,
+                color: '#ffffff',
+                type: 'untimed',
+                timeWindows: []
+            });
+        }
+    });
+
+    saveMoneyData();
+    saveData();
+    if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
+    if (typeof renderTasks === 'function') renderTasks();
+
+    if (cat !== 'Extracted') {
+        moveNoteCardsToCategory(cat, sortedIndices, 'Extracted');
+    } else {
+        clearNoteSelection();
+    }
+
+    if (typeof showToast === 'function') {
+        showToast(`[TO-DO + ARCHIVED] Added ${sortedIndices.length} item(s) to To-Do & moved to "Extracted"`);
+    }
+}
+
 function deleteSelectedNoteCards() {
     if (selectedNoteStorageIndices.size === 0) return;
     const cat = document.getElementById('note-category')?.value || 'General';
@@ -391,6 +486,7 @@ function deleteSelectedNoteCards() {
     sortedDesc.forEach(idx => allCards.splice(idx, 1));
     notesContent[cat] = rebuildCategoryFromCards(allCards);
     selectedNoteStorageIndices.clear();
+    isNoteSelectMode = false;
 
     saveData();
     ensureNoteCategoriesSynced();
@@ -404,7 +500,7 @@ function deleteSelectedNoteCards() {
 }
 
 // ============================================================================
-// RENDERIZZAZIONE BROWSE CARDS
+// RENDERIZZAZIONE BROWSE CARDS: MOSAICO A 2 COLONNE, PURO TESTO & HOVER [i] [✎]
 // ============================================================================
 
 function formatInlineNoteTokens(lineStr) {
@@ -450,6 +546,12 @@ function toggleNoteCardCheckbox(cat, storageIndex, lineIndex) {
     renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
 }
 
+function isCardContentLong(bodyText) {
+    const txt = (bodyText || '').trim();
+    if (txt.length > 240) return true;
+    return txt.split('\n').length > 5;
+}
+
 function renderBrowseCards(cat, filterQuery = '') {
     const browseCont = ensureBrowseContainerExists();
     if (!browseCont) return;
@@ -459,7 +561,7 @@ function renderBrowseCards(cat, filterQuery = '') {
     const q = (filterQuery || '').trim().toLowerCase();
 
     if (allCards.length === 0) {
-        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px;">[ NO NOTES IN "${escapeHtml(cat.toUpperCase())}" — SWITCH TO WRITE OR SYNC SONY ]</div>`;
+        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px; width:100%;">[ EMPTY — SWITCH TO WRITE ]</div>`;
         return;
     }
 
@@ -472,133 +574,123 @@ function renderBrowseCards(cat, filterQuery = '') {
         });
 
     if (indexedCards.length === 0) {
-        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px;">[ NO MATCHES FOUND FOR "${escapeHtml(filterQuery)}" IN ${escapeHtml(cat.toUpperCase())} ]</div>`;
+        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px; width:100%;">[ NO MATCHES FOR "${escapeHtml(filterQuery)}" ]</div>`;
         return;
     }
 
-    const frag = document.createDocumentFragment();
+    // Costruisce 2 colonne indipendenti a mosaico (pari a sinistra, dispari a destra)
+    const colLeft = document.createElement('div');
+    colLeft.className = 'notes-masonry-col';
+    const colRight = document.createElement('div');
+    colRight.className = 'notes-masonry-col';
 
-    indexedCards.forEach(({ card, storageIdx }) => {
+    indexedCards.forEach(({ card, storageIdx }, visualIdx) => {
         const isSelected = selectedNoteStorageIndices.has(storageIdx);
+        const cardKey = `${cat}_${storageIdx}`;
+        const isLong = isCardContentLong(card.body);
+        const isExpanded = expandedNoteCardsSet.has(cardKey);
+
         const cardEl = document.createElement('div');
         cardEl.className = `note-card ${isSelected ? 'is-selected' : ''}`;
 
-        // HEADER DELLA CARD CON CHECKBOX DI SELEZIONE SEMPRE VISIBILE (1A)
-        const headerEl = document.createElement('div');
-        headerEl.className = 'note-card-header';
+        // Metadato nascosto (data / nome file mp3 / indice) visibile solo cliccando [i]
+        const metaInfoText = card.isHeadered && card.headerLabel
+            ? `🎙 ${card.headerLabel}`
+            : `NOTE #${storageIdx + 1} // ${cat}`;
 
-        const metaEl = document.createElement('div');
-        metaEl.className = 'note-card-meta';
-        metaEl.style.cursor = 'pointer';
-        metaEl.onclick = () => toggleNoteCardSelection(storageIdx);
+        const infoPopover = document.createElement('div');
+        infoPopover.className = 'note-info-popover';
+        infoPopover.textContent = metaInfoText;
+        cardEl.appendChild(infoPopover);
 
-        const selBox = document.createElement('div');
-        selBox.className = `check-box ${isSelected ? 'checked' : ''}`;
-        selBox.title = 'Select card for batch actions (Generate Actions, Merge, Move, Delete)';
+        // Micro-pillola in alto a destra visibile SOLO in hover: [i] e [✎]
+        const hoverTools = document.createElement('div');
+        hoverTools.className = 'note-card-hover-tools';
 
-        const titleSpan = document.createElement('span');
-        titleSpan.innerHTML = card.isHeadered && card.headerLabel
-            ? `🎙 ${escapeHtml(card.headerLabel)}`
-            : `NOTE #${storageIdx + 1} // ${escapeHtml(cat)}`;
+        const btnInfo = document.createElement('button');
+        btnInfo.type = 'button';
+        btnInfo.className = 'icon-btn';
+        btnInfo.style.fontSize = '0.68rem';
+        btnInfo.textContent = '[i]';
+        btnInfo.title = metaInfoText;
+        btnInfo.onclick = (e) => {
+            e.stopPropagation();
+            infoPopover.classList.toggle('show');
+        };
 
-        metaEl.appendChild(selBox);
-        metaEl.appendChild(titleSpan);
+        const btnEdit = document.createElement('button');
+        btnEdit.type = 'button';
+        btnEdit.className = 'icon-btn';
+        btnEdit.style.fontSize = '0.68rem';
+        btnEdit.textContent = '[✎]';
+        btnEdit.title = 'Edit or Split at cursor (Ctrl+Shift+S)';
 
-        const actionsEl = document.createElement('div');
-        actionsEl.className = 'note-card-actions';
+        hoverTools.appendChild(btnInfo);
+        hoverTools.appendChild(btnEdit);
+        cardEl.appendChild(hoverTools);
 
-        // 4A. Menu rapido spostamento singola nota verso qualsiasi categoria o "+ New Category..."
-        const moveSelect = document.createElement('select');
-        moveSelect.className = 'note-move-select';
-        moveSelect.title = 'Move this note to another category';
-        moveSelect.innerHTML = `<option value="">[➔ MOVE ▼]</option>`;
-        noteCategories.forEach(c => {
-            if (c !== cat) {
-                const opt = document.createElement('option');
-                opt.value = c;
-                opt.textContent = `➔ ${c}`;
-                moveSelect.appendChild(opt);
+        // Corpo della nota
+        const bodyEl = document.createElement('div');
+        bodyEl.className = `note-card-body ${(isLong && !isExpanded) ? 'is-collapsed' : ''}`;
+        renderFormattedCardBody(bodyEl, card, cat, storageIdx);
+
+        btnEdit.onclick = (e) => {
+            e.stopPropagation();
+            expandedNoteCardsSet.add(cardKey);
+            bodyEl.classList.remove('is-collapsed');
+            startNoteCardInlineEdit(bodyEl, cat, storageIdx);
+        };
+
+        // Gestione click sulla card:
+        // - Shift+Click o modalità [SELECT] attiva -> seleziona/deseleziona la card
+        // - Click normale su nota lunga -> espande/compatta la nota
+        cardEl.onclick = (e) => {
+            if (e.target.closest('textarea') || e.target.closest('.note-inline-toolbar') || e.target.classList.contains('check-box') || e.target.classList.contains('note-date-tag')) {
+                return;
             }
-        });
-        const newCatOpt = document.createElement('option');
-        newCatOpt.value = '__NEW__';
-        newCatOpt.textContent = '+ New Category...';
-        moveSelect.appendChild(newCatOpt);
-        moveSelect.onchange = () => {
-            if (moveSelect.value) {
-                const dest = moveNoteCardsToCategory(cat, [storageIdx], moveSelect.value);
-                if (dest && typeof showToast === 'function') {
-                    showToast(`[NOTES] Moved note to "${dest}"`);
+            if (e.shiftKey || isNoteSelectMode) {
+                e.preventDefault();
+                toggleNoteCardSelection(storageIdx);
+                return;
+            }
+            if (isLong) {
+                if (expandedNoteCardsSet.has(cardKey)) {
+                    expandedNoteCardsSet.delete(cardKey);
+                    bodyEl.classList.add('is-collapsed');
+                    if (expandHint) expandHint.textContent = '[+ EXPAND]';
+                } else {
+                    expandedNoteCardsSet.add(cardKey);
+                    bodyEl.classList.remove('is-collapsed');
+                    if (expandHint) expandHint.textContent = '[- COLLAPSE]';
                 }
             }
         };
 
-        // 4A. Bottone [-> INBOX] (invia a Inbox e sposta la nota in Extracted)
-        const btnInbox = document.createElement('button');
-        btnInbox.type = 'button';
-        btnInbox.className = 'btn btn-sm';
-        btnInbox.textContent = '[-> INBOX]';
-        btnInbox.title = 'Send to General To-Do Inbox and archive note into Extracted';
-        btnInbox.onclick = () => sendNoteCardToInbox(cat, storageIdx);
-
-        // Bottone [✦ GENERATE ACTIONS] sulla singola card
-        const btnAi = document.createElement('button');
-        btnAi.type = 'button';
-        btnAi.className = 'btn btn-sm';
-        btnAi.textContent = '[✦ GENERATE ACTIONS]';
-        btnAi.title = 'Extract actionable commands with Gemini (then archives note to Extracted)';
-
-        // 3A. Bottone [✎ / ✂] Inline Edit & Split at Cursor
-        const btnEdit = document.createElement('button');
-        btnEdit.type = 'button';
-        btnEdit.className = 'icon-btn';
-        btnEdit.textContent = '[✎ / ✂]';
-        btnEdit.title = 'Edit note or Split at cursor (Ctrl+Shift+S)';
-
-        // Bottone [×] Delete
-        const btnDel = document.createElement('button');
-        btnDel.type = 'button';
-        btnDel.className = 'icon-btn delete';
-        btnDel.textContent = '[×]';
-        btnDel.title = 'Delete this note card';
-        btnDel.onclick = () => deleteNoteCard(cat, storageIdx);
-
-        actionsEl.appendChild(moveSelect);
-        actionsEl.appendChild(btnInbox);
-        actionsEl.appendChild(btnAi);
-        actionsEl.appendChild(btnEdit);
-        actionsEl.appendChild(btnDel);
-
-        headerEl.appendChild(metaEl);
-        headerEl.appendChild(actionsEl);
-        cardEl.appendChild(headerEl);
-
-        // CORPO RENDERIZZATO DELLA CARD
-        const bodyEl = document.createElement('div');
-        bodyEl.className = 'note-card-body';
-        bodyEl.title = 'Double-click to edit or split at cursor (Ctrl+Shift+S)';
-        renderFormattedCardBody(bodyEl, card, cat, storageIdx);
-
+        // Doppio click sul testo -> apre l'editor inline (con Split at cursor)
         bodyEl.ondblclick = (e) => {
             if (e.target.classList.contains('check-box') || e.target.classList.contains('note-date-tag')) return;
+            e.stopPropagation();
+            expandedNoteCardsSet.add(cardKey);
+            bodyEl.classList.remove('is-collapsed');
             startNoteCardInlineEdit(bodyEl, cat, storageIdx);
         };
-        btnEdit.onclick = () => startNoteCardInlineEdit(bodyEl, cat, storageIdx);
 
         cardEl.appendChild(bodyEl);
 
-        // CASSETTO INLINE PER REVISIONE AZIONI ESTRATTE DALLA SINGOLA CARD
-        const aiDrawer = document.createElement('div');
-        aiDrawer.className = 'note-ai-drawer';
-        aiDrawer.style.display = 'none';
-        cardEl.appendChild(aiDrawer);
+        let expandHint = null;
+        if (isLong) {
+            expandHint = document.createElement('div');
+            expandHint.className = 'note-expand-hint';
+            expandHint.textContent = isExpanded ? '[- COLLAPSE]' : '[+ EXPAND]';
+            cardEl.appendChild(expandHint);
+        }
 
-        btnAi.onclick = () => triggerNoteCardAiExtraction(card, cat, storageIdx, btnAi, aiDrawer);
-
-        frag.appendChild(cardEl);
+        if (visualIdx % 2 === 0) colLeft.appendChild(cardEl);
+        else colRight.appendChild(cardEl);
     });
 
-    browseCont.appendChild(frag);
+    browseCont.appendChild(colLeft);
+    browseCont.appendChild(colRight);
 }
 
 function renderFormattedCardBody(bodyContainer, card, cat, storageIdx) {
@@ -651,7 +743,7 @@ function renderFormattedCardBody(bodyContainer, card, cat, storageIdx) {
 }
 
 // ============================================================================
-// 3A. EDITOR INLINE CON [✂ SPLIT AT CURSOR // CTRL+SHIFT+S]
+// EDITOR INLINE CON [✂ SPLIT AT CURSOR // CTRL+SHIFT+S]
 // ============================================================================
 
 function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
@@ -670,10 +762,10 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
     const toolbar = document.createElement('div');
     toolbar.className = 'note-inline-toolbar';
     toolbar.innerHTML = `
-        <span style="font-size:0.65rem; color:var(--text-dim);">PLACE CURSOR &amp; CLICK SPLIT (OR PRESS <strong>CTRL+SHIFT+S</strong>)</span>
+        <span style="font-size:0.62rem; color:var(--text-dim);">CTRL+SHIFT+S TO SPLIT</span>
         <div style="display:flex; gap:6px;">
-            <button type="button" class="btn btn-sm btn-split-cursor" style="border-color:var(--accent-gold); color:var(--accent-gold);">[✂ SPLIT AT CURSOR]</button>
-            <button type="button" class="btn btn-primary btn-sm btn-save-inline">[SAVE // CTRL+ENTER]</button>
+            <button type="button" class="btn btn-sm btn-split-cursor" style="border-color:var(--accent-gold); color:var(--accent-gold);">[✂ SPLIT]</button>
+            <button type="button" class="btn btn-primary btn-sm btn-save-inline">[SAVE]</button>
             <button type="button" class="btn btn-sm btn-cancel-inline">[ESC]</button>
         </div>
     `;
@@ -711,14 +803,13 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
 
         if (!firstHalf || !secondHalf) {
             if (typeof showToast === 'function') {
-                showToast('[SPLIT] Place the cursor inside the text (not at the very start or end)!');
+                showToast('[SPLIT] Place the cursor inside the text!');
             }
             ta.focus();
             return;
         }
 
         finished = true;
-        // La prima metà mantiene l'eventuale header originale
         const cardPart1 = {
             isHeadered: targetCard.isHeadered,
             headerLabel: targetCard.headerLabel,
@@ -728,7 +819,6 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
                 : firstHalf
         };
 
-        // La seconda metà diventa una nuova card subito successiva
         const cardPart2 = {
             isHeadered: targetCard.isHeadered,
             headerLabel: targetCard.headerLabel ? `${targetCard.headerLabel} // PART 2` : null,
@@ -748,25 +838,19 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
         renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
         updateBatchSelectionBarUI();
         if (typeof showToast === 'function') {
-            showToast('[SPLIT] Note split into 2 cards at cursor position!');
+            showToast('[SPLIT] Note split into 2 cards!');
         }
     };
 
-    // Usa onmousedown con preventDefault sui bottoni della toolbar per non far scattare onblur prima del click
-    const btnSplit = toolbar.querySelector('.btn-split-cursor');
-    btnSplit.onmousedown = (e) => {
+    toolbar.querySelector('.btn-split-cursor').onmousedown = (e) => {
         e.preventDefault();
         splitAtCursor();
     };
-
-    const btnSave = toolbar.querySelector('.btn-save-inline');
-    btnSave.onmousedown = (e) => {
+    toolbar.querySelector('.btn-save-inline').onmousedown = (e) => {
         e.preventDefault();
         commitEdit();
     };
-
-    const btnCancel = toolbar.querySelector('.btn-cancel-inline');
-    btnCancel.onmousedown = (e) => {
+    toolbar.querySelector('.btn-cancel-inline').onmousedown = (e) => {
         e.preventDefault();
         finished = true;
         const searchEl = document.getElementById('note-search-input');
@@ -803,80 +887,9 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
     ta.focus();
 }
 
-function deleteNoteCard(cat, storageIdx) {
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-    if (storageIdx < 0 || storageIdx >= allCards.length) return;
-
-    allCards.splice(storageIdx, 1);
-    notesContent[cat] = rebuildCategoryFromCards(allCards);
-    selectedNoteStorageIndices.delete(storageIdx);
-    saveData();
-    ensureNoteCategoriesSynced();
-
-    const searchEl = document.getElementById('note-search-input');
-    renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
-    updateBatchSelectionBarUI();
-    if (typeof showToast === 'function') showToast('[NOTES] Card deleted');
-}
-
 // ============================================================================
-// 4A. ESTRAZIONE AZIONI (SINGOLA E MULTI-CELLA) -> SPOSTAMENTO IN "EXTRACTED"
+// ESTRAZIONE AZIONI CON GEMINI -> ARCHIVIAZIONE AUTOMATICA IN "EXTRACTED"
 // ============================================================================
-
-function sendNoteCardToInbox(cat, storageIdx) {
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-    const card = allCards[storageIdx];
-    if (!card || !card.body) return;
-
-    const cleanLine = card.body.replace(/\s+/g, ' ').trim();
-    if (!cleanLine) return;
-
-    if (cleanLine.toLowerCase().startsWith('comprare ')) {
-        const itemTitle = cleanLine.substring(9).trim();
-        mWishlist.push({ id: 'mw_' + Date.now(), title: itemTitle, cost: '', order: mWishlist.length });
-        saveMoneyData();
-        if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
-    } else {
-        generalTodos.push({ id: 'todo_' + Date.now(), title: cleanLine });
-        saveData();
-        if (typeof renderGeneralTodos === 'function') renderGeneralTodos();
-    }
-
-    // Sposta automaticamente la nota nella categoria archivio "Extracted"
-    if (cat !== 'Extracted') {
-        moveNoteCardsToCategory(cat, [storageIdx], 'Extracted');
-        if (typeof showToast === 'function') showToast(`[INBOX + ARCHIVED] Sent to Inbox & moved to "Extracted"`);
-    } else {
-        if (typeof showToast === 'function') showToast(`[NOTES -> INBOX] Added "${cleanLine}"`);
-    }
-}
-
-async function triggerNoteCardAiExtraction(card, cat, storageIdx, btnAi, aiDrawer) {
-    if (typeof extractActionsFromNoteWithGemini !== 'function') return;
-
-    const originalBtnText = btnAi.textContent;
-    btnAi.disabled = true;
-    btnAi.textContent = '[◈ ANALYZING...]';
-    btnAi.style.color = 'var(--accent-gold)';
-    btnAi.style.borderColor = 'var(--accent-gold)';
-
-    try {
-        const extractedCmds = await extractActionsFromNoteWithGemini(card.body);
-        btnAi.disabled = false;
-        btnAi.textContent = originalBtnText;
-        btnAi.style.color = '';
-        btnAi.style.borderColor = '';
-
-        if (extractedCmds === null) return;
-        renderSharedAiStagingDrawer(aiDrawer, extractedCmds, cat, [storageIdx], card.body);
-    } catch (err) {
-        btnAi.disabled = false;
-        btnAi.textContent = originalBtnText;
-        btnAi.style.color = '';
-        btnAi.style.borderColor = '';
-        if (typeof showToast === 'function') showToast(`[AI EXTRACTOR ERROR] ${err.message}`);
-    }
-}
 
 function closeBatchAiDrawer() {
     const drawer = document.getElementById('notes-batch-ai-drawer');
@@ -886,21 +899,8 @@ function closeBatchAiDrawer() {
     }
 }
 
-// 1A. Estrazione multi-cella dal bottone in alto [✦ GENERATE ACTIONS]
 async function triggerBatchAiExtraction() {
-    const checkbox = document.getElementById('notes-mode-checkbox');
-    if (checkbox && !checkbox.checked) {
-        checkbox.checked = true;
-        currentNoteMode = 'browse';
-        refreshNotesView();
-    }
-
-    if (selectedNoteStorageIndices.size === 0) {
-        if (typeof showToast === 'function') {
-            showToast('[SELECT CELLS] Check the boxes on the notes you want to extract actions from!');
-        }
-        return;
-    }
+    if (selectedNoteStorageIndices.size === 0) return;
 
     const cat = document.getElementById('note-category')?.value || 'General';
     const allCards = parseCategoryIntoCards(notesContent[cat] || '');
@@ -914,14 +914,14 @@ async function triggerBatchAiExtraction() {
         .map((idx, n) => `--- NOTE ${n + 1} ---\n${allCards[idx].body}`)
         .join('\n\n');
 
-    const topBtn = document.getElementById('btn-top-generate-actions');
     const batchBtn = document.getElementById('btn-batch-ai');
-    if (topBtn) { topBtn.disabled = true; topBtn.textContent = '[◈ ANALYZING...]'; }
-    if (batchBtn) { batchBtn.disabled = true; batchBtn.textContent = '[◈ ANALYZING...]'; }
+    if (batchBtn) {
+        batchBtn.disabled = true;
+        batchBtn.textContent = '[◈ ANALYZING...]';
+    }
 
     try {
         const extractedCmds = await extractActionsFromNoteWithGemini(combinedText);
-        if (topBtn) topBtn.disabled = false;
         if (batchBtn) batchBtn.disabled = false;
         updateBatchSelectionBarUI();
 
@@ -932,14 +932,12 @@ async function triggerBatchAiExtraction() {
             renderSharedAiStagingDrawer(batchDrawer, extractedCmds, cat, sortedIndices, allCards[sortedIndices[0]].body);
         }
     } catch (err) {
-        if (topBtn) topBtn.disabled = false;
         if (batchBtn) batchBtn.disabled = false;
         updateBatchSelectionBarUI();
         if (typeof showToast === 'function') showToast(`[BATCH AI ERROR] ${err.message}`);
     }
 }
 
-// Staging Area per revisionare i comandi estratti (1 o N celle) e spostare automaticamente le note in "Extracted"
 function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storageIndicesArray, fallbackFirstLineText = '') {
     drawerEl.style.display = 'flex';
     let localCmds = (commandsArray || []).map(c => c.trim()).filter(Boolean);
@@ -951,8 +949,8 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
         topRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;';
         topRow.innerHTML = `
             <span style="font-size:var(--font-xs); color:var(--text-main); font-weight:bold; text-transform:uppercase;">
-                Staging Extracted Actions (${localCmds.length} cmds from ${storageIndicesArray.length} note${storageIndicesArray.length > 1 ? 's' : ''})
-                <span style="color:var(--accent-green); margin-left:6px;">[AUTO-MOVES TO "EXTRACTED" ON SUBMIT]</span>
+                Staging Actions (${localCmds.length} cmds from ${storageIndicesArray.length} note${storageIndicesArray.length > 1 ? 's' : ''})
+                <span style="color:var(--accent-green); margin-left:6px;">[AUTO-MOVES TO "EXTRACTED"]</span>
             </span>
             <button type="button" class="btn btn-sm" id="add-staged-cmd-btn">[+ ADD ACTION]</button>
         `;
@@ -1032,7 +1030,7 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
         btnSubmit.type = 'button';
         btnSubmit.className = 'btn btn-primary btn-sm';
         btnSubmit.disabled = localCmds.length === 0;
-        btnSubmit.textContent = `[SUBMIT ALL & ARCHIVE TO "EXTRACTED"]`;
+        btnSubmit.textContent = `[SUBMIT ALL & ARCHIVE]`;
         btnSubmit.onclick = () => {
             let count = 0;
             localCmds.forEach(cmd => {
@@ -1044,18 +1042,14 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
             drawerEl.style.display = 'none';
             drawerEl.innerHTML = '';
 
-            // 4A. Sposta automaticamente tutte le note elaborate nella categoria "Extracted"
             if (sourceCat !== 'Extracted') {
                 moveNoteCardsToCategory(sourceCat, storageIndicesArray, 'Extracted');
             } else {
-                selectedNoteStorageIndices.clear();
-                const q = (document.getElementById('note-search-input')?.value || '').trim();
-                renderBrowseCards(sourceCat, q);
-                updateBatchSelectionBarUI();
+                clearNoteSelection();
             }
 
             if (typeof showToast === 'function') {
-                showToast(`[EXTRACTED] Executed ${count} action(s) & archived ${storageIndicesArray.length} note(s) to "Extracted"!`);
+                showToast(`[EXTRACTED] Executed ${count} action(s) & archived to "Extracted"!`);
             }
         };
 
@@ -1068,7 +1062,7 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
 }
 
 // ============================================================================
-// SCRITTURA NOTE & GESTIONE CATEGORIE (CON ELIMINAZIONE DEFINITIVA)
+// SCRITTURA NOTE & GESTIONE CATEGORIE
 // ============================================================================
 
 function handleNoteKeyDown(event) {
@@ -1166,7 +1160,6 @@ function quickAddNoteCategory(event) {
     }
 }
 
-// Fix definitivo: elimina sia la categoria da noteCategories sia la chiave da notesContent
 function removeNoteCategory(cat) {
     if (['General', 'Registrazioni', 'Extracted'].includes(cat)) return;
     noteCategories = noteCategories.filter(c => c !== cat);
@@ -1190,6 +1183,7 @@ function openRegistrazioniInBrowseMode() {
     const checkbox = document.getElementById('notes-mode-checkbox');
     if (checkbox) checkbox.checked = true;
     currentNoteMode = 'browse';
+    isNoteSelectMode = false;
     selectedNoteStorageIndices.clear();
     refreshNotesView();
 

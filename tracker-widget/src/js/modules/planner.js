@@ -251,6 +251,12 @@ function renderWeeklyPlanner() {
         grid.innerHTML = '';
 
         const weekStart = getWeekStart(selectedDateStr);
+        const weekEnd = new Date(weekStart);
+        weekEnd.setDate(weekStart.getDate() + 6);
+        const rangeBadge = document.getElementById('planner-week-range-badge');
+        if (rangeBadge) {
+            rangeBadge.textContent = `// ${formatDate(weekStart)} – ${formatDate(weekEnd)}`;
+        }
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
         for (let i = 0; i < 7; i++) {
