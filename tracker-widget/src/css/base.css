@@ -12,7 +12,6 @@
     --accent-red: #ff5555;
     --accent-gold: #b08d43;
 
-    /* Scala Tipografica Unificata (4 livelli base + 1 Hero) */
     --font-xs: 0.72rem;
     --font-sm: 0.82rem;
     --font-md: 0.92rem;
@@ -35,8 +34,8 @@ body.red-mode {
     --accent-gold: #cc2222;
 }
 
-body.red-mode ::-webkit-scrollbar-thumb {
-    background: #440808;
+body.red-mode *:hover::-webkit-scrollbar-thumb {
+    background: #550a0a;
 }
 
 body.red-mode ::-webkit-scrollbar-thumb:hover {
@@ -73,7 +72,6 @@ body.red-mode .current-time-line {
     border-top-color: var(--text-main) !important;
 }
 
-/* Applica il filtro matrice Gelatina Rossa a grafici SVG, pallini colore e blocchi calendario */
 body.red-mode svg,
 body.red-mode .bar,
 body.red-mode .pie-dot,
@@ -100,11 +98,13 @@ body {
     overflow: hidden;
     font-size: 13px;
     letter-spacing: -0.2px;
+    -webkit-font-smoothing: antialiased;
 }
 
+/* Scrollbar ultra-minimali: invisibili a riposo, appaiono solo in hover sul contenitore */
 ::-webkit-scrollbar {
-    width: 5px;
-    height: 5px;
+    width: 4px;
+    height: 4px;
 }
 
 ::-webkit-scrollbar-track {
@@ -112,11 +112,16 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #333333;
+    background: transparent;
+    transition: background 0.15s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+    background: #2e2e2e;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #666666;
+    background: #666666 !important;
 }
 
 h1 {
@@ -143,7 +148,7 @@ h2 {
     cursor: pointer;
     font-size: var(--font-sm);
     text-transform: uppercase;
-    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
 }
 
 .btn:hover {
@@ -190,7 +195,7 @@ h2 {
     cursor: pointer;
     font-size: var(--font-sm);
     padding: 2px 4px;
-    transition: color 0.15s;
+    transition: color 0.12s ease;
 }
 
 .icon-btn:hover {
@@ -221,7 +226,7 @@ h2 {
     color: var(--text-main);
     padding: 9px 12px;
     font-size: var(--font-sm);
-    transition: border-color 0.15s, background 0.15s;
+    transition: border-color 0.12s ease, background 0.12s ease;
 }
 
 .form-control-sm {

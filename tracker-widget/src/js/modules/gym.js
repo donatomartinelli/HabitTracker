@@ -1,25 +1,24 @@
 // --- js/modules/gym.js ---
-// Atomic Module 6: WORKOUT SPLIT (Macro-Celle per Gruppo Muscolare, Sigle Dinamiche es. DBG/PSB, Multi-Orario Routine & Reset Punto di Partenza)
-
-const GYM_SUBMODULES = {
-    split: { id: 'split', name: '1. Schede Split' },
-    routine: { id: 'routine', name: '2. Routine & Orari' }
-};
+// ATOMIC MODULE 6 & SUB-MODULES:
+// - gym_today (#module-gym-today): Allenamento del giorno selezionato o "[ NO TRAINING SCHEDULED FOR THIS DATE ]"
+// - gym_split (#module-gym-split): Panoramica completa delle 2 schede
+// - [⚙] Gym Settings Modal: Gestione Gruppi Muscolari, Assegnazione Esercizi, Routine & Orari
 
 const GYM_REP_SCHEMES = [
-    { label: '4x5-8', sets: 4, isProg: true, minR: 5, maxR: 8, desc: '4 serie · Doppia progressione (5→6→7→8 rep, poi +kg)' },
-    { label: '3x5-8', sets: 3, isProg: true, minR: 5, maxR: 8, desc: '3 serie · Doppia progressione (5→6→7→8 rep, poi +kg)' },
-    { label: '10-8-8', sets: 3, isProg: false, desc: '3 serie piramidali inverse (3 caselle peso)' },
-    { label: '8-8-6', sets: 3, isProg: false, desc: '3 serie (3 caselle peso)' },
-    { label: '12-12-10', sets: 3, isProg: false, desc: '3 serie (3 caselle peso)' },
-    { label: '2x12 + 1xmax - 20%', sets: 3, isProg: false, desc: '2 serie + 1 serie stripping -20% (3 caselle peso manuali)' },
-    { label: '2x12 + 10 parziali', sets: 3, isProg: false, desc: '2 serie + parziali (3 caselle peso)' },
-    { label: '3xMax', sets: 0, isProg: false, desc: 'Corpo libero / BW (0 caselle peso)' }
+    { label: '4x5-8', sets: 4, isProg: true, minR: 5, maxR: 8 },
+    { label: '3x5-8', sets: 3, isProg: true, minR: 5, maxR: 8 },
+    { label: '10-8-8', sets: 3, isProg: false },
+    { label: '8-8-6', sets: 3, isProg: false },
+    { label: '12-12-10', sets: 3, isProg: false },
+    { label: '2x12 + 1xmax - 20%', sets: 3, isProg: false },
+    { label: '2x12 + 10 parziali', sets: 3, isProg: false },
+    { label: '3xMax', sets: 0, isProg: false }
 ];
 
-let isEditingGymPlan = false;
-let isGymSubEditMode = false;
 let pendingReviewDateStr = null;
+let forcedTrainingDates = new Set();
+let activeGymSettingsTab = 'gcfg-split';
+let editingSettingsSplitDay = 1;
 
 function resolveGymSchemeMeta(repStr) {
     const clean = (repStr || '').trim();
@@ -37,23 +36,14 @@ function resolveGymSchemeMeta(repStr) {
         };
     }
 
-    if (clean.toLowerCase().includes('2x12')) {
-        return { label: clean, sets: 3, isProg: false };
-    }
-    if (/^\d+\s*-\s*\d+\s*-\s*\d+/.test(clean)) {
-        return { label: clean, sets: 3, isProg: false };
-    }
-    if (clean.toLowerCase().includes('max') && !clean.toLowerCase().includes('2x12')) {
-        return { label: clean, sets: 0, isProg: false };
-    }
+    if (clean.toLowerCase().includes('2x12')) return { label: clean, sets: 3, isProg: false };
+    if (/^\d+\s*-\s*\d+\s*-\s*\d+/.test(clean)) return { label: clean, sets: 3, isProg: false };
+    if (clean.toLowerCase().includes('max') && !clean.toLowerCase().includes('2x12')) return { label: clean, sets: 0, isProg: false };
     const simpleSets = clean.match(/^(\d+)\s*x/i);
-    if (simpleSets) {
-        return { label: clean, sets: parseInt(simpleSets[1], 10) || 3, isProg: false };
-    }
+    if (simpleSets) return { label: clean, sets: parseInt(simpleSets[1], 10) || 3, isProg: false };
     return { label: clean || '3x10', sets: 3, isProg: false };
 }
 
-// Deduce il gruppo muscolare dal nome dell'esercizio se mancante nei vecchi salvataggi
 function inferMuscleGroupFromName(name, dayNum) {
     const n = (name || '').toLowerCase();
     if (n.includes('panca') || n.includes('croci') || n.includes('chest') || n.includes('pectoral')) return 'Pettorali';
@@ -66,7 +56,6 @@ function inferMuscleGroupFromName(name, dayNum) {
     return dayNum === 1 ? 'Pettorali' : 'Dorsali';
 }
 
-// Restituisce i gruppi muscolari ordinati di una scheda e la sigla dinamica (es. "DBG" per Dorsali, Bicipiti, Gambe)
 function getSplitDayMusclesInfo(dayNum) {
     const list = gymPlan[dayNum] || [];
     const groups = [];
@@ -76,10 +65,9 @@ function getSplitDayMusclesInfo(dayNum) {
     });
 
     if (groups.length === 0) {
-        return { acronym: `S${dayNum}`, fullLabel: `SCHEDA ${dayNum}`, groups: [] };
+        return { acronym: `S${dayNum}`, fullLabel: `SPLIT ${dayNum}`, groups: [] };
     }
 
-    // Calcola la sigla usando le iniziali dei gruppi principali (escludendo Addome se ci sono altri muscoli)
     const mainGroups = groups.filter(g => !g.toLowerCase().startsWith('addom'));
     const acronymSource = mainGroups.length > 0 ? mainGroups : groups;
     const acronym = acronymSource.map(g => g.charAt(0).toUpperCase()).join('');
@@ -88,7 +76,6 @@ function getSplitDayMusclesInfo(dayNum) {
     return { acronym, fullLabel, groups };
 }
 
-// Migrazione automatica struttura esercizi (gruppi muscolari, 3 caselle per 2x12, currentReps) e multi-orario routine
 function migrateExistingGymPlanStructure() {
     let changed = false;
 
@@ -117,7 +104,6 @@ function migrateExistingGymPlanStructure() {
         });
     });
 
-    // Migrazione da singola fascia oraria a timeWindows multiple (es. Lun/Mar/Gio 19:45 + Sab 16:00)
     if (!Array.isArray(gymRoutine.timeWindows) || gymRoutine.timeWindows.length === 0) {
         gymRoutine.timeWindows = [
             { days: [1, 2, 4], start: "19:45", end: "21:15" },
@@ -134,7 +120,24 @@ function isGymRoutineTask(t) {
     return t.id === 't_gym_routine' || t.isGymTask === true || t.title.trim().toLowerCase() === 'palestra';
 }
 
-// Sincronizza tutte le fasce orarie della Routine Palestra con la task "Palestra" su Daily Tasks e Weekly Planner
+// Verifica se in una determinata data è previsto allenamento secondo la Routine Palestra
+function isGymTrainingScheduledOnDate(dateStr) {
+    if (forcedTrainingDates.has(dateStr)) return true;
+    const gymTask = templates.find(t => isGymRoutineTask(t));
+    if (gymTask) {
+        if (logs[dateStr] && logs[dateStr][gymTask.id] && logs[dateStr][gymTask.id].some(Boolean)) {
+            return true;
+        }
+        return isTaskActiveOnDate(gymTask, dateStr);
+    }
+    if (gymRoutine.enabled === false) return false;
+    if (gymStartDate && dateStr < gymStartDate) return false;
+    if (gymEndDate && dateStr > gymEndDate) return false;
+
+    const dayIdx = parseLocalDate(dateStr).getDay();
+    return (gymRoutine.timeWindows || []).some(tw => Array.isArray(tw.days) && tw.days.includes(dayIdx));
+}
+
 function syncGymRoutineTask(showNotification = false) {
     const validWindows = (gymRoutine.timeWindows || []).filter(w => w.start && w.end && Array.isArray(w.days) && w.days.length > 0);
 
@@ -196,11 +199,10 @@ function syncGymRoutineTask(showNotification = false) {
     if (typeof renderTasks === 'function') renderTasks();
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     if (showNotification && typeof showToast === 'function') {
-        showToast('[GYM ROUTINE] Fasce orarie Palestra sincronizzate su Planner e Daily Tasks');
+        showToast('[GYM] Schedule updated');
     }
 }
 
-// Funzione per ristabilire da zero il punto di partenza della Palestra da oggi
 function resetGymStartingPoint(startingSplitNum = 1, clearPreviousOccurrences = true) {
     nextWorkoutDay = startingSplitNum === 2 ? 2 : 1;
     gymStartDate = todayStr;
@@ -227,485 +229,578 @@ function resetGymStartingPoint(startingSplitNum = 1, clearPreviousOccurrences = 
 
     const info = getSplitDayMusclesInfo(nextWorkoutDay);
     if (typeof showToast === 'function') {
-        showToast(`[GYM RESET] Partenza impostata da OGGI (${todayStr}) sulla scheda ${info.acronym}!`);
+        showToast(`[GYM RESET] Starting today on ${info.acronym}`);
     }
 }
 
-// ============================================================================
-// LAYOUT MODULARE INTERNO A #module-gym
-// ============================================================================
-
-function toggleGymSubEditMode() {
-    isGymSubEditMode = !isGymSubEditMode;
-    renderGymDashboard();
-}
-
-function selectOrToggleGymSubModule(subKey, event = null) {
-    if (!GYM_SUBMODULES[subKey]) return;
-    if (!Array.isArray(gymRoutine.activeSubModules)) {
-        gymRoutine.activeSubModules = ['split'];
-    }
-
-    if (isGymSubEditMode || (event && event.shiftKey)) {
-        const idx = gymRoutine.activeSubModules.indexOf(subKey);
-        if (idx !== -1) {
-            if (gymRoutine.activeSubModules.length > 1) {
-                gymRoutine.activeSubModules.splice(idx, 1);
-            }
-        } else {
-            gymRoutine.activeSubModules.push(subKey);
-        }
-    } else {
-        gymRoutine.activeSubModules = [subKey];
-    }
-
-    saveHealthData();
-    renderGymDashboard();
-}
-
-function toggleGymSubSplitDirection() {
-    gymRoutine.subLayoutDir = gymRoutine.subLayoutDir === 'col' ? 'row' : 'col';
-    saveHealthData();
-    renderGymDashboard();
-}
-
-function toggleGymEditMode() {
-    isEditingGymPlan = !isEditingGymPlan;
-    renderGymDashboard();
-}
-
+// Funzione master che aggiorna tutti i sottomoduli Gym
 function renderGymDashboard() {
     migrateExistingGymPlanStructure();
     ensureGymModalsExist();
 
-    const root = document.getElementById('gym-main-root');
+    renderGymAtomToday();
+    renderGymAtomSplit();
+
+    const legacyRoot = document.getElementById('gym-main-root');
+    if (legacyRoot) {
+        renderGymAtomSplit(legacyRoot);
+    }
+}
+
+// Costruisce una card Scheda Allenamento (per Giorno 1 o Giorno 2)
+function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleTodayView = false) {
+    if (!gymPlan[dayNum]) gymPlan[dayNum] = [];
+    const isActive = (dayNum === nextWorkoutDay);
+    const dayInfo = getSplitDayMusclesInfo(dayNum);
+
+    const card = document.createElement('div');
+    card.className = `gym-day-card ${isSingleTodayView || isActive ? 'gym-day-active' : 'gym-day-inactive'}`;
+
+    const header = document.createElement('div');
+    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; gap: 8px; flex-wrap: wrap;';
+
+    const titleWrap = document.createElement('div');
+    titleWrap.style.cursor = 'pointer';
+    titleWrap.onclick = () => {
+        nextWorkoutDay = dayNum;
+        saveHealthData();
+        renderGymDashboard();
+    };
+
+    titleWrap.innerHTML = `
+        <div style="display:flex; align-items:baseline; gap:8px;">
+            <span style="font-size:var(--font-md); font-weight:bold; color:${(isSingleTodayView || isActive) ? 'var(--text-main)' : 'var(--text-dim)'}; letter-spacing:1px;">
+                ${escapeHtml(dayInfo.acronym)}
+            </span>
+            <span style="font-size:var(--font-xs); color:var(--text-dim);">
+                // ${escapeHtml(dayInfo.fullLabel)}
+            </span>
+        </div>
+    `;
+    header.appendChild(titleWrap);
+
+    if (isSingleTodayView || isActive) {
+        const doneBtn = document.createElement('button');
+        doneBtn.className = 'btn btn-primary btn-sm';
+        doneBtn.textContent = `[DONE ${dayInfo.acronym}]`;
+        doneBtn.onclick = () => openGymWorkoutReviewModal(dateStrForCompletion, dayNum);
+        header.appendChild(doneBtn);
+    }
+
+    card.appendChild(header);
+
+    const list = document.createElement('div');
+    list.className = 'gym-ex-list';
+    list.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
+
+    const groupedMap = new Map();
+    gymPlan[dayNum].forEach((ex, exIdx) => {
+        const gName = (ex.group || 'Generale').trim();
+        if (!groupedMap.has(gName)) groupedMap.set(gName, []);
+        groupedMap.get(gName).push({ ex, exIdx });
+    });
+
+    groupedMap.forEach((items, groupName) => {
+        const macroCell = document.createElement('div');
+        macroCell.style.cssText = 'border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;';
+
+        const groupHeader = document.createElement('div');
+        groupHeader.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:4px; margin-bottom:2px;';
+        groupHeader.innerHTML = `
+            <span style="font-size:var(--font-xs); font-weight:bold; color:var(--text-main); text-transform:uppercase; letter-spacing:1px;">
+                // ${escapeHtml(groupName)}
+            </span>
+        `;
+        macroCell.appendChild(groupHeader);
+
+        items.forEach(({ ex, exIdx }) => {
+            const meta = resolveGymSchemeMeta(ex.repStr);
+            const row = document.createElement('div');
+            row.className = 'gym-ex-row';
+
+            const info = document.createElement('div');
+            info.className = 'gym-ex-info';
+            info.style.cursor = 'pointer';
+            info.onclick = () => openExerciseConfigModal(dayNum, exIdx);
+
+            let progBadgeHtml = '';
+            if (meta.isProg) {
+                const curR = ex.currentReps || meta.minR || 5;
+                progBadgeHtml = `<span class="gym-prog-badge" style="display:inline-block; margin-left:6px; padding:1px 5px; border:1px solid var(--text-main); color:var(--text-main); font-weight:bold; font-size:0.65rem;">[${ex.sets}x${curR}]</span>`;
+            }
+
+            info.innerHTML = `
+                <span class="gym-ex-name">${escapeHtml(ex.name)}</span>
+                <span class="gym-ex-reps">${escapeHtml(ex.repStr)}${progBadgeHtml}</span>
+            `;
+
+            const badgeEl = info.querySelector('.gym-prog-badge');
+            if (badgeEl) {
+                badgeEl.onclick = (ev) => {
+                    ev.stopPropagation();
+                    const cur = ex.currentReps || 5;
+                    ex.currentReps = cur >= 8 ? 5 : cur + 1;
+                    saveHealthData();
+                    renderGymDashboard();
+                };
+            }
+
+            const setsCont = document.createElement('div');
+            setsCont.className = 'gym-sets-container';
+
+            if (ex.sets > 0) {
+                for (let i = 0; i < ex.sets; i++) {
+                    const inputId = `gw_${ex.id}_${i}`;
+                    const wInp = document.createElement('input');
+                    wInp.type = 'number';
+                    wInp.step = '0.5';
+                    wInp.className = 'gym-input no-spinners';
+                    wInp.placeholder = 'kg';
+                    wInp.value = savedGymWeights[inputId] || '';
+                    wInp.oninput = () => {
+                        savedGymWeights[inputId] = wInp.value;
+                        saveHealthData();
+                    };
+                    setsCont.appendChild(wInp);
+                }
+            } else {
+                setsCont.innerHTML = `<span style="font-size:var(--font-xs); color:var(--text-dim);">BW</span>`;
+            }
+
+            row.appendChild(info);
+            row.appendChild(setsCont);
+            macroCell.appendChild(row);
+        });
+
+        list.appendChild(macroCell);
+    });
+
+    card.appendChild(list);
+    return card;
+}
+
+// ============================================================================
+// SOTTO-MODULO 1: GYM: TODAY WORKOUT (#module-gym-today) — SINCRONIZZATO CON <- / -> / T
+// ============================================================================
+
+function renderGymAtomToday() {
+    const root = document.getElementById('module-gym-today');
     if (!root) return;
 
-    const activeSubs = (Array.isArray(gymRoutine.activeSubModules) && gymRoutine.activeSubModules.length > 0)
-        ? gymRoutine.activeSubModules.filter(k => GYM_SUBMODULES[k])
-        : ['split'];
+    const info1 = getSplitDayMusclesInfo(1);
+    const info2 = getSplitDayMusclesInfo(2);
+    const activeInfo = nextWorkoutDay === 1 ? info1 : info2;
+    const isScheduled = isGymTrainingScheduledOnDate(selectedDateStr);
 
-    const splitDir = gymRoutine.subLayoutDir || 'row';
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow:hidden; min-height:0;">
+            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+                <div>
+                    <span class="section-label">Gym</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${selectedDateStr} (${escapeHtml(activeInfo.acronym)})</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="gt-sw-1">[${escapeHtml(info1.acronym)}]</button>
+                    <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="gt-sw-2">[${escapeHtml(info2.acronym)}]</button>
+                    <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">[⚙]</button>
+                </div>
+            </div>
+            <div id="gym-today-body" style="flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;"></div>
+        </div>
+    `;
+
+    root.querySelector('#gt-sw-1').onclick = () => {
+        nextWorkoutDay = 1;
+        saveHealthData();
+        renderGymDashboard();
+    };
+    root.querySelector('#gt-sw-2').onclick = () => {
+        nextWorkoutDay = 2;
+        saveHealthData();
+        renderGymDashboard();
+    };
+
+    const body = root.querySelector('#gym-today-body');
+    if (!isScheduled) {
+        body.innerHTML = `
+            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; border:1px dashed var(--border-color); background:rgba(255,255,255,0.01);">
+                <div class="empty-state" style="padding:0;">[ NO TRAINING SCHEDULED FOR THIS DATE ]</div>
+                <button type="button" class="btn btn-sm" id="btn-force-train-today">[TRAIN ANYWAY]</button>
+            </div>
+        `;
+        body.querySelector('#btn-force-train-today').onclick = () => {
+            forcedTrainingDates.add(selectedDateStr);
+            renderGymAtomToday();
+        };
+    } else {
+        body.appendChild(buildGymSplitCardDom(nextWorkoutDay, selectedDateStr, true));
+    }
+}
+
+// ============================================================================
+// SOTTO-MODULO 2: GYM: FULL SPLIT (#module-gym-split)
+// ============================================================================
+
+function renderGymAtomSplit(customContainer = null) {
+    const root = customContainer || document.getElementById('module-gym-split');
+    if (!root) return;
+
     const info1 = getSplitDayMusclesInfo(1);
     const info2 = getSplitDayMusclesInfo(2);
     const activeInfo = nextWorkoutDay === 1 ? info1 : info2;
 
-    root.innerHTML = '';
+    const innerWrap = document.createElement('div');
+    innerWrap.className = customContainer ? '' : 'module-body-padded';
+    innerWrap.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:12px; overflow:hidden; min-height:0; height:100%;';
 
-    // 1. BARRA SUPERIORE CON SELETTORE RAPIDO PUNTO DI PARTENZA & SOTTO-MODULI
-    const topBar = document.createElement('div');
-    topBar.style.cssText = 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; border-bottom:1px solid var(--border-color); padding-bottom:10px; flex-shrink:0;';
-
-    topBar.innerHTML = `
-        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
-            <span class="section-label" style="color:var(--text-main);">Workout Split</span>
-            <div style="display:flex; align-items:center; gap:4px; background:#050505; border:1px solid var(--border-color); padding:2px 4px;">
-                <span style="font-size:0.65rem; color:var(--text-dim); padding:0 4px;">ORA TOCCHEREBBE A:</span>
-                <button type="button" id="btn-switch-split-1" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" style="padding:2px 8px;" title="Imposta ${escapeHtml(info1.acronym)} come scheda attiva adesso">[${escapeHtml(info1.acronym)}]</button>
-                <button type="button" id="btn-switch-split-2" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" style="padding:2px 8px;" title="Imposta ${escapeHtml(info2.acronym)} come scheda attiva adesso">[${escapeHtml(info2.acronym)}]</button>
+    innerWrap.innerHTML = `
+        <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+            <div>
+                <span class="section-label">Gym Split</span>
+                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ACTIVE: ${escapeHtml(activeInfo.acronym)}</span>
             </div>
-            <span style="font-size:var(--font-xs); color:var(--text-dim);">${escapeHtml(activeInfo.fullLabel)}</span>
+            <div style="display:flex; gap:6px; align-items:center;">
+                <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="gs-sw-1">[${escapeHtml(info1.acronym)}]</button>
+                <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="gs-sw-2">[${escapeHtml(info2.acronym)}]</button>
+                <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">[⚙]</button>
+            </div>
         </div>
-        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" id="gym-subnav-bar"></div>
+        <div id="gym-split-cards-row" style="flex:1; display:flex; flex-direction:row; gap:16px; overflow:hidden; min-height:0;"></div>
     `;
 
-    topBar.querySelector('#btn-switch-split-1').onclick = () => {
+    innerWrap.querySelector('#gs-sw-1').onclick = () => {
         nextWorkoutDay = 1;
         saveHealthData();
         renderGymDashboard();
-        if (typeof showToast === 'function') showToast(`[GYM] Scheda attiva impostata su ${info1.acronym}`);
     };
-    topBar.querySelector('#btn-switch-split-2').onclick = () => {
+    innerWrap.querySelector('#gs-sw-2').onclick = () => {
         nextWorkoutDay = 2;
         saveHealthData();
         renderGymDashboard();
-        if (typeof showToast === 'function') showToast(`[GYM] Scheda attiva impostata su ${info2.acronym}`);
     };
 
-    const navBar = topBar.querySelector('#gym-subnav-bar');
-    Object.keys(GYM_SUBMODULES).forEach(key => {
-        const sub = GYM_SUBMODULES[key];
-        const isActive = activeSubs.includes(key);
-        const btn = document.createElement('button');
-        btn.className = `btn btn-sm ${isActive ? 'btn-primary' : ''}`;
-        btn.textContent = `[${isGymSubEditMode ? (isActive ? '✓ ' : '+ ') : ''}${sub.name.toUpperCase()}]`;
-        btn.onclick = (e) => selectOrToggleGymSubModule(key, e);
-        navBar.appendChild(btn);
-    });
+    const row = innerWrap.querySelector('#gym-split-cards-row');
+    row.appendChild(buildGymSplitCardDom(1, selectedDateStr, false));
+    row.appendChild(buildGymSplitCardDom(2, selectedDateStr, false));
 
-    if (activeSubs.includes('split')) {
-        const editSplitBtn = document.createElement('button');
-        editSplitBtn.className = `btn btn-sm ${isEditingGymPlan ? 'btn-primary' : ''}`;
-        editSplitBtn.textContent = isEditingGymPlan ? '[DONE EDIT SPLIT]' : '[EDIT SPLIT]';
-        editSplitBtn.onclick = toggleGymEditMode;
-        navBar.appendChild(editSplitBtn);
-    }
-
-    if (isGymSubEditMode && activeSubs.length > 1) {
-        const dirBtn = document.createElement('button');
-        dirBtn.className = 'btn btn-sm';
-        dirBtn.textContent = splitDir === 'row' ? '[SPLIT: SIDE-BY-SIDE]' : '[SPLIT: STACKED]';
-        dirBtn.onclick = toggleGymSubSplitDirection;
-        navBar.appendChild(dirBtn);
-    }
-
-    const subViewBtn = document.createElement('button');
-    subViewBtn.className = `btn btn-sm ${isGymSubEditMode ? 'btn-primary' : ''}`;
-    subViewBtn.textContent = isGymSubEditMode ? '[DONE SUB-VIEW]' : '[EDIT SUB-VIEW]';
-    subViewBtn.onclick = toggleGymSubEditMode;
-    navBar.appendChild(subViewBtn);
-
-    root.appendChild(topBar);
-
-    // 2. AREA CONTENUTO SOTTO-MODULI
-    const contentWrap = document.createElement('div');
-    contentWrap.style.cssText = `flex:1; display:flex; flex-direction:${splitDir}; gap:14px; min-height:0; overflow:hidden;`;
-
-    activeSubs.forEach(subKey => {
-        const subBox = document.createElement('div');
-        subBox.style.cssText = 'flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; overflow:hidden;';
-        if (subKey === 'split') {
-            renderGymSubSplit(subBox);
-        } else if (subKey === 'routine') {
-            renderGymSubRoutine(subBox);
-        }
-        contentWrap.appendChild(subBox);
-    });
-
-    root.appendChild(contentWrap);
+    root.innerHTML = '';
+    root.appendChild(innerWrap);
 }
 
 // ============================================================================
-// SOTTO-MODULO 1: SCHEDE SPLIT CON MACRO-CELLE PER GRUPPO MUSCOLARE (DBG / PSB)
+// MODALE [⚙] GYM SETTINGS: GESTIONE SCHEDE/MUSCOLI E ROUTINE/ORARI
 // ============================================================================
 
-function renderGymSubSplit(container) {
-    const cardsWrap = document.createElement('div');
-    cardsWrap.style.cssText = 'flex:1; display:flex; flex-direction:row; gap:16px; overflow:hidden; min-height:0;';
+function ensureGymModalsExist() {
+    const root = document.getElementById('modals-root');
+    if (!root) return;
 
-    [1, 2].forEach(dayNum => {
-        if (!gymPlan[dayNum]) gymPlan[dayNum] = [];
-        const isActive = (dayNum === nextWorkoutDay);
-        const dayInfo = getSplitDayMusclesInfo(dayNum);
+    if (!document.getElementById('gymSettingsModal')) {
+        const gsModal = document.createElement('div');
+        gsModal.id = 'gymSettingsModal';
+        gsModal.className = 'modal-overlay';
+        gsModal.onclick = (e) => { if (e.target === gsModal) closeModals(); };
+        gsModal.innerHTML = `
+            <div class="modal-content settings-modal-box">
+                <div class="settings-top-bar">
+                    <h2 style="margin:0; border:none; padding:0;">Gym Settings</h2>
+                    <button type="button" class="btn btn-sm" onclick="closeModals(); renderGymDashboard();">[ESC]</button>
+                </div>
+                <div class="settings-body-split">
+                    <div class="settings-sidebar">
+                        <div>
+                            <button type="button" class="settings-nav-btn gym-cfg-nav active" data-tab="gcfg-split" onclick="switchGymSettingsTab('gcfg-split')">1. Splits &amp; Exercises</button>
+                            <button type="button" class="settings-nav-btn gym-cfg-nav" data-tab="gcfg-routine" onclick="switchGymSettingsTab('gcfg-routine')">2. Routine &amp; Schedule</button>
+                        </div>
+                    </div>
+                    <div id="gcfg-split" class="settings-tab-panel gym-cfg-panel active"></div>
+                    <div id="gcfg-routine" class="settings-tab-panel gym-cfg-panel"></div>
+                </div>
+            </div>
+        `;
+        root.appendChild(gsModal);
+    }
 
-        let cardClass = isActive ? 'gym-day-active' : 'gym-day-inactive';
-        if (isEditingGymPlan) cardClass = 'gym-day-editing';
+    if (!document.getElementById('gymExerciseConfigModal')) {
+        const exModal = document.createElement('div');
+        exModal.id = 'gymExerciseConfigModal';
+        exModal.className = 'modal-overlay';
+        exModal.onclick = (e) => { if (e.target === exModal) closeModals(); };
+        exModal.innerHTML = `
+            <div class="modal-content" style="width: 540px; max-width: 95%;">
+                <h2 id="gym-ex-cfg-title">Exercise</h2>
+                <div id="gym-ex-cfg-body" style="display:flex; flex-direction:column; gap:14px;"></div>
+            </div>
+        `;
+        root.appendChild(exModal);
+    }
 
-        const card = document.createElement('div');
-        card.className = `gym-day-card ${cardClass}`;
+    if (!document.getElementById('gymWorkoutReviewModal')) {
+        const revModal = document.createElement('div');
+        revModal.id = 'gymWorkoutReviewModal';
+        revModal.className = 'modal-overlay';
+        revModal.onclick = (e) => { if (e.target === revModal) closeModals(); };
+        revModal.innerHTML = `
+            <div class="modal-content" style="width: 700px; max-width: 96%; max-height: 88vh; display:flex; flex-direction:column;">
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:12px;">
+                    <h2 id="gym-rev-title" style="margin:0; border:none; padding:0;">Complete Workout</h2>
+                    <button type="button" class="btn btn-sm" onclick="closeModals()">[ESC]</button>
+                </div>
+                <div id="gym-rev-body" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding-right:4px;"></div>
+            </div>
+        `;
+        root.appendChild(revModal);
+    }
+}
 
-        // Intestazione Scheda con Sigla Dinamica (es. DBG // DORSALI · BICIPITI · GAMBE)
-        const header = document.createElement('div');
-        header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; gap: 8px; flex-wrap: wrap;';
+function openGymSettingsModal(defaultTab = 'gcfg-split') {
+    ensureGymModalsExist();
+    closeModals();
+    switchGymSettingsTab(defaultTab);
+    const modal = document.getElementById('gymSettingsModal');
+    if (modal) modal.style.display = 'flex';
+}
 
-        const titleWrap = document.createElement('div');
-        titleWrap.style.cursor = 'pointer';
-        titleWrap.title = 'Clicca per impostare questa scheda come attiva adesso';
-        titleWrap.onclick = () => {
-            nextWorkoutDay = dayNum;
+function switchGymSettingsTab(tabId) {
+    activeGymSettingsTab = tabId;
+    document.querySelectorAll('.gym-cfg-nav').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tabId);
+    });
+    document.querySelectorAll('.gym-cfg-panel').forEach(panel => {
+        panel.classList.toggle('active', panel.id === tabId);
+    });
+    if (tabId === 'gcfg-split') renderGymSettingsSplitTab();
+    else if (tabId === 'gcfg-routine') renderGymSettingsRoutineTab();
+}
+
+// TAB 1 IN GYM SETTINGS: EDITOR DELLE SCHEDE, GRUPPI MUSCOLARI E ASSEGNAZIONE ESERCIZI
+function renderGymSettingsSplitTab() {
+    const container = document.getElementById('gcfg-split');
+    if (!container) return;
+
+    const info1 = getSplitDayMusclesInfo(1);
+    const info2 = getSplitDayMusclesInfo(2);
+    const dayNum = editingSettingsSplitDay;
+    const curList = gymPlan[dayNum] || [];
+
+    const allGroups = [];
+    curList.forEach(ex => {
+        const g = (ex.group || 'Generale').trim();
+        if (!allGroups.includes(g)) allGroups.push(g);
+    });
+
+    container.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-sm ${dayNum === 1 ? 'btn-primary' : ''}" id="gcfg-pick-1">[SPLIT 1 // ${escapeHtml(info1.acronym)}]</button>
+                <button type="button" class="btn btn-sm ${dayNum === 2 ? 'btn-primary' : ''}" id="gcfg-pick-2">[SPLIT 2 // ${escapeHtml(info2.acronym)}]</button>
+            </div>
+            <div style="display:flex; gap:6px;">
+                <input type="text" id="gcfg-new-group-inp" class="form-control form-control-sm" style="width:165px;" placeholder="+ New Muscle Group...">
+                <button type="button" class="btn btn-sm" id="gcfg-add-group-btn">[+ GROUP]</button>
+            </div>
+        </div>
+        <div id="gcfg-groups-list" style="display:flex; flex-direction:column; gap:14px;"></div>
+    `;
+
+    container.querySelector('#gcfg-pick-1').onclick = () => {
+        editingSettingsSplitDay = 1;
+        renderGymSettingsSplitTab();
+    };
+    container.querySelector('#gcfg-pick-2').onclick = () => {
+        editingSettingsSplitDay = 2;
+        renderGymSettingsSplitTab();
+    };
+
+    const newGrpInp = container.querySelector('#gcfg-new-group-inp');
+    const addGrpAction = () => {
+        const val = newGrpInp.value.trim();
+        if (!val) return;
+        gymPlan[dayNum].push({
+            id: `g${dayNum}_${Date.now()}`,
+            group: val,
+            name: 'New Exercise',
+            repStr: '3x5-8',
+            sets: 3,
+            currentReps: 5
+        });
+        saveHealthData();
+        renderGymSettingsSplitTab();
+        renderGymDashboard();
+    };
+    container.querySelector('#gcfg-add-group-btn').onclick = addGrpAction;
+    newGrpInp.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addGrpAction(); } };
+
+    const groupsListEl = container.querySelector('#gcfg-groups-list');
+    allGroups.forEach(groupName => {
+        const groupBox = document.createElement('div');
+        groupBox.className = 'cfg-box';
+        groupBox.style.marginBottom = '0';
+
+        const hdr = document.createElement('div');
+        hdr.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:6px; margin-bottom:8px; gap:8px;';
+        hdr.innerHTML = `
+            <input type="text" class="form-control form-control-sm grp-rename-inp" style="width:180px; font-weight:bold; text-transform:uppercase;" value="${escapeHtml(groupName)}">
+            <button type="button" class="btn btn-sm btn-add-ex-in-grp">[+ EXERCISE IN ${escapeHtml(groupName.toUpperCase())}]</button>
+        `;
+
+        const renInp = hdr.querySelector('.grp-rename-inp');
+        renInp.onchange = () => {
+            const nextG = renInp.value.trim() || groupName;
+            curList.forEach(ex => { if (ex.group === groupName) ex.group = nextG; });
             saveHealthData();
+            renderGymSettingsSplitTab();
             renderGymDashboard();
         };
 
-        titleWrap.innerHTML = `
-            <div style="display:flex; align-items:baseline; gap:8px;">
-                <span style="font-size:var(--font-lg); font-weight:bold; color:${(isActive || isEditingGymPlan) ? 'var(--text-main)' : 'var(--text-dim)'}; letter-spacing:1px;">
-                    ${escapeHtml(dayInfo.acronym)}
-                </span>
-                <span style="font-size:0.68rem; color:${isActive ? 'var(--accent-green)' : 'var(--text-dim)'}; font-weight:bold;">
-                    ${isActive ? '// ACTIVE SPLIT' : '// CLICK TO ACTIVATE'}
-                </span>
-            </div>
-            <div style="font-size:0.65rem; color:var(--text-dim); margin-top:2px; letter-spacing:0.5px;">
-                ${escapeHtml(dayInfo.fullLabel)}
-            </div>
-        `;
-        header.appendChild(titleWrap);
-
-        if (isActive && !isEditingGymPlan) {
-            const doneBtn = document.createElement('button');
-            doneBtn.className = 'btn btn-primary btn-sm';
-            doneBtn.textContent = `[DONE ${dayInfo.acronym}]`;
-            doneBtn.onclick = () => openGymWorkoutReviewModal(todayStr, dayNum);
-            header.appendChild(doneBtn);
-        }
-
-        card.appendChild(header);
-
-        const list = document.createElement('div');
-        list.className = 'gym-ex-list';
-        list.style.cssText = 'display:flex; flex-direction:column; gap:12px;';
-
-        // Raggruppa gli esercizi del giorno in Macro-Celle per Gruppo Muscolare
-        const groupedMap = new Map();
-        gymPlan[dayNum].forEach((ex, exIdx) => {
-            const gName = (ex.group || 'Generale').trim();
-            if (!groupedMap.has(gName)) groupedMap.set(gName, []);
-            groupedMap.get(gName).push({ ex, exIdx });
-        });
-
-        groupedMap.forEach((items, groupName) => {
-            // MACRO-CELLA DEL GRUPPO MUSCOLARE
-            const macroCell = document.createElement('div');
-            macroCell.style.cssText = 'border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;';
-
-            const groupHeader = document.createElement('div');
-            groupHeader.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:4px; margin-bottom:2px;';
-
-            if (isEditingGymPlan) {
-                const grpInp = document.createElement('input');
-                grpInp.type = 'text';
-                grpInp.className = 'gym-edit-input';
-                grpInp.style.cssText = 'font-weight:bold; text-transform:uppercase; width:150px;';
-                grpInp.value = groupName;
-                grpInp.title = 'Rinomina questo Gruppo Muscolare';
-                grpInp.onchange = () => {
-                    const newG = grpInp.value.trim() || 'Gruppo';
-                    items.forEach(item => { item.ex.group = newG; });
-                    saveHealthData();
-                    renderGymDashboard();
-                };
-                groupHeader.appendChild(grpInp);
-
-                const addExInGroupBtn = document.createElement('button');
-                addExInGroupBtn.type = 'button';
-                addExInGroupBtn.className = 'btn btn-sm';
-                addExInGroupBtn.style.padding = '2px 6px';
-                addExInGroupBtn.textContent = `[+ ESERCIZIO IN ${groupName.toUpperCase()}]`;
-                addExInGroupBtn.onclick = () => {
-                    gymPlan[dayNum].push({
-                        id: `g${dayNum}_${Date.now()}`,
-                        group: groupName,
-                        name: 'Nuovo Esercizio',
-                        repStr: '3x5-8',
-                        sets: 3,
-                        currentReps: 5
-                    });
-                    saveHealthData();
-                    renderGymDashboard();
-                    openExerciseConfigModal(dayNum, gymPlan[dayNum].length - 1);
-                };
-                groupHeader.appendChild(addExInGroupBtn);
-            } else {
-                groupHeader.innerHTML = `
-                    <span style="font-size:var(--font-xs); font-weight:bold; color:var(--text-main); text-transform:uppercase; letter-spacing:1px;">
-                        // ${escapeHtml(groupName)}
-                    </span>
-                    <span style="font-size:0.62rem; color:var(--text-dim);">${items.length} EX</span>
-                `;
-            }
-
-            macroCell.appendChild(groupHeader);
-
-            // Esercizi dentro la Macro-Cella
-            items.forEach(({ ex, exIdx }) => {
-                const meta = resolveGymSchemeMeta(ex.repStr);
-                const row = document.createElement('div');
-                row.className = 'gym-ex-row';
-
-                if (isEditingGymPlan) {
-                    const nameInp = document.createElement('input');
-                    nameInp.type = 'text';
-                    nameInp.className = 'gym-edit-input';
-                    nameInp.style.flex = '2';
-                    nameInp.value = ex.name;
-                    nameInp.onchange = () => { ex.name = nameInp.value.trim() || 'Exercise'; saveHealthData(); };
-
-                    const schemeBtn = document.createElement('button');
-                    schemeBtn.type = 'button';
-                    schemeBtn.className = 'btn btn-sm';
-                    schemeBtn.style.cssText = 'min-width: 120px; text-align: center;';
-                    schemeBtn.textContent = `${ex.repStr} (${ex.sets} box)`;
-                    schemeBtn.onclick = () => openExerciseConfigModal(dayNum, exIdx);
-
-                    const delBtn = document.createElement('button');
-                    delBtn.className = 'icon-btn delete';
-                    delBtn.textContent = '[X]';
-                    delBtn.onclick = () => {
-                        gymPlan[dayNum].splice(exIdx, 1);
-                        saveHealthData();
-                        renderGymDashboard();
-                    };
-
-                    row.appendChild(nameInp);
-                    row.appendChild(schemeBtn);
-                    row.appendChild(delBtn);
-                } else {
-                    const info = document.createElement('div');
-                    info.className = 'gym-ex-info';
-                    info.style.cursor = 'pointer';
-                    info.title = 'Clicca per configurare gruppo muscolare, schema ripetizioni o target attuale';
-                    info.onclick = () => openExerciseConfigModal(dayNum, exIdx);
-
-                    let progBadgeHtml = '';
-                    if (meta.isProg) {
-                        const curR = ex.currentReps || meta.minR || 5;
-                        progBadgeHtml = `<span class="gym-prog-badge" style="display:inline-block; margin-left:6px; padding:1px 5px; border:1px solid var(--text-main); color:var(--text-main); font-weight:bold; font-size:0.65rem;" title="Target ripetizioni attuale (Clicca per avanzare 5→6→7→8)">[ORA: ${ex.sets}x${curR}]</span>`;
-                    }
-
-                    info.innerHTML = `
-                        <span class="gym-ex-name">${escapeHtml(ex.name)}</span>
-                        <span class="gym-ex-reps">${escapeHtml(ex.repStr)}${progBadgeHtml}</span>
-                    `;
-
-                    const badgeEl = info.querySelector('.gym-prog-badge');
-                    if (badgeEl) {
-                        badgeEl.onclick = (ev) => {
-                            ev.stopPropagation();
-                            const cur = ex.currentReps || 5;
-                            ex.currentReps = cur >= 8 ? 5 : cur + 1;
-                            saveHealthData();
-                            renderGymDashboard();
-                            if (ex.currentReps === 5 && typeof showToast === 'function') {
-                                showToast(`[PROGRESSIONE ${ex.name}] Completato 8 rep! Riportato a ${ex.sets}x5: aumenta il peso!`);
-                            }
-                        };
-                    }
-
-                    const setsCont = document.createElement('div');
-                    setsCont.className = 'gym-sets-container';
-
-                    if (ex.sets > 0) {
-                        for (let i = 0; i < ex.sets; i++) {
-                            const inputId = `gw_${ex.id}_${i}`;
-                            const wInp = document.createElement('input');
-                            wInp.type = 'number';
-                            wInp.step = '0.5';
-                            wInp.className = 'gym-input no-spinners';
-                            wInp.id = inputId;
-                            wInp.placeholder = 'kg';
-                            wInp.value = savedGymWeights[inputId] || '';
-                            wInp.oninput = () => {
-                                savedGymWeights[inputId] = wInp.value;
-                                saveHealthData();
-                            };
-                            setsCont.appendChild(wInp);
-                        }
-                    } else {
-                        setsCont.innerHTML = `<span style="font-size:var(--font-xs); color:var(--text-dim);">BW</span>`;
-                    }
-
-                    row.appendChild(info);
-                    row.appendChild(setsCont);
-                }
-
-                macroCell.appendChild(row);
+        hdr.querySelector('.btn-add-ex-in-grp').onclick = () => {
+            gymPlan[dayNum].push({
+                id: `g${dayNum}_${Date.now()}`,
+                group: groupName,
+                name: 'New Exercise',
+                repStr: '3x5-8',
+                sets: 3,
+                currentReps: 5
             });
+            saveHealthData();
+            renderGymSettingsSplitTab();
+            renderGymDashboard();
+        };
 
-            list.appendChild(macroCell);
+        groupBox.appendChild(hdr);
+
+        const exRowsCont = document.createElement('div');
+        exRowsCont.style.cssText = 'display:flex; flex-direction:column; gap:6px;';
+
+        curList.forEach((ex, exIdx) => {
+            if ((ex.group || 'Generale').trim() !== groupName) return;
+
+            const row = document.createElement('div');
+            row.style.cssText = 'display:grid; grid-template-columns: 1fr 140px 130px 65px auto; gap:6px; align-items:center;';
+
+            const groupOptionsHtml = allGroups.map(g => `<option value="${escapeHtml(g)}" ${g === groupName ? 'selected' : ''}>${escapeHtml(g)}</option>`).join('') + `<option value="__NEW__">+ New Group...</option>`;
+            const schemeOptionsHtml = GYM_REP_SCHEMES.map(sc => `<option value="${escapeHtml(sc.label)}" ${sc.label.toLowerCase() === (ex.repStr || '').toLowerCase() ? 'selected' : ''}>${escapeHtml(sc.label)}</option>`).join('');
+
+            row.innerHTML = `
+                <input type="text" class="form-control form-control-sm ex-name-inp" value="${escapeHtml(ex.name)}">
+                <select class="form-control form-control-sm ex-grp-sel">${groupOptionsHtml}</select>
+                <select class="form-control form-control-sm ex-scheme-sel">${schemeOptionsHtml}</select>
+                <input type="number" class="form-control form-control-sm no-spinners ex-sets-inp" min="0" max="10" value="${ex.sets ?? 3}" title="Weight boxes">
+                <button type="button" class="icon-btn delete ex-del-btn">[X]</button>
+            `;
+
+            row.querySelector('.ex-name-inp').onchange = (e) => {
+                ex.name = e.target.value.trim() || ex.name;
+                saveHealthData();
+                renderGymDashboard();
+            };
+
+            row.querySelector('.ex-grp-sel').onchange = (e) => {
+                if (e.target.value === '__NEW__') {
+                    const entered = prompt('New Muscle Group Name:');
+                    if (entered && entered.trim()) {
+                        ex.group = entered.trim();
+                    }
+                } else {
+                    ex.group = e.target.value;
+                }
+                saveHealthData();
+                renderGymSettingsSplitTab();
+                renderGymDashboard();
+            };
+
+            row.querySelector('.ex-scheme-sel').onchange = (e) => {
+                ex.repStr = e.target.value;
+                const meta = resolveGymSchemeMeta(ex.repStr);
+                ex.sets = meta.sets;
+                if (meta.isProg && !ex.currentReps) ex.currentReps = 5;
+                saveHealthData();
+                renderGymSettingsSplitTab();
+                renderGymDashboard();
+            };
+
+            row.querySelector('.ex-sets-inp').onchange = (e) => {
+                ex.sets = Math.max(0, Math.min(10, parseInt(e.target.value, 10) || 0));
+                saveHealthData();
+                renderGymDashboard();
+            };
+
+            row.querySelector('.ex-del-btn').onclick = () => {
+                gymPlan[dayNum].splice(exIdx, 1);
+                saveHealthData();
+                renderGymSettingsSplitTab();
+                renderGymDashboard();
+            };
+
+            exRowsCont.appendChild(row);
         });
 
-        card.appendChild(list);
-
-        if (isEditingGymPlan) {
-            const addGroupBtn = document.createElement('button');
-            addGroupBtn.className = 'btn btn-sm';
-            addGroupBtn.style.cssText = 'width: 100%; border-style: dashed; margin-top: 6px;';
-            addGroupBtn.textContent = `+ Nuovo Gruppo Muscolare in ${dayInfo.acronym}`;
-            addGroupBtn.onclick = () => {
-                const gName = prompt('Nome del Gruppo Muscolare (es. Dorsali, Bicipiti, Gambe, Pettorali, Spalle, Tricipiti, Addome):', 'Nuovo Gruppo');
-                if (gName && gName.trim()) {
-                    gymPlan[dayNum].push({
-                        id: `g${dayNum}_${Date.now()}`,
-                        group: gName.trim(),
-                        name: 'Nuovo Esercizio',
-                        repStr: '3x5-8',
-                        sets: 3,
-                        currentReps: 5
-                    });
-                    saveHealthData();
-                    renderGymDashboard();
-                }
-            };
-            card.appendChild(addGroupBtn);
-        }
-
-        cardsWrap.appendChild(card);
+        groupBox.appendChild(exRowsCont);
+        groupsListEl.appendChild(groupBox);
     });
-
-    container.appendChild(cardsWrap);
 }
 
-// ============================================================================
-// SOTTO-MODULO 2: ROUTINE MULTI-ORARIO (ES. LUN/MAR/GIO 19:45 + SAB 16:00) & RESET
-// ============================================================================
+// TAB 2 IN GYM SETTINGS: ROUTINE, FASCE ORARIE E RESET PUNTO DI PARTENZA
+function renderGymSettingsRoutineTab() {
+    const container = document.getElementById('gcfg-routine');
+    if (!container) return;
 
-function renderGymSubRoutine(container) {
-    const dayLabels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+    const dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const dayValues = [1, 2, 3, 4, 5, 6, 0];
     const info1 = getSplitDayMusclesInfo(1);
     const info2 = getSplitDayMusclesInfo(2);
 
-    if (!Array.isArray(gymRoutine.timeWindows) || gymRoutine.timeWindows.length === 0) {
-        gymRoutine.timeWindows = [
-            { days: [1, 2, 4], start: "19:45", end: "21:15" },
-            { days: [6], start: "16:00", end: "17:30" }
-        ];
-    }
-
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto; padding-right:4px;';
-
-    wrap.innerHTML = `
-        <!-- BOX 1: PUNTO DI PARTENZA & RESET STORICO PALESTRA -->
+    container.innerHTML = `
         <div class="cfg-box" style="margin-bottom:0; border-color:var(--border-bright);">
             <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>1. Punto di Partenza &amp; Reset Occorrenze</span>
-                <span style="font-size:0.65rem; color:var(--accent-green);">ACTIVE NOW: ${escapeHtml(nextWorkoutDay === 1 ? info1.acronym : info2.acronym)}</span>
+                <span>1. Starting Split &amp; Reset</span>
+                <span style="font-size:0.65rem; color:var(--accent-green);">ACTIVE: ${escapeHtml(nextWorkoutDay === 1 ? info1.acronym : info2.acronym)}</span>
             </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
-                <div style="font-size:var(--font-xs); color:var(--text-muted);">
-                    Scegli quale scheda impostare come punto di partenza da <strong>OGGI (${todayStr})</strong> cancellando le occorrenze precedenti:
-                </div>
-                <div style="display:flex; gap:8px; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="btn-reset-start-1">
-                        [PARTI OGGI DA ${escapeHtml(info1.acronym)} &amp; PULISCI PASSATO]
-                    </button>
-                    <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="btn-reset-start-2">
-                        [PARTI OGGI DA ${escapeHtml(info2.acronym)} &amp; PULISCI PASSATO]
-                    </button>
-                </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="btn-reset-start-1">
+                    [START TODAY ON ${escapeHtml(info1.acronym)} &amp; CLEAR PAST]
+                </button>
+                <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="btn-reset-start-2">
+                    [START TODAY ON ${escapeHtml(info2.acronym)} &amp; CLEAR PAST]
+                </button>
             </div>
         </div>
 
-        <!-- BOX 2: FASCE ORARIE MULTIPLE (ES. LUN/MAR/GIO 19:45 + SAB 16:00) -->
         <div class="cfg-box" style="margin-bottom:0;">
             <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
-                <span>2. Fasce Orarie Settimanali (Multi-Occorrenza)</span>
+                <span>2. Weekly Schedule Slots</span>
                 <label style="font-size:var(--font-xs); cursor:pointer; display:flex; align-items:center; gap:6px;">
                     <input type="checkbox" id="gym-routine-enabled" ${gymRoutine.enabled !== false ? 'checked' : ''}>
-                    <strong style="color:var(--text-main);">GENERA TASK "PALESTRA" SU PLANNER &amp; TASKS</strong>
+                    <strong style="color:var(--text-main);">SYNC TO PLANNER &amp; TASKS</strong>
                 </label>
             </div>
 
             <div id="gym-tw-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;"></div>
 
             <button type="button" id="btn-add-gym-tw" class="btn btn-sm" style="width:100%; border-style:dashed; margin-bottom:14px;">
-                [+ AGGIUNGI FASCIA ORARIA (ES. SABATO 16:00)]
+                [+ ADD TIME WINDOW]
             </button>
 
             <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; border-top:1px solid var(--border-color); padding-top:12px;">
                 <div class="form-group" style="margin-bottom:0; flex:1; min-width:140px;">
-                    <label>Data Inizio Scheda (Start Date)</label>
+                    <label>Start Date</label>
                     <input type="date" id="gym-start-date" class="form-control form-control-sm" value="${gymStartDate || todayStr}">
                 </div>
                 <div class="form-group" style="margin-bottom:0; flex:1; min-width:140px;">
-                    <label>Data Fine Scheda (End Date Opzionale)</label>
+                    <label>End Date</label>
                     <input type="date" id="gym-end-date" class="form-control form-control-sm" value="${gymEndDate}">
                 </div>
                 <button type="button" id="btn-save-gym-routine" class="btn btn-primary btn-sm" style="height:31px;">
-                    [SALVA ORARI &amp; AGGIORNA TASK PALESTRA]
+                    [SAVE SCHEDULE]
                 </button>
             </div>
         </div>
     `;
 
-    container.appendChild(wrap);
+    container.querySelector('#btn-reset-start-1').onclick = () => resetGymStartingPoint(1, true);
+    container.querySelector('#btn-reset-start-2').onclick = () => resetGymStartingPoint(2, true);
 
-    wrap.querySelector('#btn-reset-start-1').onclick = () => resetGymStartingPoint(1, true);
-    wrap.querySelector('#btn-reset-start-2').onclick = () => resetGymStartingPoint(2, true);
-
-    const twListEl = wrap.querySelector('#gym-tw-list');
+    const twListEl = container.querySelector('#gym-tw-list');
 
     const renderTimeWindowsRows = () => {
         twListEl.innerHTML = '';
@@ -726,14 +821,13 @@ function renderGymSubRoutine(container) {
 
             row.innerHTML = `
                 <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold; margin-right:4px;">SLOT #${idx + 1}:</span>
                     ${daysHtml}
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <input type="time" class="form-control form-control-sm tw-start-inp" style="width:92px;" value="${tw.start || '19:45'}">
                     <span style="color:var(--text-dim);">-</span>
                     <input type="time" class="form-control form-control-sm tw-end-inp" style="width:92px;" value="${tw.end || '21:15'}">
-                    <button type="button" class="icon-btn delete btn-del-tw" title="Rimuovi fascia oraria">[X]</button>
+                    <button type="button" class="icon-btn delete btn-del-tw">[X]</button>
                 </div>
             `;
 
@@ -762,17 +856,17 @@ function renderGymSubRoutine(container) {
         return collected;
     };
 
-    wrap.querySelector('#btn-add-gym-tw').onclick = () => {
+    container.querySelector('#btn-add-gym-tw').onclick = () => {
         gymRoutine.timeWindows = readDomWindowsIntoState();
         gymRoutine.timeWindows.push({ days: [6], start: '16:00', end: '17:30' });
         renderTimeWindowsRows();
     };
 
-    wrap.querySelector('#btn-save-gym-routine').onclick = () => {
-        gymRoutine.enabled = wrap.querySelector('#gym-routine-enabled').checked;
+    container.querySelector('#btn-save-gym-routine').onclick = () => {
+        gymRoutine.enabled = container.querySelector('#gym-routine-enabled').checked;
         gymRoutine.timeWindows = readDomWindowsIntoState();
-        gymStartDate = wrap.querySelector('#gym-start-date').value || todayStr;
-        gymEndDate = wrap.querySelector('#gym-end-date').value || '';
+        gymStartDate = container.querySelector('#gym-start-date').value || todayStr;
+        gymEndDate = container.querySelector('#gym-end-date').value || '';
 
         saveHealthData();
         updateGymDates();
@@ -782,47 +876,8 @@ function renderGymSubRoutine(container) {
 }
 
 // ============================================================================
-// MODALE 1: CONFIGURATORE SINGOLO ESERCIZIO (GRUPPO MUSCOLARE, SCHEMA & REP 5-8)
+// MODALI SINGOLO ESERCIZIO & REVISIONE FINE ALLENAMENTO
 // ============================================================================
-
-function ensureGymModalsExist() {
-    const root = document.getElementById('modals-root');
-    if (!root) return;
-
-    if (!document.getElementById('gymExerciseConfigModal')) {
-        const exModal = document.createElement('div');
-        exModal.id = 'gymExerciseConfigModal';
-        exModal.className = 'modal-overlay';
-        exModal.onclick = (e) => { if (e.target === exModal) closeModals(); };
-        exModal.innerHTML = `
-            <div class="modal-content" style="width: 540px; max-width: 95%;">
-                <h2 id="gym-ex-cfg-title">Configura Esercizio</h2>
-                <div id="gym-ex-cfg-body" style="display:flex; flex-direction:column; gap:14px;"></div>
-            </div>
-        `;
-        root.appendChild(exModal);
-    }
-
-    if (!document.getElementById('gymWorkoutReviewModal')) {
-        const revModal = document.createElement('div');
-        revModal.id = 'gymWorkoutReviewModal';
-        revModal.className = 'modal-overlay';
-        revModal.onclick = (e) => { if (e.target === revModal) closeModals(); };
-        revModal.innerHTML = `
-            <div class="modal-content" style="width: 700px; max-width: 96%; max-height: 88vh; display:flex; flex-direction:column;">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:12px;">
-                    <div>
-                        <h2 id="gym-rev-title" style="margin:0; border:none; padding:0;">Revisione Fine Allenamento</h2>
-                        <span style="font-size:var(--font-xs); color:var(--text-dim);">SCEGLI LA SCHEDA SVOLTA OGGI E CONFERMA O AGGIORNA PESI / RIPETIZIONI</span>
-                    </div>
-                    <button type="button" class="btn btn-sm" onclick="closeModals()">[ESC]</button>
-                </div>
-                <div id="gym-rev-body" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding-right:4px;"></div>
-            </div>
-        `;
-        root.appendChild(revModal);
-    }
-}
 
 function openExerciseConfigModal(dayNum, exIdx) {
     ensureGymModalsExist();
@@ -844,36 +899,31 @@ function openExerciseConfigModal(dayNum, exIdx) {
         body.innerHTML = `
             <div style="display:flex; gap:10px;">
                 <div class="form-group" style="flex:1; margin-bottom:0;">
-                    <label>Gruppo Muscolare (Macro-Cella)</label>
-                    <input type="text" id="cfg-ex-group" class="form-control form-control-sm" value="${escapeHtml(selectedGroup)}" placeholder="es. Dorsali, Bicipiti, Gambe...">
+                    <label>Muscle Group</label>
+                    <input type="text" id="cfg-ex-group" class="form-control form-control-sm" value="${escapeHtml(selectedGroup)}">
                 </div>
                 <div class="form-group" style="flex:2; margin-bottom:0;">
-                    <label>Nome Esercizio</label>
+                    <label>Exercise Name</label>
                     <input type="text" id="cfg-ex-name" class="form-control form-control-sm" value="${escapeHtml(ex.name)}">
                 </div>
             </div>
 
-            <div>
-                <label style="font-size:var(--font-xs); color:var(--text-dim); text-transform:uppercase; display:block; margin-bottom:6px;">
-                    1. Scegli Tipo di Ripetizioni (Genera automaticamente le caselle)
-                </label>
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;" id="cfg-scheme-grid"></div>
-            </div>
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;" id="cfg-scheme-grid"></div>
 
             <div style="display:flex; gap:10px; align-items:flex-end;">
                 <div class="form-group" style="flex:2; margin-bottom:0;">
-                    <label>Stringa Ripetizioni Personalizzata</label>
+                    <label>Custom Rep Scheme</label>
                     <input type="text" id="cfg-ex-repstr" class="form-control form-control-sm" value="${escapeHtml(selectedRepStr)}">
                 </div>
                 <div class="form-group" style="flex:1; margin-bottom:0;">
-                    <label>N° Caselle Peso</label>
+                    <label>Weight Boxes</label>
                     <input type="number" id="cfg-ex-sets" class="form-control form-control-sm no-spinners" min="0" max="10" value="${selectedSets}">
                 </div>
             </div>
 
             <div id="cfg-prog-section" style="display:${curMeta.isProg ? 'block' : 'none'}; padding:10px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.03);">
                 <label style="font-size:var(--font-xs); color:var(--text-main); font-weight:bold; text-transform:uppercase; display:block; margin-bottom:8px;">
-                    2. Progressione ${selectedSets}x5-8 // Ripetizioni Attuali da Eseguire:
+                    Current Target Reps:
                 </label>
                 <div style="display:flex; gap:8px;" id="cfg-prog-btns">
                     ${[5, 6, 7, 8].map(r => `
@@ -884,16 +934,9 @@ function openExerciseConfigModal(dayNum, exIdx) {
                 </div>
             </div>
 
-            <div style="padding:10px; border:1px solid var(--border-color); background:rgba(255,255,255,0.015);">
-                <label style="font-size:var(--font-xs); color:var(--text-dim); text-transform:uppercase; display:block; margin-bottom:8px;">
-                    3. Caselle Peso Attuali (${selectedSets} serie)
-                </label>
-                <div id="cfg-weights-preview" style="display:flex; gap:8px; align-items:center;"></div>
-            </div>
-
             <div class="modal-actions" style="margin-top:6px;">
-                <button type="button" class="btn" onclick="closeModals()">Annulla</button>
-                <button type="button" class="btn btn-primary" id="btn-save-ex-cfg">[SALVA ESERCIZIO]</button>
+                <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                <button type="button" class="btn btn-primary" id="btn-save-ex-cfg">[SAVE]</button>
             </div>
         `;
 
@@ -904,7 +947,7 @@ function openExerciseConfigModal(dayNum, exIdx) {
             b.type = 'button';
             b.className = `btn btn-sm ${isSel ? 'btn-primary' : ''}`;
             b.style.textAlign = 'left';
-            b.innerHTML = `<div style="font-weight:bold;">${escapeHtml(sc.label)}</div><div style="font-size:0.62rem; opacity:0.75;">${sc.sets} caselle</div>`;
+            b.innerHTML = `<div style="font-weight:bold;">${escapeHtml(sc.label)}</div>`;
             b.onclick = () => {
                 selectedGroup = body.querySelector('#cfg-ex-group').value.trim() || selectedGroup;
                 ex.name = body.querySelector('#cfg-ex-name').value.trim() || ex.name;
@@ -940,29 +983,9 @@ function openExerciseConfigModal(dayNum, exIdx) {
             };
         });
 
-        const wCont = body.querySelector('#cfg-weights-preview');
-        if (selectedSets > 0) {
-            for (let i = 0; i < selectedSets; i++) {
-                const wKey = `gw_${ex.id}_${i}`;
-                const inp = document.createElement('input');
-                inp.type = 'number';
-                inp.step = '0.5';
-                inp.className = 'gym-input no-spinners';
-                inp.style.width = '58px';
-                inp.placeholder = `S${i + 1} kg`;
-                inp.value = savedGymWeights[wKey] || '';
-                inp.oninput = () => {
-                    savedGymWeights[wKey] = inp.value;
-                };
-                wCont.appendChild(inp);
-            }
-        } else {
-            wCont.innerHTML = '<span style="font-size:var(--font-xs); color:var(--text-dim);">Corpo Libero (BW — 0 caselle peso)</span>';
-        }
-
         body.querySelector('#btn-save-ex-cfg').onclick = () => {
             ex.group = body.querySelector('#cfg-ex-group').value.trim() || 'Generale';
-            ex.name = body.querySelector('#cfg-ex-name').value.trim() || 'Esercizio';
+            ex.name = body.querySelector('#cfg-ex-name').value.trim() || 'Exercise';
             ex.repStr = body.querySelector('#cfg-ex-repstr').value.trim() || '3x10';
             ex.sets = Math.max(0, Math.min(10, parseInt(body.querySelector('#cfg-ex-sets').value, 10) || 0));
             const finalMeta = resolveGymSchemeMeta(ex.repStr);
@@ -972,7 +995,6 @@ function openExerciseConfigModal(dayNum, exIdx) {
             saveHealthData();
             closeModals();
             renderGymDashboard();
-            if (typeof showToast === 'function') showToast(`[GYM] Aggiornato "${ex.name}" in [${ex.group}]`);
         };
     };
 
@@ -980,10 +1002,6 @@ function openExerciseConfigModal(dayNum, exIdx) {
     closeModals();
     modal.style.display = 'flex';
 }
-
-// ============================================================================
-// MODALE 2: REVISIONE FINE ALLENAMENTO CON SCELTA SCHEDA SVOLTA OGGI
-// ============================================================================
 
 function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nextWorkoutDay) {
     ensureGymModalsExist();
@@ -998,26 +1016,20 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
     const info1 = getSplitDayMusclesInfo(1);
     const info2 = getSplitDayMusclesInfo(2);
     const curInfo = dayNum === 1 ? info1 : info2;
-    const nextInfo = dayNum === 1 ? info2 : info1;
 
     if (titleEl) {
-        titleEl.textContent = `Fine Allenamento // Scheda ${curInfo.acronym} (${pendingReviewDateStr})`;
+        titleEl.textContent = `Complete Workout // ${curInfo.acronym} (${pendingReviewDateStr})`;
     }
 
     body.innerHTML = '';
 
-    // 0. SELETTORE IN TESTA: "QUALE SCHEDA HAI FATTO OGGI?" (Così se eri rimasto su Giorno 2 ma oggi hai fatto Giorno 1, cambi con 1 click!)
     const switchSplitBar = document.createElement('div');
     switchSplitBar.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#080808; border:1px solid var(--border-color); flex-wrap:wrap; gap:8px;';
     switchSplitBar.innerHTML = `
-        <span style="font-size:var(--font-xs); color:var(--text-muted); font-weight:bold;">QUALE SCHEDA HAI SVOLTO OGGI?</span>
+        <span style="font-size:var(--font-xs); color:var(--text-muted); font-weight:bold;">SPLIT COMPLETED:</span>
         <div style="display:flex; gap:6px;">
-            <button type="button" class="btn btn-sm ${dayNum === 1 ? 'btn-primary' : ''}" id="rev-pick-split-1">
-                [HO FATTO ${escapeHtml(info1.acronym)} (${escapeHtml(info1.fullLabel)})]
-            </button>
-            <button type="button" class="btn btn-sm ${dayNum === 2 ? 'btn-primary' : ''}" id="rev-pick-split-2">
-                [HO FATTO ${escapeHtml(info2.acronym)} (${escapeHtml(info2.fullLabel)})]
-            </button>
+            <button type="button" class="btn btn-sm ${dayNum === 1 ? 'btn-primary' : ''}" id="rev-pick-split-1">[${escapeHtml(info1.acronym)}]</button>
+            <button type="button" class="btn btn-sm ${dayNum === 2 ? 'btn-primary' : ''}" id="rev-pick-split-2">[${escapeHtml(info2.acronym)}]</button>
         </div>
     `;
     switchSplitBar.querySelector('#rev-pick-split-1').onclick = () => {
@@ -1032,22 +1044,17 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
     };
     body.appendChild(switchSplitBar);
 
-    // 1. BOTTONE HERO: PESI E RIPETIZIONI INVARIATI
     const unchangedBox = document.createElement('div');
     unchangedBox.style.cssText = 'padding:12px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.03); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;';
     unchangedBox.innerHTML = `
-        <div>
-            <div style="font-size:var(--font-sm); font-weight:bold; color:var(--text-main);">Hai lasciato i pesi e le ripetizioni invariati su ${escapeHtml(curInfo.acronym)}?</div>
-            <div style="font-size:var(--font-xs); color:var(--text-dim);">Spunta la task Palestra di oggi e imposta il prossimo allenamento su <strong>${escapeHtml(nextInfo.acronym)}</strong>.</div>
-        </div>
-        <button type="button" class="btn btn-primary" id="btn-gym-rev-unchanged">[PESI INVARIATI // CONFERMA ${escapeHtml(curInfo.acronym)}]</button>
+        <strong style="font-size:var(--font-sm); color:var(--text-main);">Keep weights &amp; reps unchanged?</strong>
+        <button type="button" class="btn btn-primary" id="btn-gym-rev-unchanged">[CONFIRM ${escapeHtml(curInfo.acronym)}]</button>
     `;
     unchangedBox.querySelector('#btn-gym-rev-unchanged').onclick = () => {
         finalizeGymWorkoutCompletion(dayNum, pendingReviewDateStr);
     };
     body.appendChild(unchangedBox);
 
-    // 2. LISTA ESERCIZI RAGGRUPPATI PER MUSCOLO PER REGISTRARE PROGRESSI
     const exercises = gymPlan[dayNum] || [];
     const exListWrap = document.createElement('div');
     exListWrap.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
@@ -1087,11 +1094,11 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
                 const renderProgCtrl = (bumpedWeightNotice = false) => {
                     const cur = ex.currentReps || 5;
                     progCtrl.innerHTML = `
-                        <button type="button" class="icon-btn btn-rep-minus" title="Riduci ripetizioni">[-]</button>
+                        <button type="button" class="icon-btn btn-rep-minus">[-]</button>
                         <span style="font-size:var(--font-xs); font-weight:bold; color:${bumpedWeightNotice ? 'var(--accent-green)' : 'var(--text-main)'}; min-width:64px; text-align:center;">
-                            ${ex.sets}x${cur} ${bumpedWeightNotice ? '[+KG!]' : ''}
+                            ${ex.sets}x${cur} ${bumpedWeightNotice ? '[+KG]' : ''}
                         </span>
-                        <button type="button" class="btn btn-sm btn-rep-plus" style="padding:2px 6px;" title="Aumenta di +1 ripetizione">[+1 REP]</button>
+                        <button type="button" class="btn btn-sm btn-rep-plus" style="padding:2px 6px;">[+1 REP]</button>
                     `;
                     progCtrl.querySelector('.btn-rep-minus').onclick = () => {
                         ex.currentReps = Math.max(5, (ex.currentReps || 5) - 1);
@@ -1148,8 +1155,8 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
     footer.className = 'modal-actions';
     footer.style.marginTop = '10px';
     footer.innerHTML = `
-        <button type="button" class="btn" onclick="closeModals()">Annulla</button>
-        <button type="button" class="btn btn-primary" id="btn-gym-rev-save">[SALVA PROGRESSI &amp; COMPLETA ${escapeHtml(curInfo.acronym)}]</button>
+        <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+        <button type="button" class="btn btn-primary" id="btn-gym-rev-save">[SAVE &amp; COMPLETE ${escapeHtml(curInfo.acronym)}]</button>
     `;
     footer.querySelector('#btn-gym-rev-save').onclick = () => {
         finalizeGymWorkoutCompletion(dayNum, pendingReviewDateStr);
@@ -1188,7 +1195,7 @@ function finalizeGymWorkoutCompletion(dayNum = nextWorkoutDay, dateStr = todaySt
     if (typeof renderCalendarDaySummary === 'function') renderCalendarDaySummary();
 
     if (typeof showToast === 'function') {
-        showToast(`[GYM] Completata scheda ${completedInfo.acronym} · Prossimo turno: ${nextInfo.acronym}`);
+        showToast(`[GYM] Completed ${completedInfo.acronym} · Next: ${nextInfo.acronym}`);
     }
 }
 
@@ -1213,8 +1220,18 @@ function updateGymDates() {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }
 
+// Sincronizza automaticamente Gym Today quando cambi giorno con <-, ->, T o Calendar
 window.addEventListener('DOMContentLoaded', () => {
     migrateExistingGymPlanStructure();
     syncGymRoutineTask(false);
     renderGymDashboard();
+
+    if (typeof window.selectDate === 'function' && !window.selectDate._gymHooked) {
+        const origSelectDate = window.selectDate;
+        window.selectDate = function(dateStr) {
+            origSelectDate(dateStr);
+            renderGymDashboard();
+        };
+        window.selectDate._gymHooked = true;
+    }
 });
