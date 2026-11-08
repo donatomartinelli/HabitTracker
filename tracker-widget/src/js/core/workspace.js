@@ -1354,8 +1354,20 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================================================
-// TELEMETRIA LIVE PER IL WIDGET HUD & OROLOGIO GLOBALE
+// TACTICAL VERTICAL POD HUD (340x460px) & MULTI-MONITOR PHYSICAL MEMORY (3A1 + 3B1)
 // ============================================================================
+
+let isHudMode = false;
+let isHudTempExpanded = false;
+
+let savedNormalPhysicalSize = null;
+let savedNormalPhysicalPos = null;
+let savedHudPodPhysicalPos = null;
+
+const HUD_POD_WIDTH = 340;
+const HUD_POD_HEIGHT = 460;
+
+let hudPodStagedCommands = [];
 
 function getNextScheduledBlockLabelForToday() {
     const now = getNow();
@@ -1373,7 +1385,7 @@ function getNextScheduledBlockLabelForToday() {
                         const sMins = sh * 60 + (sm || 0);
                         const eMins = eh * 60 + (em || 0);
                         if (eMins >= curMins) {
-                            candidates.push({ startMins: sMins, endMins: eMins, start: tw.start, title: t.title });
+                            candidates.push({ startMins: sMins, endMins: eMins, start: tw.start, end: tw.end, title: t.title });
                         }
                     }
                 });
@@ -1389,8 +1401,20 @@ function getNextScheduledBlockLabelForToday() {
                 const sMins = sh * 60 + (sm || 0);
                 const eMins = eh * 60 + (em || 0);
                 if (eMins >= curMins) {
-                    candidates.push({ startMins: sMins, endMins: eMins, start: b.start, title: b.title });
+                    candidates.push({ startMins: sMins, endMins: eMins, start: b.start, end: b.end, title: b.title });
                 }
+            }
+        });
+    }
+
+    if (typeof specificEvents !== 'undefined') {
+        specificEvents.filter(e => e && e.date === todayStr && e.start && e.end).forEach(ev => {
+            const [sh, sm] = ev.start.split(':').map(Number);
+            const [eh, em] = ev.end.split(':').map(Number);
+            const sMins = sh * 60 + (sm || 0);
+            const eMins = eh * 60 + (em || 0);
+            if (eMins >= curMins) {
+                candidates.push({ startMins: sMins, endMins: eMins, start: ev.start, end: ev.end, title: ev.title });
             }
         });
     }
@@ -1399,32 +1423,216 @@ function getNextScheduledBlockLabelForToday() {
     candidates.sort((a, b) => a.startMins - b.startMins);
     const best = candidates[0];
     const isNow = curMins >= best.startMins && curMins <= best.endMins;
-    return `${isNow ? 'NOW' : best.start} ${best.title.toUpperCase()}`;
+    return `${isNow ? 'NOW' : best.start} // ${best.title.toUpperCase()}`;
 }
 
 function updateHudWidgetStrip() {
-    const strip = document.getElementById('hud-widget-strip');
-    if (!strip) return;
+    renderHudPod();
+}
 
-    const st = typeof getStatsForDate === 'function' ? getStatsForDate(todayStr) : { completed: 0, total: 0 };
-    const nextItem = getNextScheduledBlockLabelForToday();
-    const spendableVal = typeof getMoneyAllocationMetrics === 'function'
-        ? getMoneyAllocationMetrics().spendable
-        : (typeof mBalance !== 'undefined' ? mBalance : 0);
+function renderHudPod() {
+    if (!isHudMode) return;
+    const pod = document.getElementById('hud-tactical-pod');
+    if (!pod) return;
 
-    let html = `<span class="hud-strip-pill">TASKS <strong>${st.completed}/${st.total}</strong></span>`;
-    if (nextItem) {
-        html += `<span class="hud-strip-pill" style="max-width:145px; overflow:hidden; text-overflow:ellipsis;"><strong>${escapeHtml(nextItem)}</strong></span>`;
+    // 1. Focus Controller Box
+    const focusBox = document.getElementById('hud-pod-focus-box');
+    const isFocusRunning = typeof focusPlaylist !== 'undefined' && focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
+
+    if (focusBox) {
+        if (isFocusRunning) {
+            const phase = focusPlaylist[currentPlaylistIndex];
+            const m = Math.floor(Math.abs(timeRemaining) / 60).toString().padStart(2, '0');
+            const s = (Math.abs(timeRemaining) % 60).toString().padStart(2, '0');
+            const pct = totalPhaseTime > 0 ? Math.max(0, Math.min(100, (timeRemaining / totalPhaseTime) * 100)) : 0;
+            const activeColor = phase.type === 'task' ? (phase.color || '#ffffff') : '#888888';
+
+            focusBox.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                    <div style="font-size:1.35rem; font-weight:bold; color:${activeColor}; font-variant-numeric:tabular-nums;">
+                        ${isPomodoroPaused ? '⏸' : '▶'} ${m}:${s}
+                    </div>
+                    <div style="font-size:var(--font-xs); font-weight:bold; color:var(--text-main); max-width:175px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        ${escapeHtml(phase.type === 'task' ? phase.title : 'BREAK')}
+                    </div>
+                </div>
+                <div style="height:4px; width:100%; background:#141414; overflow:hidden;">
+                    <div style="height:100%; width:${pct.toFixed(1)}%; background:${activeColor};"></div>
+                </div>
+                <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
+                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:0.62rem;" onclick="togglePomodoroPause(); renderHudPod();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
+                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:0.62rem;" onclick="skipPomodoroPhase(); renderHudPod();">[SKIP ✓]</button>
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.62rem;" onclick="stopPomodoro(); renderHudPod();">[×]</button>
+                </div>
+            `;
+        } else {
+            focusBox.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold;">FOCUS TIMER // IDLE</span>
+                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:0.62rem;" onclick="openTimerModal()">[▶ PLAYLIST]</button>
+                </div>
+            `;
+        }
     }
-    html += `<span class="hud-strip-pill"><strong style="color:${spendableVal < 0 ? 'var(--accent-red)' : 'var(--accent-green)'};">€${Number(spendableVal || 0).toFixed(0)}</strong></span>`;
 
-    strip.innerHTML = html;
+    // 2. Radar (Now/Next + Spendable Balance)
+    const radarEl = document.getElementById('hud-pod-radar');
+    if (radarEl) {
+        const nextStr = getNextScheduledBlockLabelForToday() || 'NO TIMED BLOCKS LEFT';
+        const spendableVal = typeof getMoneyAllocationMetrics === 'function'
+            ? getMoneyAllocationMetrics().spendable
+            : (typeof mBalance !== 'undefined' ? mBalance : 0);
+
+        radarEl.innerHTML = `
+            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;"><strong>${escapeHtml(nextStr)}</strong></span>
+            <span style="font-weight:bold; color:${spendableVal < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; flex-shrink:0;">€${Number(spendableVal || 0).toFixed(2)}</span>
+        `;
+    }
+
+    // 3. Checklist Task & To-Do di oggi
+    const listEl = document.getElementById('hud-pod-tasks-list');
+    const counterEl = document.getElementById('hud-pod-tasks-counter');
+    if (listEl) {
+        listEl.innerHTML = '';
+        const st = typeof getStatsForDate === 'function' ? getStatsForDate(todayStr) : { completed: 0, total: 0 };
+        if (counterEl) counterEl.textContent = `${st.completed}/${st.total}`;
+
+        const activeToday = (typeof templates !== 'undefined' ? templates : []).filter(t =>
+            t && t.type !== 'medicine' && isTaskActiveOnDate(t, todayStr)
+        );
+
+        const uncompleted = [];
+        const completed = [];
+
+        activeToday.forEach(t => {
+            const inst = t.instances || 1;
+            const curLog = (logs[todayStr] && logs[todayStr][t.id]) || Array(inst).fill(false);
+            if (curLog.every(Boolean)) completed.push({ t, curLog, inst });
+            else uncompleted.push({ t, curLog, inst });
+        });
+
+        const ordered = [...uncompleted, ...completed];
+        if (ordered.length === 0) {
+            listEl.innerHTML = `<div class="empty-state" style="text-align:center;">[ NO TASKS FOR TODAY ]</div>`;
+        } else {
+            ordered.forEach(({ t, curLog, inst }) => {
+                const isAllDone = curLog.every(Boolean);
+                const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, todayStr) : 0;
+
+                const row = document.createElement('div');
+                row.className = 'hud-pod-task-row';
+                row.style.borderLeftColor = t.color || '#ffffff';
+                if (isAllDone) row.style.opacity = '0.4';
+
+                const left = document.createElement('div');
+                left.style.cssText = 'flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
+                left.innerHTML = `
+                    <strong style="color:var(--text-main); ${isAllDone ? 'text-decoration:line-through;' : ''}">${escapeHtml(t.title)}</strong>
+                    <span style="font-size:0.6rem; color:var(--text-dim); margin-left:4px;">${escapeHtml(t.category)}</span>
+                `;
+
+                const right = document.createElement('div');
+                right.style.cssText = 'display:flex; align-items:center; gap:4px; flex-shrink:0;';
+
+                if (!isAllDone && mins > 0) {
+                    const playBtn = document.createElement('button');
+                    playBtn.type = 'button';
+                    playBtn.className = 'icon-btn';
+                    playBtn.style.cssText = 'font-size:0.65rem; padding:1px 4px; color:var(--text-main);';
+                    playBtn.textContent = '▶';
+                    playBtn.title = `Start ${mins}m Focus`;
+                    playBtn.onclick = () => {
+                        if (typeof quickStartTaskFocus === 'function') {
+                            const prevDate = selectedDateStr;
+                            selectedDateStr = todayStr;
+                            quickStartTaskFocus(t.id);
+                            selectedDateStr = prevDate;
+                            renderHudPod();
+                        }
+                    };
+                    right.appendChild(playBtn);
+                }
+
+                for (let i = 0; i < inst; i++) {
+                    const cb = document.createElement('div');
+                    cb.className = `check-box ${curLog[i] ? 'checked' : ''}`;
+                    cb.style.cssText = 'width:13px; height:13px;';
+                    cb.onclick = () => {
+                        const prevDate = selectedDateStr;
+                        selectedDateStr = todayStr;
+                        toggleTask(t.id, i);
+                        selectedDateStr = prevDate;
+                        renderHudPod();
+                    };
+                    right.appendChild(cb);
+                }
+
+                row.appendChild(left);
+                row.appendChild(right);
+                listEl.appendChild(row);
+            });
+        }
+    }
+}
+
+function renderHudPodStaging() {
+    const box = document.getElementById('hud-pod-staging');
+    if (!box) return;
+
+    if (hudPodStagedCommands.length === 0) {
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+    }
+
+    box.style.display = 'flex';
+    box.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.62rem; color:var(--accent-gold); font-weight:bold;">
+            <span>STAGED COMMANDS (${hudPodStagedCommands.length})</span>
+            <div style="display:flex; gap:4px;">
+                <button type="button" class="btn btn-sm" style="padding:1px 5px; font-size:0.6rem;" id="hud-stg-cancel">[ESC]</button>
+                <button type="button" class="btn btn-primary btn-sm" style="padding:1px 6px; font-size:0.6rem;" id="hud-stg-run">[RUN // ENTER]</button>
+            </div>
+        </div>
+        <div id="hud-stg-list" style="display:flex; flex-direction:column; gap:4px;"></div>
+    `;
+
+    const listEl = box.querySelector('#hud-stg-list');
+    hudPodStagedCommands.forEach((cmd, idx) => {
+        const inp = document.createElement('input');
+        inp.type = 'text';
+        inp.className = 'form-control form-control-sm';
+        inp.style.cssText = 'padding:3px 6px; font-size:0.65rem;';
+        inp.value = cmd;
+        inp.oninput = () => { hudPodStagedCommands[idx] = inp.value.trim(); };
+        inp.onkeydown = (e) => {
+            if (e.key === 'Enter') { e.preventDefault(); confirmHudPodStaging(); }
+            else if (e.key === 'Escape') { e.preventDefault(); hudPodStagedCommands = []; renderHudPodStaging(); }
+        };
+        listEl.appendChild(inp);
+    });
+
+    box.querySelector('#hud-stg-cancel').onclick = () => {
+        hudPodStagedCommands = [];
+        renderHudPodStaging();
+    };
+    box.querySelector('#hud-stg-run').onclick = confirmHudPodStaging;
+}
+
+function confirmHudPodStaging() {
+    let count = 0;
+    hudPodStagedCommands.forEach(c => {
+        if (c && executeTerminalCommand(c)) count++;
+    });
+    hudPodStagedCommands = [];
+    renderHudPodStaging();
+    renderHudPod();
+    if (count > 0 && typeof showToast === 'function') {
+        showToast(`[POD EXECUTED] ${count} command(s)`);
+    }
 }
 
 function updateGlobalClock() {
-    const clockEl = document.getElementById('global-clock');
-    if (!clockEl) return;
-
     const now = getNow();
     const currentDayStr = formatDate(now);
 
@@ -1442,9 +1650,15 @@ function updateGlobalClock() {
     const days = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
     const dayName = days[now.getDay()];
     const dayNum = now.getDate().toString().padStart(2, '0');
+    const fullClockText = `${timeStr} // ${dayName} ${dayNum}`;
 
-    clockEl.innerText = `${timeStr} // ${dayName} ${dayNum}`;
-    if (isHudMode) updateHudWidgetStrip();
+    const clockEl = document.getElementById('global-clock');
+    if (clockEl) clockEl.innerText = fullClockText;
+
+    const podClockEl = document.getElementById('hud-pod-clock');
+    if (podClockEl) podClockEl.innerText = fullClockText;
+
+    if (isHudMode) renderHudPod();
 }
 
 setInterval(updateGlobalClock, 1000);
@@ -1452,125 +1666,53 @@ setInterval(updateGlobalClock, 1000);
 window.addEventListener('DOMContentLoaded', () => {
     updateGlobalClock();
     initDashboard();
+
+    const podInput = document.getElementById('hud-pod-input');
+    if (podInput) {
+        podInput.addEventListener('keydown', async (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                hudPodStagedCommands = [];
+                renderHudPodStaging();
+                podInput.value = '';
+                podInput.blur();
+                return;
+            }
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const val = podInput.value.trim();
+                if (!val) {
+                    if (hudPodStagedCommands.length > 0) confirmHudPodStaging();
+                    return;
+                }
+                if (typeof isValidDslCommand === 'function' && isValidDslCommand(val)) {
+                    executeTerminalCommand(val);
+                    podInput.value = '';
+                    renderHudPod();
+                } else if (typeof translateNaturalLanguageToDslWithGemini === 'function') {
+                    podInput.disabled = true;
+                    const oldPh = podInput.placeholder;
+                    podInput.value = '';
+                    podInput.placeholder = '◈ AI translating...';
+                    try {
+                        const cmds = await translateNaturalLanguageToDslWithGemini(val);
+                        if (Array.isArray(cmds) && cmds.length > 0) {
+                            hudPodStagedCommands.push(...cmds);
+                            renderHudPodStaging();
+                        }
+                    } catch (err) {
+                        if (typeof showToast === 'function') showToast(`[AI ERROR] ${err.message}`);
+                    }
+                    podInput.disabled = false;
+                    podInput.placeholder = oldPh;
+                    podInput.focus();
+                }
+            }
+        });
+    }
 });
 
-// ============================================================================
-// SOVRAPPOSIZIONE DIRETTA MODULI (1 O PIÙ SCHEDE IN SOSTITUZIONE DEL LAYOUT)
-// ============================================================================
-
-function resolveModuleKeyFromText(rawText) {
-    const q = (rawText || '').trim().toLowerCase();
-    if (!q) return null;
-    if (dashboardModules[q]) return q;
-
-    const aliasesMap = {
-        'daily tasks': 'tasks',
-        'daily': 'tasks',
-        'task': 'tasks',
-        'note': 'notes',
-        'weekly planner': 'planner',
-        'week': 'planner',
-        'day planner': 'plan',
-        'plan tomorrow': 'plan',
-        'plan': 'plan',
-        'monthly calendar': 'calendar',
-        'cal': 'calendar',
-        'diet & macros': 'diet',
-        'macros': 'diet',
-        'gym split': 'gym',
-        'workout': 'gym',
-        'palestra': 'gym',
-        'today & streak': 'streak',
-        'consistency': 'streak',
-        'university': 'uni',
-        'money summary': 'm_summary',
-        'summary': 'm_summary',
-        'money vaults': 'm_vaults',
-        'vaults': 'm_vaults',
-        'money chart': 'm_chart',
-        'chart': 'm_chart',
-        'money transactions': 'm_tx',
-        'money tx': 'm_tx',
-        'transactions': 'm_tx',
-        'tx': 'm_tx',
-        'money bills': 'm_bills',
-        'bills': 'm_bills',
-        'money analytics': 'm_analytics',
-        'analytics': 'm_analytics',
-        'cats': 'm_analytics',
-        'money incubator': 'm_incubator',
-        'incubator': 'm_incubator',
-        'wishlist': 'm_incubator'
-    };
-    if (aliasesMap[q]) return aliasesMap[q];
-
-    for (const k of ALL_MODULE_KEYS) {
-        const nameLower = dashboardModules[k].name.toLowerCase();
-        if (k.startsWith(q) || nameLower === q || nameLower.startsWith(q)) {
-            return k;
-        }
-    }
-    return null;
-}
-
-function setModulesView(modKeysArray) {
-    const validMods = [];
-    (modKeysArray || []).forEach(k => {
-        const resolved = dashboardModules[k] ? k : resolveModuleKeyFromText(k);
-        if (resolved && !validMods.includes(resolved)) {
-            validMods.push(resolved);
-        }
-    });
-
-    if (validMods.length === 0) return false;
-
-    if (isHudMode) {
-        toggleHudMode(false);
-    }
-
-    const makeNodeForKey = (k) => {
-        if (MACRO_SUBMODULES_MAP[k]) return getMacroDefaultSubtree(k);
-        return makePaneNode(k);
-    };
-
-    const buildBalancedSubtree = (keys, depth = 0) => {
-        if (keys.length === 1) return makeNodeForKey(keys[0]);
-        if (keys.length === 2) {
-            const dir = (depth % 2 === 0) ? 'row' : 'col';
-            const ratio = dir === 'row' ? getOptimalInitialRatio(keys[0], keys[1]) : 0.5;
-            return makeSplitNode(dir, ratio, makeNodeForKey(keys[0]), makeNodeForKey(keys[1]));
-        }
-        const mid = Math.ceil(keys.length / 2);
-        const leftKeys = keys.slice(0, mid);
-        const rightKeys = keys.slice(mid);
-        const dir = (depth % 2 === 0) ? 'row' : 'col';
-        const ratio = leftKeys.length / keys.length;
-        return makeSplitNode(dir, ratio, buildBalancedSubtree(leftKeys, depth + 1), buildBalancedSubtree(rightKeys, depth + 1));
-    };
-
-    layoutTree = buildBalancedSubtree(validMods, 0);
-    renderQuadrantLayout();
-
-    if (typeof showToast === 'function') {
-        const names = validMods.map(k => dashboardModules[k].name).join(' + ');
-        showToast(`[VIEW] ${names}`);
-    }
-    return true;
-}
-
-// ============================================================================
-// MODALITÀ HUD FLOATING WIDGET (780x44px CENTRATO A METÀ SCHERMO + RIPRISTINO POSIZIONE)
-// ============================================================================
-
-let isHudMode = false;
-let isHudTempExpanded = false;
-let savedNormalWindowSize = { width: 1100, height: 620 };
-let savedNormalWindowPos = null;
-
-const HUD_WIDGET_WIDTH = 780;
-const HUD_WIDGET_HEIGHT = 44;
-
-async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, targetX = null, targetY = null) {
+async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, physicalPos = null) {
     try {
         const tauriObj = window.__TAURI__;
         if (!tauriObj || !tauriObj.window) return;
@@ -1579,10 +1721,34 @@ async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, targe
             : null;
         if (!appWin) return;
 
-        if (alwaysOnTop !== null && typeof appWin.setAlwaysOnTop === 'function') {
-            await appWin.setAlwaysOnTop(Boolean(alwaysOnTop));
-        }
+        // 1. Se la finestra è massimizzata o a schermo intero, la sblocca prima di ridimensionare
+        try {
+            if (typeof appWin.isMaximized === 'function' && await appWin.isMaximized()) {
+                await appWin.unmaximize();
+            }
+        } catch (e) {}
 
+        try {
+            if (typeof appWin.isFullscreen === 'function' && await appWin.isFullscreen()) {
+                await appWin.setFullscreen(false);
+            }
+        } catch (e) {}
+
+        // 2. Rimuove eventuali blocchi di dimensione minima (minWidth/minHeight)
+        try {
+            if (typeof appWin.setMinSize === 'function') {
+                await appWin.setMinSize(null);
+            }
+        } catch (e) {}
+
+        // 3. Imposta Always-on-Top
+        try {
+            if (alwaysOnTop !== null && typeof appWin.setAlwaysOnTop === 'function') {
+                await appWin.setAlwaysOnTop(Boolean(alwaysOnTop));
+            }
+        } catch (e) {}
+
+        // 4. Ridimensiona usando LogicalSize o il fallback oggetto nativo Tauri v2
         if (typeof appWin.setSize === 'function') {
             const LogicalSizeCtor = (tauriObj.dpi && tauriObj.dpi.LogicalSize)
                 || (tauriObj.window && tauriObj.window.LogicalSize);
@@ -1593,75 +1759,90 @@ async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, targe
             }
         }
 
-        if (targetX !== null && targetY !== null && typeof appWin.setPosition === 'function') {
-            const LogicalPosCtor = (tauriObj.dpi && tauriObj.dpi.LogicalPosition)
-                || (tauriObj.window && tauriObj.window.LogicalPosition);
-            if (LogicalPosCtor) {
-                await appWin.setPosition(new LogicalPosCtor(Math.round(targetX), Math.round(targetY)));
-            } else {
-                await appWin.setPosition({ type: 'Logical', x: Math.round(targetX), y: Math.round(targetY) });
-            }
+        // 5. Ripristina la posizione fisica sul monitor corretto (solo se disponibile)
+        if (physicalPos && typeof physicalPos.x === 'number' && typeof physicalPos.y === 'number' && typeof appWin.setPosition === 'function') {
+            try {
+                const PhysicalPosCtor = (tauriObj.dpi && tauriObj.dpi.PhysicalPosition)
+                    || (tauriObj.window && tauriObj.window.PhysicalPosition);
+                if (PhysicalPosCtor) {
+                    await appWin.setPosition(new PhysicalPosCtor(Math.round(physicalPos.x), Math.round(physicalPos.y)));
+                } else {
+                    await appWin.setPosition({ type: 'Physical', x: Math.round(physicalPos.x), y: Math.round(physicalPos.y) });
+                }
+            } catch (e) {}
         }
     } catch (err) {
-        console.warn('[HUD MODE] Tauri window geometry warning:', err);
+        console.warn('[HUD MODE] Tauri window resize warning:', err);
     }
-}
-
-function getCenteredHudCoordinates(widgetW) {
-    const screenW = (window.screen && (window.screen.availWidth || window.screen.width)) || 1920;
-    const centeredX = Math.max(0, Math.round((screenW - widgetW) / 2));
-    return { x: centeredX, y: 12 };
 }
 
 async function toggleHudMode(forceState = null) {
     const nextState = forceState !== null ? Boolean(forceState) : !isHudMode;
+    const tauriObj = window.__TAURI__;
+    const appWin = (tauriObj && tauriObj.window && typeof tauriObj.window.getCurrentWindow === 'function')
+        ? tauriObj.window.getCurrentWindow()
+        : null;
 
     if (nextState && !isHudMode) {
-        if (window.innerHeight > 120) {
-            savedNormalWindowSize = {
+        if (window.innerHeight > 200) {
+            savedNormalPhysicalSize = {
                 width: Math.max(600, window.innerWidth || 1100),
                 height: Math.max(400, window.innerHeight || 620)
             };
-            savedNormalWindowPos = {
-                x: typeof window.screenX === 'number' ? window.screenX : 100,
-                y: typeof window.screenY === 'number' ? window.screenY : 80
-            };
+            if (appWin && typeof appWin.outerPosition === 'function') {
+                try {
+                    const pos = await appWin.outerPosition();
+                    if (pos && typeof pos.x === 'number') {
+                        savedNormalPhysicalPos = { x: pos.x, y: pos.y };
+                    }
+                } catch (e) {}
+            }
         }
+
         isHudMode = true;
         isHudTempExpanded = false;
-        updateHudWidgetStrip();
         document.body.classList.add('hud-mode');
         document.body.classList.remove('hud-temp-expanded');
+        renderHudPod();
 
-        const pos = getCenteredHudCoordinates(HUD_WIDGET_WIDTH);
-        await applyTauriWindowGeometry(HUD_WIDGET_WIDTH, HUD_WIDGET_HEIGHT, true, pos.x, pos.y);
+        await applyTauriWindowGeometry(HUD_POD_WIDTH, HUD_POD_HEIGHT, true, savedHudPodPhysicalPos);
     } else if (!nextState && isHudMode) {
+        if (appWin && typeof appWin.outerPosition === 'function') {
+            try {
+                const podPos = await appWin.outerPosition();
+                if (podPos && typeof podPos.x === 'number') {
+                    savedHudPodPhysicalPos = { x: podPos.x, y: podPos.y };
+                }
+            } catch (e) {}
+        }
+
         isHudMode = false;
         isHudTempExpanded = false;
         document.body.classList.remove('hud-mode', 'hud-temp-expanded');
 
-        const restoreX = savedNormalWindowPos ? savedNormalWindowPos.x : null;
-        const restoreY = savedNormalWindowPos ? savedNormalWindowPos.y : null;
-        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, false, restoreX, restoreY);
+        const w = savedNormalPhysicalSize ? savedNormalPhysicalSize.width : 1100;
+        const h = savedNormalPhysicalSize ? savedNormalPhysicalSize.height : 620;
+        await applyTauriWindowGeometry(w, h, false, savedNormalPhysicalPos);
+        renderQuadrantLayout();
     }
 }
 
 async function setHudTemporaryExpansion(shouldExpand) {
     if (!isHudMode) return;
+    const w = savedNormalPhysicalSize ? savedNormalPhysicalSize.width : 1100;
+    const h = savedNormalPhysicalSize ? savedNormalPhysicalSize.height : 620;
+
     if (shouldExpand && !isHudTempExpanded) {
         isHudTempExpanded = true;
         document.body.classList.add('hud-temp-expanded');
-        const pos = getCenteredHudCoordinates(savedNormalWindowSize.width);
-        await applyTauriWindowGeometry(savedNormalWindowSize.width, savedNormalWindowSize.height, true, pos.x, 40);
+        await applyTauriWindowGeometry(w, h, true, savedNormalPhysicalPos);
     } else if (!shouldExpand && isHudTempExpanded) {
         isHudTempExpanded = false;
         document.body.classList.remove('hud-temp-expanded');
-        const pos = getCenteredHudCoordinates(HUD_WIDGET_WIDTH);
-        await applyTauriWindowGeometry(HUD_WIDGET_WIDTH, HUD_WIDGET_HEIGHT, true, pos.x, pos.y);
+        await applyTauriWindowGeometry(HUD_POD_WIDTH, HUD_POD_HEIGHT, true, savedHudPodPhysicalPos);
     }
 }
 
-// Scorciatoie Globali per HUD (H / Alt+H) e Quick-Switcher (V)
 document.addEventListener('keydown', (e) => {
     if (e.altKey && (e.key === 'h' || e.key === 'H')) {
         e.preventDefault();

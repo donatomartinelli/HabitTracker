@@ -1,7 +1,112 @@
 // --- js/core/dsl.js ---
-// Motore DSL 100% Locale: Azioni, University Bridge (uni, esame, tassa, appello), Ispezione Istantanea & Autocompletamento
+// Motore DSL 100% Locale + Riconoscimento Validità per Fallback AI + Event Parser Avanzato (Data, Orario/Durata, Colore)
 
 let isRedMode = localStorage.getItem('tracker_red_mode') === 'true';
+
+const EVENT_COLOR_MAP = {
+    'red': '#b84b4b',
+    'rosso': '#b84b4b',
+    'green': '#5f7a61',
+    'verde': '#5f7a61',
+    'blue': '#4c5b73',
+    'blu': '#4c5b73',
+    'gold': '#b08d43',
+    'yellow': '#b08d43',
+    'giallo': '#b08d43',
+    'oro': '#b08d43',
+    'purple': '#725b7a',
+    'viola': '#725b7a',
+    'white': '#ffffff',
+    'bianco': '#ffffff',
+    'grey': '#6e7073',
+    'gray': '#6e7073',
+    'grigio': '#6e7073'
+};
+
+function resolveEventColorToken(tok) {
+    if (!tok || !tok.startsWith('#')) return null;
+    const clean = tok.slice(1).toLowerCase();
+    if (EVENT_COLOR_MAP[clean]) return EVENT_COLOR_MAP[clean];
+    if (/^[0-9a-f]{6}$/i.test(clean)) return `#${clean}`;
+    return null;
+}
+
+// Parsa la stringa di argomenti del comando `event` estraendo data, start, end (da range o durata) e colore
+function parseEventCommandArgs(restStr) {
+    const tokens = (restStr || '').trim().split(/\s+/).filter(Boolean);
+    let dateStr = selectedDateStr;
+    let startTime = null;
+    let endTime = null;
+    let durationMins = null;
+    let color = '#b84b4b';
+    const titleWords = [];
+
+    for (let i = 0; i < tokens.length; i++) {
+        const tok = tokens[i];
+
+        // 1. Data (@oggi, @domani, @YYYY-MM-DD, YYYY-MM-DD)
+        const maybeDate = resolveDateToken(tok);
+        if (maybeDate && (tok.startsWith('@') || /^\d{4}-\d{2}-\d{2}$/.test(tok))) {
+            dateStr = maybeDate;
+            continue;
+        }
+
+        // 2. Fascia oraria esplicita HH:MM-HH:MM
+        const rangeMatch = tok.match(/^(\d{1,2}:\d{2})-(\d{1,2}:\d{2})$/);
+        if (rangeMatch && !startTime) {
+            const padT = (s) => s.length === 4 ? '0' + s : s;
+            startTime = padT(rangeMatch[1]);
+            endTime = padT(rangeMatch[2]);
+            continue;
+        }
+
+        // 3. Ora singola HH:MM
+        const singleTimeMatch = tok.match(/^(\d{1,2}:\d{2})$/);
+        if (singleTimeMatch && !startTime) {
+            startTime = singleTimeMatch[1].length === 4 ? '0' + singleTimeMatch[1] : singleTimeMatch[1];
+            continue;
+        }
+        if (singleTimeMatch && startTime && !endTime) {
+            endTime = singleTimeMatch[1].length === 4 ? '0' + singleTimeMatch[1] : singleTimeMatch[1];
+            continue;
+        }
+
+        // 4. Durata (es. 90m, 45min, 2h, 1.5h) subito dopo un'ora di inizio
+        const durMatch = tok.match(/^(\d+(?:[.,]\d+)?)(m|min|mins|h|hr|hrs)$/i);
+        if (durMatch && startTime && !endTime) {
+            const val = parseFloat(durMatch[1].replace(',', '.'));
+            const unit = durMatch[2].toLowerCase();
+            durationMins = unit.startsWith('h') ? Math.round(val * 60) : Math.round(val);
+            continue;
+        }
+
+        // 5. Colore (#red, #green, #blue, #gold, #purple, #white, #grey o #hex)
+        const maybeColor = resolveEventColorToken(tok);
+        if (maybeColor) {
+            color = maybeColor;
+            continue;
+        }
+
+        titleWords.push(tok);
+    }
+
+    if (startTime && !endTime) {
+        const [sh, sm] = startTime.split(':').map(Number);
+        const addMins = durationMins && durationMins > 0 ? durationMins : 60; // Default 60m se specificata solo l'ora di inizio
+        const totalEnd = Math.min(23 * 60 + 59, (sh * 60 + (sm || 0)) + addMins);
+        const eh = Math.floor(totalEnd / 60);
+        const em = totalEnd % 60;
+        endTime = `${String(eh).padStart(2, '0')}:${String(em).padStart(2, '0')}`;
+    }
+
+    return {
+        date: dateStr,
+        start: startTime,
+        end: endTime,
+        color: color,
+        title: titleWords.join(' ').trim()
+    };
+}
 
 function applyRedModeUI() {
     document.body.classList.toggle('red-mode', isRedMode);
@@ -58,10 +163,10 @@ function shiftSelectedDate(daysOffset) {
 // ============================================================================
 
 const DSL_COMMAND_SPECS = [
-    { verb: 'hud', syntax: 'hud [on|off]', fill: 'hud', desc: 'Toggle 56px Always-on-Top HUD Top-Bar (Shortcut: Alt+H)' },
-    { verb: 'uni', syntax: 'uni [roadmap|lectures|appeals|libretto|info]', fill: 'uni', desc: 'Summon University module or switch its internal sub-modules' },
-    { verb: 'esame', syntax: 'esame [Nome] [Voto 18-30L] [CFU]', fill: 'esame ', desc: 'Record passed exam in Libretto & archive its study tasks' },
-    { verb: 'tassa', syntax: 'tassa [Importo] [YYYY-MM-DD] [Nome]', fill: 'tassa ', desc: 'Add University tax (Red Calendar event + Tasse Uni category)' },
+    { verb: 'hud', syntax: 'hud [on|off]', fill: 'hud', desc: 'Toggle Tactical HUD Pod (Shortcut: H)' },
+    { verb: 'uni', syntax: 'uni [roadmap|lectures|appeals|libretto|info]', fill: 'uni', desc: 'Summon University module or switch sub-modules' },
+    { verb: 'esame', syntax: 'esame [Nome] [Voto 18-30L] [CFU]', fill: 'esame ', desc: 'Record passed exam in Libretto & archive study tasks' },
+    { verb: 'tassa', syntax: 'tassa [Importo] [YYYY-MM-DD] [Nome]', fill: 'tassa ', desc: 'Add University tax (Red Calendar event + Tasse Uni)' },
     { verb: 'appello', syntax: 'appello [Nome] [YYYY-MM-DD] [HH:MM]', fill: 'appello ', desc: 'Schedule exam appeal date on Calendar & Planner' },
     { verb: 'out', syntax: 'out [€] #[Vault/Cat] [desc]', fill: 'out ', desc: 'Log expense (auto-deducts from matching Vault)' },
     { verb: 'in', syntax: 'in [€] [desc]', fill: 'in ', desc: 'Log income (+€ and trigger % Vault rules)' },
@@ -69,28 +174,124 @@ const DSL_COMMAND_SPECS = [
     { verb: 'done', syntax: 'done [task title]', fill: 'done ', desc: 'Check off completed task for selected date' },
     { verb: 'focus', syntax: 'focus [task/cat]', fill: 'focus ', desc: 'Start Pomodoro timer linked to task' },
     { verb: 'task', syntax: 'task [title] [@oggi|@domani]', fill: 'task ', desc: 'Schedule a flexible task on a date' },
-    { verb: 'todo', syntax: 'todo [text]', fill: 'todo ', desc: 'Add quick item to General To-Do Inbox' },
-    { verb: 'event', syntax: 'event [@date] [title]', fill: 'event @domani ', desc: 'Create calendar event on date' },
+    { verb: 'todo', syntax: 'todo [text]', fill: 'todo ', desc: 'Add quick item to To-Do' },
+    { verb: 'event', syntax: 'event [@date] [HH:MM-HH:MM | HH:MM 90m] [#color] [title]', fill: 'event @domani 15:00-16:00 #red ', desc: 'Create timed/colored event on Calendar & Planner' },
     { verb: 'note', syntax: 'note [Category]: [text]', fill: 'note ', desc: 'Append note to existing or new category' },
     { verb: 'weight', syntax: 'weight [kg] [optional note]', fill: 'weight ', desc: 'Log body weight in kg' },
-    { verb: 'gym', syntax: 'gym [info | done]', fill: 'gym', desc: 'Show active workout split or type "gym done" to complete' },
+    { verb: 'gym', syntax: 'gym [info | done]', fill: 'gym', desc: 'Show active workout split or complete' },
     { verb: 'diet', syntax: 'diet [@oggi | @domani]', fill: 'diet', desc: 'Show instant meal plan & auto-macros summary' },
     { verb: 'today', syntax: 'today', fill: 'today', desc: 'Show instant summary of today\'s tasks & schedule' },
     { verb: 'tomorrow', syntax: 'tomorrow', fill: 'tomorrow', desc: 'Show instant summary of tomorrow\'s tasks & schedule' },
     { verb: 'bal', syntax: 'bal', fill: 'bal', desc: 'Show instant Spendable Balance, Vaults & Cashflow' },
     { verb: 'summon', syntax: 'summon [module]', fill: 'summon ', desc: 'Mount module into workspace tiling layout' },
-    { verb: 'plan', syntax: 'plan', fill: 'plan', desc: 'Open Evening Builder (Plan Tomorrow 1-Day Timeline)' },
+    { verb: 'plan', syntax: 'plan', fill: 'plan', desc: 'Open Day Planner Timeline' },
     { verb: 'ledger', syntax: 'ledger', fill: 'ledger', desc: 'Open Consistency Grid & Real Focus Hours Ledger' },
-    { verb: 'vault', syntax: 'vault', fill: 'vault', desc: 'Open modal to create a new Salvadanaio' },
+    { verb: 'vault', syntax: 'vault', fill: 'vault', desc: 'Open modal to create a new Vault' },
     { verb: 'food', syntax: 'food', fill: 'food', desc: 'Open Nutritional Database (Kcal & Macros/100g)' },
     { verb: 'red', syntax: 'red [on|off]', fill: 'red', desc: 'Toggle Red Gelatin optical filter' },
-    { verb: 'zero', syntax: 'zero', fill: 'zero', desc: 'Switch workspace to Zero-UI Mode (0 quadrants)' },
+    { verb: 'zero', syntax: 'zero', fill: 'zero', desc: 'Switch workspace to Zero-UI Mode' },
     { verb: 'swap', syntax: 'swap', fill: 'swap', desc: 'Swap primary tiling quadrants' },
     { verb: 'goto', syntax: 'goto [@oggi|@domani|YYYY-MM-DD]', fill: 'goto ', desc: 'Jump calendar to target date' },
-    { verb: 'settings', syntax: 'settings', fill: 'settings', desc: 'Open System Settings & Workspace Control' },
+    { verb: 'settings', syntax: 'settings', fill: 'settings', desc: 'Open System Settings' },
     { verb: 'export', syntax: 'export', fill: 'export', desc: 'Download full JSON database backup' },
-    { verb: '?', syntax: '? / help', fill: '?', desc: 'Open full Cortex DSL Manual & Shortcuts' }
+    { verb: '?', syntax: '? / help', fill: '?', desc: 'Open Cortex Manual' }
 ];
+
+// Verifica se una stringa è un comando DSL deterministico valido (altrimenti passa al traduttore AI -> Staging)
+function isValidDslCommand(raw) {
+    const str = (raw || '').trim();
+    if (!str) return false;
+    if (str === '?' || str.toLowerCase() === 'help') return true;
+
+    const lowerStr = str.toLowerCase();
+    if (typeof customAliases !== 'undefined' && customAliases[lowerStr]) return true;
+    if (typeof workspacePresets !== 'undefined' && workspacePresets.some(p => p.name.toLowerCase() === lowerStr)) return true;
+
+    if (str.includes('+')) {
+        const modTokens = str.split('+').map(s => s.trim()).filter(Boolean);
+        const resolved = modTokens.map(m => typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(m) : null);
+        if (resolved.length > 0 && resolved.every(Boolean)) return true;
+    }
+
+    if (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(str) && str.split(/\s+/).length <= 3) {
+        const exactMod = resolveModuleKeyFromText(str);
+        if (exactMod && (dashboardModules[lowerStr] || dashboardModules[exactMod].name.toLowerCase() === lowerStr)) {
+            return true;
+        }
+    }
+
+    const parts = str.split(/\s+/);
+    const cmd = parts[0].toLowerCase();
+    const rest = str.slice(parts[0].length).trim();
+
+    switch (cmd) {
+        case 'hud':
+        case 'uni':
+        case 'diet':
+        case 'gym':
+        case 'today':
+        case 'oggi':
+        case 'tomorrow':
+        case 'domani':
+        case 'schedule':
+        case 'bal':
+        case 'money':
+        case 'balance':
+        case 'red':
+        case 'redmode':
+        case 'zero':
+        case 'plan':
+        case 'ledger':
+        case 'stats':
+        case 'food':
+        case 'macros':
+        case 'vault':
+        case 'sony':
+        case 'audio':
+        case 'workout':
+        case 'swap':
+        case 'settings':
+        case 'cfg':
+        case 'export':
+        case 'backup':
+            return true;
+        case 'esame':
+            return /^(.*?)\s+(\d{2}[lL]?)(?:\s+(\d+))?$/.test(rest);
+        case 'tassa':
+        case 'out':
+        case '-':
+        case 'in':
+        case '+':
+        case 'weight':
+        case 'peso':
+            return /\d/.test(rest);
+        case 'appello':
+            return Boolean(rest && rest.split(/\s+/).some(tok => resolveDateToken(tok)));
+        case 'wish':
+        case 'comprare':
+        case 'todo':
+        case 'task':
+        case 'done':
+        case 'check':
+        case 'note':
+        case 'focus':
+        case 'pomo':
+            return Boolean(rest);
+        case 'event': {
+            const parsedEv = parseEventCommandArgs(rest);
+            return Boolean(parsedEv.title);
+        }
+        case 'summon':
+        case 'view':
+        case 'show':
+        case 'open':
+            return Boolean(dashboardModules[rest.toLowerCase()] || (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(rest)));
+        case 'goto':
+            return Boolean(resolveDateToken(rest));
+        default:
+            return false;
+    }
+}
 
 function getContextualSuggestions(rawInput) {
     const val = (rawInput || '');
@@ -102,7 +303,6 @@ function getContextualSuggestions(rawInput) {
     const activeSeg = segments[segments.length - 1].trimStart();
     if (!activeSeg) return [];
 
-    // Supporto combinazione multi-scheda con "+" o Shift+ArrowUp (es. "notes + daily tasks")
     if (activeSeg.includes('+')) {
         const plusParts = activeSeg.split('+');
         const completedMods = plusParts.slice(0, -1).map(s => s.trim()).filter(Boolean);
@@ -114,7 +314,7 @@ function getContextualSuggestions(rawInput) {
             .filter(k => !completedKeys.includes(k) && (!currentModQuery || k.startsWith(currentModQuery) || dashboardModules[k].name.toLowerCase().includes(currentModQuery)))
             .map(k => ({
                 display: `${completedMods.join(' + ')} + ${dashboardModules[k].name.toLowerCase()}`,
-                desc: `[MULTI-VIEW] Add [${dashboardModules[k].name}] (Shift+↑ to add another · Enter to open)`,
+                desc: `[MULTI-VIEW] Add [${dashboardModules[k].name}]`,
                 fillValue: `${prefixPlus}${k}`,
                 isModuleSuggestion: true,
                 moduleKey: k
@@ -127,12 +327,11 @@ function getContextualSuggestions(rawInput) {
     const rest = activeSeg.slice(parts[0].length).trimStart();
     const fullQueryLower = activeSeg.trim().toLowerCase();
 
-    // Suggerimenti diretti per Moduli anche multi-parola (es. "daily tasks", "weekly planner")
     const matchingDirectModules = Object.keys(dashboardModules)
         .filter(k => k.startsWith(fullQueryLower) || dashboardModules[k].name.toLowerCase().startsWith(fullQueryLower) || dashboardModules[k].name.toLowerCase().includes(fullQueryLower))
         .map(k => ({
             display: `${dashboardModules[k].name.toLowerCase()} (${k})`,
-            desc: `[OPEN VIEW] Replace screen with ${dashboardModules[k].name} (Shift+↑ to combine with another)`,
+            desc: `[OPEN VIEW] ${dashboardModules[k].name}`,
             fillValue: prefixBeforeLast + k,
             isModuleSuggestion: true,
             moduleKey: k
@@ -150,8 +349,8 @@ function getContextualSuggestions(rawInput) {
         const savedPresetMatches = (typeof workspacePresets !== 'undefined' ? workspacePresets : [])
             .filter(p => p.name.toLowerCase().startsWith(cmd))
             .map(p => ({
-                display: `${p.name.toLowerCase()} [SAVED VIEW]`,
-                desc: `Load saved workspace view "${p.name}"`,
+                display: `${p.name.toLowerCase()} [VIEW]`,
+                desc: `Load view "${p.name}"`,
                 fillValue: prefixBeforeLast + p.name.toLowerCase()
             }));
 
@@ -166,26 +365,43 @@ function getContextualSuggestions(rawInput) {
         return [...customAliasMatches, ...savedPresetMatches, ...matchingDirectModules, ...stdMatches].slice(0, 9);
     }
 
-    // Se ha scritto più parole (es. "daily tasks") che matchano il nome di un modulo o di una vista salvata
-    if (matchingDirectModules.length > 0 && !DSL_COMMAND_SPECS.some(s => s.verb === cmd)) {
-        return matchingDirectModules;
+    if (cmd === 'event') {
+        const colorHashMatch = activeSeg.match(/^(.*?\s+)#([a-zA-Z]*)$/);
+        if (colorHashMatch) {
+            const beforeHash = colorHashMatch[1];
+            const cQuery = (colorHashMatch[2] || '').toLowerCase();
+            const colorNames = [
+                { tag: '#red', hex: '#b84b4b', label: 'Red' },
+                { tag: '#green', hex: '#5f7a61', label: 'Green' },
+                { tag: '#blue', hex: '#4c5b73', label: 'Blue' },
+                { tag: '#gold', hex: '#b08d43', label: 'Gold' },
+                { tag: '#purple', hex: '#725b7a', label: 'Purple' },
+                { tag: '#white', hex: '#ffffff', label: 'White' },
+                { tag: '#grey', hex: '#6e7073', label: 'Grey' }
+            ];
+            return colorNames
+                .filter(c => !cQuery || c.tag.slice(1).startsWith(cQuery))
+                .map(c => ({
+                    display: `${c.tag} (${c.label})`,
+                    desc: `Event color ${c.hex}`,
+                    fillValue: `${prefixBeforeLast}${beforeHash}${c.tag} `
+                }));
+        }
     }
 
-    // Autocompletamento per `uni ` -> Sotto-moduli e viste di #module-uni
     if (cmd === 'uni') {
         const subOpts = [
             { display: 'uni', desc: 'Summon University module', fillValue: `${prefixBeforeLast}uni` },
-            { display: 'uni info', desc: 'Instant Career & Exams snapshot in bar', fillValue: `${prefixBeforeLast}uni info` },
-            { display: 'uni roadmap', desc: 'Open Roadmap & Study Phases sub-module', fillValue: `${prefixBeforeLast}uni roadmap` },
-            { display: 'uni lectures', desc: 'Open Orario Lezioni sub-module', fillValue: `${prefixBeforeLast}uni lectures` },
-            { display: 'uni appeals', desc: 'Open Appelli & Tasse sub-module', fillValue: `${prefixBeforeLast}uni appeals` },
-            { display: 'uni libretto', desc: 'Open Libretto (180 CFU) sub-module', fillValue: `${prefixBeforeLast}uni libretto` }
+            { display: 'uni info', desc: 'Instant Career & Exams snapshot', fillValue: `${prefixBeforeLast}uni info` },
+            { display: 'uni roadmap', desc: 'Open Roadmap & Study Phases', fillValue: `${prefixBeforeLast}uni roadmap` },
+            { display: 'uni lectures', desc: 'Open Orario Lezioni', fillValue: `${prefixBeforeLast}uni lectures` },
+            { display: 'uni appeals', desc: 'Open Appelli & Tasse', fillValue: `${prefixBeforeLast}uni appeals` },
+            { display: 'uni libretto', desc: 'Open Libretto (180 CFU)', fillValue: `${prefixBeforeLast}uni libretto` }
         ];
         const q = rest.toLowerCase();
         return subOpts.filter(o => !q || o.display.toLowerCase().includes(q));
     }
 
-    // Autocompletamento per `esame ` o `appello ` -> Pesca dai corsi rimasti in Roadmap
     if (cmd === 'esame' || cmd === 'appello') {
         const q = rest.toLowerCase();
         const remCourses = (typeof uniData !== 'undefined' && uniData.remainingExams) ? uniData.remainingExams : [];
@@ -193,12 +409,11 @@ function getContextualSuggestions(rawInput) {
             .filter(c => !q || c.name.toLowerCase().includes(q))
             .map(c => ({
                 display: cmd === 'esame' ? `esame ${c.name} [Voto] ${c.cfu}` : `appello ${c.name} ${todayStr} 09:00`,
-                desc: `${c.name} (${c.cfu} CFU · Anno ${c.year || 1})`,
+                desc: `${c.name} (${c.cfu} CFU)`,
                 fillValue: `${prefixBeforeLast}${cmd} ${c.name} `
             }));
     }
 
-    // Autocompletamento per `done ` e `focus `
     if (cmd === 'done' || cmd === 'check' || cmd === 'focus' || cmd === 'pomo') {
         const q = rest.toLowerCase();
         const isFocus = (cmd === 'focus' || cmd === 'pomo');
@@ -218,13 +433,12 @@ function getContextualSuggestions(rawInput) {
                 const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, selectedDateStr) : (t.timerMinutes || 0);
                 return {
                     display: `${cmd} ${t.title}`,
-                    desc: `[${t.category}] ${mins > 0 ? mins + 'm · ' : ''}${doneCount}/${t.instances || 1} done`,
+                    desc: `[${t.category}] ${mins > 0 ? mins + 'm · ' : ''}${doneCount}/${t.instances || 1}`,
                     fillValue: `${prefixBeforeLast}${cmd} ${t.title}`
                 };
             });
     }
 
-    // Autocompletamento per `out` / `-` -> Vaults & Categorie (inclusa #Tasse Uni)
     if (cmd === 'out' || cmd === '-') {
         const hashMatch = activeSeg.match(/^(.*?\s+)#([a-zA-Z0-9_À-ÿ]*)$/);
         if (hashMatch) {
@@ -236,7 +450,7 @@ function getContextualSuggestions(rawInput) {
                 if (!tagQuery || v.name.toLowerCase().includes(tagQuery)) {
                     results.push({
                         display: `#${v.name}`,
-                        desc: `VAULT (Balance: €${roundCurrency(v.balance).toFixed(2)})`,
+                        desc: `VAULT (€${roundCurrency(v.balance).toFixed(2)})`,
                         fillValue: `${prefixBeforeLast}${beforeHash}#${v.name} `
                     });
                 }
@@ -247,36 +461,13 @@ function getContextualSuggestions(rawInput) {
                     if (!tagQuery || c.toLowerCase().includes(tagQuery)) {
                         results.push({
                             display: `#${c}`,
-                            desc: `EXPENSE CATEGORY`,
+                            desc: `CATEGORY`,
                             fillValue: `${prefixBeforeLast}${beforeHash}#${c} `
                         });
                     }
                 }
             });
 
-            return results.slice(0, 8);
-        }
-
-        const amtOnlyMatch = rest.match(/^(\d+(?:[.,]\d+)?)\s*$/);
-        if (amtOnlyMatch && activeSeg.endsWith(' ')) {
-            const amtStr = amtOnlyMatch[1];
-            const results = [];
-            mVaults.forEach(v => {
-                results.push({
-                    display: `${cmd} ${amtStr} #${v.name}`,
-                    desc: `Deduct from Vault "${v.name}" (€${roundCurrency(v.balance).toFixed(2)})`,
-                    fillValue: `${prefixBeforeLast}${cmd} ${amtStr} #${v.name} `
-                });
-            });
-            mCategories.slice(0, 6).forEach(c => {
-                if (!mVaults.some(v => v.name.toLowerCase() === c.toLowerCase())) {
-                    results.push({
-                        display: `${cmd} ${amtStr} #${c}`,
-                        desc: `Log in category "${c}"`,
-                        fillValue: `${prefixBeforeLast}${cmd} ${amtStr} #${c} `
-                    });
-                }
-            });
             return results.slice(0, 8);
         }
     }
@@ -294,31 +485,6 @@ function getContextualSuggestions(rawInput) {
                 }));
         }
         return [];
-    }
-
-    if (cmd === 'summon' || cmd === 'view' || cmd === 'show' || cmd === 'open') {
-        const q = rest.toLowerCase();
-        return Object.keys(dashboardModules)
-            .filter(k => !q || k.includes(q) || dashboardModules[k].name.toLowerCase().includes(q))
-            .map(k => ({
-                display: `${cmd} ${k}`,
-                desc: `Mount module [${dashboardModules[k].name}]`,
-                fillValue: `${prefixBeforeLast}${cmd} ${k}`
-            }));
-    }
-
-    if (cmd === 'gym') {
-        return [
-            { display: 'gym', desc: `Inspect active Workout Split (Day ${nextWorkoutDay}) & weights`, fillValue: `${prefixBeforeLast}gym` },
-            { display: 'gym done', desc: `Complete Day ${nextWorkoutDay} workout & advance split`, fillValue: `${prefixBeforeLast}gym done` }
-        ];
-    }
-
-    if (cmd === 'diet') {
-        return [
-            { display: 'diet @oggi', desc: `Show today's meals & macros (${todayStr})`, fillValue: `${prefixBeforeLast}diet @oggi` },
-            { display: 'diet @domani', desc: `Show tomorrow's meals & macros (${tomorrowStr})`, fillValue: `${prefixBeforeLast}diet @domani` }
-        ];
     }
 
     if (cmd === 'task' || cmd === 'event' || cmd === 'goto') {
@@ -345,40 +511,40 @@ function getContextualSuggestions(rawInput) {
 }
 
 // ============================================================================
-// ANTEPRIMA LIVE DEL COMANDO (getCommandPreview)
+// ANTEPRIMA LIVE DEL COMANDO (getCommandPreview) CON PREVIEW AI FALLBACK (1A2)
 // ============================================================================
 
 function getCommandPreview(raw) {
     const str = (raw || '').trim();
-    if (!str) return 'Type a DSL command (? for manual · Shift+Enter to stage)';
+    if (!str) return 'Type DSL command or natural language for AI';
     if (str.includes(';')) {
         const count = str.split(';').map(s => s.trim()).filter(Boolean).length;
-        return `[MULTI-COMMAND] Press Enter to stage ${count} commands into queue`;
+        return `[MULTI-COMMAND] Stage ${count} commands into queue`;
     }
-    if (str === '?' || str.toLowerCase() === 'help') return 'Open Cortex DSL Manual & Shortcuts';
+    if (str === '?' || str.toLowerCase() === 'help') return 'Open Cortex Manual';
+
+    // Se non è un comando DSL riconosciuto, mostra subito il badge di traduzione AI verso Staging (1A2)
+    if (!isValidDslCommand(str)) {
+        return `[✦ AI TRANSLATE -> STAGING] Press [ENTER] to convert natural language into DSL commands`;
+    }
 
     const lowerStr = str.toLowerCase();
 
-    // 1. Check Custom Alias
     if (typeof customAliases !== 'undefined' && customAliases[lowerStr]) {
-        return `[CUSTOM ALIAS "${lowerStr.toUpperCase()}"] Runs: ${customAliases[lowerStr]}`;
+        return `[ALIAS "${lowerStr.toUpperCase()}"] Runs: ${customAliases[lowerStr]}`;
     }
 
-    // 2. Check Saved Workspace Preset diretto
     if (typeof workspacePresets !== 'undefined') {
         const matchedPreset = workspacePresets.find(p => p.name.toLowerCase() === lowerStr);
-        if (matchedPreset) {
-            return `[SAVED VIEW] Replace workspace with preset "${matchedPreset.name}"`;
-        }
+        if (matchedPreset) return `[VIEW] Load "${matchedPreset.name}"`;
     }
 
-    // 3. Check Multi-Modulo ("notes + daily tasks") o Modulo Singolo diretto ("notes", "daily tasks")
-    if (str.includes('+') || (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(str) && lowerStr !== 'uni' && lowerStr !== 'gym' && lowerStr !== 'diet' && lowerStr !== 'money')) {
+    if (str.includes('+') || (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(str) && !['uni', 'gym', 'diet', 'money', 'bal'].includes(lowerStr))) {
         const modParts = str.split('+').map(s => s.trim()).filter(Boolean);
         const resolved = modParts.map(m => typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(m) : null);
         if (resolved.length > 0 && resolved.every(Boolean)) {
             const names = resolved.map(k => dashboardModules[k].name).join(' + ');
-            return `[VIEW REPLACE] Open ${names} (Press Shift+↑ to stack another module)`;
+            return `[VIEW] Open ${names}`;
         }
     }
 
@@ -387,64 +553,59 @@ function getCommandPreview(raw) {
     const rest = str.slice(parts[0].length).trim();
 
     switch (cmd) {
-        case 'hud': return '[WINDOW] Toggle 56px Always-on-Top HUD Bar (Alt+H)';
+        case 'hud': return '[HUD POD] Toggle Tactical HUD Widget (Shortcut: H)';
         case 'uni':
-            if (rest.toLowerCase() === 'info') return `[INSPECT UNI] Show instant Career Averages, CFU & Appeals summary`;
-            return `[UNIVERSITY] Summon #module-uni ${rest ? '(Sub-module: ' + rest.toUpperCase() + ')' : ''}`;
+            if (rest.toLowerCase() === 'info') return `[INSPECT UNI] Career Averages, CFU & Appeals`;
+            return `[UNIVERSITY] Open University ${rest ? '(' + rest.toUpperCase() + ')' : ''}`;
         case 'esame':
-            if (!rest) return 'Syntax: esame [Nome] [Voto 18-30L] [CFU] (e.g. esame Algebra 28 9)';
-            return `[UNI -> LIBRETTO] Record passed exam (${rest}), update averages & archive study tasks`;
+            return `[UNI -> LIBRETTO] Record passed exam (${rest})`;
         case 'tassa':
-            if (!rest) return 'Syntax: tassa [Importo] [YYYY-MM-DD] [Nome] (e.g. tassa 350 2026-11-30 Prima Rata)';
-            return `[UNI -> TAX & CALENDAR] Create Red Deadline Event + log in "Tasse Uni": ${rest}`;
+            return `[UNI -> TAX] Create Red Deadline Event + Tasse Uni: ${rest}`;
         case 'appello':
-            if (!rest) return 'Syntax: appello [Nome] [YYYY-MM-DD] [HH:MM] (e.g. appello Analisi 2026-12-15 09:00)';
-            return `[UNI -> CALENDAR] Schedule exam appeal & countdown: ${rest}`;
+            return `[UNI -> CALENDAR] Schedule exam appeal: ${rest}`;
         case 'diet': {
             const targetDate = resolveDateToken(rest) || selectedDateStr;
-            return `[INSPECT DIET] Show meals & macros for ${targetDate === tomorrowStr ? 'TOMORROW' : targetDate}`;
+            return `[INSPECT DIET] Meals & macros for ${targetDate}`;
         }
         case 'gym':
-            if (rest.toLowerCase() === 'done') {
-                return `[GYM ACTION] Complete active workout (Day ${nextWorkoutDay}) & advance split`;
-            }
-            return `[INSPECT GYM] Show active Workout Split (Day ${nextWorkoutDay}) & last weights`;
+            if (rest.toLowerCase() === 'done') return `[GYM] Complete active workout (Day ${nextWorkoutDay})`;
+            return `[INSPECT GYM] Active Workout Split (Day ${nextWorkoutDay})`;
         case 'today':
         case 'oggi':
-            return `[INSPECT SCHEDULE] Show tasks, schedule & events for TODAY (${todayStr})`;
+            return `[INSPECT] Schedule for TODAY (${todayStr})`;
         case 'tomorrow':
         case 'domani':
         case 'schedule':
-            return `[INSPECT SCHEDULE] Show tasks, schedule & events for TOMORROW (${tomorrowStr})`;
+            return `[INSPECT] Schedule for TOMORROW (${tomorrowStr})`;
         case 'bal':
         case 'money':
         case 'balance':
-            return `[INSPECT MONEY] Show Spendable Balance, Vaults & Monthly Cashflow`;
+            return `[INSPECT MONEY] Spendable Balance, Vaults & Cashflow`;
         case 'red':
         case 'redmode':
-            return `[VISUAL] Toggle Red Gelatin Mode (${rest || 'toggle'})`;
+            return `[VISUAL] Toggle Red Gelatin Mode`;
         case 'zero':
-            return `[WORKSPACE] Switch to Zero-UI Mode (0 quadrants)`;
+            return `[WORKSPACE] Zero-UI Mode`;
         case 'plan':
-            return `[EVENING BUILDER] Open 1-Day Timeline (06:30–24:00) for tomorrow`;
+            return `[DAY PLANNER] Open Day Planner Timeline`;
         case 'ledger':
         case 'stats':
-            return `[FOCUS LEDGER] Summon Consistency Grid & Real Focus Hours breakdown`;
+            return `[LEDGER] Open Consistency & Focus Hours`;
         case 'weight':
         case 'peso': {
             const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
-            if (!m) return 'Syntax: weight [kg] [optional note] (e.g. weight 74.5 morning)';
-            return `[HEALTH] Log Body Weight: ${parseFloat(m[1].replace(',', '.')).toFixed(1)} kg ${m[2] ? '(' + m[2] + ')' : ''}`;
+            if (!m) return 'Syntax: weight [kg] [note]';
+            return `[HEALTH] Log Body Weight: ${parseFloat(m[1].replace(',', '.')).toFixed(1)} kg`;
         }
         case 'food':
         case 'macros':
-            return `[HEALTH] Open Nutritional Database (Kcal & Macros per 100g)`;
+            return `[HEALTH] Open Nutritional Database`;
         case 'vault':
-            return `[MONEY] Open modal to create a new Salvadanaio with monthly renewal day`;
+            return `[MONEY] Open Vault modal`;
         case 'out':
         case '-': {
             const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
-            if (!m) return 'Syntax: out [amount] #[vault/category] [desc] (e.g. out 20 #Amazon Cavo)';
+            if (!m) return 'Syntax: out [amount] #[vault/cat] [desc]';
             const amt = parseFloat(m[1].replace(',', '.'));
             const tail = m[2] || '';
             const catMatch = tail.match(/#([a-zA-Z0-9_À-ÿ]+)/);
@@ -453,75 +614,65 @@ function getCommandPreview(raw) {
             const matchedV = typeof findMatchingVaultForExpense === 'function' ? findMatchingVaultForExpense(cat, cleanDesc || tail) : null;
             if (matchedV) {
                 const proj = roundCurrency((parseFloat(matchedV.balance) || 0) - amt);
-                return `[MONEY -> VAULT ${matchedV.name.toUpperCase()}] Deduct €${amt.toFixed(2)} (Vault becomes €${proj.toFixed(2)})`;
+                return `[VAULT ${matchedV.name.toUpperCase()}] -€${amt.toFixed(2)} (New bal: €${proj.toFixed(2)})`;
             }
-            return `[MONEY] Subtract €${amt.toFixed(2)} [${cat}] — "${cleanDesc || tail || 'Expense'}"`;
+            return `[MONEY] -€${amt.toFixed(2)} [${cat}] — "${cleanDesc || tail || 'Expense'}"`;
         }
         case 'in':
         case '+': {
             const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
-            if (!m) return 'Syntax: in [amount] [desc] (e.g. in 500 borsa)';
-            return `[MONEY] Add +€${parseFloat(m[1].replace(',', '.')).toFixed(2)} — "${m[2] || 'Income'}" (triggers Vault rules)`;
+            if (!m) return 'Syntax: in [amount] [desc]';
+            return `[MONEY] +€${parseFloat(m[1].replace(',', '.')).toFixed(2)} — "${m[2] || 'Income'}"`;
         }
         case 'wish':
-        case 'comprare': {
-            if (!rest) return 'Syntax: wish [item name] [optional cost]';
-            return `[MONEY] Add "${rest}" to Purchase Ideas Incubator`;
-        }
-        case 'todo': {
-            if (!rest) return 'Syntax: todo [task title]';
-            return `[TASKS] Add "${rest}" to General To-Do Inbox`;
-        }
-        case 'task': {
-            if (!rest) return 'Syntax: task [title] [@oggi | @domani | @YYYY-MM-DD]';
+        case 'comprare':
+            return `[INCUBATOR] Add "${rest}"`;
+        case 'todo':
+            return `[TO-DO] Add "${rest}"`;
+        case 'task':
             return `[TASKS] Schedule flexible task: ${rest}`;
-        }
         case 'done':
-        case 'check': {
-            if (!rest) return 'Syntax: done [task title] (checks off matching task today)';
-            return `[TASKS] Check off task matching "${rest}"`;
-        }
+        case 'check':
+            return `[TASKS] Check off "${rest}"`;
         case 'event': {
-            if (!rest) return 'Syntax: event [@date] [title]';
-            return `[CALENDAR] Create single event: ${rest}`;
+            const ev = parseEventCommandArgs(rest);
+            const tSlot = (ev.start && ev.end) ? ` [${ev.start}–${ev.end}]` : '';
+            return `[EVENT ${ev.date}${tSlot}] "${ev.title}" (Color: ${ev.color})`;
         }
-        case 'note': {
-            if (!rest) return 'Syntax: note [Category]: [text]';
+        case 'note':
             return `[NOTES] Append note: ${rest}`;
-        }
         case 'focus':
         case 'pomo': {
-            if (!rest) return 'Syntax: focus [task title or category] (e.g. focus Duolingo)';
             const numMatch = rest.match(/^(\d+)\s+(.+)$/);
             const queryPart = numMatch ? numMatch[2].trim() : rest;
             const matched = typeof findMatchingTaskForFocus === 'function' ? findMatchingTaskForFocus(queryPart) : null;
             if (matched) {
                 const dur = (numMatch ? parseInt(numMatch[1], 10) : null) || getTaskDurationMinutes(matched, selectedDateStr);
-                return `[FOCUS] Start ${dur}m session on "${matched.title}" [${matched.category}]`;
+                return `[FOCUS] Start ${dur}m on "${matched.title}"`;
             }
-            return `[FOCUS] No active timed task matching "${queryPart}"`;
+            return `[FOCUS] Start session on "${queryPart}"`;
         }
         case 'workout':
-            return `[GYM] Complete active workout (Day ${nextWorkoutDay}) and advance`;
+            return `[GYM] Complete workout (Day ${nextWorkoutDay})`;
         case 'summon':
         case 'view':
         case 'show':
         case 'open': {
-            const modKey = rest.toLowerCase();
-            return dashboardModules[modKey] ? `[WORKSPACE] Summon module "${dashboardModules[modKey].name}"` : `[WORKSPACE] Specify: calendar, tasks, notes, planner, diet, gym, money, streak, uni`;
+            const modKey = typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(rest) : rest.toLowerCase();
+            return dashboardModules[modKey] ? `[WORKSPACE] Summon "${dashboardModules[modKey].name}"` : `[WORKSPACE] Unknown module`;
         }
         case 'swap':
-            return `[WORKSPACE] Swap primary tiling quadrants`;
+            return `[WORKSPACE] Swap quadrants`;
         case 'settings':
         case 'cfg':
-            return `[SYSTEM] Open Settings & Workspace Control Panel`;
+            return `[SYSTEM] Open Settings`;
         case 'goto':
-            return `[CALENDAR] Jump to date (${resolveDateToken(rest) || 'specify @oggi, @domani or YYYY-MM-DD'})`;
+            return `[CALENDAR] Jump to ${resolveDateToken(rest) || rest}`;
         case 'export':
         case 'backup':
-            return `[SYSTEM] Export complete JSON backup file`;
+            return `[SYSTEM] Export JSON backup`;
         default:
-            return `Unknown DSL command "${cmd}". Press [?] for full command manual.`;
+            return `[✦ AI TRANSLATE -> STAGING] Press [ENTER] to convert natural language into DSL commands`;
     }
 }
 
@@ -536,7 +687,7 @@ function showInstantInspectionCard(titleHtml, bodyHtml) {
     answerBox.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:var(--font-xs); color:var(--text-dim); margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px; text-transform:uppercase;">
             <span>${titleHtml}</span>
-            <span>[ESC TO CLOSE]</span>
+            <span>[ESC]</span>
         </div>
         <div style="display:flex; flex-direction:column; gap:6px;">${bodyHtml}</div>
     `;
@@ -569,18 +720,16 @@ function renderInstantUniSummary() {
     `;
 
     if (rem.length > 0) {
-        html += `<div style="font-size:var(--font-xs); color:var(--text-dim); margin-top:4px;">ACTIVE COURSES IN ROADMAP:</div>`;
         rem.forEach(c => {
             const hrs = typeof getExamStudiedHours === 'function' ? getExamStudiedHours(c.id, c.name) : 0;
             html += `<div style="display:flex; justify-content:space-between; font-size:var(--font-xs); padding:4px 8px; border:1px solid var(--border-color);">
-                <span><strong>${escapeHtml(c.name)}</strong> (${c.cfu} CFU) — Phase: ${escapeHtml(c.prepPhase.toUpperCase())}</span>
-                <strong>${hrs.toFixed(1)}h studied</strong>
+                <span><strong>${escapeHtml(c.name)}</strong> (${c.cfu} CFU)</span>
+                <strong>${hrs.toFixed(1)}h</strong>
             </div>`;
         });
     }
 
     if (apps.length > 0) {
-        html += `<div style="font-size:var(--font-xs); color:var(--text-dim); margin-top:4px;">UPCOMING APPEALS:</div>`;
         apps.slice(0, 4).forEach(a => {
             html += `<div style="display:flex; justify-content:space-between; font-size:var(--font-xs); padding:4px 8px; border-left:2px solid var(--accent-gold); background:rgba(255,255,255,0.02);">
                 <strong>${escapeHtml(a.examName)}</strong>
@@ -589,7 +738,7 @@ function renderInstantUniSummary() {
         });
     }
 
-    showInstantInspectionCard('UNIVERSITY SNAPSHOT // 180 CFU', html);
+    showInstantInspectionCard('UNIVERSITY // 180 CFU', html);
 }
 
 function renderInstantDietSummary(targetDateStr) {
@@ -611,13 +760,12 @@ function renderInstantDietSummary(targetDateStr) {
 
     rowsHtml += `
         <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.04); font-size:var(--font-xs); margin-top:2px;">
-            <strong style="color:var(--text-main);">ESTIMATED DAILY MACROS</strong>
+            <strong style="color:var(--text-main);">MACROS</strong>
             <span style="color:var(--text-main); font-weight:bold;">${totals.kcal} KCAL &nbsp;|&nbsp; P: ${totals.p}g · C: ${totals.c}g · F: ${totals.f}g</span>
         </div>
-        <div style="font-size:0.68rem; color:var(--text-dim); padding:2px 4px;">${escapeHtml(dietRules)}</div>
     `;
 
-    showInstantInspectionCard(`DIET & MACROS // ${dayNames[dayIdx]} (${targetDateStr})`, rowsHtml);
+    showInstantInspectionCard(`DIET // ${dayNames[dayIdx]} (${targetDateStr})`, rowsHtml);
 }
 
 function renderInstantGymSummary() {
@@ -634,9 +782,9 @@ function renderInstantGymSummary() {
                 const w = savedGymWeights[`gw_${ex.id}_${i}`];
                 if (w) weights.push(`${w}kg`);
             }
-            const weightBadge = weights.length > 0 ? weights.join(' · ') : (ex.sets > 0 ? 'No weights logged' : 'Bodyweight');
+            const weightBadge = weights.length > 0 ? weights.join(' · ') : (ex.sets > 0 ? '—' : 'BW');
             const meta = typeof resolveGymSchemeMeta === 'function' ? resolveGymSchemeMeta(ex.repStr) : { isProg: false };
-            const progTag = meta.isProg ? ` [ORA: ${ex.sets}x${ex.currentReps || 5}]` : '';
+            const progTag = meta.isProg ? ` [${ex.sets}x${ex.currentReps || 5}]` : '';
 
             rowsHtml += `
                 <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); font-size:var(--font-xs);">
@@ -650,8 +798,7 @@ function renderInstantGymSummary() {
         });
     }
 
-    rowsHtml += `<div style="font-size:0.68rem; color:var(--text-dim); margin-top:2px;">Type <strong style="color:var(--text-main);">gym done</strong> to review weights/reps &amp; complete Day ${activeDay}.</div>`;
-    showInstantInspectionCard(`ACTIVE WORKOUT SPLIT // DAY ${activeDay}`, rowsHtml);
+    showInstantInspectionCard(`WORKOUT SPLIT // DAY ${activeDay}`, rowsHtml);
 }
 
 function renderInstantScheduleSummary(targetDateStr) {
@@ -690,7 +837,6 @@ function renderInstantScheduleSummary(targetDateStr) {
                     <div>
                         <span style="color:var(--text-dim); margin-right:6px;">[${escapeHtml(schedStr)}]</span>
                         <strong style="color:var(--text-main);">${escapeHtml(t.title)}</strong>
-                        <span style="color:var(--text-dim); margin-left:6px;">(${escapeHtml(t.category)})</span>
                     </div>
                     <span style="color:${isAllDone ? 'var(--accent-green)' : 'var(--text-muted)'}; font-weight:bold;">[${doneCount}/${totalCount}]</span>
                 </div>
@@ -698,7 +844,7 @@ function renderInstantScheduleSummary(targetDateStr) {
         });
     }
 
-    showInstantInspectionCard(`SCHEDULE OVERVIEW // ${targetDateStr}`, html);
+    showInstantInspectionCard(`SCHEDULE // ${targetDateStr}`, html);
 }
 
 function renderInstantMoneySummary() {
@@ -709,31 +855,22 @@ function renderInstantMoneySummary() {
     let html = `
         <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:var(--font-xs);">
             <div style="padding:8px 10px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.03);">
-                <div style="color:var(--text-dim);">SPENDABLE (FREE)</div>
+                <div style="color:var(--text-dim);">SPENDABLE</div>
                 <div style="font-size:var(--font-lg); font-weight:bold; color:${metrics.spendable < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; margin-top:2px;">€${metrics.spendable.toFixed(2)}</div>
             </div>
             <div style="padding:8px 10px; border:1px solid var(--border-color); background:rgba(255,255,255,0.02);">
-                <div style="color:var(--text-dim);">TOTAL ACCOUNT BALANCE</div>
+                <div style="color:var(--text-dim);">TOTAL BALANCE</div>
                 <div style="font-size:var(--font-lg); font-weight:bold; color:var(--text-main); margin-top:2px;">€${metrics.total.toFixed(2)}</div>
             </div>
         </div>
         <div style="display:flex; justify-content:space-between; padding:5px 8px; border:1px solid var(--border-color); font-size:var(--font-xs); color:var(--text-muted);">
-            <span>LOCKED IN VAULTS: <strong>€${metrics.vaulted.toFixed(2)}</strong></span>
-            <span>PENDING BILLS: <strong>€${metrics.pendingBills.toFixed(2)}</strong></span>
-            <span>MONTH NET: <strong>${metrics.monthNet >= 0 ? '+' : ''}€${metrics.monthNet.toFixed(2)}</strong></span>
+            <span>VAULTS: <strong>€${metrics.vaulted.toFixed(2)}</strong></span>
+            <span>BILLS: <strong>€${metrics.pendingBills.toFixed(2)}</strong></span>
+            <span>NET: <strong>${metrics.monthNet >= 0 ? '+' : ''}€${metrics.monthNet.toFixed(2)}</strong></span>
         </div>
     `;
 
-    if (mVaults.length > 0) {
-        html += `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:2px;">`;
-        mVaults.forEach(v => {
-            const bal = roundCurrency(v.balance);
-            html += `<span style="font-size:var(--font-xs); padding:3px 8px; border:1px solid ${bal < 0 ? 'var(--accent-red)' : 'var(--border-color)'}; background:rgba(255,255,255,0.02);">${escapeHtml(v.name)}: <strong style="color:${bal < 0 ? 'var(--accent-red)' : 'var(--text-main)'};">€${bal.toFixed(2)}</strong></span>`;
-        });
-        html += `</div>`;
-    }
-
-    showInstantInspectionCard(`FINANCE & VAULTS SNAPSHOT`, html);
+    showInstantInspectionCard(`FINANCE SNAPSHOT`, html);
 }
 
 function isInspectionOnlyCommand(raw) {
@@ -763,7 +900,6 @@ function executeTerminalCommand(raw) {
 
     const lowerStr = str.toLowerCase();
 
-    // 1. Esecuzione Custom Alias
     if (typeof customAliases !== 'undefined' && customAliases[lowerStr]) {
         const subCmds = customAliases[lowerStr].split(';').map(s => s.trim()).filter(Boolean);
         let okCount = 0;
@@ -776,7 +912,6 @@ function executeTerminalCommand(raw) {
         return okCount > 0;
     }
 
-    // 2. Apertura diretta Vista Salvata (es. digitando il nome del preset)
     if (typeof workspacePresets !== 'undefined') {
         const matchedPreset = workspacePresets.find(p => p.name.toLowerCase() === lowerStr);
         if (matchedPreset && typeof applyWorkspacePreset === 'function') {
@@ -788,12 +923,18 @@ function executeTerminalCommand(raw) {
         }
     }
 
-    // 3. Apertura e Sovrapposizione Modulo Singolo o Multi-Modulo con "+" (es. "notes + daily tasks" o "tasks")
-    if (str.includes('+') || (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(str) && !['uni', 'gym', 'diet', 'money', 'bal'].includes(lowerStr))) {
+    if (str.includes('+') || (typeof resolveModuleKeyFromText === 'function' && resolveModuleKeyFromText(str) && !['uni', 'gym', 'diet', 'money', 'bal'].includes(lowerStr) && str.split(/\s+/).length <= 3)) {
         const modTokens = str.split('+').map(s => s.trim()).filter(Boolean);
         const resolvedKeys = modTokens.map(m => typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(m) : null);
         if (resolvedKeys.length > 0 && resolvedKeys.every(Boolean)) {
-            return setModulesView(resolvedKeys);
+            if (!str.includes('+')) {
+                const singleKey = resolvedKeys[0];
+                if (dashboardModules[lowerStr] || dashboardModules[singleKey].name.toLowerCase() === lowerStr) {
+                    return setModulesView(resolvedKeys);
+                }
+            } else {
+                return setModulesView(resolvedKeys);
+            }
         }
     }
 
@@ -801,7 +942,6 @@ function executeTerminalCommand(raw) {
     const cmd = parts[0].toLowerCase();
     const rest = str.slice(parts[0].length).trim();
 
-    // --- COMANDI MODULO UNIVERSITY (uni, esame, tassa, appello) ---
     if (cmd === 'uni') {
         const subArg = rest.toLowerCase();
         if (subArg === 'info') {
@@ -815,21 +955,16 @@ function executeTerminalCommand(raw) {
         if (typeof summonModule === 'function') {
             summonModule('uni');
             if (typeof renderUniDashboard === 'function') renderUniDashboard();
-            if (typeof showToast === 'function') showToast('[WORKSPACE] Summoned University');
             return true;
         }
         return false;
     }
 
     if (cmd === 'esame') {
-        // Supporta: esame [Nome anche multi-parola] [Voto es. 28 o 30L] [CFU opzionale]
         const m = rest.match(/^(.*?)\s+(\d{2}[lL]?)(?:\s+(\d+))?$/);
         if (!m || !m[1].trim()) return false;
-        const examName = m[1].trim();
-        const gradeStr = m[2].trim();
-        const cfuVal = m[3] ? parseInt(m[3], 10) : null;
         if (typeof recordPassedExam === 'function') {
-            return recordPassedExam(examName, gradeStr, cfuVal, todayStr);
+            return recordPassedExam(m[1].trim(), m[2].trim(), m[3] ? parseInt(m[3], 10) : null, todayStr);
         }
         return false;
     }
@@ -853,9 +988,8 @@ function executeTerminalCommand(raw) {
         }
         return false;
     }
-    
+
     if (cmd === 'tassa') {
-        // Supporta qualsiasi ordine di Importo, Data (@YYYY-MM-DD o YYYY-MM-DD) e Nome Tassa
         if (!rest) return false;
         let dateStr = null;
         let amountVal = null;
@@ -902,19 +1036,13 @@ function executeTerminalCommand(raw) {
         const examName = nameWords.join(' ').trim();
         if (!examName || !dateStr) return false;
         if (typeof addUniAppeal === 'function') {
-            const ok = addUniAppeal(examName, dateStr, timeStr);
-            if (ok && typeof showToast === 'function') {
-                showToast(`[APPELLO] "${examName}" fissato per il ${dateStr} (${timeStr})`);
-            }
-            return ok;
+            return addUniAppeal(examName, dateStr, timeStr);
         }
         return false;
     }
 
-    // --- COMANDI DI ISPEZIONE ISTANTANEA IN SOLA LETTURA (0ms) ---
     if (cmd === 'diet') {
-        const targetDate = resolveDateToken(rest) || selectedDateStr;
-        renderInstantDietSummary(targetDate);
+        renderInstantDietSummary(resolveDateToken(rest) || selectedDateStr);
         return true;
     }
 
@@ -929,8 +1057,7 @@ function executeTerminalCommand(raw) {
     }
 
     if (cmd === 'tomorrow' || cmd === 'domani' || cmd === 'schedule') {
-        const targetDate = resolveDateToken(rest) || tomorrowStr;
-        renderInstantScheduleSummary(targetDate);
+        renderInstantScheduleSummary(resolveDateToken(rest) || tomorrowStr);
         return true;
     }
 
@@ -939,7 +1066,6 @@ function executeTerminalCommand(raw) {
         return true;
     }
 
-    // --- COMANDI DI AZIONE E SISTEMA ---
     if (cmd === 'red' || cmd === 'redmode') {
         if (rest.toLowerCase() === 'on') toggleRedMode(true);
         else if (rest.toLowerCase() === 'off') toggleRedMode(false);
@@ -949,7 +1075,6 @@ function executeTerminalCommand(raw) {
 
     if (cmd === 'zero') {
         if (typeof setQuadrantCount === 'function') setQuadrantCount(0);
-        if (typeof showToast === 'function') showToast('[WORKSPACE] Zero-UI Mode active');
         return true;
     }
 
@@ -974,18 +1099,15 @@ function executeTerminalCommand(raw) {
     if (cmd === 'weight' || cmd === 'peso') {
         const m = rest.match(/^(\d+(?:[.,]\d+)?)\s*(.*)$/);
         if (!m) return false;
-        const w = parseFloat(m[1].replace(',', '.'));
-        const note = m[2].trim();
         if (typeof addBodyMetricLog === 'function') {
-            return addBodyMetricLog(w, note);
+            return addBodyMetricLog(parseFloat(m[1].replace(',', '.')), m[2].trim());
         }
         return false;
     }
 
     if (cmd === 'sony' || cmd === 'audio') {
         if (typeof closeTerminal === 'function') closeTerminal();
-        const folderInp = document.getElementById('sony-folder-input');
-        if (folderInp) folderInp.click();
+        document.getElementById('sony-folder-input')?.click();
         return true;
     }
 
@@ -1023,14 +1145,13 @@ function executeTerminalCommand(raw) {
         const desc = rawDesc || category;
         if (typeof recordExpenseWithVaultCheck === 'function') {
             const res = recordExpenseWithVaultCheck({ amount: amt, category, desc, dateStr: todayStr });
-            if (res && res.matchedVault) {
-                if (typeof showToast === 'function') {
-                    showToast(`[VAULT ${res.matchedVault.name.toUpperCase()}] -€${amt.toFixed(2)} (${desc}) -> Bal: €${res.newVaultBalance.toFixed(2)}`);
-                }
+            if (res && res.matchedVault && typeof showToast === 'function') {
+                showToast(`[VAULT ${res.matchedVault.name.toUpperCase()}] -€${amt.toFixed(2)} -> €${res.newVaultBalance.toFixed(2)}`);
                 return true;
             }
         }
         if (typeof showToast === 'function') showToast(`[MONEY] -€${amt.toFixed(2)} [${category}] ${desc}`);
+        if (typeof renderHudPod === 'function') renderHudPod();
         return true;
     }
 
@@ -1048,7 +1169,8 @@ function executeTerminalCommand(raw) {
         });
         saveMoneyData();
         if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
-        const vaultMsg = autoSaved > 0 ? ` (Auto-Vault: €${autoSaved.toFixed(2)})` : '';
+        if (typeof renderHudPod === 'function') renderHudPod();
+        const vaultMsg = autoSaved > 0 ? ` (Vault: €${autoSaved.toFixed(2)})` : '';
         if (typeof showToast === 'function') showToast(`[MONEY] +€${amt.toFixed(2)} (${desc})${vaultMsg}`);
         return true;
     }
@@ -1061,19 +1183,40 @@ function executeTerminalCommand(raw) {
             title = m[1].trim();
             cost = roundCurrency(m[2].replace(',', '.'));
         }
-        mWishlist.push({ id: 'mw_' + Date.now(), title, cost, order: mWishlist.length });
+        mWishlist.push({ id: 'mw_' + Date.now(), category: 'General', title, cost, order: mWishlist.length });
         saveMoneyData();
         if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
-        if (typeof showToast === 'function') showToast(`[WISH] Added: ${title}${cost ? ' (€' + cost.toFixed(2) + ')' : ''}`);
+        if (typeof showToast === 'function') showToast(`[INCUBATOR] Added: ${title}`);
         return true;
     }
 
     if (cmd === 'todo') {
         if (!rest) return false;
-        generalTodos.push({ id: 'todo_' + Date.now(), title: rest });
+        const dayIdx = parseLocalDate(selectedDateStr).getDay();
+        const catName = 'General To-Do';
+        if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+
+        templates.push({
+            id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+            isTodo: true,
+            category: catName,
+            title: rest,
+            instances: 1,
+            timerMinutes: 15,
+            noTimer: true,
+            frequency: 'specific',
+            daysOfWeek: [dayIdx],
+            startDate: selectedDateStr,
+            endDate: selectedDateStr,
+            color: '#ffffff',
+            type: 'untimed',
+            timeWindows: []
+        });
         saveData();
-        if (typeof renderGeneralTodos === 'function') renderGeneralTodos();
-        if (typeof showToast === 'function') showToast(`[TODO] Added: ${rest}`);
+        if (typeof renderTasks === 'function') renderTasks();
+        if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+        if (typeof renderHudPod === 'function') renderHudPod();
+        if (typeof showToast === 'function') showToast(`[TO-DO] Added "${rest}"`);
         return true;
     }
 
@@ -1107,7 +1250,8 @@ function executeTerminalCommand(raw) {
         if (typeof renderTasks === 'function') renderTasks();
         if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
         if (typeof renderTracker === 'function') renderTracker();
-        if (typeof showToast === 'function') showToast(`[TASK] "${finalTitle}" scheduled for ${targetDate}`);
+        if (typeof renderHudPod === 'function') renderHudPod();
+        if (typeof showToast === 'function') showToast(`[TASK] "${finalTitle}" on ${targetDate}`);
         return true;
     }
 
@@ -1123,39 +1267,49 @@ function executeTerminalCommand(raw) {
         const idx = curLog.indexOf(false);
         if (idx !== -1 && typeof toggleTask === 'function') {
             toggleTask(match.id, idx);
-            if (typeof showToast === 'function') showToast(`[DONE] Checked off "${match.title}"`);
+            if (typeof renderHudPod === 'function') renderHudPod();
+            if (typeof showToast === 'function') showToast(`[DONE] "${match.title}"`);
             return true;
         }
         return false;
     }
 
+    // 2A1 + 2B1: Creazione Evento con Data, Fascia Oraria / Durata e Colore
     if (cmd === 'event') {
         if (!rest) return false;
-        const subParts = rest.split(/\s+/);
-        let dateStr = selectedDateStr, title = rest;
-        const maybeDate = resolveDateToken(subParts[0]);
-        if (maybeDate) {
-            dateStr = maybeDate;
-            title = subParts.slice(1).join(' ').trim();
-        }
-        if (!title) return false;
+        const parsedEv = parseEventCommandArgs(rest);
+        if (!parsedEv.title) return false;
 
-        specificEvents.push({ id: 'e_' + Date.now(), title, date: dateStr, color: '#b84b4b' });
+        specificEvents.push({
+            id: 'e_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+            title: parsedEv.title,
+            date: parsedEv.date,
+            start: parsedEv.start || null,
+            end: parsedEv.end || null,
+            color: parsedEv.color || '#b84b4b'
+        });
+
         saveData();
         if (typeof renderCalendar === 'function') renderCalendar();
         if (typeof renderTasks === 'function') renderTasks();
         if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-        if (typeof showToast === 'function') showToast(`[EVENT] "${title}" on ${dateStr}`);
+        if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+        if (typeof renderHudPod === 'function') renderHudPod();
+
+        const timeLabel = (parsedEv.start && parsedEv.end) ? ` (${parsedEv.start}–${parsedEv.end})` : '';
+        if (typeof showToast === 'function') {
+            showToast(`[EVENT] "${parsedEv.title}" on ${parsedEv.date}${timeLabel}`);
+        }
         return true;
     }
 
     if (cmd === 'note') {
         if (!rest) return false;
-        let targetCat = document.getElementById('note-category') ? document.getElementById('note-category').value : 'General';
+        let targetCat = typeof getTargetCategoryForWrite === 'function' ? getTargetCategoryForWrite() : 'General';
         let noteBody = rest;
 
         const colonIdx = rest.indexOf(':');
-        if (colonIdx > 0 && colonIdx < 30) {
+        if (colonIdx > 0 && colonIdx < 35) {
             const candidateCat = rest.slice(0, colonIdx).trim();
             const candidateBody = rest.slice(colonIdx + 1).trim();
             if (candidateCat && candidateBody) {
@@ -1173,9 +1327,6 @@ function executeTerminalCommand(raw) {
         notesContent[targetCat] += (notesContent[targetCat] === "" ? "" : "\n\n") + noteBody;
         saveData();
         if (typeof renderNoteCategories === 'function') renderNoteCategories();
-        const select = document.getElementById('note-category');
-        if (select) select.value = targetCat;
-        if (typeof refreshNotesView === 'function') refreshNotesView();
         if (typeof showToast === 'function') showToast(`[NOTE] Saved in "${targetCat}"`);
         return true;
     }
@@ -1192,15 +1343,13 @@ function executeTerminalCommand(raw) {
         } else if (typeof startTaskFocusByQuery === 'function' && startTaskFocusByQuery(rest)) {
             return true;
         }
-        if (typeof showToast === 'function') showToast(`[FOCUS] No active timed task matching "${rest}"`);
         return false;
     }
 
     if (cmd === 'summon' || cmd === 'view' || cmd === 'show' || cmd === 'open') {
-        const modKey = rest.toLowerCase();
+        const modKey = typeof resolveModuleKeyFromText === 'function' ? resolveModuleKeyFromText(rest) : rest.toLowerCase();
         if (dashboardModules[modKey]) {
             summonModule(modKey);
-            if (typeof showToast === 'function') showToast(`[WORKSPACE] Summoned ${dashboardModules[modKey].name}`);
             return true;
         }
         return false;
@@ -1212,7 +1361,6 @@ function executeTerminalCommand(raw) {
             activeSlots[0] = activeSlots[1];
             activeSlots[1] = temp;
             renderQuadrantLayout();
-            if (typeof showToast === 'function') showToast(`[WORKSPACE] Swapped quadrants`);
             return true;
         }
         return false;
@@ -1222,13 +1370,11 @@ function executeTerminalCommand(raw) {
         const resolved = resolveDateToken(rest);
         if (!resolved) return false;
         jumpToDate(resolved);
-        if (typeof showToast === 'function') showToast(`[CALENDAR] Selected ${resolved}`);
         return true;
     }
 
     if (cmd === 'export' || cmd === 'backup') {
         exportData();
-        if (typeof showToast === 'function') showToast(`[SYSTEM] Backup exported`);
         return true;
     }
 
