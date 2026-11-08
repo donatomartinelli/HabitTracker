@@ -1879,6 +1879,10 @@ document.getElementById('assignForm')?.addEventListener('submit', function(e) {
 // CONSISTENCY TRACKER & FOCUS LEDGER
 // ============================================================================
 
+// ============================================================================
+// SOTTO-MODULI STREAK: streak_grid (#module-streak-grid) & streak_ledger (#module-streak-ledger)
+// ============================================================================
+
 function openTrackerModal() {
     closeModals();
     if (typeof summonModule === 'function') {
@@ -1888,18 +1892,7 @@ function openTrackerModal() {
     renderFocusLedger();
 }
 
-function renderTracker() {
-    const tracker2D = document.getElementById('github-tracker');
-    const strip1D = document.getElementById('tracker-strip-1d');
-    const metricsEl = document.getElementById('tracker-metrics');
-    if (!tracker2D || !strip1D) return;
-
-    tracker2D.innerHTML = '';
-    strip1D.innerHTML = '';
-
-    const frag2D = document.createDocumentFragment();
-    const frag1D = document.createDocumentFragment();
-
+function computeConsistencyMetrics() {
     let earliestDate = todayStr;
     templates.forEach(t => {
         if (t.startDate && t.startDate < earliestDate) earliestDate = t.startDate;
@@ -1908,91 +1901,164 @@ function renderTracker() {
     const start = parseLocalDate(earliestDate);
     const today = parseLocalDate(todayStr);
     const diffDays = Math.ceil(Math.abs(today - start) / (1000 * 60 * 60 * 24));
+    const todayStats = getStatsForDate(todayStr);
 
-    const daysToRender2D = Math.max(7, diffDays + 1);
-    const startDate2D = new Date(todayObj);
-    startDate2D.setDate(todayObj.getDate() - daysToRender2D + 1);
+    let streak = 0;
+    let checkD = new Date(todayObj);
+    if (todayStats.completed === 0) checkD.setDate(checkD.getDate() - 1);
 
-    for (let i = 0; i < daysToRender2D; i++) {
-        const d = new Date(startDate2D);
-        d.setDate(startDate2D.getDate() + i);
-        const dateStr = formatDate(d);
-        const stats = getStatsForDate(dateStr);
-
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.title = `${dateStr} // ${stats.completed}/${stats.total} completed`;
-        cell.onclick = () => { closeModals(); selectDate(dateStr); };
-
-        let lvlClass = 'lvl-none';
-        if (stats.total > 0) {
-            const p = stats.completed / stats.total;
-            if (p > 0 && p < 0.4) lvlClass = 'lvl-1';
-            else if (p >= 0.4 && p < 0.75) lvlClass = 'lvl-2';
-            else if (p >= 0.75 && p < 1) lvlClass = 'lvl-3';
-            else if (p === 1) lvlClass = 'lvl-4';
+    for (let k = 0; k < 365; k++) {
+        const dStr = formatDate(checkD);
+        const st = getStatsForDate(dStr);
+        if (st.total > 0 && st.completed > 0) {
+            streak++;
+            checkD.setDate(checkD.getDate() - 1);
+        } else {
+            break;
         }
-        cell.classList.add(lvlClass);
-        frag2D.appendChild(cell);
     }
 
-    const daysToRender1D = Math.min(35, diffDays + 1);
-    const startDate1D = new Date(todayObj);
-    startDate1D.setDate(todayObj.getDate() - daysToRender1D + 1);
-
-    for (let i = 0; i < daysToRender1D; i++) {
-        const d = new Date(startDate1D);
-        d.setDate(startDate1D.getDate() + i);
-        const dateStr = formatDate(d);
-        const stats = getStatsForDate(dateStr);
-
-        const cell = document.createElement('div');
-        cell.className = 'cell';
-        cell.style.cssText = 'width: 11px; height: 11px;';
-        cell.title = `${dateStr} // ${stats.completed}/${stats.total}`;
-
-        let lvlClass = 'lvl-none';
-        if (stats.total > 0) {
-            const p = stats.completed / stats.total;
-            if (p > 0 && p < 0.4) lvlClass = 'lvl-1';
-            else if (p >= 0.4 && p < 0.75) lvlClass = 'lvl-2';
-            else if (p >= 0.75 && p < 1) lvlClass = 'lvl-3';
-            else if (p === 1) lvlClass = 'lvl-4';
-        }
-        cell.classList.add(lvlClass);
-        frag1D.appendChild(cell);
-    }
-
-    tracker2D.appendChild(frag2D);
-    strip1D.appendChild(frag1D);
-
-    if (metricsEl) {
-        const todayStats = getStatsForDate(todayStr);
-        let streak = 0;
-        let checkD = new Date(todayObj);
-        if (todayStats.completed === 0) checkD.setDate(checkD.getDate() - 1);
-
-        for (let k = 0; k < 365; k++) {
-            const dStr = formatDate(checkD);
-            const st = getStatsForDate(dStr);
-            if (st.total > 0 && st.completed > 0) {
-                streak++;
-                checkD.setDate(checkD.getDate() - 1);
-            } else {
-                break;
-            }
-        }
-        metricsEl.textContent = `TODAY ${todayStats.completed}/${todayStats.total} | STREAK ${streak}D`;
-    }
-    renderFocusLedger();
+    return { diffDays, todayStats, streak };
 }
 
-function renderFocusLedger() {
-    const container = document.getElementById('focus-ledger-container');
-    const summaryEl = document.getElementById('focus-ledger-summary');
-    if (!container || !summaryEl) return;
+function populateHabitGridCells(grid2DEl, strip1DEl, diffDays) {
+    if (grid2DEl) {
+        grid2DEl.innerHTML = '';
+        const frag2D = document.createDocumentFragment();
+        const daysToRender2D = Math.max(7, diffDays + 1);
+        const startDate2D = new Date(todayObj);
+        startDate2D.setDate(todayObj.getDate() - daysToRender2D + 1);
 
+        for (let i = 0; i < daysToRender2D; i++) {
+            const d = new Date(startDate2D);
+            d.setDate(startDate2D.getDate() + i);
+            const dateStr = formatDate(d);
+            const stats = getStatsForDate(dateStr);
+
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.title = `${dateStr} // ${stats.completed}/${stats.total}`;
+            cell.onclick = () => { closeModals(); selectDate(dateStr); };
+
+            let lvlClass = 'lvl-none';
+            if (stats.total > 0) {
+                const p = stats.completed / stats.total;
+                if (p > 0 && p < 0.4) lvlClass = 'lvl-1';
+                else if (p >= 0.4 && p < 0.75) lvlClass = 'lvl-2';
+                else if (p >= 0.75 && p < 1) lvlClass = 'lvl-3';
+                else if (p === 1) lvlClass = 'lvl-4';
+            }
+            cell.classList.add(lvlClass);
+            frag2D.appendChild(cell);
+        }
+        grid2DEl.appendChild(frag2D);
+    }
+
+    if (strip1DEl) {
+        strip1DEl.innerHTML = '';
+        const frag1D = document.createDocumentFragment();
+        const daysToRender1D = Math.min(35, diffDays + 1);
+        const startDate1D = new Date(todayObj);
+        startDate1D.setDate(todayObj.getDate() - daysToRender1D + 1);
+
+        for (let i = 0; i < daysToRender1D; i++) {
+            const d = new Date(startDate1D);
+            d.setDate(startDate1D.getDate() + i);
+            const dateStr = formatDate(d);
+            const stats = getStatsForDate(dateStr);
+
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.style.cssText = 'width: 11px; height: 11px;';
+            cell.title = `${dateStr} // ${stats.completed}/${stats.total}`;
+
+            let lvlClass = 'lvl-none';
+            if (stats.total > 0) {
+                const p = stats.completed / stats.total;
+                if (p > 0 && p < 0.4) lvlClass = 'lvl-1';
+                else if (p >= 0.4 && p < 0.75) lvlClass = 'lvl-2';
+                else if (p >= 0.75 && p < 1) lvlClass = 'lvl-3';
+                else if (p === 1) lvlClass = 'lvl-4';
+            }
+            cell.classList.add(lvlClass);
+            frag1D.appendChild(cell);
+        }
+        strip1DEl.appendChild(frag1D);
+    }
+}
+
+// SOTTO-MODULO 1: STREAK: HABIT GRID (#module-streak-grid)
+function renderStreakAtomGrid() {
+    const root = document.getElementById('module-streak-grid');
+    if (!root) return;
+
+    const { diffDays, todayStats, streak } = computeConsistencyMetrics();
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0;">
+                <div>
+                    <span class="section-label">Habit Grid</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px; font-variant-numeric:tabular-nums;">// TODAY ${todayStats.completed}/${todayStats.total} · STREAK ${streak}D</span>
+                </div>
+                <div id="streak-atom-strip-1d" class="tracker-strip-1d"></div>
+            </div>
+            <div class="tracker-wrapper" style="padding-bottom:6px; text-align:left;">
+                <div class="tracker-grid" id="streak-atom-grid-2d" style="margin-top:4px;"></div>
+            </div>
+        </div>
+    `;
+
+    populateHabitGridCells(
+        root.querySelector('#streak-atom-grid-2d'),
+        root.querySelector('#streak-atom-strip-1d'),
+        diffDays
+    );
+}
+
+// SOTTO-MODULO 2: STREAK: FOCUS LEDGER (#module-streak-ledger)
+function renderStreakAtomLedger() {
+    const root = document.getElementById('module-streak-ledger');
+    if (!root) return;
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0;">
+                <div>
+                    <span class="section-label">Focus Ledger</span>
+                    <span id="streak-atom-ledger-badge" style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px; font-variant-numeric:tabular-nums;"></span>
+                </div>
+            </div>
+            <div id="streak-atom-ledger-body" style="flex:1; overflow-y:auto;"></div>
+        </div>
+    `;
+
+    populateFocusLedgerDom(
+        root.querySelector('#streak-atom-ledger-body'),
+        root.querySelector('#streak-atom-ledger-badge')
+    );
+}
+
+function renderTracker() {
+    renderStreakAtomGrid();
+    renderStreakAtomLedger();
+
+    const tracker2D = document.getElementById('github-tracker');
+    const strip1D = document.getElementById('tracker-strip-1d');
+    const metricsEl = document.getElementById('tracker-metrics');
+    if (tracker2D && strip1D) {
+        const { diffDays, todayStats, streak } = computeConsistencyMetrics();
+        populateHabitGridCells(tracker2D, strip1D, diffDays);
+        if (metricsEl) {
+            metricsEl.textContent = `// TODAY ${todayStats.completed}/${todayStats.total} · STREAK ${streak}D`;
+        }
+    }
+}
+
+function populateFocusLedgerDom(container, summaryEl) {
+    if (!container) return;
     container.innerHTML = '';
+
     const d = parseLocalDate(todayStr);
     const day = d.getDay();
     const diff = d.getDate() - day + (day === 0 ? -6 : 1);
@@ -2071,10 +2137,12 @@ function renderFocusLedger() {
     }
 
     const fmtH = (mins) => (mins / 60).toFixed(1) + 'H';
-    summaryEl.textContent = `TODAY: ${fmtH(totalMinsToday)} | WEEK: ${fmtH(totalMinsWeek)} | ALL-TIME: ${fmtH(totalMinsAll)}`;
+    if (summaryEl) {
+        summaryEl.textContent = `// TODAY ${fmtH(totalMinsToday)} · WEEK ${fmtH(totalMinsWeek)} · ALL ${fmtH(totalMinsAll)}`;
+    }
 
     if (completedHistoryEntries.length === 0) {
-        container.innerHTML = '<div class="empty-state">[ NO MEASURED TASKS COMPLETED YET ]</div>';
+        container.innerHTML = '<div class="empty-state">[ NONE ]</div>';
         return;
     }
 
@@ -2082,20 +2150,20 @@ function renderFocusLedger() {
     const maxCatMins = Math.max(...catEntries.map(e => e[1].total), 1);
 
     const gridWrap = document.createElement('div');
-    gridWrap.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;';
+    gridWrap.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;';
 
     catEntries.forEach(([catName, stats]) => {
         const pct = Math.round((stats.total / maxCatMins) * 100);
         const row = document.createElement('div');
-        row.style.cssText = 'display: grid; grid-template-columns: 140px 1fr 220px; align-items: center; gap: 12px; font-size: var(--font-xs); padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color);';
+        row.style.cssText = 'display: grid; grid-template-columns: 130px 1fr 185px; align-items: center; gap: 12px; font-size: var(--font-xs); padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color);';
         row.innerHTML = `
             <strong style="color: var(--text-main); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(catName)}</strong>
-            <div style="height: 8px; background: #111; border: 1px solid #333; position: relative;">
+            <div style="height: 6px; background: #111; border: 1px solid #333; position: relative;">
                 <div style="height: 100%; width: ${pct}%; background: var(--text-main);"></div>
             </div>
             <div style="text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums;">
-                <span style="color: var(--text-main); font-weight: bold;">${fmtH(stats.total)}</span> 
-                <span style="color: var(--text-dim);"> (WK: ${fmtH(stats.week)} | TD: ${fmtH(stats.today)})</span>
+                <strong style="color: var(--text-main);">${fmtH(stats.total)}</strong> 
+                <span style="color: var(--text-dim);"> (WK:${fmtH(stats.week)})</span>
             </div>
         `;
         gridWrap.appendChild(row);
@@ -2104,7 +2172,7 @@ function renderFocusLedger() {
 
     const recentHeader = document.createElement('div');
     recentHeader.className = 'sub-column-header';
-    recentHeader.textContent = 'Recently Completed Measured Tasks';
+    recentHeader.textContent = 'Recent Sessions';
     container.appendChild(recentHeader);
 
     const recentList = document.createElement('div');
@@ -2119,14 +2187,22 @@ function renderFocusLedger() {
                 <strong style="color: var(--text-main);">[${escapeHtml(item.category)}]</strong> 
                 <span style="color: var(--text-muted);">${escapeHtml(item.title)}</span>
             </div>
-            <div>
-                <strong style="color: var(--text-main);">${item.minutes} min</strong>
-            </div>
+            <strong>${item.minutes}m</strong>
         `;
         recentList.appendChild(r);
     });
     container.appendChild(recentList);
 }
+
+function renderFocusLedger() {
+    renderStreakAtomLedger();
+    const container = document.getElementById('focus-ledger-container');
+    const summaryEl = document.getElementById('focus-ledger-summary');
+    if (container) {
+        populateFocusLedgerDom(container, summaryEl);
+    }
+}
+
 
 // ============================================================================
 // MODULO ATOMICO 10: DAY PLANNER (1A, 2B, 3A DA 15 MIN, 4B CUSTOM MOUSE DRAG & RESIZE)

@@ -1,4 +1,7 @@
-// --- ATOMIC MODULE 1: CALENDAR + INTERACTIVE EVENT COLOR & TIME POPOVER (2B2) ---
+// --- js/modules/calendar.js ---
+// ATOMIC MODULE 1 & SUB-MODULES:
+// - cal_grid (#module-cal-grid): Griglia mensile rigida (Max 3 pallini + "+N")
+// - cal_agenda (#module-cal-agenda): Lista eventi del giorno selezionato con Popover Colore/Orario
 
 let activeEventPopoverEl = null;
 
@@ -15,7 +18,6 @@ document.addEventListener('mousedown', (e) => {
     }
 });
 
-// 2B2: Apre un popover flottante per cambiare Colore, Orario Inizio/Fine e Titolo di un evento
 function openEventQuickEditPopover(eventId, anchorEl) {
     const ev = specificEvents.find(x => x.id === eventId);
     if (!ev || !anchorEl) return;
@@ -136,6 +138,7 @@ function selectDate(dateStr) {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
     if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
     if (typeof renderDiet === 'function') renderDiet();
+    if (typeof renderGymDashboard === 'function') renderGymDashboard();
 }
 
 function changeMonth(dir) {
@@ -143,20 +146,9 @@ function changeMonth(dir) {
     renderCalendar();
 }
 
-function renderCalendar() {
-    const grid = document.getElementById('calendar-grid');
-    if (!grid) return;
-
-    const monthNames = [
-        "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
-        "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
-    ];
-    const monthNameEl = document.getElementById('calendar-month-name');
-    if (monthNameEl) {
-        monthNameEl.innerText = `// ${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
-    }
-
-    grid.innerHTML = '';
+function buildMonthGridDom(targetGridEl) {
+    if (!targetGridEl) return;
+    targetGridEl.innerHTML = '';
     const frag = document.createDocumentFragment();
 
     ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].forEach(d => {
@@ -182,17 +174,27 @@ function renderCalendar() {
         dayCell.className = 'month-day in-month';
         if (cellDateStr === todayStr) dayCell.classList.add('today');
         if (cellDateStr === selectedDateStr) dayCell.classList.add('selected');
-        dayCell.textContent = i;
 
+        const numSpan = document.createElement('span');
+        numSpan.textContent = i;
+        dayCell.appendChild(numSpan);
+
+        // Max 3 pallini + badge "+N" per non deformare mai la colonna
         if (dayEvents.length > 0) {
             const barsContainer = document.createElement('div');
             barsContainer.className = 'bars-container';
-            dayEvents.forEach(e => {
+            dayEvents.slice(0, 3).forEach(e => {
                 const bar = document.createElement('div');
                 bar.className = 'bar';
                 bar.style.backgroundColor = e.color;
                 barsContainer.appendChild(bar);
             });
+            if (dayEvents.length > 3) {
+                const moreSpan = document.createElement('span');
+                moreSpan.className = 'bar-more';
+                moreSpan.textContent = `+${dayEvents.length - 3}`;
+                barsContainer.appendChild(moreSpan);
+            }
             dayCell.appendChild(barsContainer);
         }
 
@@ -200,22 +202,16 @@ function renderCalendar() {
         frag.appendChild(dayCell);
     }
 
-    grid.appendChild(frag);
-    renderCalendarDaySummary();
+    targetGridEl.appendChild(frag);
 }
 
-function renderCalendarDaySummary() {
-    const lbl = document.getElementById('calendar-selected-day-label');
-    const cont = document.getElementById('calendar-day-summary');
-    if (!cont) return;
-
-    if (lbl) lbl.textContent = `EVENTS // ${selectedDateStr}`;
-    cont.innerHTML = '';
+function buildDayEventsListDom(targetListEl) {
+    if (!targetListEl) return;
+    targetListEl.innerHTML = '';
 
     const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
-
     if (dayEvents.length === 0) {
-        cont.innerHTML = `<div class="empty-state">[ NO EVENTS FOR THIS DATE ]</div>`;
+        targetListEl.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
         return;
     }
 
@@ -223,9 +219,8 @@ function renderCalendarDaySummary() {
         const evRow = document.createElement('div');
         evRow.className = 'ev-edit-trigger';
         evRow.style.cssText = `font-size: var(--font-xs); padding: 6px 8px; border: 1px solid var(--border-color); border-left: 3px solid ${e.color}; display: flex; justify-content: space-between; align-items: center; cursor: pointer;`;
-        evRow.title = 'Click to change color, time or title';
         const timeBadge = (e.start && e.end) ? `[${e.start}–${e.end}] ` : (e.start ? `[${e.start}] ` : '');
-        evRow.innerHTML = `<strong style="color:${e.color};">${escapeHtml(timeBadge + e.title)}</strong>`;
+        evRow.innerHTML = `<strong style="color:${e.color}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(timeBadge + e.title)}</strong>`;
 
         evRow.onclick = (ev) => {
             if (ev.target.closest('.delete')) return;
@@ -240,6 +235,96 @@ function renderCalendarDaySummary() {
             deleteEvent(e.id);
         };
         evRow.appendChild(delBtn);
-        cont.appendChild(evRow);
+        targetListEl.appendChild(evRow);
     });
 }
+
+// ============================================================================
+// SOTTO-MODULO 1: CALENDAR: MONTH GRID (#module-cal-grid)
+// ============================================================================
+
+function renderCalendarAtomGrid() {
+    const root = document.getElementById('module-cal-grid');
+    if (!root) return;
+
+    const monthNames = [
+        "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+        "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+    ];
+    const monthLabel = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0;">
+                <div>
+                    <span class="section-label">Calendar</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${monthLabel}</span>
+                </div>
+                <div style="display:flex; gap:6px; align-items:center;">
+                    <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">[&lt;]</button>
+                    <button type="button" class="btn btn-sm" onclick="changeMonth(1)">[&gt;]</button>
+                </div>
+            </div>
+            <div class="month-grid" id="cal-atom-grid-mount"></div>
+        </div>
+    `;
+
+    buildMonthGridDom(root.querySelector('#cal-atom-grid-mount'));
+}
+
+// ============================================================================
+// SOTTO-MODULO 2: CALENDAR: DAY EVENTS (#module-cal-agenda)
+// ============================================================================
+
+function renderCalendarAtomAgenda() {
+    const root = document.getElementById('module-cal-agenda');
+    if (!root) return;
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0;">
+                <div>
+                    <span class="section-label">Day Events</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${selectedDateStr}</span>
+                </div>
+                <button type="button" class="btn btn-sm" onclick="openCreationModal('event')">[+]</button>
+            </div>
+            <div id="cal-atom-agenda-mount" style="display:flex; flex-direction:column; gap:6px;"></div>
+        </div>
+    `;
+
+    buildDayEventsListDom(root.querySelector('#cal-atom-agenda-mount'));
+}
+
+function renderCalendar() {
+    renderCalendarAtomGrid();
+    renderCalendarAtomAgenda();
+
+    // Aggiorna anche eventuale contenitore legacy #module-calendar
+    const legacyGrid = document.getElementById('calendar-grid');
+    if (legacyGrid) {
+        const monthNames = [
+            "JANUARY", "FEBRUARY", "MARCH", "APRIL", "MAY", "JUNE",
+            "JULY", "AUGUST", "SEPTEMBER", "OCTOBER", "NOVEMBER", "DECEMBER"
+        ];
+        const monthNameEl = document.getElementById('calendar-month-name');
+        if (monthNameEl) {
+            monthNameEl.innerText = `// ${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
+        }
+        buildMonthGridDom(legacyGrid);
+        renderCalendarDaySummary();
+    }
+}
+
+function renderCalendarDaySummary() {
+    renderCalendarAtomAgenda();
+    const lbl = document.getElementById('calendar-selected-day-label');
+    const cont = document.getElementById('calendar-day-summary');
+    if (!cont) return;
+    if (lbl) lbl.textContent = `EVENTS // ${selectedDateStr}`;
+    buildDayEventsListDom(cont);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    renderCalendar();
+});
