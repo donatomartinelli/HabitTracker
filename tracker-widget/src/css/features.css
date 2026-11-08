@@ -423,9 +423,9 @@
     padding: 8px 12px;
     color: white;
     font-size: var(--font-xs);
-    z-index: 9999;
+    z-index: 99999;
     pointer-events: none;
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.85);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.95);
 }
 
 /* --- POMODORO OVERLAY --- */
@@ -472,7 +472,6 @@ input[type="number"].no-spinners {
     align-items: center;
 }
 
-/* Sempre visibile anche a distanza dallo schermo */
 .timer-text-hover {
     position: absolute;
     font-size: var(--font-xl);
@@ -702,7 +701,41 @@ input:checked + .notes-slider:before {
 input:not(:checked) + .notes-slider .t-label.write { color: #000; }
 input:checked + .notes-slider .t-label.browse { color: #000; }
 
-/* --- NOTES BROWSE MODE: CARDS, MARKDOWN LISTS, @DATE TAGS & INLINE AI EXTRACTOR --- */
+/* --- BARRA PILLOLE SOTTOCATEGORIE (2B) --- */
+.notes-subcategories-bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border-color);
+    flex-shrink: 0;
+}
+
+.note-subcat-pill {
+    padding: 2px 8px;
+    font-size: 0.65rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    color: var(--text-dim);
+    cursor: pointer;
+    transition: 0.12s;
+}
+
+.note-subcat-pill:hover {
+    border-color: var(--border-bright);
+    color: var(--text-main);
+}
+
+.note-subcat-pill.active {
+    background: var(--text-main);
+    color: #000000;
+    border-color: var(--text-main);
+}
+
+/* --- NOTES BROWSE MODE: CARDS, GRIGIO DI BASE -> BIANCO IN HOVER/SELEZIONE --- */
 .notes-browse-container {
     flex: 1;
     height: 100%;
@@ -733,9 +766,9 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 
 .note-card {
     position: relative;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(255, 255, 255, 0.018);
     border: 1px solid var(--border-color);
-    border-left: 3px solid var(--text-main);
+    border-left: 3px solid #444444;
     padding: 10px 12px;
     display: flex;
     flex-direction: column;
@@ -744,13 +777,15 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 }
 
 .note-card:hover {
-    background: rgba(255, 255, 255, 0.035);
+    background: rgba(255, 255, 255, 0.04);
     border-color: var(--border-bright);
+    border-left-color: var(--text-main) !important;
 }
 
 .note-card.is-selected {
     border-color: var(--text-main) !important;
-    background: rgba(255, 255, 255, 0.08) !important;
+    border-left-color: var(--text-main) !important;
+    background: rgba(255, 255, 255, 0.085) !important;
 }
 
 .note-card-hover-tools {
@@ -813,6 +848,83 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     color: var(--text-main);
 }
 
+.note-date-tag {
+    display: inline-block;
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid var(--border-bright);
+    padding: 0 5px;
+    font-size: var(--font-xs);
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+
+.note-date-tag:hover {
+    background: var(--text-main);
+    color: #000000;
+}
+
+.note-md-check-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 2px 0;
+}
+
+.note-md-check-text.checked {
+    text-decoration: line-through;
+    color: var(--text-dim);
+}
+
+.note-md-list-item {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 1px 0 1px 4px;
+}
+
+.note-md-bullet {
+    color: var(--text-dim);
+    font-weight: bold;
+}
+
+.note-inline-editor {
+    width: 100%;
+    min-height: 120px;
+    background: #030303;
+    color: var(--text-main);
+    border: 1px solid var(--border-bright);
+    padding: 10px 12px;
+    font-size: var(--font-sm);
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+}
+
+.note-inline-editor:focus {
+    border-color: var(--text-main);
+}
+
+.note-ai-drawer {
+    margin-top: 4px;
+    padding: 10px 12px;
+    background: #050505;
+    border: 1px solid var(--border-bright);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.note-ai-cmd-row {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+}
+
 /* --- FOCUS LEDGER (CONTACHILOMETRI ORE REALI) --- */
 .ledger-summary-bar {
     display: flex;
@@ -867,58 +979,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     background: var(--text-main);
 }
 
-/* --- DAILY PRIORITY BANNER (OBIETTIVO DECISO LA SERA PRIMA) --- */
-.daily-priority-banner {
-    margin-bottom: 14px;
-    padding: 9px 12px;
-    border: 1px solid var(--border-bright);
-    border-left: 3px solid var(--text-main);
-    background: rgba(255, 255, 255, 0.03);
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 10px;
-}
-
-/* --- EVENING PLANNER MODAL ([PLAN TOMORROW]) --- */
-.plan-tomorrow-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 20px;
-    min-height: 420px;
-    max-height: 68vh;
-}
-
-.plan-col {
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    overflow-y: auto;
-    padding-right: 6px;
-}
-
-.plan-box {
-    border: 1px solid var(--border-color);
-    background: rgba(255, 255, 255, 0.015);
-    padding: 12px;
-}
-
-.plan-item-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 6px 0;
-    border-bottom: 1px dotted rgba(255, 255, 255, 0.08);
-    font-size: var(--font-xs);
-    gap: 8px;
-}
-
-.plan-item-row:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-
-/* --- NOTES BATCH BAR, SELECTION, MOVE DROPDOWN & INLINE SPLIT TOOLBAR --- */
+/* --- NOTES BATCH BAR --- */
 .note-batch-bar {
     display: flex;
     justify-content: space-between;
@@ -931,41 +992,6 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     flex-shrink: 0;
 }
 
-.note-card.is-selected {
-    border-color: var(--text-main);
-    background: rgba(255, 255, 255, 0.055);
-}
-
-.note-move-select {
-    background: transparent;
-    border: 1px solid var(--border-color);
-    color: var(--text-muted);
-    font-size: var(--font-xs);
-    padding: 3px 6px;
-    cursor: pointer;
-    text-transform: uppercase;
-    outline: none;
-}
-
-.note-move-select:hover,
-.note-move-select:focus {
-    border-color: var(--text-main);
-    color: var(--text-main);
-}
-
-.note-inline-toolbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 5px 8px;
-    background: #080808;
-    border: 1px solid var(--border-bright);
-    border-bottom: none;
-    gap: 8px;
-    flex-wrap: wrap;
-}
-
-/* --- ROUTINES, SUB-SECTIONS & ACTION TRIGGERS --- */
 /* --- ROUTINES SUB-SECTIONS & DAY PHASES --- */
 .routine-subsection {
     margin-top: 8px;
@@ -1002,33 +1028,6 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     background: rgba(255, 255, 255, 0.018);
 }
 
-.planner-phase-watermark {
-    position: absolute;
-    top: 3px;
-    right: 5px;
-    font-size: 0.58rem;
-    color: rgba(255, 255, 255, 0.22);
-    font-weight: bold;
-    letter-spacing: 0.6px;
-    pointer-events: none;
-    text-transform: uppercase;
-}
-
-.planner-phase-side-tag {
-    position: absolute;
-    left: 2px;
-    transform: translateY(-50%);
-    font-size: 0.55rem;
-    color: var(--text-dim);
-    background: #050505;
-    border: 1px solid #222;
-    padding: 1px 3px;
-    font-weight: bold;
-    letter-spacing: 0.4px;
-    pointer-events: auto;
-}
-
-/* --- MANIGLIA RESIZE INFERIORE SULLA TIMELINE DEL DAY PLANNER --- */
 .plan-block-resize-handle {
     position: absolute;
     left: 0;
@@ -1049,7 +1048,6 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     background: rgba(255, 255, 255, 0.05) !important;
 }
 
-/* --- COLONNA DELLE 5 FASI A SINISTRA DEGLI ORARI (WEEKLY & DAY PLANNER) --- */
 .planner-phase-labels {
     width: 58px;
     flex-shrink: 0;

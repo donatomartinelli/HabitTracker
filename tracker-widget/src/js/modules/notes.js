@@ -1,10 +1,63 @@
 // --- js/modules/notes.js ---
-// ATOMIC MODULE 3: CLEAN 2-COLUMN MASONRY NOTES, ON-DEMAND SELECTION, COLLAPSIBLE LONG CARDS, INLINE SPLIT & AUTO-ARCHIVE
+// ATOMIC MODULE 3: HIERARCHICAL CATEGORIES & SUBCATEGORIES (2B), RIGHT-CLICK SELECTION (4A),
+// LENGTH SORTING, CENTRAL DARK MODAL EDITOR & QUICK CAPTURE (3A1-B1), GENERATE SUMMARY (1B) & AUTO-DELETE ON ACTION
 
 let currentNoteMode = 'write';
-let isNoteSelectMode = false;
-let selectedNoteStorageIndices = new Set();
+let selectedNoteCardKeys = new Set(); // Chiavi formato "catKey::storageIdx"
 let expandedNoteCardsSet = new Set();
+let notesSortMode = 'newest'; // 'newest' | 'longest' | 'shortest'
+
+let activeParentCategory = 'General';
+let activeSubcategoryFilter = '__HOLDING__'; // '__HOLDING__' | '__ALL__' | 'Parent / Sub'
+
+// ============================================================================
+// GERARCHIA CATEGORIE PADRE & SOTTOCATEGORIE (es. "Università" -> "Università / Matematica")
+// ============================================================================
+
+function splitCategoryHierarchy(fullCatName) {
+    const raw = (fullCatName || 'General').trim();
+    const slashIdx = raw.indexOf('/');
+    if (slashIdx === -1) {
+        return { parent: raw, sub: null, full: raw };
+    }
+    const parent = raw.slice(0, slashIdx).trim() || 'General';
+    const sub = raw.slice(slashIdx + 1).trim() || null;
+    return { parent, sub, full: sub ? `${parent} / ${sub}` : parent };
+}
+
+function getAllParentCategories() {
+    const parents = [];
+    (noteCategories || []).forEach(c => {
+        if (c === 'Extracted') return;
+        const { parent } = splitCategoryHierarchy(c);
+        if (parent && !parents.includes(parent)) parents.push(parent);
+    });
+    if (!parents.includes('General')) parents.unshift('General');
+    if (!parents.includes('Registrazioni')) parents.push('Registrazioni');
+    return parents;
+}
+
+function getSubcategoriesForParent(parentCat) {
+    const subs = [];
+    (noteCategories || []).forEach(c => {
+        if (c === 'Extracted') return;
+        const parsed = splitCategoryHierarchy(c);
+        if (parsed.parent.toLowerCase() === (parentCat || '').toLowerCase() && parsed.sub) {
+            if (!subs.some(s => s.full === parsed.full)) {
+                subs.push(parsed);
+            }
+        }
+    });
+    return subs;
+}
+
+// Restituisce la categoria effettiva in cui salvare una nuova nota scritta in WRITE mode
+function getTargetCategoryForWrite() {
+    if (activeSubcategoryFilter && activeSubcategoryFilter !== '__HOLDING__' && activeSubcategoryFilter !== '__ALL__') {
+        return activeSubcategoryFilter;
+    }
+    return activeParentCategory || 'General';
+}
 
 function ensureBrowseContainerExists() {
     let browseCont = document.getElementById('notes-browse-container');
@@ -23,70 +76,194 @@ function ensureBrowseContainerExists() {
 
 function ensureNoteCategoriesSynced() {
     if (!Array.isArray(noteCategories) || noteCategories.length === 0) {
-        noteCategories = ['General', 'Registrazioni', 'Extracted'];
+        noteCategories = ['General', 'Registrazioni'];
     }
+    // Rimuove definitivamente la vecchia categoria Extracted
+    noteCategories = noteCategories.filter(c => c !== 'Extracted');
+    if (notesContent && notesContent['Extracted']) {
+        delete notesContent['Extracted'];
+    }
+
     if (!noteCategories.includes('General')) noteCategories.unshift('General');
     if (!noteCategories.includes('Registrazioni')) noteCategories.push('Registrazioni');
-    if (!noteCategories.includes('Extracted')) {
-        const regIdx = noteCategories.indexOf('Registrazioni');
-        if (regIdx !== -1) noteCategories.splice(regIdx + 1, 0, 'Extracted');
-        else noteCategories.push('Extracted');
+
+    const parents = getAllParentCategories();
+    if (!parents.includes(activeParentCategory)) {
+        activeParentCategory = parents[0] || 'General';
     }
 
     const select = document.getElementById('note-category');
-    if (!select) return 'General';
-
-    const prevVal = select.value;
-    select.innerHTML = '';
-    noteCategories.forEach(cat => {
-        const opt = document.createElement('option');
-        opt.value = cat;
-        const count = parseCategoryIntoCards(notesContent[cat] || '').length;
-        opt.textContent = count > 0 ? `${cat} (${count})` : cat;
-        select.appendChild(opt);
-    });
-
-    if (prevVal && noteCategories.includes(prevVal)) {
-        select.value = prevVal;
-    } else {
-        select.value = noteCategories[0] || 'General';
+    if (select) {
+        select.innerHTML = '';
+        parents.forEach(pCat => {
+            const opt = document.createElement('option');
+            opt.value = pCat;
+            const totalCount = countNotesInParentTree(pCat);
+            opt.textContent = totalCount > 0 ? `${pCat} (${totalCount})` : pCat;
+            if (pCat === activeParentCategory) opt.selected = true;
+            select.appendChild(opt);
+        });
     }
 
-    const activeCat = select.value || 'General';
     const catBadge = document.getElementById('notes-active-cat-badge');
     if (catBadge) {
-        catBadge.textContent = `// ${activeCat.toUpperCase()}`;
+        const subSuffix = (activeSubcategoryFilter !== '__HOLDING__' && activeSubcategoryFilter !== '__ALL__')
+            ? ` / ${splitCategoryHierarchy(activeSubcategoryFilter).sub}`
+            : '';
+        catBadge.textContent = `// ${(activeParentCategory + subSuffix).toUpperCase()}`;
     }
 
-    populateBatchMoveSelect(activeCat);
-    return activeCat;
+    renderSubcategoriesBar();
+    populateBatchMoveSelect();
+    return getTargetCategoryForWrite();
 }
 
-function populateBatchMoveSelect(currentCat) {
+function countNotesInParentTree(parentCat) {
+    let total = parseCategoryIntoCards(notesContent[parentCat] || '').length;
+    getSubcategoriesForParent(parentCat).forEach(s => {
+        total += parseCategoryIntoCards(notesContent[s.full] || '').length;
+    });
+    return total;
+}
+
+function renderSubcategoriesBar() {
+    const bar = document.getElementById('notes-subcategories-bar');
+    if (!bar) return;
+
+    const subs = getSubcategoriesForParent(activeParentCategory);
+    if (subs.length > 0 && activeSubcategoryFilter !== '__HOLDING__' && activeSubcategoryFilter !== '__ALL__') {
+        if (!subs.some(s => s.full === activeSubcategoryFilter)) {
+            activeSubcategoryFilter = '__HOLDING__';
+        }
+    } else if (subs.length === 0) {
+        activeSubcategoryFilter = '__HOLDING__';
+    }
+
+    bar.innerHTML = '';
+
+    const holdingCount = parseCategoryIntoCards(notesContent[activeParentCategory] || '').length;
+    const allCount = countNotesInParentTree(activeParentCategory);
+
+    // 1. Pillola HOLDING (Zona di attesa della categoria padre)
+    const holdBtn = document.createElement('button');
+    holdBtn.type = 'button';
+    holdBtn.className = `note-subcat-pill ${activeSubcategoryFilter === '__HOLDING__' ? 'active' : ''}`;
+    holdBtn.textContent = `${activeParentCategory} (${holdingCount})`;
+    holdBtn.onclick = () => {
+        activeSubcategoryFilter = '__HOLDING__';
+        selectedNoteCardKeys.clear();
+        refreshNotesView();
+    };
+    bar.appendChild(holdBtn);
+
+    // 2. Se ci sono sottocategorie, mostra anche [ALL] e ogni sottocategoria
+    if (subs.length > 0) {
+        const allBtn = document.createElement('button');
+        allBtn.type = 'button';
+        allBtn.className = `note-subcat-pill ${activeSubcategoryFilter === '__ALL__' ? 'active' : ''}`;
+        allBtn.textContent = `ALL (${allCount})`;
+        allBtn.onclick = () => {
+            activeSubcategoryFilter = '__ALL__';
+            selectedNoteCardKeys.clear();
+            refreshNotesView();
+        };
+        bar.appendChild(allBtn);
+
+        subs.forEach(s => {
+            const sCount = parseCategoryIntoCards(notesContent[s.full] || '').length;
+            const pill = document.createElement('button');
+            pill.type = 'button';
+            pill.className = `note-subcat-pill ${activeSubcategoryFilter === s.full ? 'active' : ''}`;
+            pill.textContent = `${s.sub} (${sCount})`;
+            pill.onclick = () => {
+                activeSubcategoryFilter = s.full;
+                selectedNoteCardKeys.clear();
+                refreshNotesView();
+            };
+            bar.appendChild(pill);
+        });
+    }
+
+    // 3. Pulsante [+ SUB] per aggiungere al volo una sottocategoria sotto la categoria padre attiva
+    const addSubBtn = document.createElement('button');
+    addSubBtn.type = 'button';
+    addSubBtn.className = 'note-subcat-pill';
+    addSubBtn.style.borderStyle = 'dashed';
+    addSubBtn.textContent = '+ SUB';
+    addSubBtn.onclick = () => {
+        openSubcategoryCreatorInline(bar, addSubBtn);
+    };
+    bar.appendChild(addSubBtn);
+}
+
+function openSubcategoryCreatorInline(barEl, triggerBtn) {
+    if (barEl.querySelector('.subcat-inline-inp')) return;
+    triggerBtn.style.display = 'none';
+
+    const inp = document.createElement('input');
+    inp.type = 'text';
+    inp.className = 'form-control form-control-sm subcat-inline-inp';
+    inp.style.cssText = 'width: 130px; height: 22px; padding: 2px 6px; font-size: 0.65rem;';
+    inp.placeholder = `Sub in ${activeParentCategory}...`;
+
+    const commit = () => {
+        const val = inp.value.trim().replace(/\//g, '');
+        if (val) {
+            const fullCat = `${activeParentCategory} / ${val}`;
+            if (!noteCategories.includes(fullCat)) {
+                noteCategories.push(fullCat);
+                saveData();
+            }
+            activeSubcategoryFilter = fullCat;
+        }
+        refreshNotesView();
+    };
+
+    inp.onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); commit(); }
+        else if (e.key === 'Escape') { e.preventDefault(); refreshNotesView(); }
+    };
+    inp.onblur = commit;
+
+    barEl.appendChild(inp);
+    inp.focus();
+}
+
+// Popola la tendina [➔ MOVE...] SENZA la scritta "Move to:" prima del nome
+function populateBatchMoveSelect() {
     const moveSel = document.getElementById('batch-move-select');
     if (!moveSel) return;
-    moveSel.innerHTML = `<option value="">[➔ MOVE TO...]</option>`;
-    noteCategories.forEach(c => {
-        if (c !== currentCat) {
-            const opt = document.createElement('option');
-            opt.value = c;
-            opt.textContent = `Move to: ${c}`;
-            moveSel.appendChild(opt);
-        }
+    moveSel.innerHTML = `<option value="">[➔ MOVE...]</option>`;
+
+    const allOrderedCats = [];
+    getAllParentCategories().forEach(p => {
+        allOrderedCats.push(p);
+        getSubcategoriesForParent(p).forEach(s => allOrderedCats.push(s.full));
     });
-    const newOpt = document.createElement('option');
-    newOpt.value = '__NEW__';
-    newOpt.textContent = '+ New Category...';
-    moveSel.appendChild(newOpt);
+
+    allOrderedCats.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = c;
+        opt.textContent = c;
+        moveSel.appendChild(opt);
+    });
 }
 
 function onNoteCategoryChange() {
-    selectedNoteStorageIndices.clear();
+    const select = document.getElementById('note-category');
+    if (select && select.value) {
+        activeParentCategory = select.value;
+    }
+    activeSubcategoryFilter = '__HOLDING__';
+    selectedNoteCardKeys.clear();
     expandedNoteCardsSet.clear();
-    isNoteSelectMode = false;
     closeBatchAiDrawer();
     refreshNotesView();
 }
+
+// ============================================================================
+// PARSING DELLE CARD E ORDINAMENTO PER LUNGHEZZA
+// ============================================================================
 
 function parseCategoryIntoCards(rawText) {
     const text = (rawText || '').trim();
@@ -138,6 +315,25 @@ function rebuildCategoryFromCards(cardsArray) {
         .join('\n\n');
 }
 
+function cycleNotesSortMode() {
+    if (notesSortMode === 'newest') notesSortMode = 'longest';
+    else if (notesSortMode === 'longest') notesSortMode = 'shortest';
+    else notesSortMode = 'newest';
+
+    const sortBtn = document.getElementById('btn-notes-sort');
+    if (sortBtn) {
+        const labels = {
+            'newest': '[SORT: NEW]',
+            'longest': '[SORT: LONG ↓]',
+            'shortest': '[SORT: SHORT ↑]'
+        };
+        sortBtn.textContent = labels[notesSortMode];
+    }
+
+    const q = (document.getElementById('note-search-input')?.value || '').trim();
+    renderBrowseCards(q);
+}
+
 function toggleNotesMode() {
     const checkbox = document.getElementById('notes-mode-checkbox');
     const nextMode = (checkbox && checkbox.checked) ? 'browse' : 'write';
@@ -150,54 +346,40 @@ function toggleNotesMode() {
     }
 
     currentNoteMode = nextMode;
-    isNoteSelectMode = false;
-    selectedNoteStorageIndices.clear();
+    selectedNoteCardKeys.clear();
     closeBatchAiDrawer();
     refreshNotesView();
-}
-
-function toggleNoteSelectionMode(forceState = null) {
-    isNoteSelectMode = forceState !== null ? Boolean(forceState) : !isNoteSelectMode;
-    if (!isNoteSelectMode) {
-        selectedNoteStorageIndices.clear();
-        closeBatchAiDrawer();
-    }
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const q = (document.getElementById('note-search-input')?.value || '').trim();
-    renderBrowseCards(cat, q);
-    updateBatchSelectionBarUI();
 }
 
 function refreshNotesView() {
     const checkbox = document.getElementById('notes-mode-checkbox');
     currentNoteMode = (checkbox && checkbox.checked) ? 'browse' : 'write';
 
-    const cat = ensureNoteCategoriesSynced();
+    const targetWriteCat = ensureNoteCategoriesSynced();
     const textEl = document.getElementById('note-text');
     const browseCont = ensureBrowseContainerExists();
     const searchEl = document.getElementById('note-search-input');
-    const selectBtn = document.getElementById('btn-notes-select-mode');
+    const sortBtn = document.getElementById('btn-notes-sort');
     if (!textEl) return;
 
     const activeFilter = searchEl ? searchEl.value.trim() : '';
 
     if (currentNoteMode === 'write') {
         if (browseCont) browseCont.style.display = 'none';
-        if (selectBtn) selectBtn.style.display = 'none';
-        isNoteSelectMode = false;
-        selectedNoteStorageIndices.clear();
+        if (sortBtn) sortBtn.style.display = 'none';
+        selectedNoteCardKeys.clear();
         updateBatchSelectionBarUI();
         closeBatchAiDrawer();
         textEl.style.display = 'block';
         textEl.readOnly = false;
         textEl.value = '';
-        textEl.placeholder = `Write a new note in [${cat}] and press Enter (Shift+Enter for new line)... Use - for lists, [ ] for checkboxes, @YYYY-MM-DD or @domani for date links.`;
+        textEl.placeholder = `Write in [${targetWriteCat}] and press Enter...`;
     } else {
         textEl.style.display = 'none';
-        if (selectBtn) selectBtn.style.display = 'inline-block';
+        if (sortBtn) sortBtn.style.display = 'inline-block';
         if (browseCont) {
             browseCont.style.display = 'flex';
-            renderBrowseCards(cat, activeFilter);
+            renderBrowseCards(activeFilter);
         }
         updateBatchSelectionBarUI();
     }
@@ -205,7 +387,7 @@ function refreshNotesView() {
 
 function filterNotesView(query) {
     const checkbox = document.getElementById('notes-mode-checkbox');
-    const cat = ensureNoteCategoriesSynced();
+    ensureNoteCategoriesSynced();
     const cleanQ = (query || '').trim();
 
     if (cleanQ && checkbox && !checkbox.checked) {
@@ -216,297 +398,306 @@ function filterNotesView(query) {
     if (currentNoteMode === 'browse') {
         const textEl = document.getElementById('note-text');
         const browseCont = ensureBrowseContainerExists();
-        const selectBtn = document.getElementById('btn-notes-select-mode');
+        const sortBtn = document.getElementById('btn-notes-sort');
         if (textEl) textEl.style.display = 'none';
-        if (selectBtn) selectBtn.style.display = 'inline-block';
+        if (sortBtn) sortBtn.style.display = 'inline-block';
         if (browseCont) {
             browseCont.style.display = 'flex';
-            renderBrowseCards(cat, cleanQ);
+            renderBrowseCards(cleanQ);
         }
         updateBatchSelectionBarUI();
     }
 }
 
 // ============================================================================
-// SELEZIONE MULTIPLA ON-DEMAND, MERGE, INBOX & MOVE
+// SELEZIONE COL TASTO DESTRO (4A), UNIONE, SPOSTAMENTO & AUTO-DELETE DOPO AZIONE
 // ============================================================================
 
-function toggleNoteCardSelection(storageIdx, forceState = null) {
-    const shouldSelect = forceState !== null ? Boolean(forceState) : !selectedNoteStorageIndices.has(storageIdx);
-    if (shouldSelect) {
-        selectedNoteStorageIndices.add(storageIdx);
-        isNoteSelectMode = true;
-    } else {
-        selectedNoteStorageIndices.delete(storageIdx);
+function getVisibleCategoriesForCurrentFilter() {
+    if (activeSubcategoryFilter === '__ALL__') {
+        return [activeParentCategory, ...getSubcategoriesForParent(activeParentCategory).map(s => s.full)];
+    }
+    if (activeSubcategoryFilter === '__HOLDING__') {
+        return [activeParentCategory];
+    }
+    return [activeSubcategoryFilter];
+}
+
+function collectVisibleCardsList(filterQuery = '') {
+    const q = (filterQuery || '').trim().toLowerCase();
+    const catsToRead = getVisibleCategoriesForCurrentFilter();
+    const collected = [];
+
+    catsToRead.forEach(catKey => {
+        const cards = parseCategoryIntoCards(notesContent[catKey] || '');
+        for (let i = cards.length - 1; i >= 0; i--) {
+            const card = cards[i];
+            if (!q || card.raw.toLowerCase().includes(q)) {
+                collected.push({
+                    catKey: catKey,
+                    storageIdx: i,
+                    selectionKey: `${catKey}::${i}`,
+                    card: card
+                });
+            }
+        }
+    });
+
+    if (notesSortMode === 'longest') {
+        collected.sort((a, b) => (b.card.body || '').length - (a.card.body || '').length);
+    } else if (notesSortMode === 'shortest') {
+        collected.sort((a, b) => (a.card.body || '').length - (b.card.body || '').length);
     }
 
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const searchEl = document.getElementById('note-search-input');
-    renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
+    return collected;
+}
+
+function toggleNoteCardSelectionByKey(selectionKey) {
+    if (selectedNoteCardKeys.has(selectionKey)) {
+        selectedNoteCardKeys.delete(selectionKey);
+    } else {
+        selectedNoteCardKeys.add(selectionKey);
+    }
+    const q = (document.getElementById('note-search-input')?.value || '').trim();
+    renderBrowseCards(q);
     updateBatchSelectionBarUI();
 }
 
 function selectAllVisibleNotes() {
-    isNoteSelectMode = true;
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-    const q = (document.getElementById('note-search-input')?.value || '').trim().toLowerCase();
-
-    allCards.forEach((card, idx) => {
-        if (!q || card.raw.toLowerCase().includes(q)) {
-            selectedNoteStorageIndices.add(idx);
-        }
-    });
-    renderBrowseCards(cat, q);
+    const q = (document.getElementById('note-search-input')?.value || '').trim();
+    const visible = collectVisibleCardsList(q);
+    visible.forEach(item => selectedNoteCardKeys.add(item.selectionKey));
+    renderBrowseCards(q);
     updateBatchSelectionBarUI();
 }
 
 function clearNoteSelection() {
-    selectedNoteStorageIndices.clear();
-    isNoteSelectMode = false;
+    selectedNoteCardKeys.clear();
     closeBatchAiDrawer();
-    const cat = document.getElementById('note-category')?.value || 'General';
     const q = (document.getElementById('note-search-input')?.value || '').trim();
-    renderBrowseCards(cat, q);
+    renderBrowseCards(q);
     updateBatchSelectionBarUI();
 }
 
 function updateBatchSelectionBarUI() {
     const bar = document.getElementById('notes-batch-bar');
     const countEl = document.getElementById('notes-selected-count');
-    const selectModeBtn = document.getElementById('btn-notes-select-mode');
     const btnMerge = document.getElementById('btn-batch-merge');
     const btnAi = document.getElementById('btn-batch-ai');
-    const btnInbox = document.getElementById('btn-batch-inbox');
-    const btnDel = document.getElementById('btn-batch-del');
-    const moveSel = document.getElementById('batch-move-select');
+    const btnSum = document.getElementById('btn-batch-summary');
 
-    const count = selectedNoteStorageIndices.size;
-    const showBar = currentNoteMode === 'browse' && (isNoteSelectMode || count > 0);
-
-    if (selectModeBtn) {
-        selectModeBtn.textContent = showBar ? '[DONE]' : '[SELECT]';
-        selectModeBtn.classList.toggle('btn-primary', showBar);
-    }
-
+    const count = selectedNoteCardKeys.size;
     if (!bar) return;
-    if (!showBar) {
+
+    if (currentNoteMode !== 'browse' || count === 0) {
         bar.style.display = 'none';
         return;
     }
 
     bar.style.display = 'flex';
-    if (countEl) countEl.textContent = count > 0 ? `${count} SELECTED` : 'CLICK CARDS TO SELECT';
-    if (btnAi) {
-        btnAi.disabled = count === 0;
-        btnAi.textContent = count > 0 ? `[✦ GENERATE ACTIONS (${count})]` : `[✦ GENERATE ACTIONS]`;
-    }
-    if (btnInbox) btnInbox.disabled = count === 0;
+    if (countEl) countEl.textContent = `${count} SELECTED`;
+    if (btnSum) btnSum.textContent = `[✦ GENERATE SUMMARY (${count})]`;
+    if (btnAi) btnAi.textContent = `[✦ GENERATE ACTIONS (${count})]`;
     if (btnMerge) {
         btnMerge.disabled = count < 2;
         btnMerge.textContent = count >= 2 ? `[MERGE (${count})]` : `[MERGE]`;
     }
-    if (moveSel) moveSel.disabled = count === 0;
-    if (btnDel) btnDel.disabled = count === 0;
+}
+
+function parseSelectionKeysToGroupMap(keysSet) {
+    const byCat = {};
+    Array.from(keysSet).forEach(k => {
+        const sepIdx = k.lastIndexOf('::');
+        if (sepIdx === -1) return;
+        const cat = k.slice(0, sepIdx);
+        const idx = parseInt(k.slice(sepIdx + 2), 10);
+        if (!isNaN(idx)) {
+            if (!byCat[cat]) byCat[cat] = [];
+            if (!byCat[cat].includes(idx)) byCat[cat].push(idx);
+        }
+    });
+    return byCat;
+}
+
+// Elimina definitivamente un insieme di note (usato da Delete, da -> Inbox e da Generate Actions Submit)
+function removeNoteCardsBySelectionKeys(keysArrayOrSet) {
+    const byCat = parseSelectionKeysToGroupMap(keysArrayOrSet);
+    for (const [cat, indices] of Object.entries(byCat)) {
+        const allCards = parseCategoryIntoCards(notesContent[cat] || '');
+        indices.sort((a, b) => b - a).forEach(idx => {
+            if (idx >= 0 && idx < allCards.length) {
+                allCards.splice(idx, 1);
+            }
+        });
+        notesContent[cat] = rebuildCategoryFromCards(allCards);
+    }
+    selectedNoteCardKeys.clear();
+    saveData();
+    ensureNoteCategoriesSynced();
+    const q = (document.getElementById('note-search-input')?.value || '').trim();
+    renderBrowseCards(q);
+    updateBatchSelectionBarUI();
 }
 
 function mergeSelectedNoteCards() {
-    if (selectedNoteStorageIndices.size < 2) {
-        if (typeof showToast === 'function') showToast('[MERGE] Select at least 2 notes to merge');
-        return;
+    if (selectedNoteCardKeys.size < 2) return;
+
+    const byCat = parseSelectionKeysToGroupMap(selectedNoteCardKeys);
+    const mergedBodies = [];
+    let targetCat = null;
+    let firstCardMeta = null;
+
+    for (const [cat, indices] of Object.entries(byCat)) {
+        const allCards = parseCategoryIntoCards(notesContent[cat] || '');
+        indices.sort((a, b) => a - b).forEach(idx => {
+            if (allCards[idx]) {
+                if (!targetCat) {
+                    targetCat = cat;
+                    firstCardMeta = allCards[idx];
+                }
+                mergedBodies.push((allCards[idx].body || '').trim());
+            }
+        });
     }
 
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
+    if (!targetCat || mergedBodies.length < 2) return;
 
-    const sortedIndices = Array.from(selectedNoteStorageIndices)
-        .filter(idx => idx >= 0 && idx < allCards.length)
-        .sort((a, b) => a - b);
-
-    if (sortedIndices.length < 2) return;
-
-    const firstIdx = sortedIndices[0];
-    const firstCard = allCards[firstIdx];
-
-    const mergedBody = sortedIndices
-        .map(idx => (allCards[idx].body || '').trim())
-        .filter(Boolean)
-        .join('\n\n');
-
-    allCards[firstIdx] = {
-        isHeadered: firstCard.isHeadered,
-        headerLabel: firstCard.headerLabel,
-        body: mergedBody,
-        raw: firstCard.isHeadered && firstCard.headerLabel
-            ? `=== [${firstCard.headerLabel}] ===\n${mergedBody}`
-            : mergedBody
-    };
-
-    for (let i = sortedIndices.length - 1; i >= 1; i--) {
-        allCards.splice(sortedIndices[i], 1);
+    // Rimuove tutte le card selezionate e inserisce la card unita nella categoria della prima nota
+    const byCatDesc = parseSelectionKeysToGroupMap(selectedNoteCardKeys);
+    for (const [cat, indices] of Object.entries(byCatDesc)) {
+        const allCards = parseCategoryIntoCards(notesContent[cat] || '');
+        indices.sort((a, b) => b - a).forEach(idx => {
+            if (idx >= 0 && idx < allCards.length) allCards.splice(idx, 1);
+        });
+        notesContent[cat] = rebuildCategoryFromCards(allCards);
     }
 
-    notesContent[cat] = rebuildCategoryFromCards(allCards);
-    selectedNoteStorageIndices.clear();
-    isNoteSelectMode = false;
+    const destCards = parseCategoryIntoCards(notesContent[targetCat] || '');
+    const combinedBody = mergedBodies.filter(Boolean).join('\n\n');
+    destCards.push({
+        isHeadered: firstCardMeta ? firstCardMeta.isHeadered : false,
+        headerLabel: firstCardMeta ? firstCardMeta.headerLabel : null,
+        body: combinedBody,
+        raw: (firstCardMeta && firstCardMeta.isHeadered && firstCardMeta.headerLabel)
+            ? `=== [${firstCardMeta.headerLabel}] ===\n${combinedBody}`
+            : combinedBody
+    });
+    notesContent[targetCat] = rebuildCategoryFromCards(destCards);
+
+    selectedNoteCardKeys.clear();
     saveData();
-
     ensureNoteCategoriesSynced();
     const q = (document.getElementById('note-search-input')?.value || '').trim();
-    renderBrowseCards(cat, q);
+    renderBrowseCards(q);
     updateBatchSelectionBarUI();
-
-    if (typeof showToast === 'function') {
-        showToast(`[NOTES] Merged ${sortedIndices.length} cards into 1`);
-    }
+    if (typeof showToast === 'function') showToast(`[MERGED] Combined into "${targetCat}"`);
 }
 
-function moveNoteCardsToCategory(sourceCat, indicesArray, targetCatRaw) {
-    if (!sourceCat || !Array.isArray(indicesArray) || indicesArray.length === 0) return false;
-
-    let targetCat = (targetCatRaw || '').trim();
-    if (targetCat === '__NEW__') {
-        const entered = prompt('Enter name for the new Note Category:');
-        if (!entered || !entered.trim()) return false;
-        targetCat = entered.trim();
-    }
-    if (!targetCat || targetCat === sourceCat) return false;
+function moveSelectedNoteCardsTo(targetCatRaw) {
+    const targetCat = (targetCatRaw || '').trim();
+    if (!targetCat || selectedNoteCardKeys.size === 0) return;
 
     if (!noteCategories.includes(targetCat)) {
         noteCategories.push(targetCat);
     }
 
-    const sourceCards = parseCategoryIntoCards(notesContent[sourceCat] || '');
-    const targetCards = parseCategoryIntoCards(notesContent[targetCat] || '');
+    const byCat = parseSelectionKeysToGroupMap(selectedNoteCardKeys);
+    const cardsToMove = [];
 
-    const validAsc = Array.from(new Set(indicesArray))
-        .filter(idx => idx >= 0 && idx < sourceCards.length)
-        .sort((a, b) => a - b);
-
-    if (validAsc.length === 0) return false;
-
-    validAsc.forEach(idx => {
-        targetCards.push(sourceCards[idx]);
-    });
-
-    for (let i = validAsc.length - 1; i >= 0; i--) {
-        sourceCards.splice(validAsc[i], 1);
+    for (const [cat, indices] of Object.entries(byCat)) {
+        if (cat === targetCat) continue;
+        const srcCards = parseCategoryIntoCards(notesContent[cat] || '');
+        indices.sort((a, b) => a - b).forEach(idx => {
+            if (srcCards[idx]) cardsToMove.push(srcCards[idx]);
+        });
+        indices.sort((a, b) => b - a).forEach(idx => {
+            if (idx >= 0 && idx < srcCards.length) srcCards.splice(idx, 1);
+        });
+        notesContent[cat] = rebuildCategoryFromCards(srcCards);
     }
 
-    notesContent[sourceCat] = rebuildCategoryFromCards(sourceCards);
-    notesContent[targetCat] = rebuildCategoryFromCards(targetCards);
-    selectedNoteStorageIndices.clear();
-    isNoteSelectMode = false;
+    if (cardsToMove.length > 0) {
+        const destCards = parseCategoryIntoCards(notesContent[targetCat] || '');
+        destCards.push(...cardsToMove);
+        notesContent[targetCat] = rebuildCategoryFromCards(destCards);
+    }
 
+    selectedNoteCardKeys.clear();
     saveData();
     ensureNoteCategoriesSynced();
-
-    const activeCat = document.getElementById('note-category')?.value || sourceCat;
     const q = (document.getElementById('note-search-input')?.value || '').trim();
-    renderBrowseCards(activeCat, q);
+    renderBrowseCards(q);
     updateBatchSelectionBarUI();
-    return targetCat;
-}
-
-function moveSelectedNoteCardsTo(targetCatRaw) {
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const indices = Array.from(selectedNoteStorageIndices);
-    const dest = moveNoteCardsToCategory(cat, indices, targetCatRaw);
-    if (dest && typeof showToast === 'function') {
-        showToast(`[NOTES] Moved ${indices.length} card(s) to "${dest}"`);
-    }
+    if (typeof showToast === 'function') showToast(`[MOVED] ➔ ${targetCat}`);
 }
 
 function sendSelectedNoteCardsToInbox() {
-    if (selectedNoteStorageIndices.size === 0) return;
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-    const sortedIndices = Array.from(selectedNoteStorageIndices)
-        .filter(idx => idx >= 0 && idx < allCards.length)
-        .sort((a, b) => a - b);
-
-    if (sortedIndices.length === 0) return;
-
+    if (selectedNoteCardKeys.size === 0) return;
+    const byCat = parseSelectionKeysToGroupMap(selectedNoteCardKeys);
     const dayIndex = parseLocalDate(selectedDateStr).getDay();
     const todoCatName = 'General To-Do';
     if (!categoryOrder.includes(todoCatName)) categoryOrder.push(todoCatName);
 
-    sortedIndices.forEach(idx => {
-        const cleanLine = (allCards[idx].body || '').replace(/\s+/g, ' ').trim();
-        if (!cleanLine) return;
+    let count = 0;
+    for (const [cat, indices] of Object.entries(byCat)) {
+        const allCards = parseCategoryIntoCards(notesContent[cat] || '');
+        indices.sort((a, b) => a - b).forEach(idx => {
+            if (!allCards[idx]) return;
+            const cleanLine = (allCards[idx].body || '').replace(/\s+/g, ' ').trim();
+            if (!cleanLine) return;
 
-        if (cleanLine.toLowerCase().startsWith('comprare ')) {
-            const itemTitle = cleanLine.substring(9).trim();
-            mWishlist.push({ id: 'mw_' + Date.now() + '_' + idx, title: itemTitle, cost: '', order: mWishlist.length });
-        } else {
-            templates.push({
-                id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
-                isTodo: true,
-                category: todoCatName,
-                title: cleanLine,
-                instances: 1,
-                timerMinutes: 15,
-                noTimer: true,
-                frequency: 'specific',
-                daysOfWeek: [dayIndex],
-                startDate: selectedDateStr,
-                endDate: selectedDateStr,
-                color: '#ffffff',
-                type: 'untimed',
-                timeWindows: []
-            });
-        }
-    });
+            if (cleanLine.toLowerCase().startsWith('comprare ')) {
+                const itemTitle = cleanLine.substring(9).trim();
+                mWishlist.push({ id: 'mw_' + Date.now() + '_' + count, title: itemTitle, cost: '', order: mWishlist.length });
+            } else {
+                templates.push({
+                    id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                    isTodo: true,
+                    category: todoCatName,
+                    title: cleanLine,
+                    instances: 1,
+                    timerMinutes: 15,
+                    noTimer: true,
+                    frequency: 'specific',
+                    daysOfWeek: [dayIndex],
+                    startDate: selectedDateStr,
+                    endDate: selectedDateStr,
+                    color: '#ffffff',
+                    type: 'untimed',
+                    timeWindows: []
+                });
+            }
+            count++;
+        });
+    }
 
     saveMoneyData();
-    saveData();
     if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
     if (typeof renderTasks === 'function') renderTasks();
 
-    if (cat !== 'Extracted') {
-        moveNoteCardsToCategory(cat, sortedIndices, 'Extracted');
-    } else {
-        clearNoteSelection();
-    }
+    // Elimina direttamente le note una volta messe a sistema
+    removeNoteCardsBySelectionKeys(selectedNoteCardKeys);
 
     if (typeof showToast === 'function') {
-        showToast(`[TO-DO + ARCHIVED] Added ${sortedIndices.length} item(s) to To-Do & moved to "Extracted"`);
+        showToast(`[INBOX] Added ${count} item(s) & removed processed note(s)`);
     }
 }
 
 function deleteSelectedNoteCards() {
-    if (selectedNoteStorageIndices.size === 0) return;
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-
-    const sortedDesc = Array.from(selectedNoteStorageIndices)
-        .filter(idx => idx >= 0 && idx < allCards.length)
-        .sort((a, b) => b - a);
-
-    sortedDesc.forEach(idx => allCards.splice(idx, 1));
-    notesContent[cat] = rebuildCategoryFromCards(allCards);
-    selectedNoteStorageIndices.clear();
-    isNoteSelectMode = false;
-
-    saveData();
-    ensureNoteCategoriesSynced();
-    const q = (document.getElementById('note-search-input')?.value || '').trim();
-    renderBrowseCards(cat, q);
-    updateBatchSelectionBarUI();
-
-    if (typeof showToast === 'function') {
-        showToast(`[NOTES] Deleted ${sortedDesc.length} card(s)`);
-    }
+    if (selectedNoteCardKeys.size === 0) return;
+    const count = selectedNoteCardKeys.size;
+    removeNoteCardsBySelectionKeys(selectedNoteCardKeys);
+    if (typeof showToast === 'function') showToast(`[DELETED] ${count} note(s)`);
 }
 
 // ============================================================================
-// RENDERIZZAZIONE BROWSE CARDS: MOSAICO A 2 COLONNE, PURO TESTO & HOVER [i] [✎]
+// RENDERIZZAZIONE BROWSE CARDS: TASTO DESTRO = SELEZIONA, CLICK SINISTRO = ESPANDI
 // ============================================================================
 
 function formatInlineNoteTokens(lineStr) {
     const escaped = escapeHtml(lineStr);
     return escaped.replace(/@(\d{4}-\d{2}-\d{2}|oggi|today|domani|tomorrow|tmw|ieri|yesterday)\b/gi, (fullMatch, token) => {
-        return `<span class="note-date-tag" onclick="handleNoteDateTagClick(event, '${escapeHtml(token)}')" title="Jump to date @${escapeHtml(token)}">@${escapeHtml(token)}</span>`;
+        return `<span class="note-date-tag" onclick="handleNoteDateTagClick(event, '${escapeHtml(token)}')">@${escapeHtml(token)}</span>`;
     });
 }
 
@@ -522,7 +713,7 @@ function handleNoteDateTagClick(event, rawToken) {
             summonModule('tasks');
         }
     }
-    if (typeof showToast === 'function') showToast(`[NOTES -> DATE] Jumped to ${resolvedDate}`);
+    if (typeof showToast === 'function') showToast(`[DATE] ${resolvedDate}`);
 }
 
 function toggleNoteCardCheckbox(cat, storageIndex, lineIndex) {
@@ -543,7 +734,7 @@ function toggleNoteCardCheckbox(cat, storageIndex, lineIndex) {
     saveData();
 
     const searchEl = document.getElementById('note-search-input');
-    renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
+    renderBrowseCards(searchEl ? searchEl.value.trim() : '');
 }
 
 function isCardContentLong(bodyText) {
@@ -552,58 +743,45 @@ function isCardContentLong(bodyText) {
     return txt.split('\n').length > 5;
 }
 
-function renderBrowseCards(cat, filterQuery = '') {
+function renderBrowseCards(filterQuery = '') {
     const browseCont = ensureBrowseContainerExists();
     if (!browseCont) return;
     browseCont.innerHTML = '';
 
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-    const q = (filterQuery || '').trim().toLowerCase();
+    const visibleItems = collectVisibleCardsList(filterQuery);
 
-    if (allCards.length === 0) {
-        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px; width:100%;">[ EMPTY — SWITCH TO WRITE ]</div>`;
+    if (visibleItems.length === 0) {
+        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px; width:100%;">[ EMPTY ]</div>`;
         return;
     }
 
-    const indexedCards = allCards
-        .map((card, storageIdx) => ({ card, storageIdx }))
-        .reverse()
-        .filter(item => {
-            if (!q) return true;
-            return item.card.raw.toLowerCase().includes(q);
-        });
-
-    if (indexedCards.length === 0) {
-        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px; width:100%;">[ NO MATCHES FOR "${escapeHtml(filterQuery)}" ]</div>`;
-        return;
-    }
-
-    // Costruisce 2 colonne indipendenti a mosaico (pari a sinistra, dispari a destra)
     const colLeft = document.createElement('div');
     colLeft.className = 'notes-masonry-col';
     const colRight = document.createElement('div');
     colRight.className = 'notes-masonry-col';
 
-    indexedCards.forEach(({ card, storageIdx }, visualIdx) => {
-        const isSelected = selectedNoteStorageIndices.has(storageIdx);
-        const cardKey = `${cat}_${storageIdx}`;
+    visibleItems.forEach(({ catKey, storageIdx, selectionKey, card }, visualIdx) => {
+        const isSelected = selectedNoteCardKeys.has(selectionKey);
         const isLong = isCardContentLong(card.body);
-        const isExpanded = expandedNoteCardsSet.has(cardKey);
+        const isExpanded = expandedNoteCardsSet.has(selectionKey);
 
         const cardEl = document.createElement('div');
         cardEl.className = `note-card ${isSelected ? 'is-selected' : ''}`;
 
-        // Metadato nascosto (data / nome file mp3 / indice) visibile solo cliccando [i]
+        const parsedHierarchy = splitCategoryHierarchy(catKey);
+        const subBadgeText = (activeSubcategoryFilter === '__ALL__' && parsedHierarchy.sub)
+            ? `[${parsedHierarchy.sub}] `
+            : '';
+
         const metaInfoText = card.isHeadered && card.headerLabel
-            ? `🎙 ${card.headerLabel}`
-            : `NOTE #${storageIdx + 1} // ${cat}`;
+            ? `${subBadgeText}🎙 ${card.headerLabel} (${(card.body || '').length} chars)`
+            : `${subBadgeText}NOTE #${storageIdx + 1} // ${catKey} (${(card.body || '').length} chars)`;
 
         const infoPopover = document.createElement('div');
         infoPopover.className = 'note-info-popover';
         infoPopover.textContent = metaInfoText;
         cardEl.appendChild(infoPopover);
 
-        // Micro-pillola in alto a destra visibile SOLO in hover: [i] e [✎]
         const hoverTools = document.createElement('div');
         hoverTools.className = 'note-card-hover-tools';
 
@@ -612,7 +790,6 @@ function renderBrowseCards(cat, filterQuery = '') {
         btnInfo.className = 'icon-btn';
         btnInfo.style.fontSize = '0.68rem';
         btnInfo.textContent = '[i]';
-        btnInfo.title = metaInfoText;
         btnInfo.onclick = (e) => {
             e.stopPropagation();
             infoPopover.classList.toggle('show');
@@ -623,65 +800,61 @@ function renderBrowseCards(cat, filterQuery = '') {
         btnEdit.className = 'icon-btn';
         btnEdit.style.fontSize = '0.68rem';
         btnEdit.textContent = '[✎]';
-        btnEdit.title = 'Edit or Split at cursor (Ctrl+Shift+S)';
+        btnEdit.onclick = (e) => {
+            e.stopPropagation();
+            openCentralNoteEditorModal(catKey, storageIdx);
+        };
 
         hoverTools.appendChild(btnInfo);
         hoverTools.appendChild(btnEdit);
         cardEl.appendChild(hoverTools);
 
-        // Corpo della nota
         const bodyEl = document.createElement('div');
         bodyEl.className = `note-card-body ${(isLong && !isExpanded) ? 'is-collapsed' : ''}`;
-        renderFormattedCardBody(bodyEl, card, cat, storageIdx);
+        renderFormattedCardBody(bodyEl, card, catKey, storageIdx);
 
-        btnEdit.onclick = (e) => {
+        // TASTO DESTRO SULLA NOTA -> Seleziona / Deseleziona all'istante (4A)
+        cardEl.oncontextmenu = (e) => {
+            e.preventDefault();
             e.stopPropagation();
-            expandedNoteCardsSet.add(cardKey);
-            bodyEl.classList.remove('is-collapsed');
-            startNoteCardInlineEdit(bodyEl, cat, storageIdx);
+            toggleNoteCardSelectionByKey(selectionKey);
         };
 
-        // Gestione click sulla card:
-        // - Shift+Click o modalità [SELECT] attiva -> seleziona/deseleziona la card
-        // - Click normale su nota lunga -> espande/compatta la nota
+        let expandHint = null;
+        const toggleExpandCollapse = (e) => {
+            if (e) e.stopPropagation();
+            if (!isLong) return;
+            if (expandedNoteCardsSet.has(selectionKey)) {
+                expandedNoteCardsSet.delete(selectionKey);
+                bodyEl.classList.add('is-collapsed');
+                if (expandHint) expandHint.textContent = '[+ EXPAND]';
+            } else {
+                expandedNoteCardsSet.add(selectionKey);
+                bodyEl.classList.remove('is-collapsed');
+                if (expandHint) expandHint.textContent = '[- COLLAPSE]';
+            }
+        };
+
+        // CLICK SINISTRO -> Espande/Compatta sempre (indipendentemente dal fatto che ci siano note selezionate!)
         cardEl.onclick = (e) => {
-            if (e.target.closest('textarea') || e.target.closest('.note-inline-toolbar') || e.target.classList.contains('check-box') || e.target.classList.contains('note-date-tag')) {
-                return;
-            }
-            if (e.shiftKey || isNoteSelectMode) {
-                e.preventDefault();
-                toggleNoteCardSelection(storageIdx);
-                return;
-            }
-            if (isLong) {
-                if (expandedNoteCardsSet.has(cardKey)) {
-                    expandedNoteCardsSet.delete(cardKey);
-                    bodyEl.classList.add('is-collapsed');
-                    if (expandHint) expandHint.textContent = '[+ EXPAND]';
-                } else {
-                    expandedNoteCardsSet.add(cardKey);
-                    bodyEl.classList.remove('is-collapsed');
-                    if (expandHint) expandHint.textContent = '[- COLLAPSE]';
-                }
-            }
+            if (e.target.classList.contains('check-box') || e.target.classList.contains('note-date-tag')) return;
+            if (isLong) toggleExpandCollapse(e);
         };
 
-        // Doppio click sul testo -> apre l'editor inline (con Split at cursor)
+        // DOPPIO CLICK -> Apre il Modale Centrale Scuro di modifica (3B1)
         bodyEl.ondblclick = (e) => {
             if (e.target.classList.contains('check-box') || e.target.classList.contains('note-date-tag')) return;
             e.stopPropagation();
-            expandedNoteCardsSet.add(cardKey);
-            bodyEl.classList.remove('is-collapsed');
-            startNoteCardInlineEdit(bodyEl, cat, storageIdx);
+            openCentralNoteEditorModal(catKey, storageIdx);
         };
 
         cardEl.appendChild(bodyEl);
 
-        let expandHint = null;
         if (isLong) {
             expandHint = document.createElement('div');
             expandHint.className = 'note-expand-hint';
             expandHint.textContent = isExpanded ? '[- COLLAPSE]' : '[+ EXPAND]';
+            expandHint.onclick = toggleExpandCollapse;
             cardEl.appendChild(expandHint);
         }
 
@@ -743,73 +916,200 @@ function renderFormattedCardBody(bodyContainer, card, cat, storageIdx) {
 }
 
 // ============================================================================
-// EDITOR INLINE CON [✂ SPLIT AT CURSOR // CTRL+SHIFT+S]
+// MODALE CENTRALE SCURO DI MODIFICA & QUICK CAPTURE (SCORCIATOIA: N / ALT+N)
 // ============================================================================
 
-function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
-    if (bodyEl.querySelector('textarea')) return;
+function ensureCentralNoteModalExists() {
+    let modal = document.getElementById('noteCentralEditorModal');
+    if (modal) return modal;
 
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-    const targetCard = allCards[storageIdx];
-    if (!targetCard) return;
+    const root = document.getElementById('modals-root') || document.body;
+    modal = document.createElement('div');
+    modal.id = 'noteCentralEditorModal';
+    modal.className = 'modal-overlay';
+    modal.onclick = (e) => { if (e.target === modal) closeModals(); };
 
-    const originalBody = targetCard.body;
-    bodyEl.innerHTML = '';
+    modal.innerHTML = `
+        <div class="modal-content" style="width: 720px; max-width: 95%; display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
+                <h2 id="ncm-title" style="margin: 0; border: none; padding: 0;">Note</h2>
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <select id="ncm-parent-cat" class="form-control form-control-sm" style="width: 140px; font-weight: bold;"></select>
+                    <select id="ncm-sub-cat" class="form-control form-control-sm" style="width: 140px;"></select>
+                    <button type="button" class="btn btn-sm" onclick="closeModals()">[ESC]</button>
+                </div>
+            </div>
 
-    const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex; flex-direction:column; gap:6px;';
+            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
+                <div style="display: flex; gap: 6px;">
+                    <button type="button" id="ncm-btn-split" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);">[✂ SPLIT AT CURSOR]</button>
+                    <button type="button" id="ncm-btn-summary" class="btn btn-sm">[✦ GENERATE SUMMARY]</button>
+                    <button type="button" id="ncm-btn-actions" class="btn btn-sm">[✦ GENERATE ACTIONS]</button>
+                </div>
+                <span id="ncm-status" style="font-size: var(--font-xs); color: var(--accent-gold);"></span>
+            </div>
 
-    const toolbar = document.createElement('div');
-    toolbar.className = 'note-inline-toolbar';
-    toolbar.innerHTML = `
-        <span style="font-size:0.62rem; color:var(--text-dim);">CTRL+SHIFT+S TO SPLIT</span>
-        <div style="display:flex; gap:6px;">
-            <button type="button" class="btn btn-sm btn-split-cursor" style="border-color:var(--accent-gold); color:var(--accent-gold);">[✂ SPLIT]</button>
-            <button type="button" class="btn btn-primary btn-sm btn-save-inline">[SAVE]</button>
-            <button type="button" class="btn btn-sm btn-cancel-inline">[ESC]</button>
+            <textarea id="ncm-textarea" class="note-inline-editor" style="min-height: 260px; font-size: var(--font-sm); line-height: 1.55;" placeholder="Write note..."></textarea>
+
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
+                <button type="button" id="ncm-btn-delete" class="btn btn-danger btn-sm" style="display: none;">[DELETE]</button>
+                <div style="display: flex; gap: 8px; margin-left: auto;">
+                    <button type="button" class="btn" onclick="closeModals()">Cancel</button>
+                    <button type="button" id="ncm-btn-save" class="btn btn-primary">[SAVE // CTRL+ENTER]</button>
+                </div>
+            </div>
         </div>
     `;
 
-    const ta = document.createElement('textarea');
-    ta.className = 'note-inline-editor';
-    ta.value = originalBody;
+    root.appendChild(modal);
+    return modal;
+}
 
-    let finished = false;
+function populateCentralModalCategorySelects(initialFullCat) {
+    const parentSel = document.getElementById('ncm-parent-cat');
+    const subSel = document.getElementById('ncm-sub-cat');
+    if (!parentSel || !subSel) return;
 
-    const commitEdit = () => {
-        if (finished) return;
-        finished = true;
-        const newVal = ta.value.trim();
-        if (!newVal) {
-            allCards.splice(storageIdx, 1);
-        } else {
-            allCards[storageIdx].body = newVal;
+    const parsed = splitCategoryHierarchy(initialFullCat || getTargetCategoryForWrite());
+    const parents = getAllParentCategories();
+    if (!parents.includes(parsed.parent)) parents.push(parsed.parent);
+
+    parentSel.innerHTML = '';
+    parents.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p;
+        opt.textContent = p;
+        if (p === parsed.parent) opt.selected = true;
+        parentSel.appendChild(opt);
+    });
+    const newParentOpt = document.createElement('option');
+    newParentOpt.value = '__NEW_PARENT__';
+    newParentOpt.textContent = '+ New Category...';
+    parentSel.appendChild(newParentOpt);
+
+    const updateSubOptions = (parentName, selectedSubName = null) => {
+        subSel.innerHTML = `<option value="">[Holding Zone]</option>`;
+        getSubcategoriesForParent(parentName).forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.sub;
+            opt.textContent = `/ ${s.sub}`;
+            if (selectedSubName && s.sub === selectedSubName) opt.selected = true;
+            subSel.appendChild(opt);
+        });
+        const newSubOpt = document.createElement('option');
+        newSubOpt.value = '__NEW_SUB__';
+        newSubOpt.textContent = '+ New Subcategory...';
+        subSel.appendChild(newSubOpt);
+    };
+
+    updateSubOptions(parsed.parent, parsed.sub);
+
+    parentSel.onchange = () => {
+        if (parentSel.value === '__NEW_PARENT__') {
+            const entered = prompt('New Category Name:');
+            if (entered && entered.trim()) {
+                const clean = entered.trim().replace(/\//g, '');
+                if (!noteCategories.includes(clean)) noteCategories.push(clean);
+                populateCentralModalCategorySelects(clean);
+            } else {
+                parentSel.value = parsed.parent;
+            }
+            return;
         }
-        notesContent[cat] = rebuildCategoryFromCards(allCards);
-        saveData();
-        ensureNoteCategoriesSynced();
+        updateSubOptions(parentSel.value, null);
+    };
 
-        const searchEl = document.getElementById('note-search-input');
-        renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
-        if (typeof showToast === 'function') showToast('[NOTES] Card updated');
+    subSel.onchange = () => {
+        if (subSel.value === '__NEW_SUB__') {
+            const entered = prompt(`New Subcategory inside "${parentSel.value}":`);
+            if (entered && entered.trim()) {
+                const cleanSub = entered.trim().replace(/\//g, '');
+                const full = `${parentSel.value} / ${cleanSub}`;
+                if (!noteCategories.includes(full)) noteCategories.push(full);
+                updateSubOptions(parentSel.value, cleanSub);
+            } else {
+                subSel.value = '';
+            }
+        }
+    };
+}
+
+function getCentralModalSelectedFullCategory() {
+    const p = document.getElementById('ncm-parent-cat')?.value || 'General';
+    const s = document.getElementById('ncm-sub-cat')?.value || '';
+    const full = (s && s !== '__NEW_SUB__') ? `${p} / ${s}` : p;
+    if (!noteCategories.includes(full)) noteCategories.push(full);
+    return full;
+}
+
+// Apre il Modale Centrale per modificare una nota esistente (3B1)
+function openCentralNoteEditorModal(sourceCat, storageIdx) {
+    const allCards = parseCategoryIntoCards(notesContent[sourceCat] || '');
+    const targetCard = allCards[storageIdx];
+    if (!targetCard) return;
+
+    const modal = ensureCentralNoteModalExists();
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
+    closeModals();
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
+
+    document.getElementById('ncm-title').textContent = 'Edit Note';
+    populateCentralModalCategorySelects(sourceCat);
+
+    const ta = document.getElementById('ncm-textarea');
+    const statusEl = document.getElementById('ncm-status');
+    const btnSplit = document.getElementById('ncm-btn-split');
+    const btnSummary = document.getElementById('ncm-btn-summary');
+    const btnActions = document.getElementById('ncm-btn-actions');
+    const btnDel = document.getElementById('ncm-btn-delete');
+    const btnSave = document.getElementById('ncm-btn-save');
+
+    ta.value = targetCard.body || '';
+    statusEl.textContent = '';
+    btnSplit.style.display = 'inline-block';
+    btnDel.style.display = 'inline-block';
+
+    const saveChanges = () => {
+        const newBody = ta.value.trim();
+        const destCat = getCentralModalSelectedFullCategory();
+        const currentSrcCards = parseCategoryIntoCards(notesContent[sourceCat] || '');
+
+        if (!newBody) {
+            currentSrcCards.splice(storageIdx, 1);
+            notesContent[sourceCat] = rebuildCategoryFromCards(currentSrcCards);
+        } else if (destCat === sourceCat) {
+            currentSrcCards[storageIdx].body = newBody;
+            notesContent[sourceCat] = rebuildCategoryFromCards(currentSrcCards);
+        } else {
+            const movedCard = currentSrcCards.splice(storageIdx, 1)[0];
+            movedCard.body = newBody;
+            notesContent[sourceCat] = rebuildCategoryFromCards(currentSrcCards);
+
+            const destCards = parseCategoryIntoCards(notesContent[destCat] || '');
+            destCards.push(movedCard);
+            notesContent[destCat] = rebuildCategoryFromCards(destCards);
+        }
+
+        saveData();
+        closeModals();
+        ensureNoteCategoriesSynced();
+        refreshNotesView();
+        if (typeof showToast === 'function') showToast('[NOTES] Saved');
     };
 
     const splitAtCursor = () => {
-        if (finished) return;
         const pos = ta.selectionStart;
         const fullText = ta.value;
         const firstHalf = fullText.slice(0, pos).trim();
         const secondHalf = fullText.slice(pos).trim();
 
         if (!firstHalf || !secondHalf) {
-            if (typeof showToast === 'function') {
-                showToast('[SPLIT] Place the cursor inside the text!');
-            }
+            if (typeof showToast === 'function') showToast('[SPLIT] Place cursor inside text');
             ta.focus();
             return;
         }
 
-        finished = true;
+        const currentSrcCards = parseCategoryIntoCards(notesContent[sourceCat] || '');
         const cardPart1 = {
             isHeadered: targetCard.isHeadered,
             headerLabel: targetCard.headerLabel,
@@ -818,7 +1118,6 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
                 ? `=== [${targetCard.headerLabel}] ===\n${firstHalf}`
                 : firstHalf
         };
-
         const cardPart2 = {
             isHeadered: targetCard.isHeadered,
             headerLabel: targetCard.headerLabel ? `${targetCard.headerLabel} // PART 2` : null,
@@ -828,67 +1127,183 @@ function startNoteCardInlineEdit(bodyEl, cat, storageIdx) {
                 : secondHalf
         };
 
-        allCards.splice(storageIdx, 1, cardPart1, cardPart2);
-        notesContent[cat] = rebuildCategoryFromCards(allCards);
-        selectedNoteStorageIndices.clear();
+        currentSrcCards.splice(storageIdx, 1, cardPart1, cardPart2);
+        notesContent[sourceCat] = rebuildCategoryFromCards(currentSrcCards);
         saveData();
+        closeModals();
         ensureNoteCategoriesSynced();
+        refreshNotesView();
+        if (typeof showToast === 'function') showToast('[SPLIT] Split into 2 notes');
+    };
 
-        const searchEl = document.getElementById('note-search-input');
-        renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
-        updateBatchSelectionBarUI();
-        if (typeof showToast === 'function') {
-            showToast('[SPLIT] Note split into 2 cards!');
+    btnSplit.onclick = splitAtCursor;
+    btnSave.onclick = saveChanges;
+
+    btnDel.onclick = () => {
+        const currentSrcCards = parseCategoryIntoCards(notesContent[sourceCat] || '');
+        currentSrcCards.splice(storageIdx, 1);
+        notesContent[sourceCat] = rebuildCategoryFromCards(currentSrcCards);
+        saveData();
+        closeModals();
+        ensureNoteCategoriesSynced();
+        refreshNotesView();
+        if (typeof showToast === 'function') showToast('[DELETED] Note removed');
+    };
+
+    btnSummary.onclick = async () => {
+        if (!ta.value.trim() || typeof summarizeAndStructureNoteWithGemini !== 'function') return;
+        statusEl.textContent = '[◈ GENERATING SUMMARY...]';
+        btnSummary.disabled = true;
+        try {
+            const rewritten = await summarizeAndStructureNoteWithGemini(ta.value.trim());
+            if (rewritten) ta.value = rewritten;
+            statusEl.textContent = '[✓ STRUCTURED FOR PROMPT]';
+        } catch (err) {
+            statusEl.textContent = `[ERROR] ${err.message}`;
         }
+        btnSummary.disabled = false;
     };
 
-    toolbar.querySelector('.btn-split-cursor').onmousedown = (e) => {
-        e.preventDefault();
-        splitAtCursor();
-    };
-    toolbar.querySelector('.btn-save-inline').onmousedown = (e) => {
-        e.preventDefault();
-        commitEdit();
-    };
-    toolbar.querySelector('.btn-cancel-inline').onmousedown = (e) => {
-        e.preventDefault();
-        finished = true;
-        const searchEl = document.getElementById('note-search-input');
-        renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
-    };
-
-    ta.onblur = () => {
-        setTimeout(() => {
-            if (!finished) commitEdit();
-        }, 120);
+    btnActions.onclick = async () => {
+        const selKey = `${sourceCat}::${storageIdx}`;
+        selectedNoteCardKeys.clear();
+        selectedNoteCardKeys.add(selKey);
+        saveChanges();
+        const cb = document.getElementById('notes-mode-checkbox');
+        if (cb && !cb.checked) { cb.checked = true; currentNoteMode = 'browse'; }
+        refreshNotesView();
+        triggerBatchAiExtraction();
     };
 
     ta.onkeydown = (e) => {
         if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 's' || e.key === 'S')) {
             e.preventDefault();
-            e.stopPropagation();
             splitAtCursor();
-            return;
-        }
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+        } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
             e.preventDefault();
-            commitEdit();
-        } else if (e.key === 'Escape') {
-            e.preventDefault();
-            finished = true;
-            const searchEl = document.getElementById('note-search-input');
-            renderBrowseCards(cat, searchEl ? searchEl.value.trim() : '');
+            saveChanges();
         }
     };
 
-    wrap.appendChild(toolbar);
-    wrap.appendChild(ta);
-    bodyEl.appendChild(wrap);
-    ta.focus();
+    modal.style.display = 'flex';
+    setTimeout(() => ta.focus(), 25);
 }
 
+// Apre il Modale Centrale in modalità "Quick Note" da qualsiasi schermata (Scorciatoia: N / Alt+N)
+function openQuickNoteModal() {
+    const modal = ensureCentralNoteModalExists();
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
+    closeModals();
+    if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
+
+    document.getElementById('ncm-title').textContent = 'Quick Note';
+    populateCentralModalCategorySelects(getTargetCategoryForWrite());
+
+    const ta = document.getElementById('ncm-textarea');
+    const statusEl = document.getElementById('ncm-status');
+    const btnSplit = document.getElementById('ncm-btn-split');
+    const btnSummary = document.getElementById('ncm-btn-summary');
+    const btnActions = document.getElementById('ncm-btn-actions');
+    const btnDel = document.getElementById('ncm-btn-delete');
+    const btnSave = document.getElementById('ncm-btn-save');
+
+    ta.value = '';
+    statusEl.textContent = '';
+    btnSplit.style.display = 'none';
+    btnDel.style.display = 'none';
+
+    const saveQuickNote = () => {
+        const body = ta.value.trim();
+        if (!body) { closeModals(); return; }
+        const destCat = getCentralModalSelectedFullCategory();
+        if (!notesContent[destCat]) notesContent[destCat] = '';
+        notesContent[destCat] += (notesContent[destCat] === '' ? '' : '\n\n') + body;
+        saveData();
+        closeModals();
+        ensureNoteCategoriesSynced();
+        refreshNotesView();
+        if (typeof showToast === 'function') showToast(`[NOTE SAVED] ➔ ${destCat}`);
+    };
+
+    btnSave.onclick = saveQuickNote;
+
+    btnSummary.onclick = async () => {
+        if (!ta.value.trim() || typeof summarizeAndStructureNoteWithGemini !== 'function') return;
+        statusEl.textContent = '[◈ GENERATING SUMMARY...]';
+        btnSummary.disabled = true;
+        try {
+            const rewritten = await summarizeAndStructureNoteWithGemini(ta.value.trim());
+            if (rewritten) ta.value = rewritten;
+            statusEl.textContent = '[✓ STRUCTURED FOR PROMPT]';
+        } catch (err) {
+            statusEl.textContent = `[ERROR] ${err.message}`;
+        }
+        btnSummary.disabled = false;
+    };
+
+    btnActions.onclick = async () => {
+        const body = ta.value.trim();
+        if (!body) return;
+        const destCat = getCentralModalSelectedFullCategory();
+        if (!notesContent[destCat]) notesContent[destCat] = '';
+        notesContent[destCat] += (notesContent[destCat] === '' ? '' : '\n\n') + body;
+        saveData();
+        closeModals();
+
+        if (typeof summonModule === 'function' && (!activeSlots || !activeSlots.includes('notes'))) {
+            summonModule('notes');
+        }
+        const parsed = splitCategoryHierarchy(destCat);
+        activeParentCategory = parsed.parent;
+        activeSubcategoryFilter = parsed.sub ? destCat : '__HOLDING__';
+        const cb = document.getElementById('notes-mode-checkbox');
+        if (cb) cb.checked = true;
+        currentNoteMode = 'browse';
+
+        const cards = parseCategoryIntoCards(notesContent[destCat] || '');
+        selectedNoteCardKeys.clear();
+        selectedNoteCardKeys.add(`${destCat}::${cards.length - 1}`);
+        refreshNotesView();
+        triggerBatchAiExtraction();
+    };
+
+    ta.onkeydown = (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            saveQuickNote();
+        }
+    };
+
+    modal.style.display = 'flex';
+    setTimeout(() => ta.focus(), 25);
+}
+
+// Scorciatoia globale 'N' (a input libero) e 'Alt+N' (ovunque) per Quick Note
+document.addEventListener('keydown', (e) => {
+    if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+        e.preventDefault();
+        openQuickNoteModal();
+        return;
+    }
+
+    const activeTag = document.activeElement ? document.activeElement.tagName : '';
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || (document.activeElement && document.activeElement.isContentEditable)) return;
+    if (e.ctrlKey || e.altKey || e.metaKey) return;
+
+    const termOverlay = document.getElementById('terminalOverlay');
+    if (termOverlay && termOverlay.classList.contains('show')) return;
+
+    const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+    if (anyModalOpen) return;
+
+    if (e.key === 'n' || e.key === 'N') {
+        e.preventDefault();
+        openQuickNoteModal();
+    }
+});
+
 // ============================================================================
-// ESTRAZIONE AZIONI CON GEMINI -> ARCHIVIAZIONE AUTOMATICA IN "EXTRACTED"
+// [✦ GENERATE SUMMARY] (1B) & [✦ GENERATE ACTIONS] (CON AUTO-DELETE DELLA NOTA)
 // ============================================================================
 
 function closeBatchAiDrawer() {
@@ -899,20 +1314,109 @@ function closeBatchAiDrawer() {
     }
 }
 
+function getCombinedTextFromSelectedNotes() {
+    const byCat = parseSelectionKeysToGroupMap(selectedNoteCardKeys);
+    const blocks = [];
+    let firstCat = getTargetCategoryForWrite();
+
+    for (const [cat, indices] of Object.entries(byCat)) {
+        if (!firstCat) firstCat = cat;
+        const allCards = parseCategoryIntoCards(notesContent[cat] || '');
+        indices.sort((a, b) => a - b).forEach(idx => {
+            if (allCards[idx] && allCards[idx].body) {
+                blocks.push(allCards[idx].body.trim());
+            }
+        });
+    }
+    return { combinedText: blocks.join('\n\n'), firstCat };
+}
+
+// 1B. Genera un Summary strutturato / Riscrittura pronta per Prompt nel cassetto inline
+async function triggerBatchSummaryGeneration() {
+    if (selectedNoteCardKeys.size === 0 || typeof summarizeAndStructureNoteWithGemini !== 'function') return;
+
+    const { combinedText, firstCat } = getCombinedTextFromSelectedNotes();
+    if (!combinedText) return;
+
+    const sumBtn = document.getElementById('btn-batch-summary');
+    if (sumBtn) {
+        sumBtn.disabled = true;
+        sumBtn.textContent = '[◈ SUMMARIZING...]';
+    }
+
+    try {
+        const structuredText = await summarizeAndStructureNoteWithGemini(combinedText);
+        if (sumBtn) sumBtn.disabled = false;
+        updateBatchSelectionBarUI();
+
+        if (!structuredText) return;
+
+        const drawer = document.getElementById('notes-batch-ai-drawer');
+        if (!drawer) return;
+
+        drawer.style.display = 'flex';
+        drawer.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:var(--font-xs); color:var(--accent-gold); font-weight:bold; text-transform:uppercase;">
+                    ✦ Structured Summary &amp; Prompt-Ready Rewrite
+                </span>
+                <button type="button" class="icon-btn" id="btn-close-sum-drawer">[×]</button>
+            </div>
+            <textarea id="sum-drawer-textarea" class="note-inline-editor" style="min-height: 140px;"></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+                <button type="button" class="btn btn-sm" id="btn-sum-copy">[COPY FOR PROMPT]</button>
+                <button type="button" class="btn btn-sm" id="btn-sum-save-new">[SAVE AS NEW]</button>
+                <button type="button" class="btn btn-primary btn-sm" id="btn-sum-replace">[REPLACE ORIGINAL]</button>
+            </div>
+        `;
+
+        const ta = drawer.querySelector('#sum-drawer-textarea');
+        ta.value = structuredText;
+
+        drawer.querySelector('#btn-close-sum-drawer').onclick = closeBatchAiDrawer;
+
+        drawer.querySelector('#btn-sum-copy').onclick = () => {
+            navigator.clipboard.writeText(ta.value.trim());
+            if (typeof showToast === 'function') showToast('[COPIED] Ready to paste into prompt!');
+        };
+
+        drawer.querySelector('#btn-sum-save-new').onclick = () => {
+            const val = ta.value.trim();
+            if (!val) return;
+            const dest = firstCat || getTargetCategoryForWrite();
+            if (!notesContent[dest]) notesContent[dest] = '';
+            notesContent[dest] += (notesContent[dest] === '' ? '' : '\n\n') + val;
+            saveData();
+            closeBatchAiDrawer();
+            clearNoteSelection();
+            if (typeof showToast === 'function') showToast(`[SAVED NEW] Added in "${dest}"`);
+        };
+
+        drawer.querySelector('#btn-sum-replace').onclick = () => {
+            const val = ta.value.trim();
+            if (!val) return;
+            const dest = firstCat || getTargetCategoryForWrite();
+            removeNoteCardsBySelectionKeys(selectedNoteCardKeys);
+            if (!notesContent[dest]) notesContent[dest] = '';
+            notesContent[dest] += (notesContent[dest] === '' ? '' : '\n\n') + val;
+            saveData();
+            closeBatchAiDrawer();
+            ensureNoteCategoriesSynced();
+            refreshNotesView();
+            if (typeof showToast === 'function') showToast('[REPLACED] Original note(s) replaced with structured version');
+        };
+    } catch (err) {
+        if (sumBtn) sumBtn.disabled = false;
+        updateBatchSelectionBarUI();
+        if (typeof showToast === 'function') showToast(`[SUMMARY ERROR] ${err.message}`);
+    }
+}
+
 async function triggerBatchAiExtraction() {
-    if (selectedNoteStorageIndices.size === 0) return;
+    if (selectedNoteCardKeys.size === 0) return;
 
-    const cat = document.getElementById('note-category')?.value || 'General';
-    const allCards = parseCategoryIntoCards(notesContent[cat] || '');
-    const sortedIndices = Array.from(selectedNoteStorageIndices)
-        .filter(idx => idx >= 0 && idx < allCards.length)
-        .sort((a, b) => a - b);
-
-    if (sortedIndices.length === 0) return;
-
-    const combinedText = sortedIndices
-        .map((idx, n) => `--- NOTE ${n + 1} ---\n${allCards[idx].body}`)
-        .join('\n\n');
+    const { combinedText } = getCombinedTextFromSelectedNotes();
+    if (!combinedText) return;
 
     const batchBtn = document.getElementById('btn-batch-ai');
     if (batchBtn) {
@@ -929,16 +1433,16 @@ async function triggerBatchAiExtraction() {
 
         const batchDrawer = document.getElementById('notes-batch-ai-drawer');
         if (batchDrawer) {
-            renderSharedAiStagingDrawer(batchDrawer, extractedCmds, cat, sortedIndices, allCards[sortedIndices[0]].body);
+            renderSharedAiStagingDrawer(batchDrawer, extractedCmds, new Set(selectedNoteCardKeys), combinedText);
         }
     } catch (err) {
         if (batchBtn) batchBtn.disabled = false;
         updateBatchSelectionBarUI();
-        if (typeof showToast === 'function') showToast(`[BATCH AI ERROR] ${err.message}`);
+        if (typeof showToast === 'function') showToast(`[AI ERROR] ${err.message}`);
     }
 }
 
-function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storageIndicesArray, fallbackFirstLineText = '') {
+function renderSharedAiStagingDrawer(drawerEl, commandsArray, keysToRemoveOnSubmit, fallbackText = '') {
     drawerEl.style.display = 'flex';
     let localCmds = (commandsArray || []).map(c => c.trim()).filter(Boolean);
 
@@ -949,15 +1453,14 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
         topRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;';
         topRow.innerHTML = `
             <span style="font-size:var(--font-xs); color:var(--text-main); font-weight:bold; text-transform:uppercase;">
-                Staging Actions (${localCmds.length} cmds from ${storageIndicesArray.length} note${storageIndicesArray.length > 1 ? 's' : ''})
-                <span style="color:var(--accent-green); margin-left:6px;">[AUTO-MOVES TO "EXTRACTED"]</span>
+                Staging Actions (${localCmds.length})
             </span>
             <button type="button" class="btn btn-sm" id="add-staged-cmd-btn">[+ ADD ACTION]</button>
         `;
         drawerEl.appendChild(topRow);
 
         topRow.querySelector('#add-staged-cmd-btn').onclick = () => {
-            const sample = (fallbackFirstLineText || '').split('\n')[0].trim();
+            const sample = (fallbackText || '').split('\n')[0].trim();
             localCmds.push('todo ' + sample);
             drawList();
         };
@@ -966,7 +1469,7 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
             const emptyMsg = document.createElement('div');
             emptyMsg.className = 'empty-state';
             emptyMsg.style.padding = '4px 0';
-            emptyMsg.textContent = '[ NO SPECIFIC ACTIONS DETECTED — CLICK "+ ADD ACTION" OR CANCEL ]';
+            emptyMsg.textContent = '[ NO ACTIONS DETECTED ]';
             drawerEl.appendChild(emptyMsg);
         } else {
             localCmds.forEach((cmdStr, idx) => {
@@ -1021,16 +1524,13 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
         btnCancel.type = 'button';
         btnCancel.className = 'btn btn-sm';
         btnCancel.textContent = '[CANCEL]';
-        btnCancel.onclick = () => {
-            drawerEl.style.display = 'none';
-            drawerEl.innerHTML = '';
-        };
+        btnCancel.onclick = closeBatchAiDrawer;
 
         const btnSubmit = document.createElement('button');
         btnSubmit.type = 'button';
         btnSubmit.className = 'btn btn-primary btn-sm';
         btnSubmit.disabled = localCmds.length === 0;
-        btnSubmit.textContent = `[SUBMIT ALL & ARCHIVE]`;
+        btnSubmit.textContent = `[SUBMIT & DELETE NOTE]`;
         btnSubmit.onclick = () => {
             let count = 0;
             localCmds.forEach(cmd => {
@@ -1039,17 +1539,12 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
                 }
             });
 
-            drawerEl.style.display = 'none';
-            drawerEl.innerHTML = '';
-
-            if (sourceCat !== 'Extracted') {
-                moveNoteCardsToCategory(sourceCat, storageIndicesArray, 'Extracted');
-            } else {
-                clearNoteSelection();
-            }
+            closeBatchAiDrawer();
+            // Elimina direttamente le note processate una volta messe a sistema!
+            removeNoteCardsBySelectionKeys(keysToRemoveOnSubmit);
 
             if (typeof showToast === 'function') {
-                showToast(`[EXTRACTED] Executed ${count} action(s) & archived to "Extracted"!`);
+                showToast(`[EXECUTED] ${count} action(s) added & source note(s) deleted`);
             }
         };
 
@@ -1062,7 +1557,7 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, sourceCat, storage
 }
 
 // ============================================================================
-// SCRITTURA NOTE & GESTIONE CATEGORIE
+// SCRITTURA NOTE & GESTIONE CATEGORIE / SOTTOCATEGORIE
 // ============================================================================
 
 function handleNoteKeyDown(event) {
@@ -1073,25 +1568,20 @@ function handleNoteKeyDown(event) {
 }
 
 function saveNote() {
-    const cat = ensureNoteCategoriesSynced();
+    const cat = getTargetCategoryForWrite();
     const textEl = document.getElementById('note-text');
     if (!textEl) return;
     const text = textEl.value.trim();
     if (!text || !cat) return;
 
+    if (!noteCategories.includes(cat)) noteCategories.push(cat);
     if (!notesContent[cat]) notesContent[cat] = "";
     notesContent[cat] += (notesContent[cat] === "" ? "" : "\n\n") + text;
     saveData();
     ensureNoteCategoriesSynced();
 
     textEl.value = '';
-    textEl.placeholder = `[OK] Saved in ${cat}!`;
-    if (typeof showToast === 'function') showToast(`[NOTES] Saved in "${cat}"`);
-    setTimeout(() => {
-        if (currentNoteMode === 'write') {
-            textEl.placeholder = `Write a new note in [${cat}] and press Enter...`;
-        }
-    }, 1400);
+    if (typeof showToast === 'function') showToast(`[SAVED] ${cat}`);
 }
 
 function handleNoteInput() {}
@@ -1113,7 +1603,7 @@ function renderNotesManager() {
     ensureNoteCategoriesSynced();
     container.innerHTML = '';
 
-    const protectedCats = ['General', 'Registrazioni', 'Extracted'];
+    const protectedCats = ['General', 'Registrazioni'];
 
     noteCategories.forEach(cat => {
         const row = document.createElement('div');
@@ -1121,7 +1611,7 @@ function renderNotesManager() {
 
         const count = parseCategoryIntoCards(notesContent[cat] || '').length;
         const span = document.createElement('span');
-        span.textContent = `${cat} (${count} notes)`;
+        span.textContent = `${cat} (${count})`;
 
         const actions = document.createElement('div');
         actions.className = 'action-btns';
@@ -1131,13 +1621,12 @@ function renderNotesManager() {
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
             delBtn.textContent = '[X]';
-            delBtn.title = 'Delete category and its notes permanently';
             delBtn.onclick = () => removeNoteCategory(cat);
             actions.appendChild(delBtn);
         } else {
             const sysBadge = document.createElement('span');
             sysBadge.style.cssText = 'font-size:0.65rem; color:var(--text-dim);';
-            sysBadge.textContent = '[SYSTEM]';
+            sysBadge.textContent = '[SYS]';
             actions.appendChild(sysBadge);
         }
 
@@ -1150,7 +1639,7 @@ function renderNotesManager() {
 function quickAddNoteCategory(event) {
     if (event.key === 'Enter') {
         const newCat = event.target.value.trim();
-        if (newCat && !noteCategories.includes(newCat)) {
+        if (newCat && newCat !== 'Extracted' && !noteCategories.includes(newCat)) {
             noteCategories.push(newCat);
             saveData();
             event.target.value = '';
@@ -1161,14 +1650,14 @@ function quickAddNoteCategory(event) {
 }
 
 function removeNoteCategory(cat) {
-    if (['General', 'Registrazioni', 'Extracted'].includes(cat)) return;
-    noteCategories = noteCategories.filter(c => c !== cat);
+    if (['General', 'Registrazioni'].includes(cat)) return;
+    noteCategories = noteCategories.filter(c => c !== cat && !c.startsWith(cat + ' /'));
     delete notesContent[cat];
-    selectedNoteStorageIndices.clear();
+    selectedNoteCardKeys.clear();
     saveData();
     renderNotesManager();
     renderNoteCategories();
-    if (typeof showToast === 'function') showToast(`[NOTES] Category "${cat}" permanently deleted`);
+    if (typeof showToast === 'function') showToast(`[DELETED] "${cat}"`);
 }
 
 function openRegistrazioniInBrowseMode() {
@@ -1176,15 +1665,14 @@ function openRegistrazioniInBrowseMode() {
         summonModule('notes');
     }
 
+    activeParentCategory = 'Registrazioni';
+    activeSubcategoryFilter = '__HOLDING__';
     ensureNoteCategoriesSynced();
-    const select = document.getElementById('note-category');
-    if (select) select.value = 'Registrazioni';
 
     const checkbox = document.getElementById('notes-mode-checkbox');
     if (checkbox) checkbox.checked = true;
     currentNoteMode = 'browse';
-    isNoteSelectMode = false;
-    selectedNoteStorageIndices.clear();
+    selectedNoteCardKeys.clear();
     refreshNotesView();
 
     const browseCont = document.getElementById('notes-browse-container');

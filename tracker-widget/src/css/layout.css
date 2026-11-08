@@ -1003,61 +1003,147 @@ body.layout-edit-mode .quadrant-title-static {
     gap: 10px;
 }
 
-/* --- MODALITÀ HUD FLOATING WIDGET COMPATTA --- */
-.hud-widget-strip {
+/* --- TACTICAL VERTICAL POD HUD MODE (340x460px) --- */
+.hud-tactical-pod {
     display: none;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.68rem;
-    color: var(--text-muted);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-    border-left: 1px solid var(--border-color);
-    padding-left: 10px;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+    background: #030303;
+    border: 1px solid var(--border-bright);
+    overflow: hidden;
+    user-select: none;
+    z-index: 3500;
 }
 
-.hud-strip-pill {
-    padding: 2px 6px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid var(--border-color);
-    color: var(--text-muted);
-}
-
-.hud-strip-pill strong {
-    color: var(--text-main);
-}
-
+body.hud-mode:not(.hud-temp-expanded) .app-header,
 body.hud-mode:not(.hud-temp-expanded) #app-content-wrapper,
-body.hud-mode:not(.hud-temp-expanded) #edit-dock-bar {
+body.hud-mode:not(.hud-temp-expanded) #edit-dock-bar,
+body.hud-mode:not(.hud-temp-expanded) .tauri-drag-bar {
     display: none !important;
 }
 
-body.hud-mode:not(.hud-temp-expanded) .app-header {
-    height: 44px;
-    padding: 0 12px;
-    background: #030303;
-    border: 1px solid var(--border-bright);
+body.hud-mode:not(.hud-temp-expanded) #hud-tactical-pod {
+    display: flex !important;
 }
 
-body.hud-mode:not(.hud-temp-expanded) #global-clock {
-    font-size: var(--font-sm);
-}
-
-body.hud-mode:not(.hud-temp-expanded) .hud-widget-strip {
+.hud-pod-topbar {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+    height: 36px;
+    padding: 0 10px;
+    background: #080808;
+    border-bottom: 1px solid var(--border-color);
+    cursor: grab;
+    flex-shrink: 0;
 }
 
-body.hud-mode:not(.hud-temp-expanded) .header-ask-slot,
-body.hud-mode:not(.hud-temp-expanded) .ask-bar-container:not(.expanded) {
-    width: 195px;
-    height: 28px;
+.hud-pod-clock {
+    font-size: var(--font-xs);
+    font-weight: bold;
+    color: var(--text-main);
+    font-variant-numeric: tabular-nums;
 }
 
-body.hud-mode:not(.hud-temp-expanded) .ask-bar-container:not(.expanded) .ask-input-row {
-    height: 26px;
-    padding: 0 8px;
+.hud-pod-win-btns {
+    display: flex;
+    gap: 2px;
+    align-items: center;
 }
 
-body.hud-mode:not(.hud-temp-expanded) .header-right {
+.hud-pod-focus-box {
+    padding: 10px 12px;
+    background: #060606;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+}
+
+.hud-pod-radar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.02);
+    border-bottom: 1px solid var(--border-color);
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.hud-pod-section-hdr {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 12px 4px;
+    font-size: 0.62rem;
+    color: var(--text-dim);
+    font-weight: bold;
+    letter-spacing: 0.8px;
+    border-bottom: 1px dotted var(--border-color);
+    flex-shrink: 0;
+}
+
+.hud-pod-tasks-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 6px 12px;
+    display: flex;
+    flex-direction: column;
     gap: 4px;
+    min-height: 0;
+}
+
+.hud-pod-task-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 5px 6px;
+    background: rgba(255, 255, 255, 0.018);
+    border: 1px solid var(--border-color);
+    border-left: 2px solid var(--text-main);
+    font-size: var(--font-xs);
+    gap: 8px;
+}
+
+.hud-pod-task-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.hud-pod-staging {
+    background: #080808;
+    border-top: 1px solid var(--text-main);
+    padding: 8px 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 150px;
+    overflow-y: auto;
+    flex-shrink: 0;
+}
+
+.hud-pod-cmd-bar {
+    padding: 8px 10px;
+    background: #000000;
+    border-top: 1px solid var(--border-bright);
+    flex-shrink: 0;
+}
+
+.hud-pod-input {
+    width: 100%;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-main);
+    padding: 6px 8px;
+    font-size: var(--font-xs);
+    outline: none;
+}
+
+.hud-pod-input:focus {
+    border-color: var(--text-main);
+    background: #050505;
 }

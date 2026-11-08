@@ -1,5 +1,5 @@
 // --- js/ai/terminal-ui.js ---
-// Controller Command Palette DSL: Autocompletamento Contestuale [Tab], Esecuzione Istantanea [Enter] & Coda Staging [Shift+Enter]
+// Controller Command Palette DSL + Automatic AI Natural Language Fallback -> Staging Area
 
 let toastTimeout;
 let commandHistory = [];
@@ -21,7 +21,6 @@ function showToast(msg) {
     toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3200);
 }
 
-// Apertura ed espansione fluida della barra al centro-alto
 function openTerminal() {
     if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
     isAskBarExpanded = true;
@@ -63,8 +62,8 @@ function closeTerminal() {
     }
 
     if (typeof setHudTemporaryExpansion === 'function') {
-    const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
-    if (!anyModalOpen) setHudTemporaryExpansion(false);
+        const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+        if (!anyModalOpen) setHudTemporaryExpansion(false);
     }
 }
 
@@ -74,10 +73,6 @@ function openShortcutsHelp() {
     const modal = document.getElementById('shortcutsHelpModal');
     if (modal) modal.style.display = 'flex';
 }
-
-// ============================================================================
-// ANTEPRIMA LIVE E TENDINA SUGGERIMENTI CONTESTUALI (2A)
-// ============================================================================
 
 function hideSuggestionsAndPreview() {
     const prevEl = document.getElementById('terminal-live-preview');
@@ -105,14 +100,15 @@ function updateLivePreviewAndSuggestions() {
         return;
     }
 
-    // 1. Mostra l'anteprima esatta dell'azione corrente + hint Shift+Enter
+    const isDsl = typeof isValidDslCommand === 'function' && isValidDslCommand(trimmed);
+    const previewStr = getCommandPreview(trimmed);
+
     prevEl.style.display = 'flex';
     prevEl.innerHTML = `
-        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(getCommandPreview(trimmed))}</span>
-        <span style="color:var(--text-dim); font-size:0.65rem; flex-shrink:0;">[ENTER] RUN · [SHIFT+ENTER] STAGE</span>
+        <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:${isDsl ? 'var(--text-muted)' : 'var(--accent-gold)'};">${escapeHtml(previewStr)}</span>
+        <span style="color:var(--text-dim); font-size:0.65rem; flex-shrink:0;">${isDsl ? '[ENTER] RUN · [SHIFT+ENTER] STAGE' : '[ENTER] AI ➔ STAGING'}</span>
     `;
 
-    // 2. Calcola e disegna i suggerimenti contestuali live
     activeSuggestions = typeof getContextualSuggestions === 'function' ? getContextualSuggestions(rawVal) : [];
     if (activeSuggestions.length === 0) {
         suggEl.style.display = 'none';
@@ -136,7 +132,7 @@ function updateLivePreviewAndSuggestions() {
             <span class="suggestion-desc">${escapeHtml(item.desc)}</span>
         `;
         row.onmousedown = (e) => {
-            e.preventDefault(); // Evita perdita di focus dall'input
+            e.preventDefault();
             applySuggestionAtIndex(idx);
         };
         suggEl.appendChild(row);
@@ -156,7 +152,7 @@ function applySuggestionAtIndex(idx) {
 }
 
 // ============================================================================
-// STAGING AREA CODA COMANDI (1C: SHIFT+ENTER O SEPARATORE ;)
+// STAGING AREA CODA COMANDI
 // ============================================================================
 
 function pushCommandsToStaging(cmdsArray) {
@@ -282,9 +278,41 @@ function confirmStagingCommands() {
     }
 }
 
-// ============================================================================
-// EVENT LISTENERS & SCORCIATOIE GLOBALI
-// ============================================================================
+// Traduce con Gemini una frase in linguaggio naturale e popola la Staging Area
+async function handleNaturalLanguageAiFallback(rawText, termInput) {
+    if (typeof translateNaturalLanguageToDslWithGemini !== 'function') return;
+
+    const prevEl = document.getElementById('terminal-live-preview');
+    if (prevEl) {
+        prevEl.style.display = 'flex';
+        prevEl.innerHTML = `<span style="color:var(--accent-gold); font-weight:bold;">[◈ AI TRANSLATING TO DSL...] "${escapeHtml(rawText)}"</span>`;
+    }
+    if (termInput) termInput.disabled = true;
+
+    try {
+        const commands = await translateNaturalLanguageToDslWithGemini(rawText);
+        if (termInput) {
+            termInput.disabled = false;
+            termInput.value = '';
+            termInput.focus();
+        }
+        hideSuggestionsAndPreview();
+
+        if (Array.isArray(commands) && commands.length > 0) {
+            pushCommandsToStaging(commands);
+            showToast(`[AI ➔ STAGING] ${commands.length} command(s) ready — Press [ENTER] to confirm`);
+        } else {
+            showToast(`[AI] Could not extract actionable commands from input`);
+        }
+    } catch (err) {
+        if (termInput) {
+            termInput.disabled = false;
+            termInput.focus();
+        }
+        hideSuggestionsAndPreview();
+        showToast(`[AI ERROR] ${err.message}`);
+    }
+}
 
 window.addEventListener('DOMContentLoaded', () => {
     const termInput = document.getElementById('terminal-input');
@@ -303,8 +331,7 @@ window.addEventListener('DOMContentLoaded', () => {
             updateLivePreviewAndSuggestions();
         });
 
-        termInput.addEventListener('keydown', (e) => {
-            // 1. TAB -> Autocompleta con il suggerimento selezionato
+        termInput.addEventListener('keydown', async (e) => {
             if (e.key === 'Tab') {
                 if (activeSuggestions.length > 0) {
                     e.preventDefault();
@@ -313,7 +340,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 2. FRECCE SU / GIÙ -> Navigano nella tendina suggerimenti (o nella cronologia se non ci sono suggerimenti)
             if (e.key === 'ArrowDown') {
                 if (activeSuggestions.length > 0) {
                     e.preventDefault();
@@ -334,7 +360,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // SHIFT + FRECCIA SU -> Impila/Combina più schede (es. "notes" -> Shift+Up -> "notes + ")
             if (e.key === 'ArrowUp' && e.shiftKey) {
                 e.preventDefault();
                 const currentRaw = termInput.value;
@@ -354,7 +379,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     termInput.value = prevMods.join(' + ') + ' + ';
                     selectedSuggestionIdx = 0;
                     updateLivePreviewAndSuggestions();
-                    showToast(`[STACK VIEW] Added "${dashboardModules[resolvedMod].name}". Type next module!`);
                 }
                 return;
             }
@@ -375,7 +399,6 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 3. ESC -> Chiude suggerimenti/staging o chiude la barra
             if (e.key === 'Escape') {
                 e.preventDefault();
                 if (isStagingActive) {
@@ -386,12 +409,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            // 4. ENTER / SHIFT+ENTER -> Esecuzione Istantanea o Staging Area (1C)
             if (e.key === 'Enter') {
                 e.preventDefault();
                 const rawVal = termInput.value.trim();
 
-                // Se l'input è vuoto ma ci sono comandi in Staging Area -> li esegue tutti!
                 if (!rawVal) {
                     if (isStagingActive) confirmStagingCommands();
                     return;
@@ -400,12 +421,10 @@ window.addEventListener('DOMContentLoaded', () => {
                 commandHistory.push(rawVal);
                 historyIndex = commandHistory.length;
 
-                // Se ha premuto Shift+Enter oppure ha scritto più comandi separati da ';' -> impila nella Staging Area
                 const matchedAliasMacro = (typeof customAliases !== 'undefined' && customAliases[rawVal.toLowerCase()])
                     ? customAliases[rawVal.toLowerCase()]
                     : null;
 
-                // Se ha premuto Shift+Enter su un Alias -> esplode i comandi dell'alias nella Staging Area
                 if (e.shiftKey && matchedAliasMacro) {
                     const aliasParts = matchedAliasMacro.split(';').map(s => s.trim()).filter(Boolean);
                     pushCommandsToStaging(aliasParts);
@@ -414,7 +433,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Se ha premuto Shift+Enter oppure ha scritto più comandi separati da ';' -> impila nella Staging Area
                 if (e.shiftKey || rawVal.includes(';')) {
                     const parts = rawVal.split(';').map(s => s.trim()).filter(Boolean);
                     pushCommandsToStaging(parts);
@@ -423,7 +441,15 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Caso Enter singolo: se la Staging Area è già aperta, aggiunge anche questo comando alla coda ed esegue tutto
+                // Verifica se è un comando DSL deterministico valido
+                const isDirectDsl = typeof isValidDslCommand === 'function' && isValidDslCommand(rawVal);
+
+                // Se NON è un comando DSL valido -> Invia automaticamente all'AI e popola la Staging Area (1A1)
+                if (!isDirectDsl) {
+                    await handleNaturalLanguageAiFallback(rawVal, termInput);
+                    return;
+                }
+
                 if (isStagingActive) {
                     pushCommandsToStaging([rawVal]);
                     termInput.value = '';
@@ -432,7 +458,6 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Esecuzione diretta 0ms
                 const isInspection = typeof isInspectionOnlyCommand === 'function' && isInspectionOnlyCommand(rawVal);
                 const firstWord = rawVal.split(/\s+/)[0].toLowerCase();
                 const modalCommands = ['?', 'help', 'ledger', 'stats', 'food', 'macros', 'vault', 'settings', 'cfg'];
@@ -458,8 +483,6 @@ window.addEventListener('DOMContentLoaded', () => {
                         termInput.blur();
                         hideSuggestionsAndPreview();
                     }
-                } else {
-                    showToast(`Invalid syntax or unknown command "${firstWord}". Press ? for manual.`);
                 }
             }
         });
@@ -480,7 +503,7 @@ window.addEventListener('DOMContentLoaded', () => {
         if (e.ctrlKey && e.key.toLowerCase() === 's') {
             e.preventDefault();
             saveData(); saveMoneyData(); saveHealthData(); saveWorkspaceState();
-            showToast('[SYSTEM] All data saved to storage');
+            showToast('[SYSTEM] All data saved');
             return;
         }
 

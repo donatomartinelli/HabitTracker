@@ -1375,6 +1375,9 @@ function renderTasks() {
             left.appendChild(title);
             item.appendChild(left);
             eventGroup.appendChild(item);
+
+            item.classList.add('ev-edit-trigger'); item.style.cursor = 'pointer'; 
+            item.onclick = () => openEventQuickEditPopover(e.id, item);
         });
         schedFrag.appendChild(eventGroup);
     }

@@ -1,12 +1,11 @@
 // --- js/ai/gemini-agent.js ---
 // 1. Pipeline Automatica USB Sony (VOICE/A/ -> SonyArchive -> Trascrizione Verbatim in "Registrazioni")
-// 2. Solo modelli Gemini 2.5+ attivi + Auto-Discovery + Auto-Retry su Rate Limit
+// 2. Generazione Summary Strutturato per Prompt + Estrazione Azioni DSL
 
 let cachedGeminiModel = 'models/gemini-2.5-flash';
 let isSonySyncInProgress = false;
 let sonyArchiveDir = localStorage.getItem('tracker_sony_archive_dir') || 'C:\\Users\\donat\\Desktop\\Progetti\\Cortex\\SonyArchive';
 
-// Solo modelli attuali (rimossi definitivamente 2.0-flash e 1.5-flash)
 const ACTIVE_GEMINI_MODELS = [
     'models/gemini-2.5-flash',
     'models/gemini-2.5-flash-lite',
@@ -75,7 +74,7 @@ function resetProcessedAudioHistory() {
     saveData();
     updateGeminiAudioKeyStatusUI();
     if (typeof showToast === 'function') {
-        showToast('[AUDIO PIPELINE] History cleared. Click [SYNC SONY] to re-transcribe files in SonyArchive.');
+        showToast('[AUDIO PIPELINE] History cleared.');
     }
 }
 
@@ -95,7 +94,6 @@ function getAudioMimeType(filename, fileType = '') {
     return map[ext] || 'audio/mp3';
 }
 
-// Se Google aggiorna i nomi dei modelli, chiede direttamente all'API quali modelli "flash" sono attivi
 async function fetchActiveModelsFromGoogle(apiKey) {
     try {
         const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${encodeURIComponent(apiKey)}`);
@@ -124,7 +122,6 @@ async function callGeminiWithFallback(userParts, baseGenConfig = { temperature: 
         throw new Error('No Gemini API Key configured');
     }
 
-    // Assicura che non venga mai usato un vecchio modello 2.0 o 1.5 rimasto in cache
     if (cachedGeminiModel && (cachedGeminiModel.includes('2.0') || cachedGeminiModel.includes('1.5'))) {
         cachedGeminiModel = 'models/gemini-2.5-flash';
     }
@@ -136,7 +133,6 @@ async function callGeminiWithFallback(userParts, baseGenConfig = { temperature: 
     let primaryError = '';
 
     for (const apiKey of apiKeys) {
-        // Esegue fino a 2 passaggi per chiave (con pausa automatica se c'è un picco di richieste al minuto)
         for (let attempt = 0; attempt < 2; attempt++) {
             for (const modelPath of candidateModels) {
                 const normalizedPath = modelPath.startsWith('models/') ? modelPath : `models/${modelPath}`;
@@ -163,20 +159,17 @@ async function callGeminiWithFallback(userParts, baseGenConfig = { temperature: 
                         const errMsg = errJson.error?.message || `HTTP ${res.status}`;
                         const lowerErr = errMsg.toLowerCase();
 
-                        // Non sovrascrive mai un errore reale con un errore "no longer available / not found" di un modello secondario
                         if (!lowerErr.includes('no longer available') && !lowerErr.includes('not found')) {
                             primaryError = `[${normalizedPath.replace('models/', '')}] ${errMsg}`;
                         } else if (!primaryError) {
                             primaryError = errMsg;
                         }
 
-                        // Chiave API non valida -> passa subito alla seconda chiave
                         if (res.status === 400 && lowerErr.includes('api key')) {
                             attempt = 2;
                             break;
                         }
 
-                        // Modello non trovato -> prova a scoprire dinamicamente i modelli attivi
                         if (res.status === 404 || lowerErr.includes('no longer available')) {
                             const discovered = await fetchActiveModelsFromGoogle(apiKey);
                             if (discovered.length > 0) {
@@ -187,7 +180,6 @@ async function callGeminiWithFallback(userParts, baseGenConfig = { temperature: 
                             continue;
                         }
 
-                        // Rate limit / Quota temporanea -> passa al modello lite o attende
                         if (res.status === 429 || lowerErr.includes('quota') || lowerErr.includes('exhausted')) {
                             await sleepMs(1500);
                             continue;
@@ -198,7 +190,6 @@ async function callGeminiWithFallback(userParts, baseGenConfig = { temperature: 
                 }
             }
 
-            // Se il primo giro sulla chiave ha dato rate limit (429), attende 5 secondi e riprova
             if (attempt === 0 && primaryError.toLowerCase().includes('quota')) {
                 const statusEl = document.getElementById('sony-pipeline-status');
                 if (statusEl) statusEl.textContent = '[RATE LIMIT PAUSE 5S - RETRYING...]';
@@ -236,10 +227,34 @@ async function transcribeSingleAudioWithGemini(file) {
     return transcribeBase64AudioWithGemini(b64, file.name, file.type);
 }
 
+// Funzione per [✦ GENERATE SUMMARY]: riorganizza e struttura la nota per essere pronta da incollare in un prompt
+async function summarizeAndStructureNoteWithGemini(rawNoteText) {
+    const keys = getAvailableGeminiKeys();
+    if (keys.length === 0) {
+        if (typeof showToast === 'function') showToast('[ERROR] Add a Gemini API Key in Settings first!');
+        if (typeof openSettingsModal === 'function') openSettingsModal('tab-ai');
+        return null;
+    }
+
+    const promptText = `Riscrivi, riorganizza e struttura il seguente appunto personale (spesso proveniente da una nota vocale o da idee scritte di getto) in italiano.
+Obiettivo:
+1. Trasforma il testo in una forma chiara, logica, articolata e ben strutturata, preservando il 100% dei concetti, dei dettagli tecnici e delle intenzioni originali.
+2. Elimina ripetizioni, frasi spezzate o ambiguità, organizzando i punti in paragrafi puliti o elenchi puntati (- ) dove opportuno.
+3. Il risultato deve essere direttamente pronto per essere copiato e incollato come specifica o prompt chiaro e completo.
+4. Restituisci SOLO il testo rielaborato, senza preamboli o commenti meta.
+
+Testo originale:
+"""
+${rawNoteText}
+"""`;
+
+    return callGeminiWithFallback([{ text: promptText }], { temperature: 0.2 });
+}
+
 async function extractActionsFromNoteWithGemini(noteBodyText) {
     const keys = getAvailableGeminiKeys();
     if (keys.length === 0) {
-        if (typeof showToast === 'function') showToast('[ERROR] Add a Gemini API Key in [SETTINGS] -> Sony Audio first!');
+        if (typeof showToast === 'function') showToast('[ERROR] Add a Gemini API Key in Settings first!');
         if (typeof openSettingsModal === 'function') openSettingsModal('tab-ai');
         return null;
     }
@@ -275,7 +290,7 @@ Return ONLY a valid JSON object:
 }
 
 // ============================================================================
-// PIPELINE SONY USB (VOICE/A/) + RECUPERO AUTOMATICO FILE PENDENTI IN SONYARCHIVE
+// PIPELINE SONY USB (VOICE/A/ -> SonyArchive)
 // ============================================================================
 
 async function checkAndSyncSonyUsbVoiceA(isManualClick = false) {
@@ -290,7 +305,7 @@ async function checkAndSyncSonyUsbVoiceA(isManualClick = false) {
     const keys = getAvailableGeminiKeys();
     if (keys.length === 0) {
         if (isManualClick) {
-            if (typeof showToast === 'function') showToast('[ERROR] Add a Gemini API Key in [SETTINGS] -> Sony Audio first!');
+            if (typeof showToast === 'function') showToast('[ERROR] Add a Gemini API Key in Settings first!');
             if (typeof openSettingsModal === 'function') openSettingsModal('tab-ai');
         }
         return false;
@@ -304,10 +319,8 @@ async function checkAndSyncSonyUsbVoiceA(isManualClick = false) {
         });
 
         if (!Array.isArray(pendingFiles) || pendingFiles.length === 0) {
-            if (isManualClick) {
-                if (typeof showToast === 'function') {
-                    showToast('[SONY SYNC] No pending audio files in VOICE/A/ or SonyArchive.');
-                }
+            if (isManualClick && typeof showToast === 'function') {
+                showToast('[SONY SYNC] No pending audio files in VOICE/A/ or SonyArchive.');
             }
             return false;
         }
@@ -321,9 +334,9 @@ async function checkAndSyncSonyUsbVoiceA(isManualClick = false) {
             noteCategories.push(targetCat);
         }
 
-        // I file sono già stati spostati da VOICE/A/ a SonyArchive e caricati in RAM: il registratore può essere scollegato subito!
+        // I file sono già stati spostati in SonyArchive sul PC: puoi staccare subito il registratore
         if (typeof showToast === 'function') {
-            showToast(`[SONY USB] Trasferimento completato (${pendingFiles.length} file) — Puoi staccare il registratore! Trascrizione in corso...`);
+            showToast(`[SONY USB] Trasferimento completato (${pendingFiles.length} file) — Puoi staccare il registratore!`);
         }
 
         for (let i = 0; i < pendingFiles.length; i++) {
@@ -359,7 +372,6 @@ async function checkAndSyncSonyUsbVoiceA(isManualClick = false) {
                 }
             }
 
-            // Pausa di 2.5s tra un file e l'altro per evitare il blocco RPM gratuito di Google
             if (i < pendingFiles.length - 1) {
                 await sleepMs(2500);
             }
@@ -389,7 +401,6 @@ function triggerSonyUsbOrFolderSync() {
     checkAndSyncSonyUsbVoiceA(true);
 }
 
-// Fallback per pulsante [+ AUDIO]
 async function handleSonyAudioSelection(event) {
     const rawFiles = Array.from(event.target.files || []);
     event.target.value = '';
@@ -397,7 +408,7 @@ async function handleSonyAudioSelection(event) {
 
     const keys = getAvailableGeminiKeys();
     if (keys.length === 0) {
-        if (typeof showToast === 'function') showToast('[ERROR] Add a Gemini API Key in [SETTINGS] -> Sony Audio first!');
+        if (typeof showToast === 'function') showToast('[ERROR] Add a Gemini API Key in Settings first!');
         if (typeof openSettingsModal === 'function') openSettingsModal('tab-ai');
         return;
     }
@@ -461,6 +472,68 @@ async function handleSonyAudioSelection(event) {
         if (typeof openRegistrazioniInBrowseMode === 'function') openRegistrazioniInBrowseMode();
         if (typeof showToast === 'function') showToast(`[SONY PIPELINE] Transcribed ${successCount}/${newFiles.length} files!`);
     }
+}
+
+// 1A1 + 1B1: Traduce un comando in linguaggio naturale non riconosciuto dal DSL in una lista di comandi DSL per la Staging Area
+async function translateNaturalLanguageToDslWithGemini(userNaturalText) {
+    const keys = getAvailableGeminiKeys();
+    if (keys.length === 0) {
+        if (typeof showToast === 'function') showToast('[ERROR] Configure Gemini API Key in Settings first!');
+        if (typeof openSettingsModal === 'function') openSettingsModal('tab-ai');
+        return null;
+    }
+
+    const activeTodayTasks = (typeof templates !== 'undefined' ? templates : [])
+        .filter(t => typeof isTaskActiveOnDate === 'function' && isTaskActiveOnDate(t, selectedDateStr))
+        .map(t => `${t.title} [${t.category}]`)
+        .join(', ');
+
+    const vaultsList = (typeof mVaults !== 'undefined' ? mVaults : []).map(v => v.name).join(', ');
+    const moneyCatsList = (typeof mCategories !== 'undefined' ? mCategories : []).join(', ');
+    const noteCatsList = (typeof noteCategories !== 'undefined' ? noteCategories : []).join(', ');
+    const uniCoursesList = (typeof uniData !== 'undefined' && Array.isArray(uniData.remainingExams))
+        ? uniData.remainingExams.map(c => `${c.name} (${c.cfu} CFU)`).join(', ')
+        : '';
+
+    const promptText = `Convert the following natural language user request (in Italian or English) into one or more valid Cortex DSL commands.
+Context:
+- Today is ${todayStr}, Tomorrow is ${tomorrowStr}, Selected Date is ${selectedDateStr}.
+- Active Tasks today: ${activeTodayTasks || 'None'}
+- Money Vaults: ${vaultsList || 'None'}
+- Money Expense Categories: ${moneyCatsList || 'Generale'}
+- Note Categories: ${noteCatsList || 'General'}
+- University Courses: ${uniCoursesList || 'None'}
+
+User Input:
+"""
+${userNaturalText}
+"""
+
+Valid Cortex DSL Commands:
+- "todo [text]" -> Quick To-Do for today
+- "task [title] [@oggi | @domani | @YYYY-MM-DD]" -> Flexible task on a date
+- "done [task title]" -> Check off an active task
+- "focus [minutes optional] [task title]" -> Start focus timer on a task
+- "event [@oggi | @domani | @YYYY-MM-DD] [optional HH:MM-HH:MM or HH:MM 90m] [optional #red|#green|#blue|#gold|#purple|#white] [title]" -> Calendar & Planner event
+- "out [amount] #[VaultOrCategory] [description]" -> Log expense
+- "in [amount] [description]" -> Log income
+- "wish [item] [optional price]" -> Add purchase idea
+- "note [Category]: [text]" -> Save a note
+- "weight [kg] [optional note]" -> Log body weight
+- "appello [ExamName] [YYYY-MM-DD] [HH:MM]" -> Schedule university exam appeal
+- "esame [ExamName] [Grade 18-30L] [CFU]" -> Record passed exam
+- "tassa [amount] [YYYY-MM-DD] [Title]" -> Add university tax deadline
+
+Return ONLY a valid JSON object:
+{ "commands": ["dsl command 1", "dsl command 2"] }`;
+
+    let rawJson = await callGeminiWithFallback(
+        [{ text: promptText }],
+        { responseMimeType: "application/json", temperature: 0.1 }
+    );
+    rawJson = (rawJson || '{}').replace(/^```json\s*/i, '').replace(/```$/i, '').trim();
+    const parsed = JSON.parse(rawJson);
+    return Array.isArray(parsed.commands) ? parsed.commands : [];
 }
 
 window.addEventListener('DOMContentLoaded', () => {
