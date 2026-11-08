@@ -1,33 +1,7 @@
-/* --- CALENDAR --- */
-.calendar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 10px;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    font-size: var(--font-sm);
-    font-weight: bold;
-}
-
-.calendar-header .nav-btn {
-    background: none;
-    border: 1px solid transparent;
-    color: var(--text-dim);
-    cursor: pointer;
-    font-size: var(--font-xs);
-    padding: 3px 8px;
-    transition: 0.15s;
-}
-
-.calendar-header .nav-btn:hover {
-    color: var(--text-main);
-    border-color: var(--border-bright);
-}
-
+/* --- CALENDAR (RIGID 7-COLUMN GRID & COMPACT INDICATORS) --- */
 .month-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 3px;
     width: 100%;
 }
@@ -38,23 +12,28 @@
     padding-bottom: 4px;
     text-align: center;
     border-bottom: 1px solid var(--border-color);
+    min-width: 0;
+    overflow: hidden;
 }
 
 .month-day {
     width: 100%;
+    min-width: 0;
     min-height: 32px;
-    padding: 4px 7px;
+    padding: 4px 6px;
     display: flex;
     flex-direction: row;
     align-items: center;
     justify-content: space-between;
+    gap: 4px;
     border: 1px solid rgba(255, 255, 255, 0.04);
     font-size: var(--font-sm);
     color: #555;
     cursor: pointer;
-    transition: 0.1s;
+    transition: background 0.1s ease, border-color 0.1s ease;
     font-weight: bold;
     user-select: none;
+    overflow: hidden;
 }
 
 .month-day.in-month {
@@ -82,17 +61,32 @@
     outline: 1px solid #000;
 }
 
+.month-day.selected .bar-more {
+    color: #000;
+}
+
 .bars-container {
     display: flex;
-    gap: 3px;
+    gap: 2px;
     align-items: center;
     justify-content: flex-end;
+    flex-shrink: 0;
+    max-width: 65%;
+    overflow: hidden;
 }
 
 .bar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
     flex-shrink: 0;
+}
+
+.bar-more {
+    font-size: 0.56rem;
+    color: var(--text-dim);
+    font-weight: bold;
+    line-height: 1;
+    margin-left: 1px;
 }
 
 /* --- GENERAL TO-DO BAR --- */
