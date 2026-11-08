@@ -208,62 +208,11 @@
         </div>
 
         <!-- 3. NOTES -->
-        <div id="module-notes" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 8px; overflow: hidden;">
-                <div class="notes-controls" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
-                    <div style="display: flex; gap: 12px; align-items: center;">
-                        <div>
-                            <span class="section-label">Notes</span>
-                            <span id="notes-active-cat-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px; text-transform: uppercase;">// GENERAL</span>
-                        </div>
-                        <label class="notes-toggle">
-                            <input type="checkbox" id="notes-mode-checkbox" onchange="toggleNotesMode()">
-                            <span class="notes-slider">
-                                <span class="t-label write">WRITE</span>
-                                <span class="t-label browse">BROWSE</span>
-                            </span>
-                        </label>
-                        <span id="sony-pipeline-status" style="font-size: var(--font-xs); color: var(--accent-gold); font-weight: bold;"></span>
-                    </div>
-
-                    <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                        <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 115px;" placeholder="Filter..." oninput="filterNotesView(this.value)">
-                        <button type="button" id="btn-notes-sort" class="btn btn-sm" style="display: none;" onclick="cycleNotesSortMode()">[SORT: NEW]</button>
-                        <select id="note-category" class="form-control form-control-sm" style="width: 135px; font-weight: bold;" onchange="onNoteCategoryChange()"></select>
-                        <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+]</button>
-                        <button type="button" class="btn btn-sm" onclick="openManageNotesModal()">[⚙]</button>
-                        <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
-                    </div>
-                </div>
-
-                <div id="notes-subcategories-bar" class="notes-subcategories-bar"></div>
-
-                <div id="notes-batch-bar" class="note-batch-bar" style="display: none;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <strong id="notes-selected-count" style="color: var(--text-main); font-size: var(--font-xs);">0 SELECTED</strong>
-                        <button type="button" class="btn btn-sm" onclick="selectAllVisibleNotes()">[ALL]</button>
-                        <button type="button" class="btn btn-sm" onclick="clearNoteSelection()">[CLEAR]</button>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
-                        <button type="button" id="btn-batch-summary" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="triggerBatchSummaryGeneration()">[✦ GENERATE SUMMARY]</button>
-                        <button type="button" id="btn-batch-ai" class="btn btn-primary btn-sm" onclick="triggerBatchAiExtraction()">[✦ GENERATE ACTIONS]</button>
-                        <button type="button" id="btn-batch-inbox" class="btn btn-sm" onclick="sendSelectedNoteCardsToInbox()">[-> INBOX]</button>
-                        <button type="button" id="btn-batch-merge" class="btn btn-sm" onclick="mergeSelectedNoteCards()">[MERGE]</button>
-                        <select id="batch-move-select" class="form-control form-control-sm" style="width: 140px;" onchange="if(this.value){ moveSelectedNoteCardsTo(this.value); this.value=''; }">
-                            <option value="">[➔ MOVE...]</option>
-                        </select>
-                        <button type="button" id="btn-batch-del" class="btn btn-danger btn-sm" onclick="deleteSelectedNoteCards()">[DELETE]</button>
-                    </div>
-                </div>
-
-                <div id="notes-batch-ai-drawer" class="note-ai-drawer" style="display: none; flex-shrink: 0; max-height: 52%; overflow-y: auto;"></div>
-
-                <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
-                    <textarea id="note-text" class="form-control" style="flex: 1; height: 100%; resize: none; line-height: 1.5; padding: 14px;" placeholder="Write..." onkeydown="handleNoteKeyDown(event)" oninput="handleNoteInput()"></textarea>
-                    <div id="notes-browse-container" class="notes-browse-container" style="display: none;"></div>
-                </div>
-            </div>
-        </div>
+        <!-- 3. NOTES & I SUOI 3 SOTTO-MODULI ATOMICI (notes_write, notes_browse, notes_graph) -->
+        <div id="module-notes" class="module-container"></div>
+        <div id="module-notes-write" class="module-container"></div>
+        <div id="module-notes-browse" class="module-container"></div>
+        <div id="module-notes-graph" class="module-container"></div>
 
         <!-- 4. WEEKLY PLANNER -->
         <div id="module-planner" class="module-container">

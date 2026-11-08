@@ -179,23 +179,17 @@ function buildMonthGridDom(targetGridEl) {
         numSpan.textContent = i;
         dayCell.appendChild(numSpan);
 
-        // Max 3 pallini + badge "+N" per non deformare mai la colonna
+        // Barra inferiore segmentata: ogni evento è un segmento proporzionale (visibile a qualsiasi dimensione!)
         if (dayEvents.length > 0) {
-            const barsContainer = document.createElement('div');
-            barsContainer.className = 'bars-container';
-            dayEvents.slice(0, 3).forEach(e => {
-                const bar = document.createElement('div');
-                bar.className = 'bar';
-                bar.style.backgroundColor = e.color;
-                barsContainer.appendChild(bar);
+            const segBar = document.createElement('div');
+            segBar.className = 'cal-bottom-segments';
+            dayEvents.forEach(e => {
+                const seg = document.createElement('div');
+                seg.className = 'cal-seg-item';
+                seg.style.backgroundColor = e.color || '#b84b4b';
+                segBar.appendChild(seg);
             });
-            if (dayEvents.length > 3) {
-                const moreSpan = document.createElement('span');
-                moreSpan.className = 'bar-more';
-                moreSpan.textContent = `+${dayEvents.length - 3}`;
-                barsContainer.appendChild(moreSpan);
-            }
-            dayCell.appendChild(barsContainer);
+            dayCell.appendChild(segBar);
         }
 
         dayCell.onclick = () => selectDate(cellDateStr);

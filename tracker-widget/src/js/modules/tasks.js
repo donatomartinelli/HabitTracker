@@ -2820,6 +2820,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         const widthPct = 100 / (b.totalCols || 1);
         const leftPct = (b.colIndex || 0) * widthPct;
         const isSmall = b.height < 18;
+        const isDraggableKind = (b.kind === 'ephemeral_task' || b.kind === 'fixed_task' || b.kind === 'event');
 
         block.style.cssText = `
             top: ${b.top}px;
@@ -2833,7 +2834,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
             align-items: center;
             padding: ${isSmall ? '0 6px' : '3px 8px'};
             font-size: ${isSmall ? '0.62rem' : 'var(--font-xs)'};
-            cursor: ${b.kind === 'ephemeral_task' ? 'grab' : 'default'};
+            cursor: ${isDraggableKind ? 'grab' : 'default'};
             z-index: 10;
         `;
 
@@ -2853,12 +2854,16 @@ function renderDayPlannerTimelineCanvas(targetDate) {
                 saveData();
                 renderWeeklyPlanner();
                 renderDayPlannerModule();
+                renderTasks();
+                renderTracker();
+            } else if (b.kind === 'event') {
+                deleteEvent(b.id);
             }
         };
 
         block.oncontextmenu = removeBlockAction;
 
-        if (b.kind === 'ephemeral_task') {
+        if (isDraggableKind) {
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
             delBtn.style.cssText = 'font-size: 0.65rem; z-index: 15;';
@@ -2866,26 +2871,33 @@ function renderDayPlannerTimelineCanvas(targetDate) {
             delBtn.onclick = removeBlockAction;
             block.appendChild(delBtn);
 
-            // Trascinamento per spostare d'orario il blocco
+            // Trascinamento per spostare d'orario sia Ephemeral, sia Fixed Tasks, sia Single Events!
             bindPlanTimelineDragSource(block, {
                 kind: 'move_block',
+                blockKind: b.kind,
                 blockId: b.id,
+                origStart: b.start,
                 title: b.title,
+                category: b.category,
+                color: b.color,
                 durationMins: b.minutes
             });
 
-            // 3A. Maniglia inferiore per allungare / accorciare la durata (Resize Handle)
+            // Maniglia inferiore per allungare / accorciare la durata
             const resizeHandle = document.createElement('div');
             resizeHandle.className = 'plan-block-resize-handle';
-            resizeHandle.title = 'Drag bottom edge to resize duration';
             resizeHandle.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 planTimelineDragState = {
                     mode: 'resize_block',
                     payload: {
+                        blockKind: b.kind,
                         blockId: b.id,
+                        origStart: b.start,
                         title: b.title,
+                        category: b.category,
+                        color: b.color,
                         startTimeStr: b.start,
                         startMins: timeToMinutes(b.start),
                         durationMins: b.minutes
@@ -2958,7 +2970,6 @@ window.addEventListener('mousemove', (e) => {
         return;
     }
 
-    // Modalità 'new_item' o 'move_block': verifica se il cursore è sopra la Timeline
     if (e.clientX >= rect.left - 30 && e.clientX <= rect.right + 30 && e.clientY >= rect.top && e.clientY <= rect.bottom) {
         const relY = Math.max(0, Math.min(totalHeight, e.clientY - rect.top));
         const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
@@ -2996,39 +3007,94 @@ window.addEventListener('mouseup', () => {
     if (!state.isDragging) return;
 
     const targetDate = ensurePlanBuilderDateValid();
-    const list = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
+    if (!Array.isArray(ephemeralData[targetDate])) ephemeralData[targetDate] = [];
+    const list = ephemeralData[targetDate];
 
-    if (state.mode === 'resize_block') {
-        const b = list.find(x => x.id === state.payload.blockId);
-        if (b && state.currentDurationMins >= 5) {
-            const startMins = timeToMinutes(b.start);
-            const endMins = Math.min(24 * 60, startMins + state.currentDurationMins);
-            b.end = minutesToTimeStr(endMins);
-            b.minutes = endMins - startMins;
-            saveData();
-            renderDayPlannerModule();
-            renderTasks();
-            if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    // 1. RESIZE (Ephemeral, Fixed Task o Single Event)
+    if (state.mode === 'resize_block' && state.currentDurationMins >= 5) {
+        const p = state.payload;
+        const startMins = timeToMinutes(p.startTimeStr);
+        const endMins = Math.min(24 * 60, startMins + state.currentDurationMins);
+        const newEndStr = minutesToTimeStr(endMins);
+
+        if (p.blockKind === 'ephemeral_task') {
+            const b = list.find(x => x.id === p.blockId);
+            if (b) {
+                b.end = newEndStr;
+                b.minutes = endMins - startMins;
+            }
+        } else if (p.blockKind === 'event') {
+            const ev = specificEvents.find(x => x.id === p.blockId);
+            if (ev) ev.end = newEndStr;
+        } else if (p.blockKind === 'fixed_task') {
+            plannerExceptions[`${p.blockId}_${targetDate}_${p.origStart}`] = true;
+            list.push({
+                id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                templateId: p.blockId,
+                title: p.title,
+                category: p.category,
+                color: p.color,
+                start: p.startTimeStr,
+                end: newEndStr,
+                minutes: endMins - startMins,
+                blocksUsed: 1
+            });
         }
+
+        saveData();
+        renderDayPlannerModule();
+        renderTasks();
+        if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        if (typeof renderCalendar === 'function') renderCalendar();
         return;
     }
 
+    // 2. MOVE (Ephemeral, Fixed Task o Single Event)
     if (state.mode === 'move_block' && state.currentSnappedTime) {
-        const b = list.find(x => x.id === state.payload.blockId);
-        if (b) {
-            const dur = b.minutes || 15;
-            const startMins = timeToMinutes(state.currentSnappedTime);
-            const endMins = Math.min(24 * 60, startMins + dur);
-            b.start = minutesToTimeStr(startMins);
-            b.end = minutesToTimeStr(endMins);
-            saveData();
-            renderDayPlannerModule();
-            renderTasks();
-            if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        const p = state.payload;
+        const dur = p.durationMins || 15;
+        const startMins = timeToMinutes(state.currentSnappedTime);
+        const endMins = Math.min(24 * 60, startMins + dur);
+        const newStartStr = minutesToTimeStr(startMins);
+        const newEndStr = minutesToTimeStr(endMins);
+
+        if (p.blockKind === 'ephemeral_task') {
+            const b = list.find(x => x.id === p.blockId);
+            if (b) {
+                b.start = newStartStr;
+                b.end = newEndStr;
+            }
+        } else if (p.blockKind === 'event') {
+            const ev = specificEvents.find(x => x.id === p.blockId);
+            if (ev) {
+                ev.start = newStartStr;
+                ev.end = newEndStr;
+            }
+        } else if (p.blockKind === 'fixed_task') {
+            // Nasconde lo slot standard per questo giorno e crea l'override col nuovo orario
+            plannerExceptions[`${p.blockId}_${targetDate}_${p.origStart}`] = true;
+            list.push({
+                id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+                templateId: p.blockId,
+                title: p.title,
+                category: p.category,
+                color: p.color,
+                start: newStartStr,
+                end: newEndStr,
+                minutes: endMins - startMins,
+                blocksUsed: 1
+            });
         }
+
+        saveData();
+        renderDayPlannerModule();
+        renderTasks();
+        if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+        if (typeof renderCalendar === 'function') renderCalendar();
         return;
     }
 
+    // 3. NEW ITEM DRAGGED FROM LEFT COLUMN
     if (state.mode === 'new_item' && state.currentSnappedTime) {
         placeItemOnDayTimeline(state.payload, targetDate, state.currentSnappedTime);
     }
