@@ -1,7 +1,8 @@
 // --- js/core/workspace.js ---
-// Tiling Window Manager: Custom Mouse Drag & Snap, Fractal Micro-Modules, Floating Dock Menus & Centered HUD Widget
+// Tiling Window Manager: Universal MACRO_SUBMODULES_MAP for ALL Modules, 60fps rAF Resizer, Floating Dock Menus & Tactical HUD Pod
 
 const dashboardModules = {
+    // 1. CALENDAR & SUB-MODULES
     'calendar': {
         name: 'Calendar',
         id: 'module-calendar',
@@ -9,13 +10,37 @@ const dashboardModules = {
         minH: () => 170,
         render: () => { if (typeof renderCalendar === 'function') renderCalendar(); }
     },
+    'cal_grid': {
+        name: 'Calendar: Month Grid',
+        id: 'module-cal-grid',
+        minW: () => 220,
+        minH: () => 170,
+        render: () => {
+            if (typeof renderCalendarAtomGrid === 'function') renderCalendarAtomGrid();
+            else if (typeof renderCalendar === 'function') renderCalendar();
+        }
+    },
+    'cal_agenda': {
+        name: 'Calendar: Day Events',
+        id: 'module-cal-agenda',
+        minW: () => 200,
+        minH: () => 120,
+        render: () => {
+            if (typeof renderCalendarAtomAgenda === 'function') renderCalendarAtomAgenda();
+            else if (typeof renderCalendarDaySummary === 'function') renderCalendarDaySummary();
+        }
+    },
+
+    // 2. TASKS
     'tasks': {
         name: 'Tasks',
         id: 'module-tasks',
         minW: () => Math.max(155, Math.floor(window.innerWidth * 0.125)),
         minH: () => 145,
-        render: () => { if (typeof renderTasks === 'function') renderTasks(); if (typeof renderGeneralTodos === 'function') renderGeneralTodos(); }
+        render: () => { if (typeof renderTasks === 'function') renderTasks(); }
     },
+
+    // 3. NOTES
     'notes': {
         name: 'Notes',
         id: 'module-notes',
@@ -23,6 +48,8 @@ const dashboardModules = {
         minH: () => 145,
         render: () => { if (typeof renderNoteCategories === 'function') renderNoteCategories(); }
     },
+
+    // 4. WEEKLY PLANNER
     'planner': {
         name: 'Weekly Planner',
         id: 'module-planner',
@@ -30,6 +57,8 @@ const dashboardModules = {
         minH: () => 210,
         render: () => { if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner(); }
     },
+
+    // 5. DAY PLANNER
     'plan': {
         name: 'Day Planner',
         id: 'module-plan',
@@ -37,6 +66,8 @@ const dashboardModules = {
         minH: () => 210,
         render: () => { if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule(); }
     },
+
+    // 6. DIET & SUB-MODULES
     'diet': {
         name: 'Diet & Macros',
         id: 'module-diet',
@@ -44,6 +75,28 @@ const dashboardModules = {
         minH: () => 170,
         render: () => { if (typeof renderDiet === 'function') renderDiet(); }
     },
+    'diet_today': {
+        name: 'Diet: Today Meals',
+        id: 'module-diet-today',
+        minW: () => 230,
+        minH: () => 160,
+        render: () => {
+            if (typeof renderDietAtomToday === 'function') renderDietAtomToday();
+            else if (typeof renderDiet === 'function') renderDiet();
+        }
+    },
+    'diet_week': {
+        name: 'Diet: Weekly Matrix',
+        id: 'module-diet-week',
+        minW: () => 320,
+        minH: () => 180,
+        render: () => {
+            if (typeof renderDietAtomWeek === 'function') renderDietAtomWeek();
+            else if (typeof renderDiet === 'function') renderDiet();
+        }
+    },
+
+    // 7. GYM & SUB-MODULES
     'gym': {
         name: 'Gym Split',
         id: 'module-gym',
@@ -51,6 +104,28 @@ const dashboardModules = {
         minH: () => 170,
         render: () => { if (typeof renderGymDashboard === 'function') renderGymDashboard(); }
     },
+    'gym_today': {
+        name: 'Gym: Today Workout',
+        id: 'module-gym-today',
+        minW: () => 235,
+        minH: () => 170,
+        render: () => {
+            if (typeof renderGymAtomToday === 'function') renderGymAtomToday();
+            else if (typeof renderGymDashboard === 'function') renderGymDashboard();
+        }
+    },
+    'gym_split': {
+        name: 'Gym: Full Split',
+        id: 'module-gym-split',
+        minW: () => 280,
+        minH: () => 180,
+        render: () => {
+            if (typeof renderGymAtomSplit === 'function') renderGymAtomSplit();
+            else if (typeof renderGymDashboard === 'function') renderGymDashboard();
+        }
+    },
+
+    // 8. MONEY & 7 SUB-MODULES
     'money': {
         name: 'Money',
         id: 'module-money',
@@ -107,6 +182,8 @@ const dashboardModules = {
         minH: () => 160,
         render: () => { if (typeof renderMoneyAtomIncubator === 'function') renderMoneyAtomIncubator(); }
     },
+
+    // 9. STREAK & SUB-MODULES
     'streak': {
         name: 'Today & Streak',
         id: 'module-streak',
@@ -117,13 +194,73 @@ const dashboardModules = {
             if (typeof renderFocusLedger === 'function') renderFocusLedger();
         }
     },
+    'streak_grid': {
+        name: 'Streak: Habit Grid',
+        id: 'module-streak-grid',
+        minW: () => 250,
+        minH: () => 150,
+        render: () => {
+            if (typeof renderStreakAtomGrid === 'function') renderStreakAtomGrid();
+            else if (typeof renderTracker === 'function') renderTracker();
+        }
+    },
+    'streak_ledger': {
+        name: 'Streak: Focus Ledger',
+        id: 'module-streak-ledger',
+        minW: () => 250,
+        minH: () => 160,
+        render: () => {
+            if (typeof renderStreakAtomLedger === 'function') renderStreakAtomLedger();
+            else if (typeof renderFocusLedger === 'function') renderFocusLedger();
+        }
+    },
+
+    // 10. UNIVERSITY & SUB-MODULES
     'uni': {
         name: 'University',
         id: 'module-uni',
         minW: () => 280,
         minH: () => 190,
+        render: () => { if (typeof renderUniDashboard === 'function') renderUniDashboard(); }
+    },
+    'uni_roadmap': {
+        name: 'Uni: Roadmap & Prep',
+        id: 'module-uni-roadmap',
+        minW: () => 260,
+        minH: () => 170,
         render: () => {
-            if (typeof renderUniDashboard === 'function') renderUniDashboard();
+            if (typeof renderUniAtomRoadmap === 'function') renderUniAtomRoadmap();
+            else if (typeof renderUniDashboard === 'function') renderUniDashboard();
+        }
+    },
+    'uni_lectures': {
+        name: 'Uni: Lectures',
+        id: 'module-uni-lectures',
+        minW: () => 250,
+        minH: () => 160,
+        render: () => {
+            if (typeof renderUniAtomLectures === 'function') renderUniAtomLectures();
+            else if (typeof renderUniDashboard === 'function') renderUniDashboard();
+        }
+    },
+    'uni_appeals': {
+        name: 'Uni: Appeals & Taxes',
+        id: 'module-uni-appeals',
+        minW: () => 250,
+        minH: () => 160,
+        render: () => {
+            if (typeof renderUniAtomAppeals === 'function') renderUniAtomAppeals();
+            else if (typeof renderUniDashboard === 'function') renderUniDashboard();
+        }
+    },
+    'uni_libretto': {
+        name: 'Uni: Libretto (180 CFU)',
+        id: 'module-uni-libretto',
+        minW: () => 250,
+        minH: () => 160,
+        render: () => {
+            if (typeof renderUniAtomLibretto === 'function') renderUniAtomLibretto();
+            else if (typeof renderUniDashboard === 'function') renderUniDashboard();
         }
     }
 };
@@ -131,8 +268,18 @@ const dashboardModules = {
 const PRIMARY_MODULE_KEYS = ['calendar', 'tasks', 'notes', 'planner', 'plan', 'diet', 'gym', 'money', 'streak', 'uni'];
 const ALL_MODULE_KEYS = Object.keys(dashboardModules);
 
+// Mappa universale: TUTTI i 10 Macro-Moduli sono definiti come liste di Sotto-Moduli (1 o N)
 const MACRO_SUBMODULES_MAP = {
-    'money': ['m_summary', 'm_vaults', 'm_chart', 'm_tx', 'm_bills', 'm_analytics', 'm_incubator']
+    'calendar': ['cal_grid', 'cal_agenda'],
+    'tasks':    ['tasks'],
+    'notes':    ['notes'],
+    'planner':  ['planner'],
+    'plan':     ['plan'],
+    'diet':     ['diet_today', 'diet_week'],
+    'gym':      ['gym_today', 'gym_split'],
+    'money':    ['m_summary', 'm_vaults', 'm_chart', 'm_tx', 'm_bills', 'm_analytics', 'm_incubator'],
+    'streak':   ['streak_grid', 'streak_ledger'],
+    'uni':      ['uni_roadmap', 'uni_lectures', 'uni_appeals', 'uni_libretto']
 };
 
 let macroDefaultTrees = safeJsonParse(localStorage.getItem('tracker_macro_default_trees'), {});
@@ -152,6 +299,7 @@ function saveMacroDefaultTrees() {
     }
 }
 
+// Restituisce l'albero di default per qualsiasi Macro-Modulo (con fallback automatico finché non unisci le Branch 2-4)
 function getMacroDefaultSubtree(macroKey) {
     if (macroDefaultTrees[macroKey]) {
         return JSON.parse(JSON.stringify(macroDefaultTrees[macroKey]));
@@ -165,6 +313,36 @@ function getMacroDefaultSubtree(macroKey) {
             )
         );
     }
+    if (macroKey === 'calendar') {
+        if (typeof renderCalendarAtomGrid === 'function') {
+            return makeSplitNode('col', 0.58, makePaneNode('cal_grid'), makePaneNode('cal_agenda'));
+        }
+        return makePaneNode('calendar');
+    }
+    if (macroKey === 'diet') {
+        if (typeof renderDietAtomToday === 'function') {
+            return makePaneNode('diet_today');
+        }
+        return makePaneNode('diet');
+    }
+    if (macroKey === 'gym') {
+        if (typeof renderGymAtomToday === 'function') {
+            return makePaneNode('gym_today');
+        }
+        return makePaneNode('gym');
+    }
+    if (macroKey === 'streak') {
+        if (typeof renderStreakAtomGrid === 'function') {
+            return makeSplitNode('col', 0.45, makePaneNode('streak_grid'), makePaneNode('streak_ledger'));
+        }
+        return makePaneNode('streak');
+    }
+    if (macroKey === 'uni') {
+        if (typeof renderUniAtomRoadmap === 'function') {
+            return makePaneNode('uni_roadmap');
+        }
+        return makePaneNode('uni');
+    }
     return makePaneNode(macroKey);
 }
 
@@ -173,8 +351,8 @@ function createDefaultMoneySubtree() {
 }
 
 function saveCurrentAsMacroDefault(macroKey) {
-    const allowedSubs = MACRO_SUBMODULES_MAP[macroKey] || [];
-    if (!layoutTree || allowedSubs.length === 0) return;
+    const allowedSubs = [macroKey, ...(MACRO_SUBMODULES_MAP[macroKey] || [])];
+    if (!layoutTree) return;
 
     const filterSubtreeByMacro = (node) => {
         if (!node) return null;
@@ -201,7 +379,7 @@ function saveCurrentAsMacroDefault(macroKey) {
     const extracted = filterSubtreeByMacro(layoutTree);
     if (!extracted) {
         if (typeof showToast === 'function') {
-            showToast(`[DEFAULT VIEW] Mount at least one ${dashboardModules[macroKey].name} micro-module first!`);
+            showToast(`[DEFAULT] Mount ${dashboardModules[macroKey].name} on screen first`);
         }
         return;
     }
@@ -209,8 +387,7 @@ function saveCurrentAsMacroDefault(macroKey) {
     macroDefaultTrees[macroKey] = extracted;
     saveMacroDefaultTrees();
     if (typeof showToast === 'function') {
-        const count = collectLeafPanes(extracted).length;
-        showToast(`[★ DEFAULT SAVED] "${dashboardModules[macroKey].name}" (${count} micro-modules)`);
+        showToast(`[★ DEFAULT SAVED] ${dashboardModules[macroKey].name}`);
     }
 }
 
@@ -237,7 +414,7 @@ function hidePresetModulesHoverPopup() {
     if (tooltip) tooltip.style.display = 'none';
 }
 
-// --- MENU A TENDINA FLOTTANTE PER MICRO-MODULI NELLA DOCK [EDIT] (ZERO CLIPPING) ---
+// --- MENU A TENDINA FLOTTANTE PER TUTTI I MACRO-MODULI NELLA DOCK [EDIT] ---
 
 function closeFloatingDockPopover() {
     if (floatingDockPopoverEl) {
@@ -253,9 +430,7 @@ function openFloatingDockPopover(anchorBtn, modKey) {
     }
     closeFloatingDockPopover();
 
-    const subKeys = MACRO_SUBMODULES_MAP[modKey] || [];
-    if (subKeys.length === 0) return;
-
+    const subKeys = MACRO_SUBMODULES_MAP[modKey] || [modKey];
     const activeLeafMods = new Set(collectLeafPanes(layoutTree).map(p => p.module));
     const rect = anchorBtn.getBoundingClientRect();
 
@@ -264,8 +439,8 @@ function openFloatingDockPopover(anchorBtn, modKey) {
     menu.style.cssText = `
         position: fixed;
         top: ${Math.round(rect.bottom + 4)}px;
-        left: ${Math.round(Math.max(8, rect.left - 80))}px;
-        min-width: 215px;
+        left: ${Math.round(Math.max(8, Math.min(window.innerWidth - 230, rect.left - 60)))}px;
+        min-width: 210px;
         background: #060606;
         border: 1px solid var(--text-main);
         padding: 6px;
@@ -277,11 +452,13 @@ function openFloatingDockPopover(anchorBtn, modKey) {
     `;
 
     subKeys.forEach(sk => {
+        if (!dashboardModules[sk]) return;
         const subMounted = activeLeafMods.has(sk);
         const subRow = document.createElement('div');
         subRow.className = `draggable-mod-chip ${subMounted ? 'in-use' : ''}`;
         subRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
-        subRow.innerHTML = `<span>${subMounted ? '✓ ' : '+ '}${escapeHtml(dashboardModules[sk].name.replace(/^.*?:\s*/, ''))}</span>`;
+        const cleanSubName = dashboardModules[sk].name.replace(/^.*?:\s*/, '');
+        subRow.innerHTML = `<span>${subMounted ? '✓ ' : '+ '}${escapeHtml(cleanSubName)}</span>`;
 
         bindCustomPointerDragSource(subRow, sk, null, () => {
             addModuleToTilingLayout(sk);
@@ -355,14 +532,28 @@ function collectLeafPanes(node, out = []) {
     return out;
 }
 
+function isMacroContainerKey(modKey) {
+    if (modKey === 'money') return true;
+    if (macroDefaultTrees[modKey]) return true;
+    if (modKey === 'calendar' && typeof renderCalendarAtomGrid === 'function') return true;
+    if (modKey === 'diet' && typeof renderDietAtomToday === 'function') return true;
+    if (modKey === 'gym' && typeof renderGymAtomToday === 'function') return true;
+    if (modKey === 'streak' && typeof renderStreakAtomGrid === 'function') return true;
+    if (modKey === 'uni' && typeof renderUniAtomRoadmap === 'function') return true;
+    return false;
+}
+
 function sanitizeLayoutTree(node, seenModules = new Set()) {
     if (!node) return null;
     if (node.type === 'pane') {
         let mod = node.module;
         if (mod === 'daily') mod = 'tasks';
         if (mod === 'health') mod = 'diet';
-        if (MACRO_SUBMODULES_MAP[mod]) {
-            return sanitizeLayoutTree(getMacroDefaultSubtree(mod), seenModules);
+        if (isMacroContainerKey(mod)) {
+            const expanded = getMacroDefaultSubtree(mod);
+            if (expanded.type !== 'pane' || expanded.module !== mod) {
+                return sanitizeLayoutTree(expanded, seenModules);
+            }
         }
         if (!dashboardModules[mod] || seenModules.has(mod)) return null;
         seenModules.add(mod);
@@ -476,7 +667,8 @@ function applyStartupViewPreferenceOnBoot() {
     if (startupView.startsWith('mod:')) {
         const modKey = startupView.slice(4);
         if (dashboardModules[modKey]) {
-            layoutTree = sanitizeLayoutTree(makePaneNode(modKey), new Set());
+            const node = MACRO_SUBMODULES_MAP[modKey] ? getMacroDefaultSubtree(modKey) : makePaneNode(modKey);
+            layoutTree = sanitizeLayoutTree(node, new Set());
             return;
         }
     }
@@ -497,7 +689,7 @@ function setStartupViewPreference(modeStr) {
     updateWorkspaceDropdownUI();
 
     let label = 'Last Active Layout';
-    if (startupView === 'zero') label = '0 // Zero-UI Mode';
+    if (startupView === 'zero') label = '0 // Zero-UI';
     else if (startupView.startsWith('mod:')) {
         const m = dashboardModules[startupView.slice(4)];
         if (m) label = m.name;
@@ -546,7 +738,7 @@ function renderEditDockChips() {
     const activeLeafMods = new Set(collectLeafPanes(layoutTree).map(p => p.module));
 
     PRIMARY_MODULE_KEYS.forEach(modKey => {
-        const subKeys = MACRO_SUBMODULES_MAP[modKey] || [];
+        const subKeys = MACRO_SUBMODULES_MAP[modKey] || [modKey];
         const isMounted = activeLeafMods.has(modKey) || subKeys.some(sk => activeLeafMods.has(sk));
 
         const wrap = document.createElement('div');
@@ -561,18 +753,17 @@ function renderEditDockChips() {
         });
         wrap.appendChild(chip);
 
-        if (subKeys.length > 0) {
-            const dropBtn = document.createElement('button');
-            dropBtn.type = 'button';
-            dropBtn.className = 'btn btn-sm dock-sub-drop-btn';
-            dropBtn.style.cssText = 'padding: 4px 6px; margin-left: -1px; font-size: 0.65rem; border-color: var(--border-bright);';
-            dropBtn.textContent = '▾';
-            dropBtn.onclick = (e) => {
-                e.stopPropagation();
-                openFloatingDockPopover(dropBtn, modKey);
-            };
-            wrap.appendChild(dropBtn);
-        }
+        // Tutti i Macro-Moduli hanno la freccia ▾ per accedere ai loro Sotto-Moduli (1 o N) e salvare il Default
+        const dropBtn = document.createElement('button');
+        dropBtn.type = 'button';
+        dropBtn.className = 'btn btn-sm dock-sub-drop-btn';
+        dropBtn.style.cssText = 'padding: 4px 6px; margin-left: -1px; font-size: 0.65rem; border-color: var(--border-bright);';
+        dropBtn.textContent = '▾';
+        dropBtn.onclick = (e) => {
+            e.stopPropagation();
+            openFloatingDockPopover(dropBtn, modKey);
+        };
+        wrap.appendChild(dropBtn);
 
         cont.appendChild(wrap);
     });
@@ -581,7 +772,7 @@ function renderEditDockChips() {
 function addModuleToTilingLayout(modKey) {
     if (!dashboardModules[modKey]) return;
 
-    if (MACRO_SUBMODULES_MAP[modKey]) {
+    if (isMacroContainerKey(modKey)) {
         layoutTree = getMacroDefaultSubtree(modKey);
         renderQuadrantLayout();
         return;
@@ -783,65 +974,77 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
     return null;
 }
 
+// Resizer fluido a 60fps con requestAnimationFrame e blocco pointer-events sui figli
 function attachSplitResizer(resizerEl, splitEl, splitNode, childEl0, childEl1) {
     resizerEl.addEventListener('mousedown', (e) => {
         e.preventDefault();
         e.stopPropagation();
         resizerEl.classList.add('dragging');
+        document.body.classList.add('is-resizing-split');
         document.body.style.userSelect = 'none';
         document.body.style.cursor = splitNode.dir === 'row' ? 'ew-resize' : 'ns-resize';
 
+        let rafId = null;
+
         const onMouseMove = (moveEvent) => {
-            const rect = splitEl.getBoundingClientRect();
+            const clientX = moveEvent.clientX;
+            const clientY = moveEvent.clientY;
 
-            if (splitNode.dir === 'row') {
-                const totalW = rect.width;
-                if (totalW <= 100) return;
+            if (rafId) cancelAnimationFrame(rafId);
+            rafId = requestAnimationFrame(() => {
+                const rect = splitEl.getBoundingClientRect();
 
-                const minW0 = getSubtreeMinWidth(splitNode.children[0]);
-                const minW1 = getSubtreeMinWidth(splitNode.children[1]);
+                if (splitNode.dir === 'row') {
+                    const totalW = rect.width;
+                    if (totalW <= 100) return;
 
-                let minRatio = minW0 / totalW;
-                let maxRatio = (totalW - minW1) / totalW;
+                    const minW0 = getSubtreeMinWidth(splitNode.children[0]);
+                    const minW1 = getSubtreeMinWidth(splitNode.children[1]);
 
-                if (minRatio > maxRatio) {
-                    const sumMin = minW0 + minW1;
-                    minRatio = maxRatio = minW0 / (sumMin || 1);
+                    let minRatio = minW0 / totalW;
+                    let maxRatio = (totalW - minW1) / totalW;
+
+                    if (minRatio > maxRatio) {
+                        const sumMin = minW0 + minW1;
+                        minRatio = maxRatio = minW0 / (sumMin || 1);
+                    }
+
+                    minRatio = Math.max(0.125, Math.min(0.875, minRatio));
+                    maxRatio = Math.max(minRatio, Math.min(0.875, maxRatio));
+
+                    const rawRatio = (clientX - rect.left) / totalW;
+                    const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
+
+                    splitNode.ratio = clampedRatio;
+                    childEl0.style.flex = `${clampedRatio} 1 0%`;
+                    childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
+                } else {
+                    const totalH = rect.height;
+                    if (totalH <= 100) return;
+
+                    const minH0 = getSubtreeMinHeight(splitNode.children[0]);
+                    const minH1 = getSubtreeMinHeight(splitNode.children[1]);
+
+                    let minRatio = Math.max(0.12, minH0 / totalH);
+                    let maxRatio = Math.min(0.88, (totalH - minH1) / totalH);
+                    if (minRatio > maxRatio) minRatio = maxRatio = 0.5;
+
+                    const rawRatio = (clientY - rect.top) / totalH;
+                    const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
+
+                    splitNode.ratio = clampedRatio;
+                    childEl0.style.flex = `${clampedRatio} 1 0%`;
+                    childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
                 }
-
-                minRatio = Math.max(0.125, Math.min(0.875, minRatio));
-                maxRatio = Math.max(minRatio, Math.min(0.875, maxRatio));
-
-                const rawRatio = (moveEvent.clientX - rect.left) / totalW;
-                const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
-
-                splitNode.ratio = clampedRatio;
-                childEl0.style.flex = `${clampedRatio} 1 0%`;
-                childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
-            } else {
-                const totalH = rect.height;
-                if (totalH <= 100) return;
-
-                const minH0 = getSubtreeMinHeight(splitNode.children[0]);
-                const minH1 = getSubtreeMinHeight(splitNode.children[1]);
-
-                let minRatio = Math.max(0.12, minH0 / totalH);
-                let maxRatio = Math.min(0.88, (totalH - minH1) / totalH);
-                if (minRatio > maxRatio) minRatio = maxRatio = 0.5;
-
-                const rawRatio = (moveEvent.clientY - rect.top) / totalH;
-                const clampedRatio = Math.max(minRatio, Math.min(maxRatio, rawRatio));
-
-                splitNode.ratio = clampedRatio;
-                childEl0.style.flex = `${clampedRatio} 1 0%`;
-                childEl1.style.flex = `${1 - clampedRatio} 1 0%`;
-            }
+            });
         };
 
         const onMouseUp = () => {
+            if (rafId) cancelAnimationFrame(rafId);
             document.removeEventListener('mousemove', onMouseMove);
             document.removeEventListener('mouseup', onMouseUp);
             resizerEl.classList.remove('dragging');
+            document.body.classList.remove('is-resizing-split');
             document.body.style.userSelect = '';
             document.body.style.cursor = '';
             saveWorkspaceState();
@@ -1054,7 +1257,7 @@ function getOptimalInitialRatio(modLeft, modRight) {
 function executeSnapDrop(modKey, action) {
     if (!dashboardModules[modKey] || !action) return;
 
-    const createNodeForDrop = (k) => MACRO_SUBMODULES_MAP[k] ? getMacroDefaultSubtree(k) : makePaneNode(k);
+    const createNodeForDrop = (k) => isMacroContainerKey(k) ? getMacroDefaultSubtree(k) : makePaneNode(k);
 
     if (action.scope === 'root_empty' || !layoutTree) {
         layoutTree = createNodeForDrop(modKey);
@@ -1063,7 +1266,7 @@ function executeSnapDrop(modKey, action) {
     }
 
     if (action.scope === 'pane' && action.zone === 'center') {
-        if (MACRO_SUBMODULES_MAP[modKey]) {
+        if (isMacroContainerKey(modKey)) {
             layoutTree = replacePaneNode(layoutTree, action.paneId, () => getMacroDefaultSubtree(modKey));
             renderQuadrantLayout();
         } else {
@@ -1146,7 +1349,7 @@ function executeSnapDrop(modKey, action) {
 
 function changePaneModuleById(paneId, newModKey) {
     if (!dashboardModules[newModKey]) return;
-    if (MACRO_SUBMODULES_MAP[newModKey]) {
+    if (isMacroContainerKey(newModKey)) {
         layoutTree = replacePaneNode(layoutTree, paneId, () => getMacroDefaultSubtree(newModKey));
         renderQuadrantLayout();
         return;
@@ -1186,7 +1389,7 @@ function switchModule(side, rawModKey) {
     if (!dashboardModules[modKey]) return;
     const leaves = collectLeafPanes(layoutTree);
     if (leaves.length === 0) {
-        layoutTree = MACRO_SUBMODULES_MAP[modKey] ? getMacroDefaultSubtree(modKey) : makePaneNode(modKey);
+        layoutTree = isMacroContainerKey(modKey) ? getMacroDefaultSubtree(modKey) : makePaneNode(modKey);
         renderQuadrantLayout();
         return;
     }
@@ -1354,7 +1557,123 @@ document.addEventListener('keydown', (e) => {
 });
 
 // ============================================================================
-// TACTICAL VERTICAL POD HUD (340x460px) & MULTI-MONITOR PHYSICAL MEMORY (3A1 + 3B1)
+// SOVRAPPOSIZIONE DIRETTA MODULI (USATA DA QUICK-SWITCHER V E BARRA DSL)
+// ============================================================================
+
+function resolveModuleKeyFromText(rawText) {
+    const q = (rawText || '').trim().toLowerCase();
+    if (!q) return null;
+    if (dashboardModules[q]) return q;
+
+    const aliasesMap = {
+        'daily tasks': 'tasks',
+        'daily': 'tasks',
+        'task': 'tasks',
+        'note': 'notes',
+        'weekly planner': 'planner',
+        'week': 'planner',
+        'day planner': 'plan',
+        'plan tomorrow': 'plan',
+        'plan': 'plan',
+        'monthly calendar': 'calendar',
+        'cal': 'calendar',
+        'calendar grid': 'cal_grid',
+        'day events': 'cal_agenda',
+        'agenda': 'cal_agenda',
+        'diet & macros': 'diet',
+        'macros': 'diet',
+        'diet today': 'diet_today',
+        'diet week': 'diet_week',
+        'gym split': 'gym',
+        'workout': 'gym',
+        'palestra': 'gym',
+        'gym today': 'gym_today',
+        'today & streak': 'streak',
+        'consistency': 'streak',
+        'streak grid': 'streak_grid',
+        'focus ledger': 'streak_ledger',
+        'university': 'uni',
+        'uni roadmap': 'uni_roadmap',
+        'uni lectures': 'uni_lectures',
+        'uni appeals': 'uni_appeals',
+        'uni libretto': 'uni_libretto',
+        'money summary': 'm_summary',
+        'summary': 'm_summary',
+        'money vaults': 'm_vaults',
+        'vaults': 'm_vaults',
+        'money chart': 'm_chart',
+        'chart': 'm_chart',
+        'money transactions': 'm_tx',
+        'money tx': 'm_tx',
+        'transactions': 'm_tx',
+        'tx': 'm_tx',
+        'money bills': 'm_bills',
+        'bills': 'm_bills',
+        'money analytics': 'm_analytics',
+        'analytics': 'm_analytics',
+        'cats': 'm_analytics',
+        'money incubator': 'm_incubator',
+        'incubator': 'm_incubator',
+        'wishlist': 'm_incubator'
+    };
+    if (aliasesMap[q]) return aliasesMap[q];
+
+    for (const k of ALL_MODULE_KEYS) {
+        const nameLower = dashboardModules[k].name.toLowerCase();
+        if (k.startsWith(q) || nameLower === q || nameLower.startsWith(q)) {
+            return k;
+        }
+    }
+    return null;
+}
+
+function setModulesView(modKeysArray) {
+    const validMods = [];
+    (modKeysArray || []).forEach(k => {
+        const resolved = dashboardModules[k] ? k : resolveModuleKeyFromText(k);
+        if (resolved && !validMods.includes(resolved)) {
+            validMods.push(resolved);
+        }
+    });
+
+    if (validMods.length === 0) return false;
+
+    if (isHudMode) {
+        toggleHudMode(false);
+    }
+
+    const makeNodeForKey = (k) => {
+        if (isMacroContainerKey(k)) return getMacroDefaultSubtree(k);
+        return makePaneNode(k);
+    };
+
+    const buildBalancedSubtree = (keys, depth = 0) => {
+        if (keys.length === 1) return makeNodeForKey(keys[0]);
+        if (keys.length === 2) {
+            const dir = (depth % 2 === 0) ? 'row' : 'col';
+            const ratio = dir === 'row' ? getOptimalInitialRatio(keys[0], keys[1]) : 0.5;
+            return makeSplitNode(dir, ratio, makeNodeForKey(keys[0]), makeNodeForKey(keys[1]));
+        }
+        const mid = Math.ceil(keys.length / 2);
+        const leftKeys = keys.slice(0, mid);
+        const rightKeys = keys.slice(mid);
+        const dir = (depth % 2 === 0) ? 'row' : 'col';
+        const ratio = leftKeys.length / keys.length;
+        return makeSplitNode(dir, ratio, buildBalancedSubtree(leftKeys, depth + 1), buildBalancedSubtree(rightKeys, depth + 1));
+    };
+
+    layoutTree = buildBalancedSubtree(validMods, 0);
+    renderQuadrantLayout();
+
+    if (typeof showToast === 'function') {
+        const names = validMods.map(k => dashboardModules[k].name).join(' + ');
+        showToast(`[VIEW] ${names}`);
+    }
+    return true;
+}
+
+// ============================================================================
+// TACTICAL VERTICAL POD HUD (340x460px) & MULTI-MONITOR PHYSICAL MEMORY
 // ============================================================================
 
 let isHudMode = false;
@@ -1435,7 +1754,6 @@ function renderHudPod() {
     const pod = document.getElementById('hud-tactical-pod');
     if (!pod) return;
 
-    // 1. Focus Controller Box
     const focusBox = document.getElementById('hud-pod-focus-box');
     const isFocusRunning = typeof focusPlaylist !== 'undefined' && focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
 
@@ -1468,17 +1786,16 @@ function renderHudPod() {
         } else {
             focusBox.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold;">FOCUS TIMER // IDLE</span>
-                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:0.62rem;" onclick="openTimerModal()">[▶ PLAYLIST]</button>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold;">FOCUS // IDLE</span>
+                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:0.62rem;" onclick="openTimerModal()">[▶]</button>
                 </div>
             `;
         }
     }
 
-    // 2. Radar (Now/Next + Spendable Balance)
     const radarEl = document.getElementById('hud-pod-radar');
     if (radarEl) {
-        const nextStr = getNextScheduledBlockLabelForToday() || 'NO TIMED BLOCKS LEFT';
+        const nextStr = getNextScheduledBlockLabelForToday() || 'NO TIMED BLOCKS';
         const spendableVal = typeof getMoneyAllocationMetrics === 'function'
             ? getMoneyAllocationMetrics().spendable
             : (typeof mBalance !== 'undefined' ? mBalance : 0);
@@ -1489,7 +1806,6 @@ function renderHudPod() {
         `;
     }
 
-    // 3. Checklist Task & To-Do di oggi
     const listEl = document.getElementById('hud-pod-tasks-list');
     const counterEl = document.getElementById('hud-pod-tasks-counter');
     if (listEl) {
@@ -1513,7 +1829,7 @@ function renderHudPod() {
 
         const ordered = [...uncompleted, ...completed];
         if (ordered.length === 0) {
-            listEl.innerHTML = `<div class="empty-state" style="text-align:center;">[ NO TASKS FOR TODAY ]</div>`;
+            listEl.innerHTML = `<div class="empty-state" style="text-align:center;">[ NONE ]</div>`;
         } else {
             ordered.forEach(({ t, curLog, inst }) => {
                 const isAllDone = curLog.every(Boolean);
@@ -1540,7 +1856,6 @@ function renderHudPod() {
                     playBtn.className = 'icon-btn';
                     playBtn.style.cssText = 'font-size:0.65rem; padding:1px 4px; color:var(--text-main);';
                     playBtn.textContent = '▶';
-                    playBtn.title = `Start ${mins}m Focus`;
                     playBtn.onclick = () => {
                         if (typeof quickStartTaskFocus === 'function') {
                             const prevDate = selectedDateStr;
@@ -1588,10 +1903,10 @@ function renderHudPodStaging() {
     box.style.display = 'flex';
     box.innerHTML = `
         <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.62rem; color:var(--accent-gold); font-weight:bold;">
-            <span>STAGED COMMANDS (${hudPodStagedCommands.length})</span>
+            <span>STAGED (${hudPodStagedCommands.length})</span>
             <div style="display:flex; gap:4px;">
                 <button type="button" class="btn btn-sm" style="padding:1px 5px; font-size:0.6rem;" id="hud-stg-cancel">[ESC]</button>
-                <button type="button" class="btn btn-primary btn-sm" style="padding:1px 6px; font-size:0.6rem;" id="hud-stg-run">[RUN // ENTER]</button>
+                <button type="button" class="btn btn-primary btn-sm" style="padding:1px 6px; font-size:0.6rem;" id="hud-stg-run">[RUN]</button>
             </div>
         </div>
         <div id="hud-stg-list" style="display:flex; flex-direction:column; gap:4px;"></div>
@@ -1628,7 +1943,7 @@ function confirmHudPodStaging() {
     renderHudPodStaging();
     renderHudPod();
     if (count > 0 && typeof showToast === 'function') {
-        showToast(`[POD EXECUTED] ${count} command(s)`);
+        showToast(`[EXECUTED] ${count} command(s)`);
     }
 }
 
@@ -1721,7 +2036,6 @@ async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, physi
             : null;
         if (!appWin) return;
 
-        // 1. Se la finestra è massimizzata o a schermo intero, la sblocca prima di ridimensionare
         try {
             if (typeof appWin.isMaximized === 'function' && await appWin.isMaximized()) {
                 await appWin.unmaximize();
@@ -1734,21 +2048,18 @@ async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, physi
             }
         } catch (e) {}
 
-        // 2. Rimuove eventuali blocchi di dimensione minima (minWidth/minHeight)
         try {
             if (typeof appWin.setMinSize === 'function') {
                 await appWin.setMinSize(null);
             }
         } catch (e) {}
 
-        // 3. Imposta Always-on-Top
         try {
             if (alwaysOnTop !== null && typeof appWin.setAlwaysOnTop === 'function') {
                 await appWin.setAlwaysOnTop(Boolean(alwaysOnTop));
             }
         } catch (e) {}
 
-        // 4. Ridimensiona usando LogicalSize o il fallback oggetto nativo Tauri v2
         if (typeof appWin.setSize === 'function') {
             const LogicalSizeCtor = (tauriObj.dpi && tauriObj.dpi.LogicalSize)
                 || (tauriObj.window && tauriObj.window.LogicalSize);
@@ -1759,7 +2070,6 @@ async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, physi
             }
         }
 
-        // 5. Ripristina la posizione fisica sul monitor corretto (solo se disponibile)
         if (physicalPos && typeof physicalPos.x === 'number' && typeof physicalPos.y === 'number' && typeof appWin.setPosition === 'function') {
             try {
                 const PhysicalPosCtor = (tauriObj.dpi && tauriObj.dpi.PhysicalPosition)

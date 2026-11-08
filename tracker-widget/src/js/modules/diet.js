@@ -1,4 +1,7 @@
-// --- ATOMIC MODULE 5: DIET, AUTO-MACRO PARSER & COMPACT BODY WEIGHT ---
+// --- js/modules/diet.js ---
+// ATOMIC MODULE 5 & SUB-MODULES:
+// - diet_today (#module-diet-today): Visione giornaliera sincronizzata con selectedDateStr (<-, ->, T)
+// - diet_week (#module-diet-week): Matrice settimanale completa (Zero istruzioni superflue)
 
 function parseFoodSegmentMacros(segmentText) {
     let kcal = 0, p = 0, c = 0, f = 0;
@@ -154,9 +157,9 @@ function addFoodDbItem() {
     renderDiet();
 }
 
-function addBodyMetricLog(customWeight = null, customNote = null) {
-    const wInp = document.getElementById('body-weight-input');
-    const nInp = document.getElementById('body-note-input');
+function addBodyMetricLog(customWeight = null, customNote = null, weightInpId = 'body-weight-input', noteInpId = 'body-note-input') {
+    const wInp = document.getElementById(weightInpId);
+    const nInp = document.getElementById(noteInpId);
 
     const weightVal = customWeight !== null ? parseFloat(customWeight) : parseFloat(wInp ? wInp.value : 0);
     if (!weightVal || weightVal <= 0) return false;
@@ -174,66 +177,252 @@ function addBodyMetricLog(customWeight = null, customNote = null) {
     if (nInp && customNote === null) nInp.value = '';
 
     saveHealthData();
-    renderBodyMetrics();
-    if (typeof showToast === 'function') showToast(`[DIET] Logged weight: ${weightVal.toFixed(1)} kg`);
+    renderDiet();
+    if (typeof showToast === 'function') showToast(`[WEIGHT] ${weightVal.toFixed(1)} kg`);
     return true;
 }
 
 function deleteBodyMetricLog(id) {
     bodyLogs = bodyLogs.filter(x => x.id !== id);
     saveHealthData();
-    renderBodyMetrics();
+    renderDiet();
 }
 
-function renderBodyMetrics() {
-    const heroEl = document.getElementById('body-weight-display');
-    const deltaEl = document.getElementById('body-weight-delta');
-    const chipsCont = document.getElementById('body-history-chips');
-    if (!heroEl || !deltaEl || !chipsCont) return;
+// Genera il componente Header unificato per i moduli Diet (con Weight Popover e bottone [⚙])
+function buildDietHeaderControlsDom(suffixId) {
+    const popId = `weight-popover-${suffixId}`;
+    const wInpId = `bw-inp-${suffixId}`;
+    const nInpId = `bn-inp-${suffixId}`;
 
-    chipsCont.innerHTML = '';
+    let latestStr = '-- KG';
+    let deltaStr = '';
+    if (bodyLogs.length > 0) {
+        const latest = bodyLogs[bodyLogs.length - 1];
+        latestStr = `${latest.weight.toFixed(1)} KG`;
+        if (bodyLogs.length >= 2) {
+            const prev = bodyLogs[bodyLogs.length - 2];
+            const diff = Math.round((latest.weight - prev.weight) * 10) / 10;
+            deltaStr = `(${diff > 0 ? '+' : ''}${diff.toFixed(1)})`;
+        }
+    }
 
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'display:flex; gap:6px; align-items:center;';
+
+    const drop = document.createElement('div');
+    drop.className = 'dropdown';
+    drop.innerHTML = `
+        <button type="button" class="btn btn-sm dropdown-btn">
+            <strong>${latestStr}</strong> <span style="color:var(--text-dim);">${deltaStr}</span>
+        </button>
+        <div id="${popId}" class="dropdown-content" style="right:0; width:280px; padding:12px;">
+            <div class="sub-column-header">Body Weight</div>
+            <div style="display:flex; gap:6px; margin-bottom:10px;">
+                <input type="number" id="${wInpId}" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg" style="width:80px;">
+                <input type="text" id="${nInpId}" class="form-control form-control-sm" placeholder="Note..." style="flex:1;">
+                <button type="button" class="btn btn-primary btn-sm btn-log-w">[+]</button>
+            </div>
+            <div class="bw-chips-list" style="display:flex; flex-direction:column; gap:4px; max-height:130px; overflow-y:auto;"></div>
+        </div>
+    `;
+
+    const btnBadge = drop.querySelector('.dropdown-btn');
+    const popEl = drop.querySelector(`#${popId}`);
+    popEl.onclick = (e) => e.stopPropagation();
+    btnBadge.onclick = (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.dropdown-content.show').forEach(d => { if (d !== popEl) d.classList.remove('show'); });
+        popEl.classList.toggle('show');
+    };
+
+    const submitW = () => addBodyMetricLog(null, null, wInpId, nInpId);
+    drop.querySelector('.btn-log-w').onclick = submitW;
+    drop.querySelector(`#${nInpId}`).onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submitW(); }
+    };
+
+    const chipsList = drop.querySelector('.bw-chips-list');
     if (bodyLogs.length === 0) {
-        heroEl.textContent = '-- KG';
-        deltaEl.textContent = '';
-        chipsCont.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NO LOGS YET ]</div>';
-        return;
-    }
-
-    const latest = bodyLogs[bodyLogs.length - 1];
-    heroEl.textContent = `${latest.weight.toFixed(1)} KG`;
-
-    if (bodyLogs.length >= 2) {
-        const prev = bodyLogs[bodyLogs.length - 2];
-        const diff = Math.round((latest.weight - prev.weight) * 10) / 10;
-        const sign = diff > 0 ? '+' : '';
-        deltaEl.textContent = `(${sign}${diff.toFixed(1)})`;
+        chipsList.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NONE ]</div>';
     } else {
-        deltaEl.textContent = '';
+        [...bodyLogs].reverse().slice(0, 8).forEach(entry => {
+            const chip = document.createElement('div');
+            chip.className = 'body-chip';
+            chip.style.justifyContent = 'space-between';
+            const noteStr = entry.note ? ` · ${entry.note}` : '';
+            chip.innerHTML = `<span><strong style="color:var(--text-main);">${entry.weight.toFixed(1)}kg</strong> <span style="color:var(--text-dim);">${escapeHtml(entry.date)}${escapeHtml(noteStr)}</span></span>`;
+            const delBtn = document.createElement('button');
+            delBtn.className = 'icon-btn delete';
+            delBtn.textContent = '[X]';
+            delBtn.onclick = () => deleteBodyMetricLog(entry.id);
+            chip.appendChild(delBtn);
+            chipsList.appendChild(chip);
+        });
     }
 
-    [...bodyLogs].reverse().slice(0, 8).forEach(entry => {
-        const chip = document.createElement('div');
-        chip.className = 'body-chip';
-        chip.style.justifyContent = 'space-between';
-        const noteStr = entry.note ? ` · ${entry.note}` : '';
-        chip.innerHTML = `
-            <span><strong style="color:var(--text-main);">${entry.weight.toFixed(1)}kg</strong> <span style="color:var(--text-dim);">${escapeHtml(entry.date)}${escapeHtml(noteStr)}</span></span>
-        `;
-        const delBtn = document.createElement('button');
-        delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[X]';
-        delBtn.onclick = () => deleteBodyMetricLog(entry.id);
-        chip.appendChild(delBtn);
-        chipsCont.appendChild(chip);
-    });
+    const cfgBtn = document.createElement('button');
+    cfgBtn.type = 'button';
+    cfgBtn.className = 'btn btn-sm';
+    cfgBtn.textContent = '[⚙]';
+    cfgBtn.onclick = openFoodDbModal;
+
+    wrap.appendChild(drop);
+    wrap.appendChild(cfgBtn);
+    return wrap;
 }
 
+// Funzione master che aggiorna tutti i contenitori Diet
 function renderDiet() {
-    renderBodyMetrics();
+    renderDietAtomToday();
+    renderDietAtomWeek();
+    renderLegacyDietContainer();
+}
+
+// ============================================================================
+// SOTTO-MODULO 1: DIET: TODAY MEALS (#module-diet-today) — SINCRONIZZATO CON <- / -> / T
+// ============================================================================
+
+function renderDietAtomToday() {
+    const root = document.getElementById('module-diet-today');
+    if (!root) return;
+
+    const dObj = parseLocalDate(selectedDateStr);
+    const dayKey = dObj.getDay();
+    const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+    const totals = calculateDayMacros(dayKey);
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0;" id="diet-today-hdr">
+                <div>
+                    <span class="section-label">Diet</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${dayNames[dayKey]} ${selectedDateStr}</span>
+                </div>
+            </div>
+
+            <!-- BARRA MACRO DEL GIORNO SELEZIONATO -->
+            <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px;">
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">KCAL</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px;">${totals.kcal}${totals.hasFreeMeal ? '*' : ''}</div>
+                </div>
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">PROTEIN</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-green); margin-top:2px;">${totals.p}g</div>
+                </div>
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">CARBS</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px;">${totals.c}g</div>
+                </div>
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">FATS</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-gold); margin-top:2px;">${totals.f}g</div>
+                </div>
+            </div>
+
+            <!-- PASTI DEL GIORNO SELEZIONATO (MOSAICO A 2 COLONNE) -->
+            <div id="diet-today-meals-grid" class="daily-columns-wrap" style="align-items:flex-start; gap:12px;"></div>
+
+            <!-- REGOLE FISSE (COLAZIONE / CONDIMENTI) -->
+            <div id="diet-today-rules" class="diet-rules-bar" style="margin-top:auto; cursor:pointer;"></div>
+        </div>
+    `;
+
+    root.querySelector('#diet-today-hdr').appendChild(buildDietHeaderControlsDom('today'));
+
+    const mealsGrid = root.querySelector('#diet-today-meals-grid');
+    const colL = document.createElement('div');
+    colL.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;';
+    const colR = document.createElement('div');
+    colR.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;';
+
+    dietData.forEach((rowObj, rowIdx) => {
+        const mealText = (rowObj[dayKey] || '').trim();
+        const lines = mealText ? mealText.split('\n').map(s => s.trim()).filter(Boolean) : [];
+
+        const card = document.createElement('div');
+        card.className = 'category-group';
+        card.style.marginBottom = '0';
+        card.style.cursor = 'pointer';
+
+        const hdr = document.createElement('div');
+        hdr.className = 'category-header-wrap';
+        hdr.innerHTML = `<div class="category-title">${escapeHtml(rowObj.type)}</div>`;
+        card.appendChild(hdr);
+
+        const bodyBox = document.createElement('div');
+        if (lines.length === 0) {
+            bodyBox.innerHTML = `<div class="empty-state" style="padding:4px 0;">[ EMPTY ]</div>`;
+        } else {
+            lines.forEach(l => {
+                const itemRow = document.createElement('div');
+                itemRow.className = 'task-item';
+                itemRow.innerHTML = `<div class="task-title">${escapeHtml(l)}</div>`;
+                bodyBox.appendChild(itemRow);
+            });
+        }
+        card.appendChild(bodyBox);
+
+        card.ondblclick = () => {
+            startDietCellEdit(bodyBox, rowIdx, dayKey);
+        };
+
+        if (rowIdx % 2 === 0) colL.appendChild(card);
+        else colR.appendChild(card);
+    });
+
+    mealsGrid.appendChild(colL);
+    mealsGrid.appendChild(colR);
+
+    const rulesEl = root.querySelector('#diet-today-rules');
+    rulesEl.textContent = dietRules;
+    rulesEl.ondblclick = () => startDietRulesEdit(rulesEl);
+}
+
+// ============================================================================
+// SOTTO-MODULO 2: DIET: WEEKLY MATRIX (#module-diet-week)
+// ============================================================================
+
+function renderDietAtomWeek() {
+    const root = document.getElementById('module-diet-week');
+    if (!root) return;
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0;" id="diet-week-hdr">
+                <div>
+                    <span class="section-label">Diet Matrix</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// WEEKLY</span>
+                </div>
+            </div>
+            <div id="diet-week-table-mount" style="width:100%;"></div>
+            <div id="diet-week-rules" class="diet-rules-bar" style="cursor:pointer;"></div>
+        </div>
+    `;
+
+    root.querySelector('#diet-week-hdr').appendChild(buildDietHeaderControlsDom('week'));
+    buildWeeklyDietMatrixDom(root.querySelector('#diet-week-table-mount'));
+
+    const rulesEl = root.querySelector('#diet-week-rules');
+    rulesEl.textContent = dietRules;
+    rulesEl.ondblclick = () => startDietRulesEdit(rulesEl);
+}
+
+function renderLegacyDietContainer() {
     const mainArea = document.getElementById('diet-main-content');
     if (!mainArea) return;
-    mainArea.innerHTML = '';
+    buildWeeklyDietMatrixDom(mainArea);
+    const rulesEl = document.getElementById('diet-rules');
+    if (rulesEl) {
+        rulesEl.style.cursor = 'pointer';
+        rulesEl.textContent = dietRules;
+        rulesEl.ondblclick = () => startDietRulesEdit(rulesEl);
+    }
+}
+
+function buildWeeklyDietMatrixDom(targetEl) {
+    if (!targetEl) return;
+    targetEl.innerHTML = '';
 
     const todayJS = parseLocalDate(selectedDateStr).getDay();
     const dayOrder = [1, 2, 3, 4, 5, 6, 0];
@@ -270,7 +459,6 @@ function renderDiet() {
         dayOrder.forEach(dVal => {
             const cell = document.createElement('div');
             cell.className = `diet-cell ${todayJS === dVal ? 'diet-col-active' : ''}`;
-            cell.title = "Double-click to edit meal";
             cell.textContent = rowObj[dVal] || '';
             cell.ondblclick = () => startDietCellEdit(cell, rowIdx, dVal);
             rowEl.appendChild(cell);
@@ -300,15 +488,7 @@ function renderDiet() {
         macroRow.appendChild(mCell);
     });
     wrapper.appendChild(macroRow);
-    mainArea.appendChild(wrapper);
-
-    const rulesEl = document.getElementById('diet-rules');
-    if (rulesEl) {
-        rulesEl.title = "Double-click to edit diet rules";
-        rulesEl.style.cursor = 'pointer';
-        rulesEl.textContent = dietRules;
-        rulesEl.ondblclick = () => startDietRulesEdit(rulesEl);
-    }
+    targetEl.appendChild(wrapper);
 }
 
 function startDietCellEdit(cell, rowIdx, dayKey) {
@@ -324,7 +504,6 @@ function startDietCellEdit(cell, rowIdx, dayKey) {
         dietData[rowIdx][dayKey] = ta.value.trim();
         saveHealthData();
         renderDiet();
-        if (typeof showToast === 'function') showToast('[DIET] Meal & Macros updated');
     };
 
     ta.onblur = commit;
@@ -356,7 +535,6 @@ function startDietRulesEdit(rulesEl) {
         dietRules = inp.value.trim() || DEFAULT_DIET_RULES;
         saveHealthData();
         renderDiet();
-        if (typeof showToast === 'function') showToast('[DIET] Rules updated');
     };
 
     inp.onblur = commit;
@@ -368,3 +546,7 @@ function startDietRulesEdit(rulesEl) {
     rulesEl.appendChild(inp);
     inp.focus();
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+    renderDiet();
+});

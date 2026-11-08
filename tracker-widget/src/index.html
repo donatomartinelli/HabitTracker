@@ -33,10 +33,7 @@
         <div class="header-left">
             <h1 id="global-clock">00:00 // DAY 00</h1>
 
-            <!-- STRISCIA TELEMETRIA VISIBILE IN MODALITÀ HUD WIDGET -->
-            <div id="hud-widget-strip" class="hud-widget-strip" style="display: none;"></div>
-
-            <!-- FOCUS TIMER INLINE (Controllato da js/modules/focus.js) -->
+            <!-- FOCUS TIMER INLINE -->
             <div id="header-inline-focus" class="header-inline-focus" style="display: none;">
                 <div id="header-focus-pill" class="header-focus-pill" ondblclick="openFullscreenFocusOverlay()">
                     <span id="header-focus-icon" class="header-focus-icon">▶</span>
@@ -81,9 +78,9 @@
         </div>
 
         <div class="header-right">
-            <button id="btn-settings-app" class="icon-btn win-ctrl-btn" onclick="openSettingsModal()" title="Settings (Shortcut: ,)">[⚙]</button>
-            <button id="btn-minimize-app" class="icon-btn win-ctrl-btn" title="Minimize Window">[-]</button>
-            <button id="btn-close-app" class="icon-btn delete win-ctrl-btn" title="Close Application">[X]</button>
+            <button id="btn-settings-app" class="icon-btn win-ctrl-btn" onclick="openSettingsModal()">[⚙]</button>
+            <button id="btn-minimize-app" class="icon-btn win-ctrl-btn">[-]</button>
+            <button id="btn-close-app" class="icon-btn delete win-ctrl-btn">[X]</button>
         </div>
 
         <!-- LINEA PROGRESSO FOCUS SOTTO L'HEADER -->
@@ -97,34 +94,28 @@
         <div data-tauri-drag-region class="hud-pod-topbar">
             <span data-tauri-drag-region id="hud-pod-clock" class="hud-pod-clock">00:00 // DAY 00</span>
             <div class="hud-pod-win-btns">
-                <button type="button" class="icon-btn win-ctrl-btn" onclick="openQuickNoteModal()" title="Quick Note (N)">[+NOTE]</button>
-                <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false)" title="Expand Full Workspace (H)">[FULL]</button>
+                <button type="button" class="icon-btn win-ctrl-btn" onclick="openQuickNoteModal()">[+NOTE]</button>
+                <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false)">[FULL]</button>
                 <button type="button" class="icon-btn win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().minimize()">[-]</button>
                 <button type="button" class="icon-btn delete win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().close(); else window.close();">[X]</button>
             </div>
         </div>
 
-        <!-- 1. FOCUS CONTROLLER -->
         <div id="hud-pod-focus-box" class="hud-pod-focus-box"></div>
-
-        <!-- 2. RADAR (NOW / NEXT & SPENDABLE) -->
         <div id="hud-pod-radar" class="hud-pod-radar"></div>
 
-        <!-- 3. LIVE CHECKLIST (TASKS & TO-DO CON SPUNTA E AVVIO FOCUS) -->
         <div class="hud-pod-section-hdr">
-            <span>ACTIVE TASKS TODAY</span>
+            <span>ACTIVE TASKS</span>
             <span id="hud-pod-tasks-counter">0/0</span>
         </div>
         <div id="hud-pod-tasks-list" class="hud-pod-tasks-list"></div>
 
-        <!-- 4. STAGING AREA COMPATTA & INPUT DSL / AI -->
         <div id="hud-pod-staging" class="hud-pod-staging" style="display: none;"></div>
         <div class="hud-pod-cmd-bar">
-            <input type="text" id="hud-pod-input" class="hud-pod-input" placeholder="DSL command or ask AI..." autocomplete="off">
+            <input type="text" id="hud-pod-input" class="hud-pod-input" placeholder="Command..." autocomplete="off">
         </div>
     </div>
 
-    <!-- BACKDROP SCURO QUANDO LA BARRA SCENDE AL CENTRO-ALTO -->
     <div id="terminalOverlay" class="ask-backdrop-overlay" onclick="if(event.target === this) closeTerminal()"></div>
 
     <!-- BARRA MODULI TRASCINABILI (Visibile quando premi E) -->
@@ -137,7 +128,7 @@
         </div>
     </div>
 
-    <!-- OVERLAY ANTEPRIMA SNAP STILE WINDOWS -->
+    <!-- OVERLAY ANTEPRIMA SNAP -->
     <div id="snap-preview-overlay" class="snap-preview-overlay">
         <div id="snap-preview-label" class="snap-preview-label">SNAP</div>
     </div>
@@ -145,85 +136,78 @@
     <!-- CONTENITORE TILING DINAMICO -->
     <div id="app-content-wrapper" class="layout"></div>
 
-    <!-- ========================================== -->
-    <!-- MAGAZZINO DEI 9 MICRO-MODULI ATOMICI       -->
-    <!-- ========================================== -->
+    <!-- ========================================================== -->
+    <!-- MAGAZZINO UNIVERSALE MODULI & SOTTO-MODULI ATOMICI         -->
+    <!-- ========================================================== -->
     <div id="module-registry" style="display: none;">
         
-        <!-- 1. MODULO ATOMICO: CALENDAR -->
+        <!-- 1. CALENDAR & SOTTO-MODULI (cal_grid, cal_agenda) -->
         <div id="module-calendar" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
                 <div class="section-header-row" style="margin-bottom: 0;">
+                    <div>
+                        <span class="section-label">Calendar</span>
+                        <span id="calendar-month-name" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px; text-transform: uppercase;">// MONTH YEAR</span>
+                    </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
                         <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">[&lt;]</button>
                         <button type="button" class="btn btn-sm" onclick="changeMonth(1)">[&gt;]</button>
-                    </div>
-                    <div>
-                        <span class="section-label">Monthly Calendar</span>
-                        <span id="calendar-month-name" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px; text-transform: uppercase;">// MONTH YEAR</span>
                     </div>
                 </div>
 
                 <div class="month-grid" id="calendar-grid"></div>
 
                 <div style="margin-top: 8px; border-top: 1px solid var(--border-color); padding-top: 12px; flex: 1; min-height: 0; overflow-y: auto;">
-                    <div class="sub-column-header" id="calendar-selected-day-label">SELECTED DATE OVERVIEW</div>
+                    <div class="sub-column-header" id="calendar-selected-day-label">EVENTS</div>
                     <div id="calendar-day-summary" style="display: flex; flex-direction: column; gap: 6px;"></div>
                 </div>
             </div>
         </div>
+        <div id="module-cal-grid" class="module-container"></div>
+        <div id="module-cal-agenda" class="module-container"></div>
 
-        <!-- 2. MODULO ATOMICO: TASKS -->
+        <!-- 2. TASKS -->
         <div id="module-tasks" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0;">
-
                 <div class="section-header-row" style="flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span class="section-label">Tasks</span>
                         <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
                     </div>
-
                     <div style="display: flex; gap: 6px; align-items: center;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()" title="Build & Start Focus Playlist">[▶]</button>
-                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()" title="Manage Tasks, Routines, Medicines & Create New">[⚙]</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">[▶]</button>
+                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()">[⚙]</button>
                     </div>
                 </div>
                 
-                <!-- LAYOUT MOSAICO A 2 COLONNE: (FIXED + ROUTINES) A SINISTRA | (FLEXIBLE + TO-DO) A DESTRA -->
                 <div id="today-tasks" class="daily-columns-wrap" style="flex: 1; align-items: flex-start;">
-                    
-                    <!-- COLONNA SINISTRA: FIXED + ROUTINES SUBITO SOTTO -->
                     <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
                         <div id="scheduled-tasks-col">
                             <div class="sub-column-header">Fixed</div>
                             <div id="scheduled-tasks-list"></div>
                         </div>
-
                         <div id="routines-tasks-col">
                             <div class="sub-column-header">Routines</div>
                             <div id="routines-tasks-list"></div>
                         </div>
                     </div>
 
-                    <!-- COLONNA DESTRA: FLEXIBLE + TO-DO SUBITO SOTTO -->
                     <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
                         <div id="flexible-tasks-col">
                             <div class="sub-column-header">Flexible</div>
                             <div id="flexible-tasks-list"></div>
                         </div>
-
                         <div id="todo-tasks-col">
                             <div class="sub-column-header">To-Do</div>
                             <div id="assigned-todos-list"></div>
-                            <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-top: 8px;" placeholder="+ Add To-Do (Enter)..." onkeydown="addGeneralTask(event)">
+                            <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-top: 8px;" placeholder="+ Add To-Do..." onkeydown="addGeneralTask(event)">
                         </div>
                     </div>
-
                 </div>
             </div>
         </div>
 
-        <!-- 3. MODULO ATOMICO: NOTES -->
+        <!-- 3. NOTES -->
         <div id="module-notes" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 8px; overflow: hidden;">
                 <div class="notes-controls" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px;">
@@ -246,16 +230,14 @@
                         <input type="text" id="note-search-input" class="form-control form-control-sm" style="width: 115px;" placeholder="Filter..." oninput="filterNotesView(this.value)">
                         <button type="button" id="btn-notes-sort" class="btn btn-sm" style="display: none;" onclick="cycleNotesSortMode()">[SORT: NEW]</button>
                         <select id="note-category" class="form-control form-control-sm" style="width: 135px; font-weight: bold;" onchange="onNoteCategoryChange()"></select>
-                        <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()" title="Quick Note (Shortcut: N / Alt+N)">[+]</button>
+                        <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+]</button>
                         <button type="button" class="btn btn-sm" onclick="openManageNotesModal()">[⚙]</button>
                         <input type="file" id="sony-folder-input" webkitdirectory directory multiple style="display: none;" onchange="handleSonyAudioSelection(event)">
                     </div>
                 </div>
 
-                <!-- BARRA PILLOLE SOTTOCATEGORIE (2B: Zona di attesa [HOLDING], [ALL] e Sottocategorie) -->
                 <div id="notes-subcategories-bar" class="notes-subcategories-bar"></div>
 
-                <!-- BARRA OPERAZIONI (Compare selezionando le note col Tasto Destro) -->
                 <div id="notes-batch-bar" class="note-batch-bar" style="display: none;">
                     <div style="display: flex; align-items: center; gap: 8px;">
                         <strong id="notes-selected-count" style="color: var(--text-main); font-size: var(--font-xs);">0 SELECTED</strong>
@@ -274,17 +256,16 @@
                     </div>
                 </div>
 
-                <!-- CASSETTO INLINE PER SUMMARY STRUTTURATO (1B) E AZIONI DSL -->
                 <div id="notes-batch-ai-drawer" class="note-ai-drawer" style="display: none; flex-shrink: 0; max-height: 52%; overflow-y: auto;"></div>
 
                 <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
-                    <textarea id="note-text" class="form-control" style="flex: 1; height: 100%; resize: none; line-height: 1.5; padding: 14px;" placeholder="Write and press Enter..." onkeydown="handleNoteKeyDown(event)" oninput="handleNoteInput()"></textarea>
+                    <textarea id="note-text" class="form-control" style="flex: 1; height: 100%; resize: none; line-height: 1.5; padding: 14px;" placeholder="Write..." onkeydown="handleNoteKeyDown(event)" oninput="handleNoteInput()"></textarea>
                     <div id="notes-browse-container" class="notes-browse-container" style="display: none;"></div>
                 </div>
             </div>
         </div>
 
-        <!-- 4. MODULO ATOMICO: PLANNER -->
+        <!-- 4. WEEKLY PLANNER -->
         <div id="module-planner" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow: hidden; padding-bottom: 12px;">
                 <div id="view-planner" class="tracker-content active" style="flex: 1; display: flex; flex-direction: column; margin-top: 0; gap: 0; overflow: hidden;">
@@ -315,33 +296,29 @@
             </div>
         </div>
 
-        <!-- 5. MODULO ATOMICO: DIET -->
+        <!-- 5. DIET & SOTTO-MODULI (diet_today, diet_week) -->
         <div id="module-diet" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
                 <div class="section-header-row" style="margin-bottom: 0;">
                     <div>
-                        <span class="section-label">Weekly Diet &amp; Auto-Macros</span>
-                        <span class="section-sub-hint" style="margin-left: 8px;">Dbl-click cell to edit</span>
+                        <span class="section-label">Diet &amp; Macros</span>
                     </div>
-
                     <div style="display: flex; gap: 8px; align-items: center;">
                         <div class="dropdown">
-                            <button class="btn btn-sm dropdown-btn" id="btn-weight-badge" onclick="document.getElementById('weight-popover').classList.toggle('show')" title="Click to log weight or view history">
+                            <button class="btn btn-sm dropdown-btn" id="btn-weight-badge" onclick="document.getElementById('weight-popover').classList.toggle('show')">
                                 WEIGHT: <strong id="body-weight-display">-- KG</strong> <span id="body-weight-delta" style="color: var(--text-dim);"></span>
                             </button>
                             <div id="weight-popover" class="dropdown-content" style="right: 0; width: 290px; padding: 12px;" onclick="event.stopPropagation()">
-                                <div class="sub-column-header">Log Body Weight</div>
+                                <div class="sub-column-header">Body Weight</div>
                                 <div style="display: flex; gap: 6px; margin-bottom: 10px;">
-                                    <input type="number" id="body-weight-input" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg (74.5)" style="width: 85px;">
-                                    <input type="text" id="body-note-input" class="form-control form-control-sm" placeholder="Note / BF%..." style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBodyMetricLog();}">
+                                    <input type="number" id="body-weight-input" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg" style="width: 85px;">
+                                    <input type="text" id="body-note-input" class="form-control form-control-sm" placeholder="Note..." style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBodyMetricLog();}">
                                     <button type="button" class="btn btn-primary btn-sm" onclick="addBodyMetricLog()">[+]</button>
                                 </div>
-                                <div class="sub-column-header">Recent Logs</div>
                                 <div id="body-history-chips" style="display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto;"></div>
                             </div>
                         </div>
-
-                        <button class="btn btn-sm" onclick="openFoodDbModal()">[FOOD DB]</button>
+                        <button class="btn btn-sm" onclick="openFoodDbModal()">[⚙]</button>
                     </div>
                 </div>
 
@@ -349,13 +326,17 @@
                 <div id="diet-rules" class="diet-rules-bar"></div>
             </div>
         </div>
+        <div id="module-diet-today" class="module-container"></div>
+        <div id="module-diet-week" class="module-container"></div>
 
-        <!-- 6. MODULO ATOMICO: GYM (CON SOTTO-MODULI COMPONIBILI) -->
+        <!-- 6. GYM & SOTTO-MODULI (gym_today, gym_split) -->
         <div id="module-gym" class="module-container">
             <div id="gym-main-root" class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;"></div>
         </div>
+        <div id="module-gym-today" class="module-container"></div>
+        <div id="module-gym-split" class="module-container"></div>
 
-        <!-- 7. MODULO ATOMICO: MONEY & I SUOI 7 SOTTO-MODULI ATOMICI -->
+        <!-- 7. MONEY & I SUOI 7 SOTTO-MODULI ATOMICI -->
         <div id="module-money" class="module-container"></div>
         <div id="module-m-summary" class="module-container"></div>
         <div id="module-m-vaults" class="module-container"></div>
@@ -365,19 +346,19 @@
         <div id="module-m-analytics" class="module-container"></div>
         <div id="module-m-incubator" class="module-container"></div>
 
-        <!-- 8. MODULO ATOMICO: TODAY STREAK & CONSISTENCY -->
+        <!-- 8. STREAK & SOTTO-MODULI (streak_grid, streak_ledger) -->
         <div id="module-streak" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
                 <div class="section-header-row" style="margin-bottom: 0; border-bottom: 1px solid var(--border-color); padding-bottom: 12px;">
                     <div>
                         <span class="section-label">Consistency &amp; Streak</span>
-                        <div id="tracker-metrics" style="font-size: var(--font-lg); color: var(--text-main); font-weight: bold; margin-top: 4px; font-variant-numeric: tabular-nums;">TODAY 0/0 | STREAK 0D</div>
+                        <span id="tracker-metrics" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px; font-variant-numeric: tabular-nums;">// TODAY 0/0 | STREAK 0D</span>
                     </div>
                     <div id="tracker-strip-1d" class="tracker-strip-1d"></div>
                 </div>
 
                 <div>
-                    <div class="sub-column-header">Habit Completion Grid (Click cell to jump to date)</div>
+                    <div class="sub-column-header">Habit Grid</div>
                     <div class="tracker-wrapper" style="padding-bottom: 6px; text-align: left;">
                         <div class="tracker-grid" id="github-tracker" style="margin-top: 4px;"></div>
                     </div>
@@ -385,23 +366,28 @@
 
                 <div style="flex: 1; display: flex; flex-direction: column; min-height: 0;">
                     <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                        <span>Real Focus Hours Ledger</span>
+                        <span>Focus Hours Ledger</span>
                         <span id="focus-ledger-summary" style="color: var(--text-main); font-weight: bold;">TOTAL: 0.0H</span>
                     </div>
                     <div id="focus-ledger-container" style="flex: 1; overflow-y: auto;"></div>
                 </div>
             </div>
         </div>
+        <div id="module-streak-grid" class="module-container"></div>
+        <div id="module-streak-ledger" class="module-container"></div>
 
-        <!-- 9. MODULO ATOMICO: UNIVERSITY (CON SOTTO-MODULI COMPONIBILI) -->
+        <!-- 9. UNIVERSITY & SOTTO-MODULI (uni_roadmap, uni_lectures, uni_appeals, uni_libretto) -->
         <div id="module-uni" class="module-container">
             <div id="uni-main-root" class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;"></div>
         </div>
+        <div id="module-uni-roadmap" class="module-container"></div>
+        <div id="module-uni-lectures" class="module-container"></div>
+        <div id="module-uni-appeals" class="module-container"></div>
+        <div id="module-uni-libretto" class="module-container"></div>
 
-        <!-- 10. MODULO ATOMICO: DAY PLANNER (VIEW MODE & EDIT MODE) -->
+        <!-- 10. DAY PLANNER -->
         <div id="module-plan" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 12px; overflow: hidden; min-height: 0;">
-                <!-- TOP BAR PULITA: DAY PLANNER // DATA A SINISTRA, TOGGLE VIEW/EDIT A DESTRA -->
                 <div class="section-header-row" style="margin-bottom: 0; flex-wrap: wrap; gap: 8px; flex-shrink: 0;">
                     <div>
                         <span class="section-label">Day Planner</span>
@@ -409,7 +395,7 @@
                     </div>
 
                     <div style="display: flex; align-items: center;">
-                        <label class="notes-toggle" title="Switch between Day View and Day Edit Builder">
+                        <label class="notes-toggle">
                             <input type="checkbox" id="day-plan-mode-checkbox" onchange="toggleDayPlanMode()">
                             <span class="notes-slider">
                                 <span class="t-label write">VIEW</span>
@@ -419,36 +405,27 @@
                     </div>
                 </div>
 
-                <!-- CORPO: IN "VIEW" MOSTRA SOLO LA TIMELINE DEL GIORNO; IN "EDIT" MOSTRA ANCHE IL BUILDER A SINISTRA -->
                 <div style="display: flex; gap: 16px; flex: 1; min-height: 0; overflow: hidden;">
-                    <!-- COLONNA SINISTRA (Visibile solo in modalità EDIT) -->
                     <div id="plan-mod-left-col" style="display: none; width: 42%; min-width: 220px; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 6px; border-right: 1px solid var(--border-color);">
                         <div>
-                            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>1. Ghost Layers</span>
-                                <span style="font-size: 0.6rem; color: var(--text-dim);">TOGGLE BANNER · CLICK TO LOCK</span>
-                            </div>
+                            <div class="sub-column-header">1. Ghost Layers</div>
                             <div id="plan-mod-transports" style="display: flex; flex-direction: column; gap: 4px;"></div>
                         </div>
 
                         <div>
                             <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>2. Flexible Tasks (Drag to Grid)</span>
+                                <span>2. Flexible Tasks</span>
                                 <span id="plan-mod-workload-badge" style="color: var(--text-main); font-weight: bold; font-size: 0.65rem;">0.0H</span>
                             </div>
                             <div id="plan-mod-available-blocks" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
 
                         <div>
-                            <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
-                                <span>3. To-Do (Drag ➔ 15m Block)</span>
-                                <span style="font-size: 0.6rem; color: var(--text-dim);">DRAG BOTTOM EDGE TO RESIZE</span>
-                            </div>
+                            <div class="sub-column-header">3. To-Do</div>
                             <div id="plan-mod-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
                     </div>
 
-                    <!-- COLONNA DESTRA: TIMELINE GIORNALIERA DIRETTA SENZA INTESTAZIONI SUPERFLUE -->
                     <div style="flex: 1; display: flex; flex-direction: column; min-height: 0; overflow: hidden;">
                         <div id="plan-mod-timeline-scroll" style="flex: 1; display: flex; overflow-y: auto; position: relative; border: 1px solid var(--border-color); background: rgba(255,255,255,0.01); padding-top: 10px; user-select: none;">
                             <div id="plan-mod-phase-labels" class="planner-phase-labels"></div>
@@ -460,9 +437,8 @@
             </div>
         </div>
 
-    </div> <!-- FINE MAGAZZINO 9 MODULI -->
+    </div> <!-- FINE MAGAZZINO -->
 
-    <!-- RADICE MODALI INIETTATI DA js/modules/modals.js -->
     <div id="modals-root"></div>
     <div id="planner-tooltip" class="planner-tooltip"></div>
     <div id="terminal-toast" class="terminal-toast"></div>

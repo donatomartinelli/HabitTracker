@@ -553,6 +553,11 @@ body.layout-edit-mode .layout {
     flex-direction: column;
 }
 
+@keyframes cortexPaneFadeIn {
+    from { opacity: 0.35; }
+    to { opacity: 1; }
+}
+
 .quadrant-cell {
     display: flex;
     flex-direction: column;
@@ -562,6 +567,12 @@ body.layout-edit-mode .layout {
     position: relative;
     background: transparent;
     container-type: inline-size;
+    animation: cortexPaneFadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+body.is-resizing-split .quadrant-cell {
+    pointer-events: none !important;
+    user-select: none !important;
 }
 
 @container (max-width: 340px) {
