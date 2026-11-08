@@ -1,14 +1,12 @@
 // --- js/modules/uni.js ---
-// Modulo Atomico 9: UNIVERSITY (Architettura a Sotto-Moduli Componibili + Automazione Task/Planner/Calendar/Money)
+// ATOMIC MODULE 9 & FIRST-CLASS SUB-MODULES:
+// - uni_roadmap (#module-uni-roadmap): Corsi rimasti e fasi di studio (Fase 1 Studio+Anki / Fase 2 Dimostrazioni+Anki)
+// - uni_lectures (#module-uni-lectures): Orario lezioni sincronizzato con Planner e Tasks
+// - uni_appeals (#module-uni-appeals): Appelli con countdown e Tasse Universitarie
+// - uni_libretto (#module-uni-libretto): Medie, progresso 180 CFU ed esami verbalizzati
 
-const UNI_SUBMODULES = {
-    roadmap: { id: 'roadmap', name: 'Roadmap & Prep' },
-    lectures: { id: 'lectures', name: 'Orario Lezioni' },
-    appeals: { id: 'appeals', name: 'Appelli & Tasse' },
-    libretto: { id: 'libretto', name: 'Libretto (180 CFU)' }
-};
-
-let isUniSubEditMode = false;
+let showRoadmapAddForm = false;
+let showLibrettoAddForm = false;
 
 function ensureTasseUniCategory() {
     if (typeof mCategories !== 'undefined' && !mCategories.includes('Tasse Uni')) {
@@ -63,7 +61,6 @@ function calculateUniStats() {
     };
 }
 
-// Calcola le ore reali studiate per un corso (sommando Studio, Anki, Dimostrazioni e Lezioni dai log)
 function getExamStudiedHours(examId, examName) {
     let totalMins = 0;
     const catClean = (examName || '').trim().toLowerCase();
@@ -149,10 +146,6 @@ function upsertExamStudyTask(exam, role, title, instances, timerMinutes) {
     }
 }
 
-// Gestisce il ciclo di vita delle task di un esame:
-// - 'study'  -> 4x30m Studio + 2x30m Anki
-// - 'proofs' -> 4x30m Dimostrazioni + 2x30m Anki
-// - 'none'   -> Archivia tutte le task di studio dell'esame
 function setExamPrepPhase(examId, newPhase) {
     const exam = (uniData.remainingExams || []).find(x => x.id === examId);
     if (!exam) return;
@@ -164,12 +157,10 @@ function setExamPrepPhase(examId, newPhase) {
     if (newPhase === 'none') {
         existingStudyTasks.forEach(t => archiveTemplateSafely(t));
     } else if (newPhase === 'study') {
-        // Archivia eventuale task Dimostrazioni attiva e attiva Studio (4x30m) + Anki (2x30m)
         existingStudyTasks.filter(t => t.uniRole === 'dimostrazioni').forEach(t => archiveTemplateSafely(t));
         upsertExamStudyTask(exam, 'studio', 'Studio', 4, 30);
         upsertExamStudyTask(exam, 'anki', 'Anki', 2, 30);
     } else if (newPhase === 'proofs') {
-        // Archivia la task Studio iniziale e attiva Dimostrazioni (4x30m) + Anki (2x30m)
         existingStudyTasks.filter(t => t.uniRole === 'studio').forEach(t => archiveTemplateSafely(t));
         upsertExamStudyTask(exam, 'anki', 'Anki', 2, 30);
         upsertExamStudyTask(exam, 'dimostrazioni', 'Dimostrazioni', 4, 30);
@@ -182,15 +173,14 @@ function setExamPrepPhase(examId, newPhase) {
 
     if (typeof showToast === 'function') {
         const msgMap = {
-            'study': `[UNI -> TASKS] "${exam.name}": creati 4x30m Studio + 2x30m Anki`,
-            'proofs': `[UNI -> TASKS] "${exam.name}": switch a 4x30m Dimostrazioni + 2x30m Anki`,
-            'none': `[UNI] Pausa preparazione per "${exam.name}"`
+            'study': `[UNI] "${exam.name}": 4x30m Studio + 2x30m Anki`,
+            'proofs': `[UNI] "${exam.name}": 4x30m Dimostrazioni + 2x30m Anki`,
+            'none': `[UNI] Paused "${exam.name}"`
         };
-        showToast(msgMap[newPhase] || '[UNI] Fase aggiornata');
+        showToast(msgMap[newPhase] || '[UNI] Updated');
     }
 }
 
-// Sincronizza l'orario delle lezioni di un corso come Timed Task (2B: spuntabile in Daily Tasks + visibile sul Weekly Planner)
 function syncCourseLecturesToTimedTask(exam) {
     const existingLectureTasks = templates.filter(t => t.uniExamId === exam.id && t.uniRole === 'lecture');
     const validWindows = (exam.lectures || []).filter(w => w.start && w.end && Array.isArray(w.days) && w.days.length > 0);
@@ -280,12 +270,12 @@ function addRemainingCourse(name, cfu, year = 1, color = '#ffffff') {
     };
 
     uniData.remainingExams.push(newCourse);
+    showRoadmapAddForm = false;
     saveUniData();
     renderUniDashboard();
     return true;
 }
 
-// Registra un esame superato (da UI o da comando DSL `esame [Nome] [Voto] [CFU]`)
 function recordPassedExam(examNameOrId, rawGrade, rawCfu = null, dateStr = todayStr) {
     const q = (examNameOrId || '').trim();
     if (!q) return false;
@@ -294,7 +284,6 @@ function recordPassedExam(examNameOrId, rawGrade, rawCfu = null, dateStr = today
     const isLaude = gradeStr.includes('L');
     const numericGrade = Math.min(30, Math.max(18, parseInt(gradeStr.replace(/\D/g, ''), 10) || 30));
 
-    // Cerca se il corso era tra gli Esami Rimasti
     const remIdx = (uniData.remainingExams || []).findIndex(
         x => x.id === q || x.name.toLowerCase() === q.toLowerCase() || x.name.toLowerCase().includes(q.toLowerCase())
     );
@@ -307,19 +296,16 @@ function recordPassedExam(examNameOrId, rawGrade, rawCfu = null, dateStr = today
         finalName = matchedCourse.name;
         if (!rawCfu) finalCfu = matchedCourse.cfu || 6;
 
-        // 1. Archivia tutte le task di Studio, Anki, Dimostrazioni e Lezioni collegate a questo corso
         templates
             .filter(t => t.uniExamId === matchedCourse.id || t.category.toLowerCase() === finalName.toLowerCase())
             .forEach(t => archiveTemplateSafely(t));
 
-        // 2. Rimuove gli appelli futuri di questo esame e i relativi eventi sul calendario
         const appealsToRemove = (uniData.appeals || []).filter(a => a.examName.toLowerCase() === finalName.toLowerCase());
         appealsToRemove.forEach(a => {
             specificEvents = specificEvents.filter(e => e.id !== a.eventId);
         });
         uniData.appeals = (uniData.appeals || []).filter(a => a.examName.toLowerCase() !== finalName.toLowerCase());
 
-        // 3. Rimuove il corso dagli Esami Rimasti
         uniData.remainingExams.splice(remIdx, 1);
     }
 
@@ -332,13 +318,14 @@ function recordPassedExam(examNameOrId, rawGrade, rawCfu = null, dateStr = today
         date: dateStr || todayStr
     });
 
+    showLibrettoAddForm = false;
     syncCategoryOrder();
     saveData();
     saveUniData();
     refreshAllConnectedViews();
 
     if (typeof showToast === 'function') {
-        showToast(`[LIBRETTO] Registrato ${finalName}: ${numericGrade}${isLaude && numericGrade === 30 ? 'L' : ''} (${finalCfu} CFU)`);
+        showToast(`[LIBRETTO] ${finalName}: ${numericGrade}${isLaude && numericGrade === 30 ? 'L' : ''} (${finalCfu} CFU)`);
     }
     return true;
 }
@@ -385,7 +372,7 @@ function addUniAppeal(examName, dateStr, timeStr = '09:00', sessionName = '') {
 function deleteUniAppeal(appealId) {
     const app = (uniData.appeals || []).find(a => a.id === appealId);
     if (app) {
-        specificEvents = specificEvents.filter(e => e.id !== app.eventId);
+        specificEvents = specificEvents.filter(e => e.id !== a.eventId);
     }
     uniData.appeals = (uniData.appeals || []).filter(a => a.id !== appealId);
     saveData();
@@ -393,7 +380,6 @@ function deleteUniAppeal(appealId) {
     refreshAllConnectedViews();
 }
 
-// Aggiunge una Tassa Universitaria -> Crea Evento Rosso nel giorno della scadenza + Categoria "Tasse Uni" in Money
 function addUniTax(title, amount, dueDateStr) {
     const cleanTitle = (title || 'Rata Universitaria').trim();
     const amt = roundCurrency(amount);
@@ -404,7 +390,6 @@ function addUniTax(title, amount, dueDateStr) {
     const taxId = 'utax_' + Date.now();
     const eventId = 'e_utax_' + taxId;
 
-    // Evento in ROSSO sul Calendar il giorno della scadenza
     specificEvents.push({
         id: eventId,
         uniTaxId: taxId,
@@ -426,7 +411,7 @@ function addUniTax(title, amount, dueDateStr) {
     saveUniData();
     refreshAllConnectedViews();
     if (typeof showToast === 'function') {
-        showToast(`[TASSA UNI] "${cleanTitle}" (€${amt.toFixed(2)}) -> Scadenza rossa il ${dueDateStr}`);
+        showToast(`[TASSA UNI] "${cleanTitle}" (€${amt.toFixed(2)}) -> ${dueDateStr}`);
     }
     return true;
 }
@@ -447,14 +432,13 @@ function payUniTax(taxId) {
     }
 
     tax.paid = true;
-    // Rimuove l'evento rosso di scadenza dal calendario una volta pagata
     specificEvents = specificEvents.filter(e => e.id !== tax.eventId);
 
     saveData();
     saveUniData();
     refreshAllConnectedViews();
     if (typeof showToast === 'function') {
-        showToast(`[TASSA PAGATA] -€${tax.amount.toFixed(2)} registrati in categoria "Tasse Uni"`);
+        showToast(`[PAID] -€${tax.amount.toFixed(2)} in Tasse Uni`);
     }
 }
 
@@ -470,295 +454,196 @@ function deleteUniTax(taxId) {
 }
 
 // ============================================================================
-// 4. ARCHITETTURA SOTTO-MODULI COMPONIBILI DENTRO #module-uni (PUNTO 5)
+// 4. RENDER MASTER E I 4 SOTTO-MODULI ATOMICI INDIPENDENTI
 // ============================================================================
-
-function toggleUniSubEditMode() {
-    isUniSubEditMode = !isUniSubEditMode;
-    renderUniDashboard();
-}
-
-function selectOrToggleUniSubModule(subKey, event = null) {
-    if (!UNI_SUBMODULES[subKey]) return;
-    if (!Array.isArray(uniData.activeSubModules)) {
-        uniData.activeSubModules = ['roadmap'];
-    }
-
-    // Se siamo in modalità [EDIT SUB-VIEW] (o Shift+Click), aggiunge/rimuove il sotto-modulo nella vista multipla
-    if (isUniSubEditMode || (event && event.shiftKey)) {
-        const idx = uniData.activeSubModules.indexOf(subKey);
-        if (idx !== -1) {
-            if (uniData.activeSubModules.length > 1) {
-                uniData.activeSubModules.splice(idx, 1);
-            }
-        } else {
-            uniData.activeSubModules.push(subKey);
-        }
-    } else {
-        // Click standard: mostra quel singolo sotto-modulo
-        uniData.activeSubModules = [subKey];
-    }
-
-    saveUniData();
-    renderUniDashboard();
-}
-
-function toggleUniSubSplitDirection() {
-    uniData.subLayoutDir = uniData.subLayoutDir === 'col' ? 'row' : 'col';
-    saveUniData();
-    renderUniDashboard();
-}
 
 function renderUniDashboard() {
     ensureTasseUniCategory();
-    const root = document.getElementById('uni-main-root');
-    if (!root) return;
 
-    const stats = calculateUniStats();
-    const activeSubs = (Array.isArray(uniData.activeSubModules) && uniData.activeSubModules.length > 0)
-        ? uniData.activeSubModules.filter(k => UNI_SUBMODULES[k])
-        : ['roadmap'];
+    renderUniAtomRoadmap();
+    renderUniAtomLectures();
+    renderUniAtomAppeals();
+    renderUniAtomLibretto();
 
-    const splitDir = uniData.subLayoutDir || 'row';
-
-    root.innerHTML = '';
-
-    // 1. TOP METRICS & SUB-MODULE CONTROLLER BAR
-    const topBar = document.createElement('div');
-    topBar.style.cssText = 'display:flex; flex-direction:column; gap:10px; border-bottom:1px solid var(--border-color); padding-bottom:12px; flex-shrink:0;';
-
-    topBar.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:12px;">
-            <div style="display:flex; gap:20px; align-items:baseline; flex-wrap:wrap;">
-                <div>
-                    <div class="section-label" style="margin-bottom:2px; color:var(--accent-green);">Weighted Avg</div>
-                    <div style="font-size:1.5rem; font-weight:bold; color:var(--text-main); font-variant-numeric:tabular-nums;">${stats.weightedMean.toFixed(2)}</div>
-                </div>
-                <div style="border-left:1px solid var(--border-color); padding-left:14px;">
-                    <div class="section-label" style="margin-bottom:2px;">Arithmetic Avg</div>
-                    <div style="font-size:1.25rem; font-weight:bold; color:var(--text-muted); font-variant-numeric:tabular-nums;">${stats.arithmeticMean.toFixed(2)}</div>
-                </div>
-                <div style="border-left:1px solid var(--border-color); padding-left:14px;">
-                    <div class="section-label" style="margin-bottom:2px; color:var(--accent-gold);">Base /110</div>
-                    <div style="font-size:1.25rem; font-weight:bold; color:var(--text-main); font-variant-numeric:tabular-nums;">${stats.base110.toFixed(1)}</div>
-                </div>
-                <div style="border-left:1px solid var(--border-color); padding-left:14px;">
-                    <div class="section-label" style="margin-bottom:2px;">Progress (180 CFU)</div>
-                    <div style="font-size:1.25rem; font-weight:bold; color:var(--text-main); font-variant-numeric:tabular-nums;">${stats.totalCfu} <span style="font-size:var(--font-xs); color:var(--text-dim);">/ ${stats.targetCfu} CFU (${stats.cfuPct}%)</span></div>
-                </div>
-            </div>
-
-            <!-- Barra Selettore Sotto-Moduli + Toggle [EDIT SUB-VIEW] -->
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;" id="uni-subnav-bar"></div>
-        </div>
-
-        <!-- Barra avanzamento 180 CFU -->
-        <div class="vault-progress-track" style="height:5px;">
-            <div class="vault-progress-fill" style="width:${stats.cfuPct}%;"></div>
-        </div>
-    `;
-
-    const subNavBar = topBar.querySelector('#uni-subnav-bar');
-    Object.keys(UNI_SUBMODULES).forEach(key => {
-        const sub = UNI_SUBMODULES[key];
-        const isActive = activeSubs.includes(key);
-        const btn = document.createElement('button');
-        btn.className = `btn btn-sm ${isActive ? 'btn-primary' : ''}`;
-        btn.textContent = `[${isUniSubEditMode ? (isActive ? '✓ ' : '+ ') : ''}${sub.name.toUpperCase()}]`;
-        btn.title = isUniSubEditMode
-            ? 'Click to toggle this sub-module in combined view'
-            : 'Click to open sub-module (Shift+Click to combine multiple)';
-        btn.onclick = (e) => selectOrToggleUniSubModule(key, e);
-        subNavBar.appendChild(btn);
-    });
-
-    if (isUniSubEditMode && activeSubs.length > 1) {
-        const dirBtn = document.createElement('button');
-        dirBtn.className = 'btn btn-sm';
-        dirBtn.textContent = splitDir === 'row' ? '[SPLIT: SIDE-BY-SIDE]' : '[SPLIT: STACKED]';
-        dirBtn.onclick = toggleUniSubSplitDirection;
-        subNavBar.appendChild(dirBtn);
+    const legacyRoot = document.getElementById('uni-main-root');
+    if (legacyRoot) {
+        renderUniAtomRoadmap(legacyRoot);
     }
-
-    const editSubBtn = document.createElement('button');
-    editSubBtn.className = `btn btn-sm ${isUniSubEditMode ? 'btn-primary' : ''}`;
-    editSubBtn.textContent = isUniSubEditMode ? '[DONE SUB-VIEW]' : '[EDIT SUB-VIEW]';
-    editSubBtn.title = 'Compose multiple sub-modules inside University';
-    editSubBtn.onclick = toggleUniSubEditMode;
-    subNavBar.appendChild(editSubBtn);
-
-    root.appendChild(topBar);
-
-    // 2. CONTENITORE TILING DEI SOTTO-MODULI ATTIVI
-    const workspaceArea = document.createElement('div');
-    workspaceArea.style.cssText = `flex:1; display:flex; flex-direction:${splitDir}; gap:14px; min-height:0; overflow:hidden; padding-top:4px;`;
-
-    activeSubs.forEach(subKey => {
-        const subCard = document.createElement('div');
-        subCard.style.cssText = 'flex:1; display:flex; flex-direction:column; min-width:0; min-height:0; border:1px solid var(--border-color); background:rgba(255,255,255,0.01); padding:12px; overflow-y:auto;';
-
-        if (subKey === 'roadmap') renderUniSubRoadmap(subCard);
-        else if (subKey === 'lectures') renderUniSubLectures(subCard);
-        else if (subKey === 'appeals') renderUniSubAppealsAndTaxes(subCard);
-        else if (subKey === 'libretto') renderUniSubLibretto(subCard);
-
-        workspaceArea.appendChild(subCard);
-    });
-
-    root.appendChild(workspaceArea);
 }
 
-// ============================================================================
-// SOTTO-MODULO 1: ROADMAP ESAMI RIMASTI & AUTOMAZIONE FASI STUDIO
-// ============================================================================
+// ----------------------------------------------------------------------------
+// ATOM 1: UNI: ROADMAP & PREP (#module-uni-roadmap)
+// ----------------------------------------------------------------------------
 
-function renderUniSubRoadmap(container) {
-    container.innerHTML = `
-        <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>1. Esami Rimasti &amp; Fasi di Preparazione</span>
-            <span style="font-size:0.65rem; color:var(--text-dim);">AUTO-CREATES CATEGORY &amp; 30M BLOCKS IN DAILY TASKS</span>
+function renderUniAtomRoadmap(customContainer = null) {
+    const root = customContainer || document.getElementById('module-uni-roadmap');
+    if (!root) return;
+
+    const courses = uniData.remainingExams || [];
+
+    const wrap = document.createElement('div');
+    wrap.className = customContainer ? '' : 'module-body-padded';
+    wrap.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto; height:100%;';
+
+    wrap.innerHTML = `
+        <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+            <div>
+                <span class="section-label">Uni Roadmap</span>
+                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${courses.length} COURSES</span>
+            </div>
+            <button type="button" class="btn btn-sm ${showRoadmapAddForm ? 'btn-primary' : ''}" id="btn-toggle-roadmap-add">[+]</button>
         </div>
 
-        <!-- Form rapido aggiunta corso da dare -->
-        <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <input type="text" id="uni-new-course-name" class="form-control form-control-sm" style="flex:2; min-width:130px;" placeholder="Nome Corso (es. Algebra, Analisi II)..." onkeydown="if(event.key==='Enter'){event.preventDefault(); document.getElementById('btn-add-uni-course').click();}">
-            <input type="number" id="uni-new-course-cfu" class="form-control form-control-sm no-spinners" style="width:65px; text-align:center;" placeholder="CFU" value="9" min="1" max="30">
-            <input type="number" id="uni-new-course-year" class="form-control form-control-sm no-spinners" style="width:65px; text-align:center;" placeholder="Anno" value="1" min="1" max="6" title="Anno di corso">
-            <input type="color" id="uni-new-course-color" value="#ffffff" style="width:32px; height:28px; background:transparent; border:1px solid var(--border-color); cursor:pointer;">
-            <button type="button" id="btn-add-uni-course" class="btn btn-primary btn-sm">[+ ADD COURSE]</button>
+        <div id="uni-roadmap-add-row" style="display:${showRoadmapAddForm ? 'flex' : 'none'}; gap:6px; flex-wrap:wrap; padding:8px; border:1px solid var(--border-bright); background:#060606;">
+            <input type="text" id="uni-new-course-name" class="form-control form-control-sm" style="flex:2; min-width:130px;" placeholder="Course name...">
+            <input type="number" id="uni-new-course-cfu" class="form-control form-control-sm no-spinners" style="width:60px; text-align:center;" placeholder="CFU" value="9" min="1" max="30">
+            <input type="number" id="uni-new-course-year" class="form-control form-control-sm no-spinners" style="width:55px; text-align:center;" placeholder="Yr" value="1" min="1" max="6">
+            <input type="color" id="uni-new-course-color" value="#ffffff" style="width:30px; height:27px; background:transparent; border:1px solid var(--border-color); cursor:pointer;">
+            <button type="button" id="btn-add-uni-course" class="btn btn-primary btn-sm">[SAVE]</button>
         </div>
 
         <div id="uni-remaining-list" style="display:flex; flex-direction:column; gap:8px;"></div>
     `;
 
-    container.querySelector('#btn-add-uni-course').onclick = () => {
-        const name = container.querySelector('#uni-new-course-name').value;
-        const cfu = container.querySelector('#uni-new-course-cfu').value;
-        const year = container.querySelector('#uni-new-course-year').value;
-        const color = container.querySelector('#uni-new-course-color').value;
+    wrap.querySelector('#btn-toggle-roadmap-add').onclick = () => {
+        showRoadmapAddForm = !showRoadmapAddForm;
+        renderUniAtomRoadmap(customContainer);
+    };
+
+    const submitNewCourse = () => {
+        const name = wrap.querySelector('#uni-new-course-name').value;
+        const cfu = wrap.querySelector('#uni-new-course-cfu').value;
+        const year = wrap.querySelector('#uni-new-course-year').value;
+        const color = wrap.querySelector('#uni-new-course-color').value;
         addRemainingCourse(name, cfu, year, color);
     };
 
-    const listEl = container.querySelector('#uni-remaining-list');
-    const courses = uniData.remainingExams || [];
+    wrap.querySelector('#btn-add-uni-course').onclick = submitNewCourse;
+    wrap.querySelector('#uni-new-course-name').onkeydown = (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); submitNewCourse(); }
+    };
 
+    const listEl = wrap.querySelector('#uni-remaining-list');
     if (courses.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">[ NESSUN ESAME IN ROADMAP — AGGIUNGI UN CORSO SOPRA ]</div>';
-        return;
-    }
+        listEl.innerHTML = '<div class="empty-state">[ NONE ]</div>';
+    } else {
+        courses.forEach(course => {
+            const hoursStudied = getExamStudiedHours(course.id, course.name);
+            const phase = course.prepPhase || 'none';
 
-    courses.forEach(course => {
-        const hoursStudied = getExamStudiedHours(course.id, course.name);
-        const phase = course.prepPhase || 'none';
+            const card = document.createElement('div');
+            card.style.cssText = `border:1px solid ${phase !== 'none' ? 'var(--border-bright)' : 'var(--border-color)'}; border-left:3px solid ${course.color || '#ffffff'}; padding:10px 12px; background:rgba(255,255,255,0.02); display:flex; flex-direction:column; gap:8px;`;
 
-        const card = document.createElement('div');
-        card.style.cssText = `border:1px solid ${phase !== 'none' ? 'var(--border-bright)' : 'var(--border-color)'}; border-left:3px solid ${course.color || '#ffffff'}; padding:10px 12px; background:rgba(255,255,255,0.02); display:flex; flex-direction:column; gap:8px;`;
+            let phaseBadge = '<span style="color:var(--text-dim);">[IDLE]</span>';
+            if (phase === 'study') {
+                phaseBadge = '<span style="color:var(--accent-green); font-weight:bold;">[PHASE 1: 4x30m STUDIO + 2x30m ANKI]</span>';
+            } else if (phase === 'proofs') {
+                phaseBadge = '<span style="color:var(--accent-gold); font-weight:bold;">[PHASE 2: 4x30m DIMOSTR. + 2x30m ANKI]</span>';
+            }
 
-        let phaseBadge = '<span style="color:var(--text-dim);">[IN ATTESA]</span>';
-        if (phase === 'study') {
-            phaseBadge = '<span style="color:var(--accent-green); font-weight:bold;">[FASE 1 ATTIVA: 4x30m STUDIO + 2x30m ANKI]</span>';
-        } else if (phase === 'proofs') {
-            phaseBadge = '<span style="color:var(--accent-gold); font-weight:bold;">[FASE 2 ATTIVA: 4x30m DIMOSTRAZIONI + 2x30m ANKI]</span>';
-        }
-
-        card.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-                <div>
-                    <strong style="font-size:var(--font-md); color:var(--text-main); text-transform:uppercase;">${escapeHtml(course.name)}</strong>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:8px;">${course.cfu} CFU · ANNO ${course.year || 1}</span>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px; font-size:var(--font-xs);">
-                    <span style="padding:2px 7px; border:1px solid var(--border-color); background:#050505; font-variant-numeric:tabular-nums;">
-                        STUDIED: <strong style="color:var(--text-main);">${hoursStudied.toFixed(1)}H</strong>
+            card.innerHTML = `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div>
+                        <strong style="font-size:var(--font-md); color:var(--text-main); text-transform:uppercase;">${escapeHtml(course.name)}</strong>
+                        <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:8px;">${course.cfu} CFU · Y${course.year || 1}</span>
+                    </div>
+                    <span style="font-size:var(--font-xs); padding:2px 7px; border:1px solid var(--border-color); background:#050505; font-variant-numeric:tabular-nums;">
+                        <strong style="color:var(--text-main);">${hoursStudied.toFixed(1)}H</strong>
                     </span>
                 </div>
-            </div>
 
-            <div style="font-size:var(--font-xs); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <div>${phaseBadge}</div>
-                <div class="uni-course-actions" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
-            </div>
-        `;
+                <div style="font-size:var(--font-xs); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+                    <div>${phaseBadge}</div>
+                    <div class="uni-course-actions" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
+                </div>
+            `;
 
-        const actBox = card.querySelector('.uni-course-actions');
+            const actBox = card.querySelector('.uni-course-actions');
 
-        // Bottone Fase 1: 4x30m Studio + 2x30m Anki
-        const btnPhase1 = document.createElement('button');
-        btnPhase1.className = `btn btn-sm ${phase === 'study' ? 'btn-primary' : ''}`;
-        btnPhase1.textContent = '[1: STUDIO 4x30 + ANKI 2x30]';
-        btnPhase1.onclick = () => setExamPrepPhase(course.id, phase === 'study' ? 'none' : 'study');
+            const btnPhase1 = document.createElement('button');
+            btnPhase1.className = `btn btn-sm ${phase === 'study' ? 'btn-primary' : ''}`;
+            btnPhase1.textContent = '[1: STUDIO]';
+            btnPhase1.onclick = () => setExamPrepPhase(course.id, phase === 'study' ? 'none' : 'study');
 
-        // Bottone Fase 2: 4x30m Dimostrazioni + 2x30m Anki
-        const btnPhase2 = document.createElement('button');
-        btnPhase2.className = `btn btn-sm ${phase === 'proofs' ? 'btn-primary' : ''}`;
-        btnPhase2.textContent = '[2: DIMOSTR. 4x30 + ANKI 2x30]';
-        btnPhase2.onclick = () => setExamPrepPhase(course.id, phase === 'proofs' ? 'none' : 'proofs');
+            const btnPhase2 = document.createElement('button');
+            btnPhase2.className = `btn btn-sm ${phase === 'proofs' ? 'btn-primary' : ''}`;
+            btnPhase2.textContent = '[2: DIMOSTR.]';
+            btnPhase2.onclick = () => setExamPrepPhase(course.id, phase === 'proofs' ? 'none' : 'proofs');
 
-        // Bottone Avvia Focus immediato sulla categoria del corso
-        const btnFocus = document.createElement('button');
-        btnFocus.className = 'btn btn-sm';
-        btnFocus.textContent = '[▶ FOCUS]';
-        btnFocus.onclick = () => {
-            if (typeof startTaskFocusByQuery === 'function') {
-                if (!startTaskFocusByQuery(course.name)) {
-                    showToast(`Attiva prima la Fase 1 o 2 per "${course.name}"`);
+            const btnFocus = document.createElement('button');
+            btnFocus.className = 'btn btn-sm';
+            btnFocus.textContent = '[▶]';
+            btnFocus.onclick = () => {
+                if (typeof startTaskFocusByQuery === 'function') {
+                    if (!startTaskFocusByQuery(course.name)) {
+                        showToast(`Activate Phase 1 or 2 for "${course.name}" first`);
+                    }
                 }
-            }
-        };
+            };
 
-        // Bottone Supera Esame -> Sposta nel Libretto
-        const btnPass = document.createElement('button');
-        btnPass.className = 'btn btn-sm';
-        btnPass.style.borderColor = 'var(--accent-green)';
-        btnPass.style.color = 'var(--accent-green)';
-        btnPass.textContent = '[PASS ✓]';
-        btnPass.onclick = () => {
-            const g = prompt(`Inserisci il voto (18-30 o 30L) per "${course.name}" (${course.cfu} CFU):`, '30');
-            if (g !== null && g.trim() !== '') {
-                recordPassedExam(course.id, g.trim(), course.cfu, todayStr);
-            }
-        };
+            const btnPass = document.createElement('button');
+            btnPass.className = 'btn btn-sm';
+            btnPass.style.borderColor = 'var(--accent-green)';
+            btnPass.style.color = 'var(--accent-green)';
+            btnPass.textContent = '[PASS ✓]';
+            btnPass.onclick = () => {
+                const g = prompt(`Grade (18-30 or 30L) for "${course.name}" (${course.cfu} CFU):`, '30');
+                if (g !== null && g.trim() !== '') {
+                    recordPassedExam(course.id, g.trim(), course.cfu, todayStr);
+                }
+            };
 
-        const btnDel = document.createElement('button');
-        btnDel.className = 'icon-btn delete';
-        btnDel.textContent = '[X]';
-        btnDel.onclick = () => {
-            templates.filter(t => t.uniExamId === course.id).forEach(t => archiveTemplateSafely(t));
-            uniData.remainingExams = uniData.remainingExams.filter(x => x.id !== course.id);
-            syncCategoryOrder();
-            saveData();
-            saveUniData();
-            refreshAllConnectedViews();
-        };
+            const btnDel = document.createElement('button');
+            btnDel.className = 'icon-btn delete';
+            btnDel.textContent = '[X]';
+            btnDel.onclick = () => {
+                templates.filter(t => t.uniExamId === course.id).forEach(t => archiveTemplateSafely(t));
+                uniData.remainingExams = uniData.remainingExams.filter(x => x.id !== course.id);
+                syncCategoryOrder();
+                saveData();
+                saveUniData();
+                refreshAllConnectedViews();
+            };
 
-        actBox.appendChild(btnPhase1);
-        actBox.appendChild(btnPhase2);
-        actBox.appendChild(btnFocus);
-        actBox.appendChild(btnPass);
-        actBox.appendChild(btnDel);
+            actBox.appendChild(btnPhase1);
+            actBox.appendChild(btnPhase2);
+            actBox.appendChild(btnFocus);
+            actBox.appendChild(btnPass);
+            actBox.appendChild(btnDel);
 
-        listEl.appendChild(card);
-    });
+            listEl.appendChild(card);
+        });
+    }
+
+    root.innerHTML = '';
+    root.appendChild(wrap);
 }
 
-// ============================================================================
-// SOTTO-MODULO 2: ORARIO LEZIONI -> TIMED TASKS (PLANNER + SCHEDULED TASKS)
-// ============================================================================
+// ----------------------------------------------------------------------------
+// ATOM 2: UNI: LECTURES (#module-uni-lectures)
+// ----------------------------------------------------------------------------
 
-function renderUniSubLectures(container) {
+function renderUniAtomLectures() {
+    const root = document.getElementById('module-uni-lectures');
+    if (!root) return;
+
     const courses = uniData.remainingExams || [];
 
-    container.innerHTML = `
-        <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>2. Orario Lezioni (Timed Tasks)</span>
-            <span style="font-size:0.65rem; color:var(--text-dim);">APPEARS ON WEEKLY PLANNER &amp; SCHEDULED DAILY TASKS</span>
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+                <div>
+                    <span class="section-label">Uni Lectures</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// SCHEDULE</span>
+                </div>
+            </div>
+            <div id="uni-lectures-body" style="display:flex; flex-direction:column; gap:12px;"></div>
         </div>
-        <div id="uni-lectures-body" style="display:flex; flex-direction:column; gap:12px;"></div>
     `;
 
-    const body = container.querySelector('#uni-lectures-body');
+    const body = root.querySelector('#uni-lectures-body');
     if (courses.length === 0) {
-        body.innerHTML = '<div class="empty-state">[ AGGIUNGI PRIMA UN CORSO NELLA ROADMAP PER CONFIGURARNE LE LEZIONI ]</div>';
+        body.innerHTML = '<div class="empty-state">[ NO COURSES IN ROADMAP ]</div>';
         return;
     }
 
@@ -775,21 +660,20 @@ function renderUniSubLectures(container) {
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
                 <strong style="color:var(--text-main); text-transform:uppercase;">${escapeHtml(course.name)}</strong>
                 <div style="display:flex; gap:6px; align-items:center; font-size:var(--font-xs);">
-                    <span style="color:var(--text-dim);">START:</span>
-                    <input type="date" class="form-control form-control-sm lec-start-inp" style="width:120px; padding:2px 6px;" value="${course.lectureStart || todayStr}">
-                    <span style="color:var(--text-dim);">END:</span>
-                    <input type="date" class="form-control form-control-sm lec-end-inp" style="width:120px; padding:2px 6px;" value="${course.lectureEnd || ''}">
+                    <input type="date" class="form-control form-control-sm lec-start-inp" style="width:118px; padding:2px 6px;" value="${course.lectureStart || todayStr}">
+                    <span style="color:var(--text-dim);">–</span>
+                    <input type="date" class="form-control form-control-sm lec-end-inp" style="width:118px; padding:2px 6px;" value="${course.lectureEnd || ''}">
                 </div>
             </div>
             <div class="lec-slots-list" style="display:flex; flex-direction:column; gap:6px;"></div>
             <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding-top:4px; border-top:1px dotted #222;">
-                <input type="time" class="form-control form-control-sm new-lec-start" style="width:88px;" value="09:00">
+                <input type="time" class="form-control form-control-sm new-lec-start" style="width:84px;" value="09:00">
                 <span style="color:var(--text-dim);">-</span>
-                <input type="time" class="form-control form-control-sm new-lec-end" style="width:88px;" value="11:00">
+                <input type="time" class="form-control form-control-sm new-lec-end" style="width:84px;" value="11:00">
                 <div class="new-lec-days" style="display:flex; gap:6px; font-size:var(--font-xs);">
                     ${dayVals.map((v, i) => `<label style="cursor:pointer;"><input type="checkbox" value="${v}"> ${dayLabels[i]}</label>`).join('')}
                 </div>
-                <button type="button" class="btn btn-sm btn-add-lec-slot" style="margin-left:auto;">[+ SLOT LEZIONE]</button>
+                <button type="button" class="btn btn-sm btn-add-lec-slot" style="margin-left:auto;">[+ SLOT]</button>
             </div>
         `;
 
@@ -810,7 +694,7 @@ function renderUniSubLectures(container) {
 
         const slotsList = box.querySelector('.lec-slots-list');
         if (course.lectures.length === 0) {
-            slotsList.innerHTML = '<div style="font-size:var(--font-xs); color:var(--text-dim);">Nessuno slot lezione configurato.</div>';
+            slotsList.innerHTML = '<div class="empty-state" style="padding:2px 0;">[ NONE ]</div>';
         } else {
             course.lectures.forEach((slot, sIdx) => {
                 const dayNamesStr = (slot.days || []).map(d => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ');
@@ -836,98 +720,101 @@ function renderUniSubLectures(container) {
             const en = box.querySelector('.new-lec-end').value;
             const days = [];
             box.querySelectorAll('.new-lec-days input:checked').forEach(cb => days.push(parseInt(cb.value, 10)));
-            if (!st || !en || days.length === 0) {
-                showToast('Seleziona orario e almeno un giorno della settimana');
-                return;
-            }
+            if (!st || !en || days.length === 0) return;
             course.lectures.push({ start: st, end: en, days });
             syncCourseLecturesToTimedTask(course);
             saveUniData();
             refreshAllConnectedViews();
-            showToast(`[LEZIONI] Aggiornato orario per "${course.name}"`);
         };
 
         body.appendChild(box);
     });
 }
 
-// ============================================================================
-// SOTTO-MODULO 3: APPELLI D'ESAME & TASSE UNIVERSITARIE
-// ============================================================================
+// ----------------------------------------------------------------------------
+// ATOM 3: UNI: APPEALS & TAXES (#module-uni-appeals)
+// ----------------------------------------------------------------------------
 
-function renderUniSubAppealsAndTaxes(container) {
-    container.innerHTML = `
-        <div style="display:flex; flex-direction:column; gap:16px;">
-            <!-- SEZIONE A: APPELLI D'ESAME -->
-            <div>
-                <div class="sub-column-header" style="display:flex; justify-content:space-between;">
-                    <span>3A. Appelli d'Esame &amp; Countdown</span>
-                    <span style="font-size:0.65rem; color:var(--text-dim);">AUTO-SYNCS TO CALENDAR &amp; PLANNER</span>
+function renderUniAtomAppeals() {
+    const root = document.getElementById('module-uni-appeals');
+    if (!root) return;
+
+    const appealsCount = (uniData.appeals || []).length;
+    const unpaidTaxes = (uniData.taxes || []).filter(t => !t.paid).length;
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+                <div>
+                    <span class="section-label">Appeals &amp; Taxes</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${appealsCount} APPEALS · ${unpaidTaxes} UNPAID</span>
                 </div>
-                <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-                    <input type="text" id="uni-app-name" class="form-control form-control-sm" style="flex:2; min-width:120px;" placeholder="Esame (es. Algebra)...">
-                    <input type="date" id="uni-app-date" class="form-control form-control-sm" style="width:125px;" value="${todayStr}">
-                    <input type="time" id="uni-app-time" class="form-control form-control-sm" style="width:85px;" value="09:00">
-                    <button type="button" id="btn-add-uni-appeal" class="btn btn-primary btn-sm">[+ APPELLO]</button>
-                </div>
-                <div id="uni-appeals-list" style="display:flex; flex-direction:column; gap:6px;"></div>
             </div>
 
-            <!-- SEZIONE B: TASSE UNIVERSITARIE (EVENTO ROSSO + CATEGORIA "TASSE UNI") -->
-            <div style="border-top:1px solid var(--border-color); padding-top:12px;">
-                <div class="sub-column-header" style="display:flex; justify-content:space-between;">
-                    <span>3B. Tasse Universitarie (Scadenze &amp; Pagamenti)</span>
-                    <span style="font-size:0.65rem; color:var(--accent-red);">RED CALENDAR EVENT + "TASSE UNI" MONEY CAT</span>
+            <div class="daily-columns-wrap" style="align-items:flex-start; gap:16px;">
+                <!-- COLONNA SINISTRA: APPELLI -->
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;">
+                    <div class="sub-column-header">Exam Appeals</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <input type="text" id="uni-app-name" class="form-control form-control-sm" style="flex:1; min-width:100px;" placeholder="Exam...">
+                        <input type="date" id="uni-app-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
+                        <input type="time" id="uni-app-time" class="form-control form-control-sm" style="width:80px;" value="09:00">
+                        <button type="button" id="btn-add-uni-appeal" class="btn btn-primary btn-sm">[+]</button>
+                    </div>
+                    <div id="uni-appeals-list" style="display:flex; flex-direction:column; gap:6px;"></div>
                 </div>
-                <div style="display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;">
-                    <input type="text" id="uni-tax-title" class="form-control form-control-sm" style="flex:2; min-width:120px;" placeholder="Nome Tassa (es. I Rata, II Rata)...">
-                    <input type="number" id="uni-tax-amount" class="form-control form-control-sm no-spinners" style="width:85px;" step="0.01" placeholder="€ Importo">
-                    <input type="date" id="uni-tax-date" class="form-control form-control-sm" style="width:125px;" value="${todayStr}">
-                    <button type="button" id="btn-add-uni-tax" class="btn btn-danger btn-sm">[+ TASSA]</button>
+
+                <!-- COLONNA DESTRA: TASSE UNIVERSITARIE -->
+                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;">
+                    <div class="sub-column-header">University Taxes</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                        <input type="text" id="uni-tax-title" class="form-control form-control-sm" style="flex:1; min-width:95px;" placeholder="Tax name...">
+                        <input type="number" id="uni-tax-amount" class="form-control form-control-sm no-spinners" style="width:75px;" step="0.01" placeholder="€">
+                        <input type="date" id="uni-tax-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
+                        <button type="button" id="btn-add-uni-tax" class="btn btn-danger btn-sm">[+]</button>
+                    </div>
+                    <div id="uni-taxes-list" style="display:flex; flex-direction:column; gap:6px;"></div>
                 </div>
-                <div id="uni-taxes-list" style="display:flex; flex-direction:column; gap:6px;"></div>
             </div>
         </div>
     `;
 
-    container.querySelector('#btn-add-uni-appeal').onclick = () => {
-        const name = container.querySelector('#uni-app-name').value;
-        const date = container.querySelector('#uni-app-date').value;
-        const time = container.querySelector('#uni-app-time').value;
+    root.querySelector('#btn-add-uni-appeal').onclick = () => {
+        const name = root.querySelector('#uni-app-name').value;
+        const date = root.querySelector('#uni-app-date').value;
+        const time = root.querySelector('#uni-app-time').value;
         addUniAppeal(name, date, time);
     };
 
-    container.querySelector('#btn-add-uni-tax').onclick = () => {
-        const title = container.querySelector('#uni-tax-title').value;
-        const amt = container.querySelector('#uni-tax-amount').value;
-        const date = container.querySelector('#uni-tax-date').value;
+    root.querySelector('#btn-add-uni-tax').onclick = () => {
+        const title = root.querySelector('#uni-tax-title').value;
+        const amt = root.querySelector('#uni-tax-amount').value;
+        const date = root.querySelector('#uni-tax-date').value;
         addUniTax(title, amt, date);
     };
 
-    // Render Appelli ordinati per data
-    const appListEl = container.querySelector('#uni-appeals-list');
+    const appListEl = root.querySelector('#uni-appeals-list');
     const sortedAppeals = [...(uniData.appeals || [])].sort((a, b) => a.date.localeCompare(b.date));
 
     if (sortedAppeals.length === 0) {
-        appListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NESSUN APPELLO IN PROGRAMMA ]</div>';
+        appListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NONE ]</div>';
     } else {
         sortedAppeals.forEach(app => {
             const diffDays = Math.ceil((parseLocalDate(app.date) - parseLocalDate(todayStr)) / (1000 * 60 * 60 * 24));
-            const cdLabel = diffDays === 0 ? 'TODAY!' : (diffDays > 0 ? `IN ${diffDays} DAYS` : `${Math.abs(diffDays)}D AGO`);
+            const cdLabel = diffDays === 0 ? 'TODAY' : (diffDays > 0 ? `${diffDays}D` : `${Math.abs(diffDays)}D AGO`);
 
             const row = document.createElement('div');
             row.className = 'm-item-row';
             row.style.borderLeftColor = 'var(--accent-gold)';
             row.style.cursor = 'pointer';
-            row.title = 'Click to jump Calendar to this appeal date';
             row.onclick = () => jumpToDate(app.date);
 
             row.innerHTML = `
                 <div>
                     <div class="m-title">${escapeHtml(app.examName)}</div>
-                    <div class="m-sub">${escapeHtml(app.date)} // ORE ${escapeHtml(app.time || '09:00')}</div>
+                    <div class="m-sub">${escapeHtml(app.date)} // ${escapeHtml(app.time || '09:00')}</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div style="display:flex; align-items:center; gap:8px;">
                     <span style="font-size:var(--font-xs); font-weight:bold; color:${diffDays <= 7 && diffDays >= 0 ? 'var(--accent-red)' : 'var(--accent-gold)'};">[${cdLabel}]</span>
                 </div>
             `;
@@ -940,18 +827,17 @@ function renderUniSubAppealsAndTaxes(container) {
         });
     }
 
-    // Render Tasse Universitarie
-    const taxListEl = container.querySelector('#uni-taxes-list');
+    const taxListEl = root.querySelector('#uni-taxes-list');
     const sortedTaxes = [...(uniData.taxes || [])].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
     if (sortedTaxes.length === 0) {
-        taxListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NESSUNA TASSA REGISTRATA ]</div>';
+        taxListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NONE ]</div>';
     } else {
         sortedTaxes.forEach(tax => {
             const diffDays = Math.ceil((parseLocalDate(tax.dueDate) - parseLocalDate(todayStr)) / (1000 * 60 * 60 * 24));
             const statusBadge = tax.paid
-                ? '<span style="color:var(--accent-green); font-weight:bold;">[PAGATA ✓]</span>'
-                : `<span style="color:var(--accent-red); font-weight:bold;">[SCADE: ${tax.dueDate} (${diffDays >= 0 ? diffDays + 'g' : 'SCADUTA'})]</span>`;
+                ? '<span style="color:var(--accent-green); font-weight:bold;">[PAID ✓]</span>'
+                : `<span style="color:var(--accent-red); font-weight:bold;">[${tax.dueDate} (${diffDays >= 0 ? diffDays + 'D' : 'OVERDUE'})]</span>`;
 
             const row = document.createElement('div');
             row.className = 'm-item-row';
@@ -960,10 +846,10 @@ function renderUniSubAppealsAndTaxes(container) {
 
             row.innerHTML = `
                 <div style="cursor:pointer;" onclick="jumpToDate('${tax.dueDate}')">
-                    <div class="m-title"><span class="m-cat-badge">Tasse Uni</span>${escapeHtml(tax.title)}</div>
+                    <div class="m-title">${escapeHtml(tax.title)}</div>
                     <div class="m-sub">${statusBadge}</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div style="display:flex; align-items:center; gap:6px;">
                     <span class="m-amt neg">€${Number(tax.amount).toFixed(2)}</span>
                 </div>
             `;
@@ -972,7 +858,6 @@ function renderUniSubAppealsAndTaxes(container) {
                 const payBtn = document.createElement('button');
                 payBtn.className = 'btn btn-sm';
                 payBtn.textContent = '[PAY]';
-                payBtn.title = 'Registra pagamento in Money sotto "Tasse Uni"';
                 payBtn.onclick = () => payUniTax(tax.id);
                 row.lastElementChild.appendChild(payBtn);
             }
@@ -988,41 +873,79 @@ function renderUniSubAppealsAndTaxes(container) {
     }
 }
 
-// ============================================================================
-// SOTTO-MODULO 4: LIBRETTO UNIVERSITARIO & CARRIERA (180 CFU)
-// ============================================================================
+// ----------------------------------------------------------------------------
+// ATOM 4: UNI: LIBRETTO (180 CFU) (#module-uni-libretto)
+// ----------------------------------------------------------------------------
 
-function renderUniSubLibretto(container) {
-    container.innerHTML = `
-        <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
-            <span>4. Libretto Esami Superati (18–30L su 180 CFU)</span>
-            <span style="font-size:0.65rem; color:var(--text-dim);">30L = 30 IN AVERAGES</span>
+function renderUniAtomLibretto() {
+    const root = document.getElementById('module-uni-libretto');
+    if (!root) return;
+
+    const stats = calculateUniStats();
+    const passed = [...(uniData.passedExams || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+    root.innerHTML = `
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+                <div>
+                    <span class="section-label">Libretto</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px; font-variant-numeric:tabular-nums;">// ${stats.totalCfu}/${stats.targetCfu} CFU (${stats.cfuPct}%)</span>
+                </div>
+                <button type="button" class="btn btn-sm ${showLibrettoAddForm ? 'btn-primary' : ''}" id="btn-toggle-lib-add">[+]</button>
+            </div>
+
+            <!-- METRICHE CARRIERA COMPATTE -->
+            <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px;">
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">WEIGHTED AVG</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-green); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.weightedMean.toFixed(2)}</div>
+                </div>
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">ARITHMETIC AVG</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.arithmeticMean.toFixed(2)}</div>
+                </div>
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">BASE /110</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-gold); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.base110.toFixed(1)}</div>
+                </div>
+                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
+                    <div style="font-size:0.6rem; color:var(--text-dim);">EXAMS PASSED</div>
+                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.count}${stats.laudeCount > 0 ? ' (' + stats.laudeCount + 'L)' : ''}</div>
+                </div>
+            </div>
+
+            <div class="vault-progress-track" style="height:5px; flex-shrink:0;">
+                <div class="vault-progress-fill" style="width:${stats.cfuPct}%;"></div>
+            </div>
+
+            <div id="uni-lib-add-row" style="display:${showLibrettoAddForm ? 'flex' : 'none'}; gap:6px; flex-wrap:wrap; padding:8px; border:1px solid var(--border-bright); background:#060606;">
+                <input type="text" id="uni-lib-name" class="form-control form-control-sm" style="flex:2; min-width:120px;" placeholder="Exam name...">
+                <input type="text" id="uni-lib-grade" class="form-control form-control-sm" style="width:65px; text-align:center;" placeholder="30L">
+                <input type="number" id="uni-lib-cfu" class="form-control form-control-sm no-spinners" style="width:60px; text-align:center;" placeholder="CFU" value="9" min="1">
+                <input type="date" id="uni-lib-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
+                <button type="button" id="btn-add-uni-libretto" class="btn btn-primary btn-sm">[SAVE]</button>
+            </div>
+
+            <div id="uni-libretto-list" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>
-
-        <div style="display:flex; gap:6px; margin-bottom:12px; flex-wrap:wrap;">
-            <input type="text" id="uni-lib-name" class="form-control form-control-sm" style="flex:2; min-width:130px;" placeholder="Nome Esame...">
-            <input type="text" id="uni-lib-grade" class="form-control form-control-sm" style="width:70px; text-align:center;" placeholder="28 / 30L">
-            <input type="number" id="uni-lib-cfu" class="form-control form-control-sm no-spinners" style="width:65px; text-align:center;" placeholder="CFU" value="9" min="1">
-            <input type="date" id="uni-lib-date" class="form-control form-control-sm" style="width:125px;" value="${todayStr}">
-            <button type="button" id="btn-add-uni-libretto" class="btn btn-primary btn-sm">[+ REGISTRA VOTO]</button>
-        </div>
-
-        <div id="uni-libretto-list" style="display:flex; flex-direction:column; gap:6px;"></div>
     `;
 
-    container.querySelector('#btn-add-uni-libretto').onclick = () => {
-        const name = container.querySelector('#uni-lib-name').value;
-        const grade = container.querySelector('#uni-lib-grade').value;
-        const cfu = container.querySelector('#uni-lib-cfu').value;
-        const date = container.querySelector('#uni-lib-date').value;
+    root.querySelector('#btn-toggle-lib-add').onclick = () => {
+        showLibrettoAddForm = !showLibrettoAddForm;
+        renderUniAtomLibretto();
+    };
+
+    root.querySelector('#btn-add-uni-libretto').onclick = () => {
+        const name = root.querySelector('#uni-lib-name').value;
+        const grade = root.querySelector('#uni-lib-grade').value;
+        const cfu = root.querySelector('#uni-lib-cfu').value;
+        const date = root.querySelector('#uni-lib-date').value;
         recordPassedExam(name, grade, cfu, date);
     };
 
-    const listEl = container.querySelector('#uni-libretto-list');
-    const passed = [...(uniData.passedExams || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
-
+    const listEl = root.querySelector('#uni-libretto-list');
     if (passed.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">[ NESSUN ESAME REGISTRATO NEL LIBRETTO ]</div>';
+        listEl.innerHTML = '<div class="empty-state">[ NONE ]</div>';
         return;
     }
 
@@ -1034,9 +957,9 @@ function renderUniSubLibretto(container) {
         row.innerHTML = `
             <div>
                 <div class="m-title">${escapeHtml(ex.name)} <span style="color:var(--text-dim); font-size:var(--font-xs); margin-left:6px;">(${ex.cfu} CFU)</span></div>
-                <div class="m-sub">REGISTRATO // ${escapeHtml(ex.date || todayStr)}</div>
+                <div class="m-sub">${escapeHtml(ex.date || todayStr)}</div>
             </div>
-            <div style="display:flex; align-items:center; gap:12px;">
+            <div style="display:flex; align-items:center; gap:10px;">
                 <span style="font-size:var(--font-md); font-weight:bold; color:var(--accent-green); font-variant-numeric:tabular-nums;">${gradeBadge}</span>
             </div>
         `;
