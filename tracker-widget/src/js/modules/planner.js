@@ -1,5 +1,5 @@
 // --- js/modules/planner.js ---
-// Atomic Module 4: Weekly Planner (06:30 - 24:00), Left Phase Column (Auto-Injected), No Bottom Footer & Editable Ghost Layers
+// Atomic Module 4: Weekly Planner (06:30 - 24:00), Left Phase Column, All-Day + Timed Events & 3-Way Sync
 
 const PLANNER_START_HOUR = 6.5; // 06:30
 let plannerZoom = 42;
@@ -75,7 +75,6 @@ function getDayPhaseForTime(timeStr) {
     return phases[phases.length - 1] || { id: 'evening', short: 'EVENING', start: '20:00', end: '24:00' };
 }
 
-// Popola la colonna dedicata delle 5 Fasi a sinistra della colonna degli orari
 function renderPhaseLabelsColumn(phaseColEl, zoomVal) {
     if (!phaseColEl) return;
     const totalHeight = (24 - PLANNER_START_HOUR) * zoomVal;
@@ -96,7 +95,6 @@ function renderPhaseLabelsColumn(phaseColEl, zoomVal) {
     });
 }
 
-// Disegna dentro le colonne della griglia SOLO le linee divisorie orizzontali delle fasi (zero scritte interne)
 function appendDayPhaseBandsToColumn(colEl, zoomVal) {
     const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
     phases.forEach((ph, idx) => {
@@ -160,7 +158,6 @@ function renderWeeklyPlanner() {
 
         if (!sidebar || !headerRow || !timeLabels || !grid) return;
 
-        // Auto-inietta la colonna delle Fasi a sinistra degli orari se mancante in index.html
         let phaseLabels = document.getElementById('planner-phase-labels');
         if (!phaseLabels && scrollArea) {
             phaseLabels = document.createElement('div');
@@ -169,7 +166,6 @@ function renderWeeklyPlanner() {
             scrollArea.insertBefore(phaseLabels, timeLabels);
         }
 
-        // Allinea l'header alle 2 colonne di sinistra (58px Fasi + 45px Orari = 103px) e rimuove il vecchio footer
         headerRow.style.paddingLeft = '103px';
         const oldFooter = document.getElementById('planner-fixed-footer');
         if (oldFooter) oldFooter.remove();
@@ -226,10 +222,8 @@ function renderWeeklyPlanner() {
 
         const totalGridHeight = (24 - PLANNER_START_HOUR) * plannerZoom;
 
-        // 1. Colonna delle 5 Fasi a sinistra degli orari
         renderPhaseLabelsColumn(phaseLabels, plannerZoom);
 
-        // 2. Colonna degli orari (06:30 - 23:00)
         timeLabels.innerHTML = '';
         timeLabels.style.height = `${totalGridHeight}px`;
 
@@ -257,6 +251,7 @@ function renderWeeklyPlanner() {
         if (rangeBadge) {
             rangeBadge.textContent = `// ${formatDate(weekStart)} – ${formatDate(weekEnd)}`;
         }
+
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
         for (let i = 0; i < 7; i++) {
@@ -271,6 +266,22 @@ function renderWeeklyPlanner() {
             headerCell.style.cursor = 'pointer';
             headerCell.onclick = () => selectDate(loopDateStr);
             headerCell.innerHTML = `<div class="day-title">${days[i]} ${currentD.getDate()}</div>`;
+
+            // Mostra nell'header del giorno anche gli Eventi Tutto-il-Giorno (senza orario specifico)
+            const allDayEvents = specificEvents.filter(e => e && e.date === loopDateStr && (!e.start || !e.end));
+            allDayEvents.forEach(ev => {
+                const badge = document.createElement('div');
+                badge.className = 'flexible-task-badge';
+                badge.style.cssText = `border-left: 2px solid ${ev.color || '#b84b4b'}; color: ${ev.color || '#fff'}; font-size: 0.6rem; padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`;
+                badge.textContent = ev.title;
+                badge.oncontextmenu = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    if (typeof deleteEvent === 'function') deleteEvent(ev.id);
+                };
+                headerCell.appendChild(badge);
+            });
+
             headerRow.appendChild(headerCell);
 
             const dayCol = document.createElement('div');
@@ -278,7 +289,6 @@ function renderWeeklyPlanner() {
             dayCol.style.height = `${totalGridHeight}px`;
             dayCol.oncontextmenu = (e) => restorePlannerInstances(e, loopDateStr);
 
-            // Linee divisorie delle 5 Fasi (senza scritte dentro la griglia)
             appendDayPhaseBandsToColumn(dayCol, plannerZoom);
 
             const line630 = document.createElement('div');
@@ -321,7 +331,7 @@ function renderWeeklyPlanner() {
                 }
             });
 
-            // 2. Blocchi Orari
+            // 2. Blocchi Orari (Fixed Tasks, Routines, Ephemeral & Timed Events)
             const dayBlocks = [];
 
             templates.forEach(t => {
@@ -381,13 +391,14 @@ function renderWeeklyPlanner() {
             });
 
             specificEvents.forEach(e => {
-                if (e && e.date === loopDateStr && e.start && e.end) {
+                if (e && e.date === loopDateStr && e.start) {
+                    const endStr = e.end || minutesToTimeStr(timeToMinutes(e.start) + 60);
                     const top = timeToPx(e.start);
-                    const height = Math.max(timeToPx(e.end) - top, 10);
+                    const height = Math.max(timeToPx(endStr) - top, 10);
                     if (top + height > 0) {
                         dayBlocks.push({
                             kind: 'event', id: e.id, title: e.title, category: 'Single Event',
-                            color: e.color || '#b84b4b', start: e.start, end: e.end,
+                            color: e.color || '#b84b4b', start: e.start, end: endStr,
                             top, height, bottom: top + height
                         });
                     }
@@ -434,7 +445,16 @@ function renderWeeklyPlanner() {
                             removeTomorrowTimelineBlock(loopDateStr, b.id);
                         }
                     };
+                } else if (b.kind === 'event') {
+                    block.oncontextmenu = (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        if (typeof deleteEvent === 'function') {
+                            deleteEvent(b.id);
+                        }
+                    };
                 }
+
                 dayCol.appendChild(block);
             });
 
@@ -492,6 +512,9 @@ function hidePlannerInstance(e, taskId, dateStr, startTime) {
     plannerExceptions[`${taskId}_${dateStr}_${startTime}`] = true;
     saveData();
     renderWeeklyPlanner();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+    if (typeof renderTasks === 'function') renderTasks();
+    if (typeof renderTracker === 'function') renderTracker();
 }
 
 function restorePlannerInstances(e, dateStr) {
@@ -503,9 +526,18 @@ function restorePlannerInstances(e, dateStr) {
             changed = true;
         }
     }
+    templates.forEach(t => {
+        if (Array.isArray(t.exceptions) && t.exceptions.includes(dateStr)) {
+            t.exceptions = t.exceptions.filter(d => d !== dateStr);
+            changed = true;
+        }
+    });
     if (changed) {
         saveData();
         renderWeeklyPlanner();
+        if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+        if (typeof renderTasks === 'function') renderTasks();
+        if (typeof renderTracker === 'function') renderTracker();
     }
 }
 
@@ -518,7 +550,6 @@ function drawCurrentTimeLine() {
 
     if (curHourDec < PLANNER_START_HOUR) return;
 
-    // 1. Weekly Planner
     const weekStart = getWeekStart(selectedDateStr);
     const daysDiff = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24));
 
@@ -539,7 +570,6 @@ function drawCurrentTimeLine() {
         }
     }
 
-    // 2. Day Planner
     const dayPlanCanvas = document.getElementById('plan-mod-day-canvas');
     if (dayPlanCanvas && typeof planBuilderDateStr !== 'undefined' && planBuilderDateStr === todayStr) {
         const topDay = (curHourDec - PLANNER_START_HOUR) * (typeof tmwTimelineZoom !== 'undefined' ? tmwTimelineZoom : 46);
@@ -552,7 +582,6 @@ function drawCurrentTimeLine() {
 
 setInterval(drawCurrentTimeLine, 60000);
 
-// --- GHOST LAYERS CRUD (CREAZIONE E MODIFICA COMPLETA) ---
 function addRefTimeWindow(start = '', end = '', days = []) {
     const container = document.getElementById('ref-time-windows-container');
     if (!container) return;

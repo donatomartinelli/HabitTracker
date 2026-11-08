@@ -767,9 +767,17 @@ function isTaskActiveOnDate(template, dateStr) {
 
     if (template.type === 'timed' || (template.timeWindows && template.timeWindows.length > 0)) {
         if (template.timeWindows && template.timeWindows.length > 0) {
-            for (let tw of template.timeWindows) {
-                if (tw.days && tw.days.includes(dayOfWeek)) return true;
-            }
+            const activeWindowsToday = template.timeWindows.filter(tw => tw.days && tw.days.includes(dayOfWeek));
+            if (activeWindowsToday.length === 0) return false;
+
+            // Se l'utente ha creato un override orario in ephemeralData per oggi, la task resta attiva col nuovo orario
+            const hasCustomOverrideToday = Array.isArray(ephemeralData[dateStr]) &&
+                ephemeralData[dateStr].some(b => b.templateId === template.id);
+            if (hasCustomOverrideToday) return true;
+
+            // Se tutti gli slot orari del giorno sono stati nascosti col tasto destro sul Planner, la task è inattiva anche in Tasks!
+            const anySlotVisible = activeWindowsToday.some(tw => !plannerExceptions[`${template.id}_${dateStr}_${tw.start}`]);
+            return anySlotVisible;
         }
         return false;
     }
@@ -909,3 +917,181 @@ function importData(event) {
     };
     reader.readAsText(file);
 }
+
+// ============================================================================
+// MOTORE GLOBALE UNDO / REDO (CTRL+Z / CTRL+Y)
+// ============================================================================
+
+let undoStack = [];
+let redoStack = [];
+let isApplyingUndoRedo = false;
+let lastCapturedSnapshotStr = '';
+
+function captureCurrentStateSnapshotString() {
+    return JSON.stringify({
+        templates,
+        logs,
+        specificEvents,
+        noteCategories,
+        notesContent,
+        categoryOrder,
+        referenceLayers,
+        refToggles,
+        ephemeralData,
+        generalTodos,
+        plannerExceptions,
+        routinesData,
+        routineLogs,
+        mBalance,
+        mTransactions,
+        mRecurring,
+        mWishlist,
+        mVaults,
+        mCategories,
+        nextWorkoutDay,
+        savedGymWeights,
+        dietData,
+        dietRules,
+        gymPlan,
+        uniData
+    });
+}
+
+function recordUndoHistoryBeforeSave() {
+    if (!isStorageHydrated || isApplyingUndoRedo) return;
+    const currentSnap = captureCurrentStateSnapshotString();
+    if (!lastCapturedSnapshotStr) {
+        lastCapturedSnapshotStr = currentSnap;
+        return;
+    }
+    if (currentSnap !== lastCapturedSnapshotStr) {
+        undoStack.push(lastCapturedSnapshotStr);
+        if (undoStack.length > 30) undoStack.shift();
+        redoStack = [];
+        lastCapturedSnapshotStr = currentSnap;
+    }
+}
+
+function refreshActivePanesInPlace() {
+    const prevScrolls = [];
+    document.querySelectorAll('.planner-scroll-area, #plan-mod-timeline-scroll, .notes-browse-container').forEach(el => {
+        prevScrolls.push({ el, top: el.scrollTop });
+    });
+
+    if (typeof activeSlots !== 'undefined' && Array.isArray(activeSlots)) {
+        activeSlots.forEach(modKey => {
+            if (typeof dashboardModules !== 'undefined' && dashboardModules[modKey] && typeof dashboardModules[modKey].render === 'function') {
+                try {
+                    dashboardModules[modKey].render();
+                } catch (e) {}
+            }
+        });
+    }
+
+    if (typeof renderHudPod === 'function') renderHudPod();
+
+    prevScrolls.forEach(item => {
+        if (item.el) item.el.scrollTop = item.top;
+    });
+}
+
+function applyStateSnapshotString(snapStr) {
+    if (!snapStr) return;
+    isApplyingUndoRedo = true;
+    try {
+        const s = JSON.parse(snapStr);
+        templates = s.templates || [];
+        logs = s.logs || {};
+        specificEvents = s.specificEvents || [];
+        noteCategories = s.noteCategories || ['General', 'Registrazioni'];
+        notesContent = s.notesContent || {};
+        categoryOrder = s.categoryOrder || [];
+        referenceLayers = s.referenceLayers || [];
+        refToggles = s.refToggles || {};
+        ephemeralData = s.ephemeralData || {};
+        generalTodos = s.generalTodos || [];
+        plannerExceptions = s.plannerExceptions || {};
+        routinesData = s.routinesData || [];
+        routineLogs = s.routineLogs || {};
+        mBalance = roundCurrency(s.mBalance);
+        mTransactions = s.mTransactions || [];
+        mRecurring = s.mRecurring || [];
+        mWishlist = s.mWishlist || [];
+        mVaults = s.mVaults || [];
+        mCategories = s.mCategories || [];
+        nextWorkoutDay = s.nextWorkoutDay || 1;
+        savedGymWeights = s.savedGymWeights || {};
+        dietData = s.dietData || [];
+        dietRules = s.dietRules || '';
+        gymPlan = s.gymPlan || {};
+        uniData = s.uniData || {};
+
+        lastCapturedSnapshotStr = snapStr;
+        saveData();
+        saveMoneyData();
+        saveHealthData();
+        saveUniData();
+
+        // Aggiorna i moduli sul posto senza svuotare il DOM (zero lampo nero!)
+        refreshActivePanesInPlace();
+    } catch (e) {
+        console.error('[UNDO/REDO ERROR]', e);
+    }
+    isApplyingUndoRedo = false;
+}
+
+function performGlobalUndo() {
+    if (undoStack.length === 0) {
+        if (typeof showToast === 'function') showToast('[UNDO] Nothing to undo');
+        return;
+    }
+    const currentSnap = captureCurrentStateSnapshotString();
+    redoStack.push(currentSnap);
+    const prevSnap = undoStack.pop();
+    applyStateSnapshotString(prevSnap);
+    if (typeof showToast === 'function') showToast('[UNDO] Reverted last action');
+}
+
+function performGlobalRedo() {
+    if (redoStack.length === 0) {
+        if (typeof showToast === 'function') showToast('[REDO] Nothing to redo');
+        return;
+    }
+    const currentSnap = captureCurrentStateSnapshotString();
+    undoStack.push(currentSnap);
+    const nextSnap = redoStack.pop();
+    applyStateSnapshotString(nextSnap);
+    if (typeof showToast === 'function') showToast('[REDO] Restored action');
+}
+
+// Aggancia automaticamente il tracker Undo alle funzioni di salvataggio e alle scorciatoie Ctrl+Z / Ctrl+Y
+window.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        lastCapturedSnapshotStr = captureCurrentStateSnapshotString();
+    }, 300);
+
+    ['saveData', 'saveMoneyData', 'saveHealthData', 'saveUniData'].forEach(fnName => {
+        const origFn = window[fnName];
+        if (typeof origFn === 'function') {
+            window[fnName] = function(...args) {
+                recordUndoHistoryBeforeSave();
+                return origFn.apply(this, args);
+            };
+        }
+    });
+
+    document.addEventListener('keydown', (e) => {
+        const activeTag = document.activeElement ? document.activeElement.tagName : '';
+        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || (document.activeElement && document.activeElement.isContentEditable)) {
+            return; // Lascia il Ctrl+Z nativo del testo quando stai scrivendo in un campo
+        }
+
+        if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
+            e.preventDefault();
+            performGlobalUndo();
+        } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+            e.preventDefault();
+            performGlobalRedo();
+        }
+    });
+});

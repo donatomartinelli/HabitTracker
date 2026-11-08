@@ -40,13 +40,34 @@ const dashboardModules = {
         render: () => { if (typeof renderTasks === 'function') renderTasks(); }
     },
 
-    // 3. NOTES
+    // 3. NOTES & SUB-MODULES (WRITE, BROWSE, GRAPH)
     'notes': {
         name: 'Notes',
         id: 'module-notes',
         minW: () => Math.max(170, Math.floor(window.innerWidth * 0.14)),
         minH: () => 145,
         render: () => { if (typeof renderNoteCategories === 'function') renderNoteCategories(); }
+    },
+    'notes_write': {
+        name: 'Notes: Write',
+        id: 'module-notes-write',
+        minW: () => 210,
+        minH: () => 145,
+        render: () => { if (typeof renderNotesAtomWrite === 'function') renderNotesAtomWrite(); }
+    },
+    'notes_browse': {
+        name: 'Notes: Browse',
+        id: 'module-notes-browse',
+        minW: () => 240,
+        minH: () => 150,
+        render: () => { if (typeof renderNotesAtomBrowse === 'function') renderNotesAtomBrowse(); }
+    },
+    'notes_graph': {
+        name: 'Notes: Graph',
+        id: 'module-notes-graph',
+        minW: () => 260,
+        minH: () => 180,
+        render: () => { if (typeof renderNotesAtomGraph === 'function') renderNotesAtomGraph(); }
     },
 
     // 4. WEEKLY PLANNER
@@ -272,7 +293,7 @@ const ALL_MODULE_KEYS = Object.keys(dashboardModules);
 const MACRO_SUBMODULES_MAP = {
     'calendar': ['cal_grid', 'cal_agenda'],
     'tasks':    ['tasks'],
-    'notes':    ['notes'],
+    'notes':    ['notes_write', 'notes_browse', 'notes_graph'],
     'planner':  ['planner'],
     'plan':     ['plan'],
     'diet':     ['diet_today', 'diet_week'],
@@ -342,6 +363,12 @@ function getMacroDefaultSubtree(macroKey) {
             return makePaneNode('uni_roadmap');
         }
         return makePaneNode('uni');
+    }
+    if (macroKey === 'notes') {
+        if (typeof renderNotesAtomBrowse === 'function') {
+            return makeSplitNode('row', 0.38, makePaneNode('notes_write'), makePaneNode('notes_browse'));
+        }
+        return makePaneNode('notes');
     }
     return makePaneNode(macroKey);
 }
@@ -540,6 +567,7 @@ function isMacroContainerKey(modKey) {
     if (modKey === 'gym' && typeof renderGymAtomToday === 'function') return true;
     if (modKey === 'streak' && typeof renderStreakAtomGrid === 'function') return true;
     if (modKey === 'uni' && typeof renderUniAtomRoadmap === 'function') return true;
+    if (modKey === 'notes' && typeof renderNotesAtomBrowse === 'function') return true;
     return false;
 }
 
@@ -1614,7 +1642,13 @@ function resolveModuleKeyFromText(rawText) {
         'cats': 'm_analytics',
         'money incubator': 'm_incubator',
         'incubator': 'm_incubator',
-        'wishlist': 'm_incubator'
+        'wishlist': 'm_incubator',
+        'notes write': 'notes_write',
+        'write': 'notes_write',
+        'notes browse': 'notes_browse',
+        'browse': 'notes_browse',
+        'notes graph': 'notes_graph',
+        'graph': 'notes_graph'
     };
     if (aliasesMap[q]) return aliasesMap[q];
 

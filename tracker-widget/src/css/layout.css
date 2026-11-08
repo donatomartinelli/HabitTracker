@@ -567,7 +567,6 @@ body.layout-edit-mode .layout {
     position: relative;
     background: transparent;
     container-type: inline-size;
-    animation: cortexPaneFadeIn 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 body.is-resizing-split .quadrant-cell {

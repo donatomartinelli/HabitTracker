@@ -203,31 +203,48 @@ async function callGeminiWithFallback(userParts, baseGenConfig = { temperature: 
     throw new Error(primaryError || 'All Gemini models failed');
 }
 
+// 1. PROMPT POTENZIATO TRASCRIZIONE VERBATIM (PULIZIA ESITAZIONI + FORMATTAZIONE MATEMATICA/TECNICA FEDELE)
 async function transcribeBase64AudioWithGemini(b64Data, filename, fileType) {
     const mimeType = getAudioMimeType(filename, fileType);
 
-    const promptText = `Trascrivi questa registrazione audio in italiano PAROLA PER PAROLA (verbatim).
-Segui rigorosamente ed esclusivamente queste regole:
-1. FEDELTÀ PAROLA PER PAROLA: Scrivi esattamente tutte le parole pronunciate nell'audio nell'ordine esatto in cui vengono dette. NON riassumere, NON parafrasare, NON riformulare le frasi, NON cambiare i vocaboli e NON tagliare alcun concetto o frase.
-2. RIMUOVI SOLO I SUONI DI ESITAZIONE: Elimina esclusivamente i suoni vocali di esitazione pura come "ehm", "uhm", "eh", "mmh".
-3. RIMUOVI SOLO LE PAROLE RIPETUTE DUE VOLTE DI FILA: Se una stessa identica parola viene ripetuta immediatamente due volte per inceppamento (es. "del del", "che che", "la la", "non non", "io io"), scrivila una sola volta.
-4. PUNTEGGIATURA: Inserisci la punteggiatura e i capoversi solo per rendere leggibile il flusso delle frasi senza alterare alcuna parola.
-5. Restituisci SOLO il testo trascritto, senza alcuna introduzione, titolo o commento.`;
+    const promptText = `Sei un trascrittore stenografico di precisione assoluta. Trascrivi questa registrazione audio in italiano PAROLA PER PAROLA (verbatim).
 
-    const userParts = [
+REGOLE RIGOROSE:
+1. FEDELTÀ TOTALE AL CONTENUTO: Scrivi esattamente tutte le frasi e i vocaboli pronunciati nell'ordine esatto. NON riassumere, NON parafrasare, NON omettere dettagli, numeri, formule o nomi propri.
+2. PULIZIA DISFLUENZE VOCALI: Rimuovi esclusivamente i riempitivi involontari ("ehm", "uhm", "eh", "mmh", "cioè" ripetuto a vuoto) e i balbettii immediati sulla stessa parola (es. "che che" -> "che", "del del" -> "del").
+3. STRUTTURA E PUNTEGGIATURA INTELLIGENTE:
+   - Inserisci punteggiatura accurata e dividi in capoversi quando cambia il micro-argomento.
+   - Se chi parla elenca chiaramente una sequenza di punti o compiti, vai a capo usando "- ".
+   - Se vengono menzionate date o scadenze (es. "domani", "lunedì"), mantienile fedelmente.
+4. OUTPUT PURO: Restituisci SOLO il testo trascritto, senza alcuna introduzione, titolo o commento.`;
+
+    return callGeminiWithFallback([
         { text: promptText },
         { inlineData: { mimeType, data: b64Data } }
-    ];
-
-    return callGeminiWithFallback(userParts, { temperature: 0.0 });
+    ], { temperature: 0.0 });
 }
 
-async function transcribeSingleAudioWithGemini(file) {
-    const b64 = await blobToBase64(file);
-    return transcribeBase64AudioWithGemini(b64, file.name, file.type);
+// Salva il blob registrato dal microfono in SonyArchive (se Tauri FS/Rust è disponibile) e lo trascrive subito
+async function transcribeAndArchiveMicAudioBlob(audioBlob) {
+    const now = new Date();
+    const stamp = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}_${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}${String(now.getSeconds()).padStart(2, '0')}`;
+    const fileName = `MIC_${stamp}.webm`;
+
+    const b64 = await blobToBase64(audioBlob);
+
+    // Salva copia fisica del file audio se il comando Tauri FS è disponibile
+    try {
+        if (window.__TAURI__ && window.__TAURI__.fs && window.__TAURI__.fs.writeFile) {
+            const arrayBuf = await audioBlob.arrayBuffer();
+            await window.__TAURI__.fs.writeFile(`${sonyArchiveDir}\\${fileName}`, new Uint8Array(arrayBuf));
+        }
+    } catch (e) {}
+
+    const text = await transcribeBase64AudioWithGemini(b64, fileName, audioBlob.type || 'audio/webm');
+    return { text, fileName, dateStr: formatDate(now) };
 }
 
-// Funzione per [✦ GENERATE SUMMARY]: riorganizza e struttura la nota per essere pronta da incollare in un prompt
+// 2. PROMPT POTENZIATO SUMMARY & PROMPT-READY REWRITE (ARCHITETTURA LOGICA E SPECIFICHE)
 async function summarizeAndStructureNoteWithGemini(rawNoteText) {
     const keys = getAvailableGeminiKeys();
     if (keys.length === 0) {
@@ -236,21 +253,25 @@ async function summarizeAndStructureNoteWithGemini(rawNoteText) {
         return null;
     }
 
-    const promptText = `Riscrivi, riorganizza e struttura il seguente appunto personale (spesso proveniente da una nota vocale o da idee scritte di getto) in italiano.
-Obiettivo:
-1. Trasforma il testo in una forma chiara, logica, articolata e ben strutturata, preservando il 100% dei concetti, dei dettagli tecnici e delle intenzioni originali.
-2. Elimina ripetizioni, frasi spezzate o ambiguità, organizzando i punti in paragrafi puliti o elenchi puntati (- ) dove opportuno.
-3. Il risultato deve essere direttamente pronto per essere copiato e incollato come specifica o prompt chiaro e completo.
-4. Restituisci SOLO il testo rielaborato, senza preamboli o commenti meta.
+    const promptText = `Agisci come un System Architect ed Editor Tecnico. Riscrivi, riorganizza e struttura il seguente appunto (spesso derivato da un flusso di coscienza vocale o da più note grezze) in italiano.
 
-Testo originale:
+OBIETTIVI DI RISTRUTTURAZIONE:
+1. MASSIMA DENSITÀ E CHIAREZZA: Elimina ogni ridondanza, frase colloquiale, incertezza espositiva o ripetizione, ma conserva il 100% dei requisiti tecnici, delle idee, dei vincoli, dei numeri e delle decisioni contenute nel testo.
+2. GERARCHIA PRONTA PER PROMPT:
+   - Se il testo descrive modifiche software, idee di progetto o problemi tecnici, organizza l'output in blocchi logici chiari usando elenchi puntati ("- ") precisi e azionabili, così che il testo risultante possa essere copiato e incollato direttamente come prompt per un LLM o come documento di specifica.
+   - Se il testo è teorico/accademico o concettuale, strutturalo in tesi principale, punti chiave e implicazioni operative.
+3. TAG CONCETTUALI: In fondo alla nota ristrutturata, aggiungi una riga con 2-4 hashtag tematici (es. #architettura #ui #matematica) utili per collegare la nota nel grafo concettuale.
+4. OUTPUT PURO: Restituisci SOLO il testo rielaborato, senza preamboli né frasi di cortesia.
+
+Testo grezzo da strutturare:
 """
 ${rawNoteText}
 """`;
 
-    return callGeminiWithFallback([{ text: promptText }], { temperature: 0.2 });
+    return callGeminiWithFallback([{ text: promptText }], { temperature: 0.15 });
 }
 
+// 3. PROMPT POTENZIATO ACTION EXTRACTOR (CON CONTESTO DATABASE REALE)
 async function extractActionsFromNoteWithGemini(noteBodyText) {
     const keys = getAvailableGeminiKeys();
     if (keys.length === 0) {
@@ -259,21 +280,39 @@ async function extractActionsFromNoteWithGemini(noteBodyText) {
         return null;
     }
 
-    const promptText = `Analyze the following personal note(s) (in Italian) and extract all actionable items into valid Cortex DSL commands.
-Today's date is ${todayStr} and tomorrow is ${tomorrowStr}.
+    const activeTodayTasks = (typeof templates !== 'undefined' ? templates : [])
+        .filter(t => typeof isTaskActiveOnDate === 'function' && isTaskActiveOnDate(t, selectedDateStr))
+        .map(t => `${t.title} [${t.category}]`)
+        .join(', ');
+    const vaultsList = (typeof mVaults !== 'undefined' ? mVaults : []).map(v => v.name).join(', ');
+    const moneyCatsList = (typeof mCategories !== 'undefined' ? mCategories : []).join(', ');
+    const uniCoursesList = (typeof uniData !== 'undefined' && Array.isArray(uniData.remainingExams))
+        ? uniData.remainingExams.map(c => `${c.name} (${c.cfu} CFU)`).join(', ')
+        : '';
+
+    const promptText = `Analyze the following personal note(s) (in Italian) and extract every concrete action, expense, income, event, exam appeal, purchase idea, or task into valid Cortex DSL commands.
+
+Context:
+- Today's date: ${todayStr} | Tomorrow: ${tomorrowStr} | Selected Date: ${selectedDateStr}
+- Existing Money Vaults: ${vaultsList || 'None'}
+- Existing Money Categories: ${moneyCatsList || 'Generale'}
+- Active Tasks Today: ${activeTodayTasks || 'None'}
+- University Courses: ${uniCoursesList || 'None'}
 
 Notes text:
 """
 ${noteBodyText}
 """
 
-Available DSL commands:
-- "todo [text]" -> General task to put in Inbox
-- "task [title] [@oggi | @domani | @YYYY-MM-DD]" -> Scheduled task on a specific date
-- "event [@oggi | @domani | @YYYY-MM-DD] [title]" -> Calendar event on a specific date
-- "wish [item] [optional €]" -> Purchase idea / something to buy
-- "out [amount] #[Category] [desc]" -> Expense already made
+Available DSL commands (use exact syntax):
+- "todo [text]" -> Single-day To-Do item for today
+- "task [title] [@oggi | @domani | @YYYY-MM-DD]" -> Scheduled flexible task on a date
+- "done [task title]" -> If the note states an active task was completed
+- "event [@oggi | @domani | @YYYY-MM-DD] [optional HH:MM-HH:MM or HH:MM 60m] [optional #red|#green|#blue|#gold|#purple] [title]" -> Calendar/Planner event
+- "wish [item] [optional price]" -> Something to buy in the future
+- "out [amount] #[VaultOrCategory] [desc]" -> Expense already made
 - "in [amount] [desc]" -> Income received
+- "weight [kg] [optional note]" -> Body weight log
 - "appello [ExamName] [YYYY-MM-DD] [HH:MM]" -> University exam appeal
 - "tassa [amount] [YYYY-MM-DD] [Title]" -> University tax deadline
 
@@ -288,6 +327,12 @@ Return ONLY a valid JSON object:
     const parsed = JSON.parse(rawJson);
     return Array.isArray(parsed.commands) ? parsed.commands : [];
 }
+
+async function transcribeSingleAudioWithGemini(file) {
+    const b64 = await blobToBase64(file);
+    return transcribeBase64AudioWithGemini(b64, file.name, file.type);
+}
+
 
 // ============================================================================
 // PIPELINE SONY USB (VOICE/A/ -> SonyArchive)
