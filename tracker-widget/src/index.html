@@ -82,6 +82,7 @@
         </div>
 
         <div class="header-right">
+            <button id="btn-toggle-mobile-mode" class="icon-btn win-ctrl-btn" onclick="toggleMobileViewMode()">[🖥]</button>
             <button id="btn-cloud-sync-hdr" class="icon-btn win-ctrl-btn" onclick="triggerManualCloudSync()">[☁]</button>
             <button id="btn-settings-app" class="icon-btn win-ctrl-btn" onclick="openSettingsModal()">[⚙]</button>
             <button id="btn-minimize-app" class="icon-btn win-ctrl-btn">[-]</button>
@@ -138,8 +139,34 @@
         <div id="snap-preview-label" class="snap-preview-label">SNAP</div>
     </div>
 
+    <!-- BARRA CONTROLLI RAPIDI & SOTTO-MODULI PER MODALITÀ MOBILE / TOUCH -->
+    <div id="mobile-top-nav-strip" class="mobile-top-nav-strip" style="display: none;">
+        <div class="mobile-date-quick-row">
+            <div style="display: flex; gap: 4px; align-items: center;">
+                <button type="button" class="btn btn-sm" onclick="shiftSelectedDate(-1)">[&lt;]</button>
+                <button type="button" id="mob-date-Display-btn" class="btn btn-sm btn-primary" onclick="jumpToDate(todayStr)">TODAY</button>
+                <button type="button" class="btn btn-sm" onclick="shiftSelectedDate(1)">[&gt;]</button>
+            </div>
+            <div style="display: flex; gap: 6px; align-items: center;">
+                <button type="button" class="btn btn-sm btn-notes-mic-rec" onclick="toggleLiveMicRecording()">[● REC]</button>
+                <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+NOTE]</button>
+            </div>
+        </div>
+        <div id="mobile-submod-pills" class="mobile-submod-pills" style="display: none;"></div>
+    </div>
+
     <!-- CONTENITORE TILING DINAMICO -->
     <div id="app-content-wrapper" class="layout"></div>
+
+    <!-- BOTTOM NAVIGATION BAR FISSA PER TELEFONO (5 MODULI + QUICK SWITCHER [V]) -->
+    <nav id="mobile-bottom-nav" class="mobile-bottom-nav" style="display: none;">
+        <button type="button" class="mob-nav-tab active" data-macro="tasks" onclick="mountMobileSingleModule('tasks')">TASKS</button>
+        <button type="button" class="mob-nav-tab" data-macro="plan" onclick="mountMobileSingleModule('plan')">PLAN</button>
+        <button type="button" class="mob-nav-tab" data-macro="gym" onclick="mountMobileSingleModule('gym_today')">GYM</button>
+        <button type="button" class="mob-nav-tab" data-macro="notes" onclick="mountMobileSingleModule('notes_browse')">NOTES</button>
+        <button type="button" class="mob-nav-tab" data-macro="money" onclick="mountMobileSingleModule('m_summary')">MONEY</button>
+        <button type="button" class="mob-nav-tab mob-nav-views" onclick="openQuickSwitcherModal()">[V]</button>
+    </nav>
 
     <!-- ========================================================== -->
     <!-- MAGAZZINO UNIVERSALE MODULI & SOTTO-MODULI ATOMICI         -->
@@ -415,5 +442,6 @@
     <script src="js/modules/uni.js"></script>
     <script src="js/ai/gemini-agent.js"></script>
     <script src="js/ai/terminal-ui.js"></script>
+    <script src="js/core/mobile-touch.js"></script>
 </body>
 </html>
