@@ -446,7 +446,7 @@ function copyMagicMobileSetupUrl() {
     }
     const baseUrl = window.location.protocol.startsWith('http') && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('tauri')
         ? `${window.location.origin}${window.location.pathname}`
-        : 'https://<TUO-USERNAME>.github.io/<NOME-REPO>/';
+        : 'https://donatomartinelli.github.io/HabitTracker/';
 
     const magicUrl = `${baseUrl}#cortex_sync=${encodeURIComponent(cloudGithubToken + ':' + cloudGistId)}`;
     navigator.clipboard.writeText(magicUrl);
