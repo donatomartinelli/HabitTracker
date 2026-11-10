@@ -1159,65 +1159,176 @@ body.hud-mode:not(.hud-temp-expanded) #hud-tactical-pod {
 }
 
 /* ============================================================================
-   MODALITÀ MOBILE TOUCH (SWITCH [📱] O SCHERMO <= 768px)
+   MODALITÀ MOBILE TOUCH (FIX VERTICAL FLEX STACK & 100dvh SAFARI/IOS)
    ============================================================================ */
+
+body.mobile-view-mode {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    height: 100dvh !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+body.mobile-view-mode .tauri-drag-bar {
+    display: none !important;
+}
+
+body.mobile-view-mode .app-header {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: 100% !important;
+    height: 44px !important;
+    min-height: 44px !important;
+    padding: 0 10px !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 8px !important;
+    z-index: 1000 !important;
+}
+
+body.mobile-view-mode #global-clock {
+    font-size: 0.72rem !important;
+    white-space: nowrap !important;
+}
+
+body.mobile-view-mode .header-ask-slot {
+    flex: 1 !important;
+    max-width: 165px !important;
+    height: 28px !important;
+}
+
+body.mobile-view-mode .ask-bar-container:not(.expanded) {
+    width: 100% !important;
+    height: 28px !important;
+}
+
+body.mobile-view-mode #btn-minimize-app,
+body.mobile-view-mode #btn-close-app {
+    display: none !important;
+}
 
 .mobile-top-nav-strip {
     display: none;
     flex-direction: column;
-    background: #050505;
+    width: 100% !important;
+    background: #060606;
     border-bottom: 1px solid var(--border-color);
     padding: 6px 10px;
     gap: 6px;
-    flex-shrink: 0;
-    z-index: 90;
+    flex-shrink: 0 !important;
+    z-index: 900;
 }
 
 .mobile-date-quick-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    width: 100%;
     gap: 6px;
 }
 
 .mobile-submod-pills {
     display: flex;
+    align-items: center;
     gap: 6px;
+    width: 100%;
     overflow-x: auto;
     padding-bottom: 2px;
     scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
 }
 
 .mobile-submod-pills::-webkit-scrollbar {
     display: none;
 }
 
+/* Area centrale a tutto schermo tra la barra superiore e la bottom bar */
+body.mobile-view-mode #app-content-wrapper.layout {
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+body.mobile-view-mode .quadrant-cell {
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    border: none !important;
+}
+
+/* Nasconde la barra di drag desktop [::] sopra il modulo quando sei su telefono */
+body.mobile-view-mode .quadrant-bar {
+    display: none !important;
+}
+
+body.mobile-view-mode .quadrant-body,
+body.mobile-view-mode .module-container {
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+
+body.mobile-view-mode .module-body-padded {
+    flex: 1 1 0% !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 10px 12px !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Bottom Navigation Bar incollata in fondo allo schermo */
 .mobile-bottom-nav {
     display: none;
-    height: 50px;
+    width: 100% !important;
+    height: 48px;
+    min-height: 48px;
     background: #040404;
     border-top: 1px solid var(--border-bright);
     align-items: stretch;
     justify-content: space-between;
-    flex-shrink: 0;
+    flex-shrink: 0 !important;
     z-index: 1200;
-    padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 .mob-nav-tab {
-    flex: 1;
+    flex: 1 1 0%;
     background: transparent;
     border: none;
     border-right: 1px solid #1a1a1a;
     color: var(--text-dim);
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     font-weight: bold;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.12s, color 0.12s;
+    padding: 0 2px;
 }
 
 .mob-nav-tab:last-child {
@@ -1230,35 +1341,39 @@ body.hud-mode:not(.hud-temp-expanded) #hud-tactical-pod {
 }
 
 .mob-nav-views {
-    flex: 0 0 48px;
+    flex: 0 0 44px;
     color: var(--accent-gold);
 }
 
-body.mobile-view-mode .app-header {
-    height: 46px;
-    padding: 0 10px;
+/* Se premi [🖥] sul telefono per vedere una split-view, impila i quadranti in verticale scorrevole invece di schiacciarli in 90px */
+@media (max-width: 768px) {
+    body:not(.mobile-view-mode) {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100dvh !important;
+    }
+    body:not(.mobile-view-mode) .app-header {
+        position: relative !important;
+        width: 100% !important;
+        flex-shrink: 0 !important;
+    }
+    body:not(.mobile-view-mode) #app-content-wrapper.layout {
+        position: relative !important;
+        top: auto !important;
+        flex: 1 1 0% !important;
+        width: 100% !important;
+        overflow-y: auto !important;
+        margin: 0 !important;
+    }
+    body:not(.mobile-view-mode) .tiling-split.dir-row {
+        flex-direction: column !important;
+    }
+    body:not(.mobile-view-mode) .resizer-vertical {
+        display: none !important;
+    }
 }
 
-body.mobile-view-mode #global-clock {
-    font-size: var(--font-xs);
-}
-
-body.mobile-view-mode .header-ask-slot,
-body.mobile-view-mode .ask-bar-container:not(.expanded) {
-    width: 145px;
-    height: 28px;
-}
-
-body.mobile-view-mode #btn-minimize-app,
-body.mobile-view-mode #btn-close-app {
-    display: none;
-}
-
-body.mobile-view-mode .module-body-padded {
-    padding: 12px 12px;
-}
-
-/* Adattamento automatico colonne affiancate -> colonna singola verticale su Mobile */
+/* Colonne interne dei moduli sempre impilate in verticale su mobile */
 body.mobile-view-mode .daily-columns-wrap,
 body.mobile-view-mode .notes-browse-container,
 body.mobile-view-mode #gym-split-cards-row {
@@ -1270,20 +1385,32 @@ body.mobile-view-mode .notes-masonry-col {
     width: 100% !important;
 }
 
-/* Day Planner in modalità Edit su Mobile: sorgenti sopra, timeline sotto */
+/* Evita sovrapposizione numeri KCAL / PROTEIN / CARBS / FATS (vista al sec 00:33) */
+body.mobile-view-mode #module-diet-today .cfg-box,
+body.mobile-view-mode #module-uni-libretto .cfg-box {
+    padding: 6px 4px !important;
+    min-width: 0 !important;
+    overflow: hidden !important;
+}
+
+body.mobile-view-mode #module-diet-today .cfg-box div:last-child,
+body.mobile-view-mode #module-uni-libretto .cfg-box div:last-child {
+    font-size: 0.85rem !important;
+}
+
+/* Day Planner su mobile */
 body.mobile-view-mode #module-plan .module-body-padded > div:last-child {
     flex-direction: column !important;
 }
 
 body.mobile-view-mode #plan-mod-left-col {
     width: 100% !important;
-    max-height: 34vh !important;
+    max-height: 32vh !important;
     border-right: none !important;
     border-bottom: 1px solid var(--border-bright) !important;
     padding-bottom: 8px !important;
 }
 
-/* Bersagli touch più comodi per il pollice in palestra e nelle checklist */
 body.mobile-view-mode .check-box {
     width: 20px;
     height: 20px;
