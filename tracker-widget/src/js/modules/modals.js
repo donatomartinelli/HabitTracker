@@ -556,13 +556,35 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <!-- TAB 3: DATA & SYSTEM MANUAL -->
+                <!-- TAB 3: CLOUD SYNC, DATA & MANUAL -->
                 <div id="tab-system" class="settings-tab-panel sys-cfg-panel">
-                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Database JSON Backup</div>
-                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">Export or restore all habits, routines, logs, notes, diet, gym and finances</div>
+                    <div class="cfg-box" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--border-bright);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">GitHub Gist Cloud Sync (PC ↔ Tablet ↔ Phone)</span>
+                            <span id="cloud-sync-settings-status" style="font-size: var(--font-xs); color: var(--text-dim);">[NOT CONFIGURED]</span>
                         </div>
+
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <input type="password" id="cloud-gist-token-inp" class="form-control form-control-sm" style="flex: 2; min-width: 180px;" placeholder="GitHub Token (ghp_... with 'gist' scope)" onchange="saveCloudSyncCredentialsFromUI()">
+                            <button type="button" class="btn btn-sm" onclick="const i=document.getElementById('cloud-gist-token-inp'); i.type=i.type==='password'?'text':'password';">[SHOW]</button>
+                        </div>
+
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <input type="text" id="cloud-gist-id-inp" class="form-control form-control-sm" style="flex: 2; min-width: 180px;" placeholder="Secret Gist ID (or click Create New)" onchange="saveCloudSyncCredentialsFromUI()">
+                            <button type="button" class="btn btn-primary btn-sm" onclick="createNewSecretGistForCortex()">[+ CREATE NEW SECRET GIST]</button>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
+                            <div style="display: flex; gap: 6px;">
+                                <button type="button" class="btn btn-sm" onclick="pushStateToCloudGist(true)">[↑ PUSH NOW]</button>
+                                <button type="button" class="btn btn-sm" onclick="pullStateFromCloudGist(true, true)">[↓ FORCE PULL]</button>
+                            </div>
+                            <button type="button" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="copyMagicMobileSetupUrl()">[🔗 COPY MAGIC SETUP URL]</button>
+                        </div>
+                    </div>
+
+                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Database JSON Backup</div>
                         <div style="display: flex; gap: 10px;">
                             <button type="button" class="btn btn-sm" onclick="exportData()">[EXPORT JSON]</button>
                             <label class="btn btn-sm" style="cursor: pointer; margin: 0;">
@@ -573,11 +595,8 @@ function initModalsHtml() {
                     </div>
 
                     <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Cortex DSL &amp; Shortcuts Manual</div>
-                            <div style="color: var(--text-dim); font-size: 0.68rem; margin-top: 2px;">View all DSL commands, contextual autocomplete rules and shortcuts</div>
-                        </div>
-                        <button type="button" class="btn btn-sm" onclick="openShortcutsHelp()">[OPEN MANUAL // ?]</button>
+                        <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">DSL &amp; Shortcuts Manual</div>
+                        <button type="button" class="btn btn-sm" onclick="openShortcutsHelp()">[MANUAL // ?]</button>
                     </div>
                 </div>
             </div>
@@ -1510,6 +1529,7 @@ function openSettingsModal(defaultTab = 'tab-workspace') {
     if (typeof applyRedModeUI === 'function') applyRedModeUI();
     if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
     if (typeof renderCustomAliasesSettingsUI === 'function') renderCustomAliasesSettingsUI();
+    if (typeof updateCloudSyncSettingsUI === 'function') updateCloudSyncSettingsUI();
 
     const sEl = document.getElementById('bg-opacity-slider');
     if (sEl) sEl.value = savedOpacity;
