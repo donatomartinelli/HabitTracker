@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#000000">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="manifest" href="manifest.json">
     <title>Cortex</title>
     
     <link rel="stylesheet" href="css/base.css">
@@ -78,6 +82,7 @@
         </div>
 
         <div class="header-right">
+            <button id="btn-cloud-sync-hdr" class="icon-btn win-ctrl-btn" onclick="triggerManualCloudSync()">[☁]</button>
             <button id="btn-settings-app" class="icon-btn win-ctrl-btn" onclick="openSettingsModal()">[⚙]</button>
             <button id="btn-minimize-app" class="icon-btn win-ctrl-btn">[-]</button>
             <button id="btn-close-app" class="icon-btn delete win-ctrl-btn">[X]</button>
@@ -394,6 +399,8 @@
 
     <!-- Script Modulari -->
     <script src="js/core/state.js"></script>
+    <script src="js/core/state.js"></script>
+    <script src="js/core/cloud-sync.js"></script>
     <script src="js/core/workspace.js"></script>
     <script src="js/core/dsl.js"></script>
     <script src="js/modules/modals.js"></script>
