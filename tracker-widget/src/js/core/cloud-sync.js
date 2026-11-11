@@ -133,7 +133,11 @@ function buildFullCortexCloudPayload(timestampMs) {
             uniData: typeof uniData !== 'undefined' ? uniData : {},
             workspacePresets: typeof workspacePresets !== 'undefined' ? workspacePresets : [],
             customAliases: typeof customAliases !== 'undefined' ? customAliases : {},
-            macroDefaultTrees: typeof macroDefaultTrees !== 'undefined' ? macroDefaultTrees : {}
+            macroDefaultTrees: typeof macroDefaultTrees !== 'undefined' ? macroDefaultTrees : {},
+            bridgeWebAppUrl: typeof bridgeWebAppUrl !== 'undefined' ? bridgeWebAppUrl : '',
+            icloudIcsUrl: typeof icloudIcsUrl !== 'undefined' ? icloudIcsUrl : '',
+            bankGmailQuery: typeof bankGmailQuery !== 'undefined' ? bankGmailQuery : '',
+            processedBankEmails: typeof processedBankEmails !== 'undefined' ? processedBankEmails : []
         }
     };
 }
@@ -225,6 +229,23 @@ function applyFullCortexCloudPayload(payloadObj) {
         if (typeof renderNoteCategories === 'function') renderNoteCategories();
         if (typeof syncMobileModeUI === 'function') syncMobileModeUI();
         if (typeof updateWorkspaceDropdownUI === 'function') updateWorkspaceDropdownUI();
+        if (typeof d.bridgeWebAppUrl === 'string' && d.bridgeWebAppUrl) {
+            bridgeWebAppUrl = d.bridgeWebAppUrl;
+            localStorage.setItem('cortex_bridge_url', bridgeWebAppUrl);
+        }
+        if (typeof d.icloudIcsUrl === 'string') {
+            icloudIcsUrl = d.icloudIcsUrl;
+            localStorage.setItem('cortex_icloud_ics_url', icloudIcsUrl);
+        }
+        if (typeof d.bankGmailQuery === 'string' && d.bankGmailQuery) {
+            bankGmailQuery = d.bankGmailQuery;
+            localStorage.setItem('cortex_bank_gmail_query', bankGmailQuery);
+        }
+        if (Array.isArray(d.processedBankEmails)) {
+            processedBankEmails = d.processedBankEmails;
+            localStorage.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
+        }
+        if (typeof updateExternalBridgeSettingsUI === 'function') updateExternalBridgeSettingsUI();
 
         if (typeof captureCurrentStateSnapshotString === 'function') {
             lastCapturedSnapshotStr = captureCurrentStateSnapshotString();
