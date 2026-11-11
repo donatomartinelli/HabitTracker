@@ -1,8 +1,5 @@
 // --- js/core/cloud-sync.js ---
-// Motore Cloud Sync "Last-Write-Wins" Infallibile (PC Tauri <-> Tablet <-> Telefono)
-// - Ignora i saveData() automatici di boot (traccia solo le modifiche da vera interazione utente)
-// - All'apertura controlla SEMPRE prima il Gist remoto e aggiorna l'istanza locale se il Cloud è più recente
-// - Push rapido (600ms) con keepalive:true + Live Polling ogni 8s tra dispositivi aperti
+// Motore Cloud Sync "Last-Write-Wins" (PC Tauri <-> Tablet <-> Telefono)
 
 const GIST_FILENAME = 'cortex_cloud_state.json';
 
@@ -18,7 +15,6 @@ let lastHumanInteractionTs = 0;
 let cloudPushDebounceTimer = null;
 let cloudSyncStatus = 'idle';
 
-// Traccia ogni interazione reale dell'utente (click, tap, tastiera) per distinguere le tue modifiche dai saveData() automatici di avvio
 function initHumanInteractionTracker() {
     const markInteraction = () => {
         lastHumanInteractionTs = Date.now();
@@ -208,7 +204,6 @@ function applyFullCortexCloudPayload(payloadObj) {
         }
         setLocalPendingChangesTs(0);
 
-        // Aggiorna tutti i moduli attivi sul posto senza alcun flash
         if (typeof refreshActivePanesInPlace === 'function') {
             refreshActivePanesInPlace();
         } else if (typeof renderQuadrantLayout === 'function') {
@@ -239,16 +234,15 @@ function applyFullCortexCloudPayload(payloadObj) {
 }
 
 // ============================================================================
-// FETCH DEL GIST REMOTO (CON ANTI-CACHE TOTALE)
+// FETCH DEL GIST REMOTO (CORS-SAFE)
 // ============================================================================
 
 async function fetchRemoteGistPayload() {
-    const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}?_cb=${Date.now()}`, {
+    const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}?t=${Date.now()}`, {
         method: 'GET',
         headers: {
             'Accept': 'application/vnd.github+json',
-            'Authorization': `Bearer ${cloudGithubToken}`,
-            'If-None-Match': ''
+            'Authorization': `Bearer ${cloudGithubToken}`
         },
         cache: 'no-store'
     });
@@ -266,7 +260,7 @@ async function fetchRemoteGistPayload() {
 
     let rawContent = fileObj.content;
     if (fileObj.truncated && fileObj.raw_url) {
-        const rawRes = await fetch(`${fileObj.raw_url}?_cb=${Date.now()}`, {
+        const rawRes = await fetch(fileObj.raw_url, {
             headers: { 'Authorization': `Bearer ${cloudGithubToken}` },
             cache: 'no-store'
         });
@@ -277,7 +271,7 @@ async function fetchRemoteGistPayload() {
 }
 
 // ============================================================================
-// OPERAZIONI API: CREATE, SMART PULL/PUSH (LAST-WRITE-WINS)
+// OPERAZIONI API: CREATE, PUSH & SMART PULL (LAST-WRITE-WINS)
 // ============================================================================
 
 async function createNewSecretGistForCortex() {
@@ -368,9 +362,9 @@ async function pushStateToCloudGist(isManual = false) {
     const payload = buildFullCortexCloudPayload(nowTs);
 
     try {
+        // IMPORTANTE: Niente keepalive:true perché i browser bloccano qualsiasi body > 64KB!
         const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}`, {
             method: 'PATCH',
-            keepalive: true, // Garantisce che il push finisca anche se chiudi subito la scheda sul telefono!
             headers: {
                 'Accept': 'application/vnd.github+json',
                 'Authorization': `Bearer ${cloudGithubToken}`,
@@ -405,18 +399,22 @@ async function pushStateToCloudGist(isManual = false) {
         return true;
     } catch (err) {
         isCloudSyncInProgress = false;
-        if (!localPendingChangesTs) setLocalPendingChangesTs(nowTs);
-        setCloudSyncHeaderIndicator('queued', `Queued for retry (${err.message})`);
-        updateCloudSyncSettingsUI();
-        if (isManual && typeof showToast === 'function') {
-            showToast(`[☁ QUEUED] Network unreachable — Changes queued`);
+        console.error('[GIST PUSH ERROR]', err);
+
+        if (!navigator.onLine) {
+            if (!localPendingChangesTs) setLocalPendingChangesTs(nowTs);
+            setCloudSyncHeaderIndicator('queued', 'Offline — Queued');
+        } else {
+            setCloudSyncHeaderIndicator('error', `Push failed: ${err.message}`);
+            if (isManual && typeof showToast === 'function') {
+                showToast(`[CLOUD PUSH ERROR] ${err.message}`);
+            }
         }
+        updateCloudSyncSettingsUI();
         return false;
     }
 }
 
-// Sincronizzazione Intelligente "Last-Write-Wins":
-// Legge SEMPRE prima il Gist remoto e confronta il timestamp remoto con eventuali modifiche fatte offline
 async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) {
     if (!isCloudSyncConfigured()) {
         if (isManual && typeof openSettingsModal === 'function') openSettingsModal('tab-system');
@@ -445,7 +443,7 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
 
         isInitialBootPullCompleted = true;
 
-        // CASO 1: Forza Pull manuale oppure il Cloud ha uno stato più recente di qualsiasi modifica locale -> APPLICA IL CLOUD!
+        // 1. Se il Cloud ha uno stato più recente (o uguale) -> applica il Cloud e azzera la coda
         if (forceOverwrite || (remoteTs > lastCloudSyncedUpdatedAt && remoteTs >= localPendingChangesTs)) {
             applyFullCortexCloudPayload(remotePayload);
             isCloudSyncInProgress = false;
@@ -458,13 +456,13 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
             return true;
         }
 
-        // CASO 2: Questo dispositivo ha modifiche fatte da te (es. mentre eri offline) che sono più recenti del Cloud -> FAI PUSH!
+        // 2. Se ci sono modifiche locali più recenti del Cloud -> inviale al Gist
         if (localPendingChangesTs > remoteTs && localPendingChangesTs > lastCloudSyncedUpdatedAt) {
             isCloudSyncInProgress = false;
             return await pushStateToCloudGist(isManual);
         }
 
-        // CASO 3: I timestamp coincidono ma l'utente ha premuto manualmente [☁] -> Applica comunque il payload remoto per certezza assoluta
+        // 3. Se l'utente ha cliccato manualmente [☁] -> allinea comunque col Cloud
         if (isManual && remotePayload && remotePayload.data) {
             applyFullCortexCloudPayload(remotePayload);
             isCloudSyncInProgress = false;
@@ -477,6 +475,7 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
             return true;
         }
 
+        setLocalPendingChangesTs(0);
         isCloudSyncInProgress = false;
         setCloudSyncHeaderIndicator('ok', 'Up to date');
         updateCloudSyncSettingsUI();
@@ -484,6 +483,7 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
     } catch (err) {
         isCloudSyncInProgress = false;
         isInitialBootPullCompleted = true;
+        console.error('[GIST PULL ERROR]', err);
         setCloudSyncHeaderIndicator(navigator.onLine ? 'error' : 'offline', `Sync failed: ${err.message}`);
         if (isManual && typeof showToast === 'function') {
             showToast(`[CLOUD SYNC ERROR] ${err.message}`);
@@ -496,8 +496,6 @@ function scheduleDebouncedCloudPush() {
     if (!isStorageHydrated || isApplyingCloudPull || isApplyingUndoRedo) return;
     if (!isCloudSyncConfigured()) return;
 
-    // PROTEZIONE FONDAMENTALE ANTI-SOVRASCRITTURA ALL'AVVIO:
-    // Ignora qualsiasi saveData() chiamato automaticamente dal codice durante il boot se l'utente non ha interagito negli ultimi 5 secondi!
     const now = Date.now();
     const isGenuineUserAction = (now - lastHumanInteractionTs) < 5000;
     if (!isInitialBootPullCompleted && !isGenuineUserAction) {
@@ -520,7 +518,7 @@ function scheduleDebouncedCloudPush() {
     clearTimeout(cloudPushDebounceTimer);
     cloudPushDebounceTimer = setTimeout(() => {
         pushStateToCloudGist(false);
-    }, 600);
+    }, 800);
 }
 
 function triggerManualCloudSync() {
@@ -528,12 +526,15 @@ function triggerManualCloudSync() {
         if (typeof openSettingsModal === 'function') openSettingsModal('tab-system');
         return;
     }
-    // Cliccando [☁] esegue sempre il confronto intelligente col server (scaricando l'ultimo stato valido)
-    pullStateFromCloudGist(false, true);
+    if (localPendingChangesTs > 0) {
+        pushStateToCloudGist(true);
+    } else {
+        pullStateFromCloudGist(false, true);
+    }
 }
 
 // ============================================================================
-// UI PANNELLO SETTINGS & MAGIC LINK PER TELEFONO/TABLET
+// UI PANNELLO SETTINGS & MAGIC LINK
 // ============================================================================
 
 function saveCloudSyncCredentialsFromUI() {
@@ -623,7 +624,6 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     updateCloudSyncSettingsUI();
 
-    // All'apertura dell'app su PC/Tablet/Telefono: controlla SUBITO il Gist remoto e allinea lo stato!
     setTimeout(() => {
         if (isCloudSyncConfigured() && navigator.onLine) {
             pullStateFromCloudGist(linkedFromHash, false);
@@ -632,10 +632,10 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }, 300);
 
-    // Quando torna la connessione internet
     window.addEventListener('online', () => {
         if (!isCloudSyncConfigured()) return;
-        pullStateFromCloudGist(false, true);
+        if (localPendingChangesTs > 0) pushStateToCloudGist(true);
+        else pullStateFromCloudGist(false, true);
     });
 
     window.addEventListener('offline', () => {
@@ -644,14 +644,7 @@ window.addEventListener('DOMContentLoaded', () => {
         updateCloudSyncSettingsUI();
     });
 
-    // Quando clicchi sulla finestra del PC o sblocchi il telefono, sincronizza all'istante
     window.addEventListener('focus', () => {
-        if (isCloudSyncConfigured() && navigator.onLine && !cloudPushDebounceTimer) {
-            pullStateFromCloudGist(false, false);
-        }
-    });
-
-    window.addEventListener('pageshow', () => {
         if (isCloudSyncConfigured() && navigator.onLine && !cloudPushDebounceTimer) {
             pullStateFromCloudGist(false, false);
         }
@@ -661,16 +654,14 @@ window.addEventListener('DOMContentLoaded', () => {
         if (document.visibilityState === 'visible' && isCloudSyncConfigured() && navigator.onLine) {
             pullStateFromCloudGist(false, false);
         } else if (document.visibilityState === 'hidden' && localPendingChangesTs > 0 && navigator.onLine) {
-            // Se chiudi/metti in background il telefono mentre c'era un push in attesa, invialo subito!
             clearTimeout(cloudPushDebounceTimer);
             pushStateToCloudGist(false);
         }
     });
 
-    // Live Polling rapido ogni 8 secondi per mantenere PC, Tablet e Telefono sempre speculari in tempo reale
     setInterval(() => {
         if (document.visibilityState === 'visible' && isCloudSyncConfigured() && navigator.onLine && !cloudPushDebounceTimer) {
             pullStateFromCloudGist(false, false);
         }
-    }, 8000);
+    }, 10000);
 });

@@ -2,7 +2,7 @@
 // Service Worker Offline-First per Cortex PWA
 // Mette in cache tutti i file dell'interfaccia e li aggiorna in background quando c'è rete
 
-const CACHE_NAME = 'cortex-os-cache-v1';
+const CACHE_NAME = 'cortex-os-cache-v2';
 
 const CORE_ASSETS = [
     './',
