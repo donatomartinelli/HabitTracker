@@ -1,15 +1,16 @@
 // --- js/core/mobile-touch.js ---
-// Mobile & Tablet Touch Engine:
-// 1. Vertical Flex Layout Stack & Auto-Recovery after Cloud Pull
-// 2. Saved Views Mobile Adapter (mostra i moduli di una Saved View come pillole a tutto schermo)
-// 3. Instant Touch Suggestions nella Command Bar (chiude tastiera iOS ed esegue al tocco)
+// Mobile & Tablet Touch Engine v2:
+// 1. Vertical Flex Layout Stack & Saved Views Mobile Adapter
+// 2. Gym Quick-Stepper Bar ([-2.5] [-1] [+1] [+2.5] [= PREV] [✓]) quando tocchi un peso in palestra
+// 3. Swipe Orizzontale col pollice per cambiare sottomodulo + Numeric Keypad automatico
 
 let isMobileViewMode = localStorage.getItem('cortex_force_mobile') === 'true' ||
     (localStorage.getItem('cortex_force_mobile') !== 'false' && window.innerWidth <= 768);
 let activeMobileModKey = localStorage.getItem('cortex_mobile_active_mod') || 'tasks';
-let activeMobilePresetMods = null; // Array di moduli quando apri una Saved View (es. GENERALE) su telefono
+let activeMobilePresetMods = null;
 let activeMobilePresetName = '';
 let savedDesktopLayoutTreeBeforeMobile = null;
+let activeFocusedGymInput = null;
 
 function findParentMacroForSubmodule(modKey) {
     if (!modKey) return 'tasks';
@@ -36,6 +37,15 @@ function normalizeToSingleLeafModuleKey(modKey) {
     return mapDefaults[modKey] || modKey;
 }
 
+// Aggiunge inputmode="decimal" a tutti i campi numerici per aprire il tastierino numerico rapido su iPhone/Android
+function enhanceMobileInputsErgonomics() {
+    document.querySelectorAll('input[type="number"], .gym-input').forEach(inp => {
+        if (!inp.getAttribute('inputmode')) {
+            inp.setAttribute('inputmode', 'decimal');
+        }
+    });
+}
+
 function toggleMobileViewMode(forceState = null) {
     const nextState = forceState !== null ? Boolean(forceState) : !isMobileViewMode;
 
@@ -58,6 +68,7 @@ function toggleMobileViewMode(forceState = null) {
         isMobileViewMode = false;
         localStorage.setItem('cortex_force_mobile', 'false');
         document.body.classList.remove('mobile-view-mode');
+        hideMobileGymQuickStepper();
         if (savedDesktopLayoutTreeBeforeMobile) {
             layoutTree = JSON.parse(JSON.stringify(savedDesktopLayoutTreeBeforeMobile));
         }
@@ -70,6 +81,7 @@ function mountMobileSingleModule(modKey, keepPresetStrip = false) {
     const cleanKey = normalizeToSingleLeafModuleKey(modKey);
     activeMobileModKey = cleanKey;
     localStorage.setItem('cortex_mobile_active_mod', activeMobileModKey);
+    hideMobileGymQuickStepper();
 
     if (!keepPresetStrip) {
         activeMobilePresetMods = null;
@@ -82,6 +94,19 @@ function mountMobileSingleModule(modKey, keepPresetStrip = false) {
         if (typeof renderQuadrantLayout === 'function') renderQuadrantLayout();
     }
     syncMobileModeUI();
+    setTimeout(enhanceMobileInputsErgonomics, 40);
+}
+
+// Restituisce l'elenco di pillole (sottomoduli o moduli della Saved View) attualmente disponibili per lo swipe
+function getCurrentMobileCycleList() {
+    if (Array.isArray(activeMobilePresetMods) && activeMobilePresetMods.length > 1) {
+        return { list: activeMobilePresetMods, isPreset: true };
+    }
+    const parentMacro = findParentMacroForSubmodule(activeMobileModKey);
+    const subList = (typeof MACRO_SUBMODULES_MAP !== 'undefined' && MACRO_SUBMODULES_MAP[parentMacro])
+        ? MACRO_SUBMODULES_MAP[parentMacro]
+        : [];
+    return { list: subList, isPreset: false };
 }
 
 function syncMobileModeUI() {
@@ -106,17 +131,16 @@ function syncMobileModeUI() {
     topStrip.style.display = 'flex';
     bottomBar.style.display = 'flex';
 
-    // 1. Bottone Data corrente
     const dateBtn = document.getElementById('mob-date-Display-btn');
     if (dateBtn && typeof selectedDateStr !== 'undefined') {
         const isOnToday = (selectedDateStr === todayStr);
-        dateBtn.textContent = isOnToday ? `TODAY // ${selectedDateStr.slice(5)}` : selectedDateStr;
+        const dObj = parseLocalDate(selectedDateStr);
+        const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+        const dayLbl = dayNames[dObj.getDay()];
+        dateBtn.textContent = isOnToday ? `TODAY · ${dayLbl} ${selectedDateStr.slice(8)}` : `${dayLbl} ${selectedDateStr.slice(5)}`;
         dateBtn.classList.toggle('btn-primary', isOnToday);
     }
 
-    // 2. Striscia Pillole Superiore:
-    //    - Se hai aperto una Saved View (es. GENERALE), mostra i moduli di quella Saved View!
-    //    - Altrimenti mostra i sottomoduli del Macro-Modulo corrente (es. TODAY WORKOUT | FULL SPLIT)
     const subStrip = document.getElementById('mobile-submod-pills');
     const parentMacro = findParentMacroForSubmodule(activeMobileModKey);
 
@@ -129,7 +153,7 @@ function syncMobileModeUI() {
                 const b = document.createElement('button');
                 b.type = 'button';
                 b.className = `note-subcat-pill ${mk === activeMobileModKey ? 'active' : ''}`;
-                b.style.cssText = 'padding: 4px 10px; font-size: 0.68rem; flex-shrink: 0;';
+                b.style.cssText = 'padding: 5px 11px; font-size: 0.7rem; flex-shrink: 0;';
                 b.textContent = dashboardModules[mk].name.toUpperCase();
                 b.onclick = () => mountMobileSingleModule(mk, true);
                 subStrip.appendChild(b);
@@ -147,7 +171,7 @@ function syncMobileModeUI() {
                     const b = document.createElement('button');
                     b.type = 'button';
                     b.className = `note-subcat-pill ${sk === activeMobileModKey ? 'active' : ''}`;
-                    b.style.cssText = 'padding: 4px 10px; font-size: 0.68rem; flex-shrink: 0;';
+                    b.style.cssText = 'padding: 5px 11px; font-size: 0.7rem; flex-shrink: 0;';
                     b.textContent = shortName.toUpperCase();
                     b.onclick = () => mountMobileSingleModule(sk, false);
                     subStrip.appendChild(b);
@@ -159,23 +183,111 @@ function syncMobileModeUI() {
         }
     }
 
-    // 3. Evidenzia il tab attivo nella Bottom Navigation Bar
     bottomBar.querySelectorAll('.mob-nav-tab').forEach(btn => {
         const tabMacro = btn.dataset.macro;
         btn.classList.toggle('active', tabMacro === parentMacro);
     });
+
+    enhanceMobileInputsErgonomics();
 }
 
 // ============================================================================
-// PONTE GESTI TOUCH & CHIUSURA AUTOMATICA COMMAND BAR SU TELEFONO
+// BARRA RAPIDA PESI IN PALESTRA SU MOBILE (GYM QUICK-STEPPER)
+// ============================================================================
+
+function ensureMobileGymStepperBar() {
+    let bar = document.getElementById('mobile-gym-stepper-bar');
+    if (bar) return bar;
+
+    bar = document.createElement('div');
+    bar.id = 'mobile-gym-stepper-bar';
+    bar.className = 'mobile-gym-stepper-bar';
+    bar.style.display = 'none';
+    bar.innerHTML = `
+        <button type="button" class="btn btn-sm" data-step="prev">[= PREV]</button>
+        <button type="button" class="btn btn-sm" data-step="-2.5">[-2.5]</button>
+        <button type="button" class="btn btn-sm" data-step="-1">[-1]</button>
+        <button type="button" class="btn btn-sm" data-step="+1">[+1]</button>
+        <button type="button" class="btn btn-sm" data-step="+2.5">[+2.5]</button>
+        <button type="button" class="btn btn-primary btn-sm" data-step="done">[DONE ✓]</button>
+    `;
+
+    bar.addEventListener('pointerdown', (e) => {
+        const btn = e.target.closest('button[data-step]');
+        if (!btn || !activeFocusedGymInput) return;
+        e.preventDefault(); // Mantiene il focus sull'input senza far chiudere/riaprire la tastiera
+
+        const action = btn.dataset.step;
+        if (action === 'done') {
+            activeFocusedGymInput.blur();
+            hideMobileGymQuickStepper();
+            return;
+        }
+
+        if (action === 'prev') {
+            const prevInp = activeFocusedGymInput.previousElementSibling;
+            if (prevInp && prevInp.classList.contains('gym-input') && prevInp.value) {
+                activeFocusedGymInput.value = prevInp.value;
+            }
+        } else {
+            const delta = parseFloat(action) || 0;
+            const cur = parseFloat(activeFocusedGymInput.value) || 0;
+            const nextVal = Math.max(0, Math.round((cur + delta) * 10) / 10);
+            activeFocusedGymInput.value = nextVal;
+        }
+
+        activeFocusedGymInput.dispatchEvent(new Event('input', { bubbles: true }));
+        if (navigator.vibrate) navigator.vibrate(10);
+    });
+
+    const bottomNav = document.getElementById('mobile-bottom-nav');
+    if (bottomNav && bottomNav.parentNode) {
+        bottomNav.parentNode.insertBefore(bar, bottomNav);
+    } else {
+        document.body.appendChild(bar);
+    }
+    return bar;
+}
+
+function showMobileGymQuickStepper(inputEl) {
+    if (!isMobileViewMode) return;
+    activeFocusedGymInput = inputEl;
+    const bar = ensureMobileGymStepperBar();
+    bar.style.display = 'flex';
+}
+
+function hideMobileGymQuickStepper() {
+    activeFocusedGymInput = null;
+    const bar = document.getElementById('mobile-gym-stepper-bar');
+    if (bar) bar.style.display = 'none';
+}
+
+// ============================================================================
+// PONTE GESTI TOUCH: SWIPE SOTTOMODULI, LONG-PRESS & TOUCH-DRAG
 // ============================================================================
 
 function initMobileTouchGesturesBridge() {
     let longPressTimer = null;
-    let touchStartPos = { x: 0, y: 0 };
+    let touchStartPos = { x: 0, y: 0, time: 0 };
     let activeTouchDragTarget = null;
 
-    // Intercetta il tocco sui suggerimenti della barra comandi (#terminal-suggestions) su iOS/Android
+    // Focus listener per far comparire la barra rapida dei pesi quando tocchi un box kg in palestra
+    document.addEventListener('focusin', (e) => {
+        if (isMobileViewMode && e.target && e.target.classList && e.target.classList.contains('gym-input')) {
+            showMobileGymQuickStepper(e.target);
+        }
+    });
+
+    document.addEventListener('focusout', (e) => {
+        if (e.target && e.target === activeFocusedGymInput) {
+            setTimeout(() => {
+                if (!document.activeElement || !document.activeElement.classList.contains('gym-input')) {
+                    hideMobileGymQuickStepper();
+                }
+            }, 150);
+        }
+    });
+
     const sugBox = document.getElementById('terminal-suggestions');
     if (sugBox) {
         sugBox.addEventListener('touchend', (e) => {
@@ -193,7 +305,7 @@ function initMobileTouchGesturesBridge() {
     document.addEventListener('touchstart', (e) => {
         if (!e.touches || e.touches.length !== 1) return;
         const touch = e.touches[0];
-        touchStartPos = { x: touch.clientX, y: touch.clientY };
+        touchStartPos = { x: touch.clientX, y: touch.clientY, time: Date.now() };
 
         const target = e.target;
         const actionableEl = target.closest('.note-card, .block-absolute, .notes-graph-canvas');
@@ -256,18 +368,42 @@ function initMobileTouchGesturesBridge() {
 
     const endTouchHandler = (e) => {
         clearTimeout(longPressTimer);
+        const touch = (e.changedTouches && e.changedTouches[0]) || null;
+
         if (activeTouchDragTarget) {
-            const touch = (e.changedTouches && e.changedTouches[0]) || touchStartPos;
             const upEv = new MouseEvent('mouseup', {
                 bubbles: true,
                 cancelable: true,
                 view: window,
-                clientX: touch.clientX || touchStartPos.x,
-                clientY: touch.clientY || touchStartPos.y,
+                clientX: (touch && touch.clientX) || touchStartPos.x,
+                clientY: (touch && touch.clientY) || touchStartPos.y,
                 button: 0
             });
             window.dispatchEvent(upEv);
             activeTouchDragTarget = null;
+            return;
+        }
+
+        // Swipe Orizzontale Rapido per cambiare Sotto-Modulo col pollice (es. WRITE <-> BROWSE <-> GRAPH)
+        if (isMobileViewMode && touch && e.target && !e.target.closest('input, textarea, select, .notes-graph-canvas, .diet-wrapper, #planner-scroll')) {
+            const dx = touch.clientX - touchStartPos.x;
+            const dy = touch.clientY - touchStartPos.y;
+            const dt = Date.now() - touchStartPos.time;
+
+            if (dt < 380 && Math.abs(dx) > 75 && Math.abs(dx) > Math.abs(dy) * 2.2) {
+                const { list, isPreset } = getCurrentMobileCycleList();
+                if (list.length > 1) {
+                    const curIdx = list.indexOf(activeMobileModKey);
+                    if (curIdx !== -1) {
+                        const nextIdx = dx < 0
+                            ? Math.min(list.length - 1, curIdx + 1)
+                            : Math.max(0, curIdx - 1);
+                        if (nextIdx !== curIdx) {
+                            mountMobileSingleModule(list[nextIdx], isPreset);
+                        }
+                    }
+                }
+            }
         }
     };
 
@@ -278,7 +414,6 @@ function initMobileTouchGesturesBridge() {
 window.addEventListener('DOMContentLoaded', () => {
     initMobileTouchGesturesBridge();
 
-    // 1. Intercetta setModulesView (es. quando scegli un modulo da [V] o dalla barra comandi)
     if (typeof window.setModulesView === 'function' && !window.setModulesView._mobileHooked) {
         const origSetModulesView = window.setModulesView;
         window.setModulesView = function(modKeysArray) {
@@ -303,7 +438,6 @@ window.addEventListener('DOMContentLoaded', () => {
         window.setModulesView._mobileHooked = true;
     }
 
-    // 2. Intercetta applyWorkspacePreset (es. quando apri "generale" sul telefono!)
     if (typeof window.applyWorkspacePreset === 'function' && !window.applyWorkspacePreset._mobileHooked) {
         const origApplyPreset = window.applyWorkspacePreset;
         window.applyWorkspacePreset = function(presetId) {
@@ -327,7 +461,6 @@ window.addEventListener('DOMContentLoaded', () => {
         window.applyWorkspacePreset._mobileHooked = true;
     }
 
-    // 3. Intercetta selectDate per aggiornare il badge della data
     if (typeof window.selectDate === 'function' && !window.selectDate._mobileDateHooked) {
         const origSelectDate = window.selectDate;
         window.selectDate = function(dateStr) {
@@ -337,7 +470,6 @@ window.addEventListener('DOMContentLoaded', () => {
         window.selectDate._mobileDateHooked = true;
     }
 
-    // Monta il modulo iniziale e garantisce che anche dopo l'idratazione asincrona / Cloud Pull resti un singolo modulo a tutto schermo su mobile
     const enforceMobileSinglePane = () => {
         if (isMobileViewMode) {
             mountMobileSingleModule(activeMobileModKey, Boolean(activeMobilePresetMods));
