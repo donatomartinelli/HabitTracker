@@ -1,8 +1,7 @@
 // --- src/sw.js ---
-// Service Worker Offline-First per Cortex PWA
-// Mette in cache tutti i file dell'interfaccia e li aggiorna in background quando c'è rete
+// Service Worker v3: carica sempre i file più recenti quando sei online e usa la cache quando sei in Modalità Aereo / Offline
 
-const CACHE_NAME = 'cortex-os-cache-v2';
+const CACHE_NAME = 'cortex-os-cache-v3';
 
 const CORE_ASSETS = [
     './',
@@ -34,7 +33,7 @@ self.addEventListener('install', (event) => {
     event.waitUntil(
         caches.open(CACHE_NAME).then((cache) => {
             return Promise.allSettled(
-                CORE_ASSETS.map((url) => cache.add(url))
+                CORE_ASSETS.map((url) => cache.add(new Request(url, { cache: 'no-cache' })))
             );
         })
     );
@@ -60,16 +59,14 @@ self.addEventListener('fetch', (event) => {
 
     const url = new URL(req.url);
 
-    // Non mettere mai in cache le chiamate API a GitHub Gist o Gemini
     if (url.hostname.includes('api.github.com') ||
         url.hostname.includes('githubusercontent.com') ||
         url.hostname.includes('googleapis.com')) {
         return;
     }
 
-    // Strategia Network-First con Fallback immediato su Cache quando sei Offline
     event.respondWith(
-        fetch(req)
+        fetch(req, { cache: 'no-cache' })
             .then((networkResp) => {
                 if (networkResp && networkResp.status === 200) {
                     const respClone = networkResp.clone();
