@@ -1,6 +1,6 @@
 // --- js/core/external-bridge.js ---
-// 1. Unione Bidirezionale Eventi (Cortex <-> Google Calendar <-> Apple Calendar, SENZA Palestra)
-// 2. Scanner Email Isybank calibrato sui template reali di "Comunicazioni isybank" (Pagamenti Carta, Accrediti, Versamenti ATM, Bonifici)
+// 1. Unione Bidirezionale Eventi (Cortex <-> Google Calendar <-> Apple Calendar, senza Palestra)
+// 2. Parser Email Isybank (Pagamenti Carta, BANCOMAT Pay, Versamenti, Accrediti, Bonifici) integrato col modulo Money originale
 
 const DEFAULT_ISYBANK_QUERY = 'newer_than:60d isybank';
 
@@ -53,7 +53,7 @@ function updateExternalBridgeSettingsUI() {
             statusEl.textContent = '[NOT CONFIGURED]';
             statusEl.style.color = 'var(--text-dim)';
         } else {
-            statusEl.textContent = `[ISYBANK ACTIVE // ${processedBankEmails.length} MAILS READ]`;
+            statusEl.textContent = '[READY // ISYBANK PARSER ACTIVE]';
             statusEl.style.color = 'var(--accent-green)';
         }
     }
@@ -178,8 +178,29 @@ async function syncExternalCalendarsNow(isManual = true) {
 }
 
 // ============================================================================
-// PARSER NATIVO SUI TEMPLATE DELLE MAIL DI "COMUNICAZIONI ISYBANK"
+// PARSER EMAIL ISYBANK (CALIBRATO SU PAGAMENTI CARTA, ACCREDITI, VERSAMENTI E BONIFICI)
 // ============================================================================
+
+function inferExpenseCategoryFromMerchant(merchant) {
+    const m = (merchant || '').toLowerCase();
+
+    // Se hai un Vault il cui nome coincide con l'esercente/categoria, usa quello
+    if (typeof findMatchingVaultForExpense === 'function') {
+        const vMatch = findMatchingVaultForExpense('', merchant);
+        if (vMatch) return vMatch.name;
+    }
+
+    if (m.includes('ferrovie appulo lucane') || m.includes('trenitalia') || m.includes('italo') || m.includes('stazione ip') || m.includes('eni') || m.includes('q8') || m.includes('tamoil')) {
+        return 'Trasporti';
+    }
+    if (m.includes('cafe') || m.includes('coffee') || m.includes('bar ') || m.includes('fandango') || m.includes('glera') || m.includes('pickup') || m.includes('d245') || m.includes('conad') || m.includes('lidl') || m.includes('supermercato')) {
+        return 'Cibo';
+    }
+    if (m.includes('unibas') || m.includes('pagopa') || m.includes('pago pa')) {
+        return 'Tasse Uni';
+    }
+    return 'Generale';
+}
 
 function parseIsybankEmailFast(mail) {
     const fromStr = (mail.from || '').toLowerCase();
@@ -195,9 +216,18 @@ function parseIsybankEmailFast(mail) {
         return null;
     }
 
-    // Estrae eventuale data "in data DD/MM" dal testo della mail (es. "in data 11/11 hai pagato...")
+    // Scarta email non transazionali (codici OTP, login, documenti/estratti conto in archivio)
+    const ignoreKeywords = [
+        'codice di sicurezza', 'otp', 'accesso effettuato', 'password', 'pin',
+        'estratto conto', 'documento disponibile', 'condizioni contrattuali', 'modifica unilaterale'
+    ];
+    if (ignoreKeywords.some(kw => lower.includes(kw)) && !lower.includes('hai pagato') && !lower.includes('hai ricevuto')) {
+        return null;
+    }
+
+    // Estrae la data operazione ("in data 11/11" o "11.11.2026") oppure usa la data della mail
     let txDate = mail.date || todayStr;
-    const inlineDateMatch = bodyClean.match(/in\s+data\s+(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/i);
+    const inlineDateMatch = bodyClean.match(/(?:in\s+data|del)\s+(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?/i);
     if (inlineDateMatch) {
         const dd = String(inlineDateMatch[1]).padStart(2, '0');
         const mm = String(inlineDateMatch[2]).padStart(2, '0');
@@ -207,95 +237,119 @@ function parseIsybankEmailFast(mail) {
         txDate = `${yyyy}-${mm}-${dd}`;
     }
 
-    // TEMPLATE 1: "isybank: Accredito Importo"
-    // Testo: "ti informiamo che hai ricevuto un accredito di 10,64 EUR sul conto associato alla carta 5341_*_*_0157 da KLAR*DMartinelli"
-    const accreditoMatch = bodyClean.match(/hai\s+ricevuto\s+un\s+accredito\s+di\s+(\d{1,6}(?:[.,]\d{1,2})?)\s*EUR[\s\S]*?\bda\s+([^\n.]+?)$/i);
+    // 1. TEMPLATE "isybank: Accredito Importo"
+    // Esempio: "ti informiamo che hai ricevuto un accredito di 10,64 EUR sul conto associato alla carta 5341_*_*_0157 da ..."
+    // Registra semplicemente "Accredito" (senza salvare il mittente)
+    const accreditoMatch = bodyClean.match(/hai\s+ricevuto\s+un\s+accredito\s+di\s+(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:EUR|€)/i);
     if (accreditoMatch) {
         const amount = roundCurrency(parseFloat(accreditoMatch[1].replace(',', '.')));
-        const sender = accreditoMatch[2].trim();
         if (amount > 0) {
             return {
                 emailId: mail.id,
                 date: txDate,
                 type: 'in',
-                subType: 'accredito',
-                accounted: true,
                 amount: amount,
-                cat: 'Accrediti & Rimborsi',
-                desc: `Accredito da ${sender}`
+                category: 'Entrata',
+                desc: 'Accredito'
             };
         }
     }
 
-    // TEMPLATE 2: "isybank: Pagamento con carta"
-    // Testo: "ti informiamo che in data 11/11 hai pagato 34,99 EUR con la carta 5341_*_*_0157 presso Amazon.it ."
-    const pagamentoCartaMatch = bodyClean.match(/hai\s+pagato\s+(\d{1,6}(?:[.,]\d{1,2})?)\s*EUR[\s\S]*?\bpresso\s+(.+?)(?:\s+\.|\.$|$)/i);
+    // 2. TEMPLATE "isybank: Pagamento con carta"
+    // Esempio: "ti informiamo che in data 11/11 hai pagato 34,99 EUR con la carta 5341_*_*_0157 presso Amazon.it ."
+    const pagamentoCartaMatch = bodyClean.match(/(?:hai\s+pagato|pagamento\s+di)\s+(\d{1,6}(?:[.,]\d{1,2})?)\s*(?:EUR|€)[\s\S]*?\bpresso\s+(.+?)(?:\s+\.|\.$|$)/i);
     if (pagamentoCartaMatch) {
         const amount = roundCurrency(parseFloat(pagamentoCartaMatch[1].replace(',', '.')));
         const merchant = pagamentoCartaMatch[2].replace(/\s*\.\s*$/, '').trim();
         if (amount > 0) {
-            return normalizeIsybankTxRecord({
+            return {
                 emailId: mail.id,
                 date: txDate,
                 type: 'out',
-                subType: 'pagamento',
-                accounted: false, // Appena arriva la mail del pagamento carta è non contabilizzato finché non viene registrato
                 amount: amount,
-                cat: '',
+                category: inferExpenseCategoryFromMerchant(merchant),
                 desc: merchant
-            });
+            };
         }
     }
 
-    // TEMPLATE 3: Versamento Contanti ATM / Bonifico ricevuto / BANCOMAT Pay / Altre notifiche Isybank
-    const amtMatch = combined.match(/(\d{1,6}[.,]\d{2})\s*(?:EUR|€)|(?:€|EUR)\s*(\d{1,6}[.,]\d{2})/i);
+    // 3. Estrazione importo per Versamenti Contanti ATM, Bonifici e BANCOMAT Pay
+    const amtMatch = combined.match(/(\d{1,6}[.,]\d{2})\s*(?:EUR|€|euro)|(?:€|EUR|euro|importo(?:\s+di)?)\s*[:.]?\s*(\d{1,6}[.,]\d{2})/i);
     if (!amtMatch) return null;
 
     const amount = roundCurrency(parseFloat((amtMatch[1] || amtMatch[2]).replace(',', '.')));
     if (!amount || amount <= 0) return null;
 
+    // 3A. Versamento Contanti Su Sportello Automatico
     if (lower.includes('versamento')) {
         return {
             emailId: mail.id,
             date: txDate,
             type: 'in',
-            subType: 'versamento',
-            accounted: true,
             amount: amount,
-            cat: 'Versamenti ATM',
+            category: 'Entrata',
             desc: 'Versamento Contanti Su Sportello Automatico'
         };
     }
 
-    if (lower.includes('bonifico') && (lower.includes('ricevuto') || lower.includes('a tuo favore') || lower.includes('disposto da'))) {
-        const senderMatch = bodyClean.match(/(?:da|ordinante)\s*[:.]?\s*([A-Za-z0-9À-ÿ\s.*&'-]{2,35})/i);
-        const sender = senderMatch ? senderMatch[1].trim() : 'Ordinante';
+    // 3B. Bonifico o Accredito in entrata (senza salvare il mittente)
+    const isIncome = lower.includes('accredito') ||
+        lower.includes('hai ricevuto') ||
+        lower.includes('a tuo favore') ||
+        lower.includes('bonifico disposto da') ||
+        lower.includes('rimborso') ||
+        lower.includes('storno');
+
+    if (isIncome) {
+        const descIn = lower.includes('bonifico') ? 'Bonifico' : 'Accredito';
         return {
             emailId: mail.id,
             date: txDate,
             type: 'in',
-            subType: 'bonifico',
-            accounted: true,
             amount: amount,
-            cat: 'Bonifici ricevuti',
-            desc: `Bonifico disposto da ${sender}`
+            category: 'Entrata',
+            desc: descIn
         };
     }
 
-    const isIncome = lower.includes('accredito') || lower.includes('hai ricevuto') || lower.includes('a tuo favore') || lower.includes('rimborso');
-    const merchMatch = bodyClean.match(/(?:presso|da|a favore di)\s+([A-Za-z0-9À-ÿ\s.*&'/-]{2,35})/i);
-    const desc = merchMatch ? merchMatch[1].replace(/\s*\.\s*$/, '').trim() : (subjStr.replace(/isybank\s*:\s*/i, '').trim() || 'Operazione Isybank');
+    // 3C. BANCOMAT Pay in uscita
+    if (lower.includes('bancomat pay')) {
+        const descBp = lower.includes('trasferimento') ? 'Trasferimento Denaro BANCOMAT Pay' : 'Pagamento BANCOMAT Pay';
+        return {
+            emailId: mail.id,
+            date: txDate,
+            type: 'out',
+            amount: amount,
+            category: inferExpenseCategoryFromMerchant(descBp),
+            desc: descBp
+        };
+    }
 
-    return normalizeIsybankTxRecord({
+    // 3D. Bonifico in uscita o altro addebito
+    if (lower.includes('bonifico')) {
+        return {
+            emailId: mail.id,
+            date: txDate,
+            type: 'out',
+            amount: amount,
+            category: 'Generale',
+            desc: 'Bonifico in uscita'
+        };
+    }
+
+    const merchMatch = bodyClean.match(/\bpresso\s+(.+?)(?:\s+\.|\.$|$)/i);
+    const fallbackDesc = merchMatch
+        ? merchMatch[1].replace(/\s*\.\s*$/, '').trim()
+        : (subjStr.replace(/^isybank\s*:\s*/i, '').trim() || 'Pagamento Isybank');
+
+    return {
         emailId: mail.id,
         date: txDate,
-        type: isIncome ? 'in' : 'out',
-        subType: isIncome ? 'accredito' : (lower.includes('bancomat pay') ? 'bancomat_pay' : 'pagamento'),
-        accounted: true,
+        type: 'out',
         amount: amount,
-        cat: '',
-        desc: desc
-    });
+        category: inferExpenseCategoryFromMerchant(fallbackDesc),
+        desc: fallbackDesc
+    };
 }
 
 async function scanBankEmailsNow(isManual = true) {
@@ -311,7 +365,7 @@ async function scanBankEmailsNow(isManual = true) {
     isBridgeSyncRunning = true;
 
     if (isManual && typeof showToast === 'function') {
-        showToast('[🏦 ISYBANK] Lettura mail Comunicazioni isybank...');
+        showToast('[🏦 ISYBANK] Scanning Isybank emails...');
     }
 
     try {
@@ -329,79 +383,77 @@ async function scanBankEmailsNow(isManual = true) {
         if (!resJson.ok) throw new Error(resJson.error || 'Bridge error');
 
         const allEmails = (resJson.data && resJson.data.bankEmails) || [];
-        // Quando premi manualmente [🏦 SCAN ISYBANK], ispeziona tutte le mail Isybank e usa il controllo anti-duplicati per data+importo+tipo
-        const candidateEmails = isManual
-            ? allEmails
-            : allEmails.filter(m => m && m.id && !processedBankEmails.includes(m.id));
-
-        const extractedTxs = candidateEmails
+        const extractedTxs = allEmails
             .map(mail => parseIsybankEmailFast(mail))
             .filter(Boolean);
 
         let addedCount = 0;
-        let enrichedCount = 0;
 
+        // Inserisce dal più vecchio al più recente controllando che l'emailId non sia già in mTransactions
         extractedTxs.reverse().forEach(tx => {
             const amt = roundCurrency(parseFloat(tx.amount));
             if (!amt || amt <= 0) return;
 
-            // Controlla se questo movimento esiste già tra le operazioni del PDF (stessa data, stesso tipo in/out e stesso importo al centesimo)
-            const existingMatch = (mTransactions || []).find(existing =>
-                existing.date === tx.date &&
-                existing.type === tx.type &&
-                Math.abs((parseFloat(existing.amount) || 0) - amt) < 0.01
+            const alreadyExists = (mTransactions || []).some(existing =>
+                (tx.emailId && existing.emailId === tx.emailId) ||
+                (existing.date === tx.date && existing.type === tx.type && Math.abs((parseFloat(existing.amount) || 0) - amt) < 0.01 && existing.desc === tx.desc)
             );
+            if (alreadyExists) return;
 
-            if (existingMatch) {
-                // Se nel PDF c'era solo "Accredito" generico e la mail dice "Accredito da KLAR*DMartinelli", arricchisce la descrizione!
-                if (existingMatch.desc.toLowerCase() === 'accredito' && tx.desc.length > existingMatch.desc.length) {
-                    existingMatch.desc = tx.desc;
-                    enrichedCount++;
-                }
-                return;
-            }
-
-            const newEntry = normalizeIsybankTxRecord({
-                id: 'mt_isy_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
-                date: tx.date || todayStr,
-                type: tx.type,
-                subType: tx.subType,
-                accounted: tx.accounted !== undefined ? tx.accounted : false,
-                amount: amt,
-                cat: tx.cat,
-                category: tx.cat,
-                desc: tx.desc
-            });
-
-            mTransactions.unshift(newEntry);
-            if (!mCategories.includes(newEntry.cat)) mCategories.push(newEntry.cat);
-
-            if (newEntry.type === 'in') {
+            if (tx.type === 'in') {
                 mBalance = roundCurrency(mBalance + amt);
+                if (typeof applyIncomeVaultRules === 'function') {
+                    applyIncomeVaultRules(amt);
+                }
+                mTransactions.push({
+                    id: 'mt_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                    emailId: tx.emailId,
+                    type: 'in',
+                    amount: amt,
+                    category: 'Entrata',
+                    desc: tx.desc || 'Accredito',
+                    date: tx.date || todayStr
+                });
             } else {
-                mBalance = roundCurrency(mBalance - amt);
+                if (typeof recordExpenseWithVaultCheck === 'function') {
+                    recordExpenseWithVaultCheck({
+                        amount: amt,
+                        category: tx.category || 'Generale',
+                        desc: tx.desc || 'Pagamento',
+                        dateStr: tx.date || todayStr,
+                        emailId: tx.emailId
+                    });
+                } else {
+                    const cat = tx.category || 'Generale';
+                    if (!mCategories.includes(cat)) mCategories.push(cat);
+                    mBalance = roundCurrency(mBalance - amt);
+                    mTransactions.push({
+                        id: 'mt_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+                        emailId: tx.emailId,
+                        type: 'out',
+                        amount: amt,
+                        category: cat,
+                        desc: tx.desc || 'Pagamento',
+                        date: tx.date || todayStr
+                    });
+                }
             }
             addedCount++;
         });
 
-        allEmails.forEach(m => {
-            if (m && m.id && !processedBankEmails.includes(m.id)) {
-                processedBankEmails.push(m.id);
-            }
-        });
-        localStorage.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
-
         saveMoneyData();
-        if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
+        if (typeof renderMoneyAllActivePanes === 'function') {
+            renderMoneyAllActivePanes();
+        } else if (typeof renderMoneyDashboard === 'function') {
+            renderMoneyDashboard();
+        }
         updateExternalBridgeSettingsUI();
 
         isBridgeSyncRunning = false;
         if (typeof showToast === 'function') {
-            if (addedCount > 0 || enrichedCount > 0) {
-                showToast(`[🏦 ISYBANK] +${addedCount} nuovi movimenti (${enrichedCount} aggiornati da mail)!`);
-            } else {
-                showToast(`[🏦 ISYBANK] Tutte le mail Isybank sono già allineate coi movimenti!`);
-            }
+            showToast(addedCount > 0
+                ? `[🏦 ISYBANK] Imported ${addedCount} transaction(s)!`
+                : `[🏦 ISYBANK] No new transactions to import`);
         }
         return true;
     } catch (err) {
