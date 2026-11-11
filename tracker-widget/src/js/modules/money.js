@@ -530,51 +530,111 @@ function renderMoneyAtomChart() {
 // ATOM 4: MONEY: TRANSACTIONS (#module-m-tx) — ZERO BOTTONI +IN/-OUT (3B)
 // ============================================================================
 
+let moneyTxFilterType = 'all'; // 'all' | 'in' | 'out'
+let moneyTxFilterCat = 'ALL';
+let moneyTxSearchQuery = '';
+
+function deleteMoneyTxItem(txId) {
+    const idx = (mTransactions || []).findIndex(t => String(t.id) === String(txId));
+    if (idx === -1) return;
+
+    const tx = mTransactions[idx];
+    const amt = roundCurrency(parseFloat(tx.amount) || 0);
+    if (tx.type === 'in') {
+        mBalance = roundCurrency(mBalance - amt);
+    } else {
+        mBalance = roundCurrency(mBalance + amt);
+    }
+
+    mTransactions.splice(idx, 1);
+    saveMoneyData();
+    if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
+    renderMoneyAtomTransactions();
+}
+
 function renderMoneyAtomTransactions() {
-    const root = document.getElementById('module-m-tx');
-    if (!root) return;
+    const mod = document.getElementById('module-m-tx');
+    if (!mod) return;
+    const body = mod.querySelector('.module-body-padded') || mod;
 
-    sortMoneyTransactionsInPlace();
+    // Ripara in automatico eventuali transazioni che hanno 'category' invece di 'cat'
+    (mTransactions || []).forEach(tx => {
+        if (!tx.cat && tx.category) tx.cat = tx.category;
+        if (!tx.category && tx.cat) tx.category = tx.cat;
+        if (!tx.desc && tx.title) tx.desc = tx.title;
+    });
 
-    const allFilterCats = ['ALL', ...Array.from(new Set([...mCategories, ...mVaults.map(v => v.name)]))];
-    const filterOptsHtml = allFilterCats.map(c => `<option value="${escapeHtml(c)}" ${mTxCategoryFilter === c ? 'selected' : ''}>${c === 'ALL' ? 'All Categories' : c}</option>`).join('');
+    const allCats = ['ALL', 'Income', ...new Set([...(mCategories || []), ...(mTransactions || []).map(t => t.cat || t.category || 'Generale')])];
 
-    root.innerHTML = `
-        <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
-            <div>
-                <span class="section-label">Transactions</span>
-                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// HISTORY</span>
+    const filtered = (mTransactions || []).filter(tx => {
+        if (!tx) return false;
+        const tType = tx.type === 'in' ? 'in' : 'out';
+        const tCat = tx.cat || tx.category || 'Generale';
+        const tDesc = (tx.desc || tx.title || '').toLowerCase();
+
+        if (moneyTxFilterType !== 'all' && tType !== moneyTxFilterType) return false;
+        if (moneyTxFilterCat !== 'ALL' && tCat !== moneyTxFilterCat) return false;
+        if (moneyTxSearchQuery && !tDesc.includes(moneyTxSearchQuery.toLowerCase()) && !tCat.toLowerCase().includes(moneyTxSearchQuery.toLowerCase())) {
+            return false;
+        }
+        return true;
+    });
+
+    const rowsHtml = filtered.length === 0
+        ? `<div class="empty-msg" style="padding:24px 0; text-align:center;">[ NO TRANSACTIONS FOUND ]</div>`
+        : filtered.map(tx => {
+            const isIn = tx.type === 'in';
+            const amt = roundCurrency(parseFloat(tx.amount) || 0).toFixed(2);
+            const cat = escapeHtml(tx.cat || tx.category || (isIn ? 'Income' : 'Generale'));
+            const desc = escapeHtml(tx.desc || tx.title || 'Transaction');
+            const dateStr = escapeHtml(tx.date || todayStr);
+            const sign = isIn ? '+' : '-';
+            const col = isIn ? 'var(--accent-green)' : 'var(--accent-red)';
+
+            return `
+                <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; padding:7px 8px; border-bottom:1px dotted var(--border-color); background:#070707;">
+                    <div style="display:flex; flex-direction:column; gap:2px; min-width:0; flex:1;">
+                        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                            <span style="font-size:0.65rem; color:var(--text-muted); font-family:monospace;">${dateStr}</span>
+                            <span style="font-size:0.62rem; padding:1px 5px; border:1px solid var(--border-color); color:var(--text-dim); text-transform:uppercase;">${cat}</span>
+                        </div>
+                        <div style="font-size:var(--font-xs); color:var(--text-main); font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${desc}</div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px; flex-shrink:0;">
+                        <span style="font-size:var(--font-sm); font-weight:bold; color:${col}; font-family:monospace;">${sign}€${amt}</span>
+                        <button type="button" class="icon-btn delete" style="font-size:0.7rem; padding:2px 5px;" onclick="deleteMoneyTxItem('${tx.id}')" title="Delete transaction">[x]</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    body.innerHTML = `
+        <div style="display:flex; flex-direction:column; height:100%; min-height:0; gap:8px;">
+            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+                <div>
+                    <span class="section-label">Transactions</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${(mTransactions || []).length} MOVEMENTS</span>
+                </div>
+                <button type="button" class="btn btn-sm" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
             </div>
-            <button type="button" class="btn btn-sm" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
+
+            <div style="display:flex; gap:6px; flex-wrap:wrap; flex-shrink:0;">
+                <input type="text" class="form-control form-control-sm" style="flex:1; min-width:110px;" placeholder="Search merchant..." value="${escapeHtml(moneyTxSearchQuery)}" oninput="moneyTxSearchQuery=this.value; renderMoneyAtomTransactions();">
+                <select class="form-control form-control-sm" style="width:auto; max-width:130px;" onchange="moneyTxFilterCat=this.value; renderMoneyAtomTransactions();">
+                    ${allCats.map(c => `<option value="${escapeHtml(c)}" ${c === moneyTxFilterCat ? 'selected' : ''}>${escapeHtml(c.toUpperCase())}</option>`).join('')}
+                </select>
+                <div style="display:flex; gap:2px;">
+                    <button type="button" class="btn btn-sm ${moneyTxFilterType === 'all' ? 'btn-primary' : ''}" onclick="moneyTxFilterType='all'; renderMoneyAtomTransactions();">ALL</button>
+                    <button type="button" class="btn btn-sm ${moneyTxFilterType === 'in' ? 'btn-primary' : ''}" onclick="moneyTxFilterType='in'; renderMoneyAtomTransactions();">+</button>
+                    <button type="button" class="btn btn-sm ${moneyTxFilterType === 'out' ? 'btn-primary' : ''}" onclick="moneyTxFilterType='out'; renderMoneyAtomTransactions();">-</button>
+                </div>
+            </div>
+
+            <div id="m-tx-list-mount" style="flex:1 1 0%; min-height:0; overflow-y:auto; border:1px solid var(--border-color); display:flex; flex-direction:column;">
+                ${rowsHtml}
+            </div>
         </div>
     `;
-
-    root.querySelector('#m-tx-cat-filter').onchange = (e) => {
-        mTxCategoryFilter = e.target.value;
-        renderMoneyAtomTransactions();
-    };
-
-    root.querySelectorAll('button[data-lim]').forEach(btn => {
-        btn.onclick = () => {
-            mTxLimit = parseInt(btn.dataset.lim, 10);
-            saveMoneyUiPrefs();
-            renderMoneyAtomTransactions();
-        };
-    });
-
-    const listEl = root.querySelector('#m-tx-atom-list');
-    const filteredTx = mTransactions.filter(t => {
-        if (mTxCategoryFilter === 'ALL') return true;
-        return (t.category || 'Generale').toLowerCase() === mTxCategoryFilter.toLowerCase();
-    });
-
-    if (filteredTx.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">[ NO TRANSACTIONS ]</div>';
-    } else {
-        filteredTx.slice(0, mTxLimit).forEach(t => {
-            listEl.appendChild(buildTransactionRowDom(t));
-        });
-    }
 }
 
 // ============================================================================
