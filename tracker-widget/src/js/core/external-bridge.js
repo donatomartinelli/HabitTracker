@@ -354,6 +354,7 @@ async function scanBankEmailsNow(isManual = true) {
                     date: dateStr,
                     type: 'in',
                     amount: amt,
+                    cat: 'Income',
                     category: 'Income',
                     desc: desc
                 });
@@ -365,6 +366,7 @@ async function scanBankEmailsNow(isManual = true) {
                     date: dateStr,
                     type: 'out',
                     amount: amt,
+                    cat: cat,
                     category: cat,
                     desc: desc
                 });
@@ -382,6 +384,9 @@ async function scanBankEmailsNow(isManual = true) {
 
         saveMoneyData();
         if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
+        if (typeof renderMoneyAtomTransactions === 'function') renderMoneyAtomTransactions();
+        if (typeof renderMoneyAtomSummary === 'function') renderMoneyAtomSummary();
+        if (typeof renderMoneyAtomChart === 'function') renderMoneyAtomChart();
         updateExternalBridgeSettingsUI();
 
         isBridgeSyncRunning = false;
