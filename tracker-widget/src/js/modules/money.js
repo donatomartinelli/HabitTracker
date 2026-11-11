@@ -540,22 +540,12 @@ function renderMoneyAtomTransactions() {
     const filterOptsHtml = allFilterCats.map(c => `<option value="${escapeHtml(c)}" ${mTxCategoryFilter === c ? 'selected' : ''}>${c === 'ALL' ? 'All Categories' : c}</option>`).join('');
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0; flex-wrap:wrap; gap:8px;">
-                <div>
-                    <span class="section-label">Transactions</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${mTxCategoryFilter.toUpperCase()}</span>
-                </div>
-                <div style="display:flex; gap:4px; align-items:center;">
-                    <select id="m-tx-cat-filter" class="form-control form-control-sm" style="width:125px; padding:2px 6px; font-size:0.65rem;">
-                        ${filterOptsHtml}
-                    </select>
-                    <button type="button" class="btn btn-sm ${mTxLimit === 5 ? 'btn-primary' : ''}" style="padding:2px 6px; font-size:0.65rem;" data-lim="5">[5]</button>
-                    <button type="button" class="btn btn-sm ${mTxLimit === 15 ? 'btn-primary' : ''}" style="padding:2px 6px; font-size:0.65rem;" data-lim="15">[15]</button>
-                    <button type="button" class="btn btn-sm ${mTxLimit >= 9999 ? 'btn-primary' : ''}" style="padding:2px 6px; font-size:0.65rem;" data-lim="9999">[ALL]</button>
-                </div>
+        <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+            <div>
+                <span class="section-label">Transactions</span>
+                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// HISTORY</span>
             </div>
-            <div id="m-tx-atom-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+            <button type="button" class="btn btn-sm" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
         </div>
     `;
 

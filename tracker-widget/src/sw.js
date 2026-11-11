@@ -26,7 +26,8 @@ const CORE_ASSETS = [
     './js/modules/uni.js',
     './js/modules/modals.js',
     './js/ai/gemini-agent.js',
-    './js/ai/terminal-ui.js'
+    './js/ai/terminal-ui.js',
+    './js/core/external-bridge.js'
 ];
 
 self.addEventListener('install', (event) => {

@@ -583,6 +583,24 @@ function initModalsHtml() {
                         </div>
                     </div>
 
+                    <div class="cfg-box" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--accent-gold);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Google/Apple Calendar &amp; Gmail Bank Bridge</span>
+                            <span id="bridge-settings-status" style="font-size: var(--font-xs); color: var(--text-dim);">[NOT CONFIGURED]</span>
+                        </div>
+
+                        <input type="text" id="bridge-webapp-url-inp" class="form-control form-control-sm" placeholder="Google Apps Script Web App URL (https://script.google.com/macros/s/.../exec)" onchange="saveExternalBridgeConfigFromUI()">
+
+                        <input type="text" id="bridge-icloud-ics-inp" class="form-control form-control-sm" placeholder="Optional Apple iCloud Calendar URL (webcal://...)" onchange="saveExternalBridgeConfigFromUI()">
+
+                        <input type="text" id="bridge-bank-query-inp" class="form-control form-control-sm" placeholder="Gmail Bank Query (e.g. newer_than:14d (isybank OR pagamento OR bonifico))" onchange="saveExternalBridgeConfigFromUI()">
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
+                            <button type="button" class="btn btn-sm" onclick="syncExternalCalendarsNow(true)">[📅 SYNC CALENDARS NOW]</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="scanBankEmailsNow(true)">[🏦 SCAN BANK EMAILS]</button>
+                        </div>
+                    </div>
+
                     <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Database JSON Backup</div>
                         <div style="display: flex; gap: 10px;">
