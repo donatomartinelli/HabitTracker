@@ -1,8 +1,8 @@
 // --- js/core/cloud-sync.js ---
 // Motore Cloud Sync Peer-to-Peer Simmetrico (PC <-> Tablet <-> Telefono)
+// - Su PC Tauri: rimuove eventuali vecchi Service Worker così non appare mai la schermata d'errore offline di Chromium
 // - Nessuna istanza ha priorità: vince sempre l'ultima modifica effettuata su qualsiasi dispositivo
 // - Rilevamento automatico basato sull'impronta reale dei dati (Fingerprint)
-// - Auto-Push (400ms) con coda garantita + Live Auto-Pull ogni 4 secondi
 
 const GIST_FILENAME = 'cortex_cloud_state.json';
 
@@ -10,7 +10,6 @@ let cloudGithubToken = (localStorage.getItem('cortex_gist_token') || '').trim();
 let cloudGistId = (localStorage.getItem('cortex_gist_id') || '').trim();
 let lastCloudSyncedUpdatedAt = parseInt(localStorage.getItem('cortex_last_cloud_ts') || '0', 10) || 0;
 
-// Pulisce subito eventuale vecchia coda bloccata dalle versioni precedenti
 localStorage.removeItem('cortex_pending_push_ts');
 
 let isBootSyncing = true;
@@ -24,10 +23,22 @@ let lastKnownDataFingerprint = '';
 let cloudSyncStatus = 'idle';
 
 function registerAndRefreshServiceWorker() {
+    const isDesktopTauri = Boolean(window.__TAURI__ || window.location.hostname.includes('tauri'));
+
+    // Su Desktop Tauri non serve il Service Worker e può causare il flash "Impossibile aprire pagina" di WebView2
+    if (isDesktopTauri) {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(regs => {
+                regs.forEach(r => r.unregister());
+            }).catch(() => {});
+        }
+        return;
+    }
+
     if ('caches' in window) {
         caches.keys().then(keys => {
             keys.forEach(k => {
-                if (k !== 'cortex-os-cache-v3') caches.delete(k);
+                if (k !== 'cortex-os-cache-v4') caches.delete(k);
             });
         }).catch(() => {});
     }
@@ -142,7 +153,6 @@ function buildFullCortexCloudPayload(timestampMs) {
     };
 }
 
-// Calcola l'impronta esatta dei dati per sapere con certezza matematica se qualcosa è stato modificato
 function getLocalDataFingerprint() {
     try {
         return JSON.stringify(buildFullCortexCloudPayload(0).data);
@@ -292,10 +302,6 @@ async function fetchRemoteGistPayload() {
     return JSON.parse(rawContent);
 }
 
-// ============================================================================
-// OPERAZIONI API: CREATE, PUSH & PULL SIMMETRICO
-// ============================================================================
-
 async function createNewSecretGistForCortex() {
     const tokInp = document.getElementById('cloud-gist-token-inp');
     if (tokInp && tokInp.value.trim()) {
@@ -375,7 +381,6 @@ async function pushStateToCloudGist(isManual = false) {
         return false;
     }
 
-    // Se è già in corso una chiamata di rete, prenota subito il push appena finisce (non perde mai una modifica!)
     if (isCloudSyncInProgress) {
         pendingPushAfterCurrentOp = true;
         return false;
@@ -413,7 +418,6 @@ async function pushStateToCloudGist(isManual = false) {
         lastCloudSyncedUpdatedAt = nowTs;
         localStorage.setItem('cortex_last_cloud_ts', String(nowTs));
 
-        // Controlla se l'utente ha fatto altre modifiche mentre il PATCH era in volo
         const currentFpNow = getLocalDataFingerprint();
         if (currentFpNow === pushedFp) {
             hasUnsentLocalEdit = false;
@@ -461,7 +465,6 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
         return false;
     }
 
-    // Se questo dispositivo ha una modifica appena fatta dall'utente, inviala prima!
     if (!forceOverwrite && hasUnsentLocalEdit) {
         return pushStateToCloudGist(isManual);
     }
@@ -477,7 +480,6 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
         const remotePayload = await fetchRemoteGistPayload();
         const remoteTs = parseInt(remotePayload.updatedAt || '0', 10) || 0;
 
-        // Se mentre scaricavamo il Gist l'utente ha toccato qualcosa su questo dispositivo, non sovrascrivere: fai vincere la modifica locale!
         if (!forceOverwrite && hasUnsentLocalEdit) {
             isBootSyncing = false;
             isCloudSyncInProgress = false;
@@ -487,7 +489,6 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
         const remoteFp = (remotePayload && remotePayload.data) ? JSON.stringify(remotePayload.data) : '';
         const localFp = getLocalDataFingerprint();
 
-        // Se il Cloud ha uno stato più recente (o diverso all'avvio / force pull), aggiorna subito questa istanza!
         if (forceOverwrite || remoteTs > lastCloudSyncedUpdatedAt || (isBootSyncing && remoteFp && remoteFp !== localFp)) {
             if (remoteFp && remoteFp !== localFp) {
                 applyFullCortexCloudPayload(remotePayload);
@@ -531,7 +532,6 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
     }
 }
 
-// Rileva se i dati locali sono effettivamente cambiati e avvia il Push verso gli altri dispositivi
 function checkAndQueueLocalChangeForCloud() {
     if (!isStorageHydrated || isBootSyncing || isApplyingCloudPull || isApplyingUndoRedo) return;
     if (!isCloudSyncConfigured()) return;
@@ -555,7 +555,7 @@ function checkAndQueueLocalChangeForCloud() {
         clearTimeout(cloudPushDebounceTimer);
     }
     cloudPushDebounceTimer = setTimeout(() => {
-        cloudPushDebounceTimer = null; // Fondamentale: sblocca il timer per i cicli successivi!
+        cloudPushDebounceTimer = null;
         pushStateToCloudGist(false);
     }, 400);
 }
@@ -575,10 +575,6 @@ function triggerManualCloudSync() {
         pullStateFromCloudGist(true, true);
     }
 }
-
-// ============================================================================
-// UI PANNELLO SETTINGS & MAGIC LINK
-// ============================================================================
 
 function saveCloudSyncCredentialsFromUI() {
     const tokInp = document.getElementById('cloud-gist-token-inp');
@@ -659,7 +655,6 @@ window.addEventListener('DOMContentLoaded', () => {
 
     updateCloudSyncSettingsUI();
 
-    // 1. All'apertura: scarica subito lo stato più recente dal Gist e blocca i falsi salvataggi di avvio
     setTimeout(() => {
         lastKnownDataFingerprint = getLocalDataFingerprint();
         if (isCloudSyncConfigured() && navigator.onLine) {
@@ -670,14 +665,12 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     }, 250);
 
-    // 2. Sentinella locale (ogni 1s): cattura qualsiasi modifica fatta in qualsiasi modulo anche se non passa da window.saveData
     setInterval(() => {
         if (!isBootSyncing && !isApplyingCloudPull) {
             checkAndQueueLocalChangeForCloud();
         }
     }, 1000);
 
-    // 3. Sentinella Cloud (ogni 4s): mantiene PC, Tablet e Telefono costantemente allineati in tempo reale
     setInterval(() => {
         if (document.visibilityState === 'visible' && isCloudSyncConfigured() && navigator.onLine && !isBootSyncing && !cloudPushDebounceTimer) {
             if (hasUnsentLocalEdit) {

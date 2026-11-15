@@ -181,6 +181,17 @@
     justify-content: center;
 }
 
+.mobile-cmd-trigger-btn {
+    display: none;
+}
+
+.ask-mobile-quick-btns {
+    display: none;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+}
+
 .ask-bar-container {
     width: 380px;
     background: #050505;
@@ -208,6 +219,7 @@
     transform: translate(-50%, 12vh);
     border-color: var(--text-main);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.96);
+    z-index: 2600;
 }
 
 .ask-input-row {
@@ -227,6 +239,7 @@
 
 .ask-bar-input {
     flex: 1;
+    min-width: 0;
     background: transparent;
     border: none;
     color: var(--text-main);
@@ -320,7 +333,7 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.82);
     backdrop-filter: blur(6px);
-    z-index: 2050;
+    z-index: 2550;
 }
 
 .ask-backdrop-overlay.show {
@@ -1158,8 +1171,20 @@ body.hud-mode:not(.hud-temp-expanded) #hud-tactical-pod {
     background: #050505;
 }
 
+/* Tab Day Planner su Desktop nascoste di default */
+.plan-mobile-edit-tabs {
+    display: none;
+}
+
+/* Evidenziazione card selezionata per Tap-to-Place su Mobile */
+.plan-draggable-card.mobile-tap-selected {
+    border-color: var(--accent-gold) !important;
+    background: rgba(176, 141, 67, 0.16) !important;
+    box-shadow: 0 0 0 1px var(--accent-gold);
+}
+
 /* ============================================================================
-   MODALITÀ MOBILE TOUCH v2 (ANTI-ZOOM iOS, GYM STEPPER, BOTTOM SHEETS & TOUCH ERGONOMICS)
+   MODALITÀ MOBILE TOUCH v3 (COMMAND BAR COMPATTA & TOP-ANCHORED, TAP-TO-PLACE PLANNER)
    ============================================================================ */
 
 body.mobile-view-mode {
@@ -1192,24 +1217,101 @@ body.mobile-view-mode .app-header {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
+    gap: 6px !important;
+    z-index: 2100 !important;
+}
+
+body.mobile-view-mode .header-left {
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
     gap: 8px !important;
-    z-index: 1000 !important;
+    overflow: hidden !important;
 }
 
 body.mobile-view-mode #global-clock {
     font-size: 0.72rem !important;
     white-space: nowrap !important;
+    flex-shrink: 0 !important;
 }
 
+body.mobile-view-mode .header-focus-pill {
+    padding: 2px 6px !important;
+    font-size: 0.65rem !important;
+    max-width: 165px !important;
+    overflow: hidden !important;
+}
+
+body.mobile-view-mode .header-focus-title {
+    max-width: 65px !important;
+}
+
+/* A riposo su Mobile, mostra un pulsante compatto [⌘ CMD] così l'orario e il timer a sinistra sono sempre liberi! */
 body.mobile-view-mode .header-ask-slot {
-    flex: 1 !important;
-    max-width: 175px !important;
-    height: 30px !important;
+    width: auto !important;
+    height: auto !important;
+    flex: 0 0 auto !important;
+}
+
+body.mobile-view-mode .mobile-cmd-trigger-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    padding: 4px 8px !important;
+    font-size: 0.68rem !important;
+    font-weight: bold !important;
+    border-color: var(--border-bright) !important;
+    background: #080808 !important;
 }
 
 body.mobile-view-mode .ask-bar-container:not(.expanded) {
-    width: 100% !important;
-    height: 30px !important;
+    display: none !important;
+}
+
+/* Quando premi [⌘ CMD] su Mobile, la barra compare ancorata in cima allo schermo, SEMPRE sopra la tastiera virtuale! */
+body.mobile-view-mode .ask-bar-container.expanded {
+    display: flex !important;
+    position: fixed !important;
+    top: 8px !important;
+    left: 50% !important;
+    width: 96vw !important;
+    max-width: 96vw !important;
+    max-height: 54dvh !important;
+    transform: translateX(-50%) !important;
+    z-index: 3200 !important;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.98) !important;
+}
+
+body.mobile-view-mode .ask-bar-container.expanded .ask-mobile-quick-btns {
+    display: flex !important;
+}
+
+body.mobile-view-mode .ask-mob-btn {
+    padding: 4px 7px !important;
+    font-size: 0.64rem !important;
+    min-height: 28px !important;
+}
+
+body.mobile-view-mode .ask-mob-close {
+    font-size: 0.95rem !important;
+    padding: 2px 6px !important;
+    color: var(--accent-red) !important;
+}
+
+body.mobile-view-mode .terminal-suggestions-list {
+    max-height: 28dvh !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+body.mobile-view-mode .suggestion-item {
+    padding: 10px 14px !important;
+}
+
+body.mobile-view-mode .ask-ai-answer {
+    max-height: 34dvh !important;
+}
+
+body.mobile-view-mode .staging-cmd-list {
+    max-height: 24dvh !important;
 }
 
 /* Impedisce a iOS Safari di zoomare tutta la pagina quando tocchi un input (<16px triggera lo zoom su iOS!) */
@@ -1250,8 +1352,8 @@ body.mobile-view-mode #btn-close-app {
 
 .mobile-date-quick-row .btn-sm {
     min-height: 30px !important;
-    padding: 4px 9px !important;
-    font-size: 0.7rem !important;
+    padding: 4px 8px !important;
+    font-size: 0.68rem !important;
 }
 
 .mobile-submod-pills {
@@ -1385,7 +1487,7 @@ body.mobile-view-mode .module-body-padded {
     color: var(--accent-gold);
 }
 
-/* Modali in stile Mobile Sheet (non escono mai dallo schermo quando si apre la tastiera iOS) */
+/* Modali in stile Mobile Sheet */
 body.mobile-view-mode .modal-overlay {
     align-items: flex-end !important;
     padding: 0 !important;
@@ -1421,7 +1523,6 @@ body.mobile-view-mode .settings-sidebar > div {
     overflow-x: auto !important;
 }
 
-/* Scorrimento orizzontale fluido per la matrice settimanale Diet su Mobile */
 body.mobile-view-mode #diet-week-table-mount {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -1431,7 +1532,6 @@ body.mobile-view-mode .diet-wrapper {
     min-width: 580px !important;
 }
 
-/* Colonne interne dei moduli sempre impilate in verticale su mobile */
 body.mobile-view-mode .daily-columns-wrap,
 body.mobile-view-mode .notes-browse-container,
 body.mobile-view-mode #gym-split-cards-row {
@@ -1455,19 +1555,59 @@ body.mobile-view-mode #module-uni-libretto .cfg-box div:last-child {
     font-size: 0.85rem !important;
 }
 
+/* DAY PLANNER SU MOBILE: TAB COMPATTA SOPRA & ISOLAMENTO SCROLL (overscroll-behavior: contain) */
+body.mobile-view-mode #module-plan .module-body-padded {
+    overflow: hidden !important;
+    padding-bottom: 8px !important;
+}
+
 body.mobile-view-mode #module-plan .module-body-padded > div:last-child {
     flex-direction: column !important;
+    gap: 8px !important;
 }
 
 body.mobile-view-mode #plan-mod-left-col {
     width: 100% !important;
-    max-height: 32vh !important;
+    max-height: 25dvh !important;
     border-right: none !important;
     border-bottom: 1px solid var(--border-bright) !important;
-    padding-bottom: 8px !important;
+    padding: 0 0 8px 0 !important;
+    overscroll-behavior: contain !important;
+    flex-shrink: 0 !important;
 }
 
-/* Bersagli touch generosi per il pollice: Checkbox 24x24px e righe Task più ariose */
+body.mobile-view-mode #plan-mod-timeline-scroll {
+    overscroll-behavior: contain !important;
+    touch-action: pan-y !important;
+}
+
+body.mobile-view-mode .plan-mobile-edit-tabs {
+    display: flex !important;
+    gap: 6px;
+    position: sticky;
+    top: 0;
+    background: #050505;
+    z-index: 20;
+    padding-bottom: 6px;
+    border-bottom: 1px dotted var(--border-color);
+}
+
+body.mobile-view-mode .plan-mobile-edit-tabs .btn {
+    flex: 1;
+    padding: 5px 4px !important;
+    font-size: 0.65rem !important;
+}
+
+body.mobile-view-mode .plan-mobile-edit-tabs .btn.active {
+    background: var(--text-main) !important;
+    color: #000000 !important;
+}
+
+body.mobile-view-mode .plan-edit-sec .sub-column-header {
+    display: none !important;
+}
+
+/* Bersagli touch generosi per il pollice */
 body.mobile-view-mode .task-item {
     padding: 8px 6px !important;
     gap: 10px !important;

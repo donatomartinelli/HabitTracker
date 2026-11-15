@@ -1,5 +1,5 @@
 // --- js/ai/terminal-ui.js ---
-// Controller Command Palette DSL + Automatic AI Natural Language Fallback -> Staging Area
+// Controller Command Palette DSL + Automatic AI Natural Language Fallback + Pulsanti Touch Rapidi Mobile ([TAB], [+STAGE], [RUN ↵])
 
 let toastTimeout;
 let commandHistory = [];
@@ -35,7 +35,7 @@ function openTerminal() {
         setTimeout(() => {
             input.focus();
             updateLivePreviewAndSuggestions();
-        }, 50);
+        }, 40);
     }
     historyIndex = commandHistory.length;
 }
@@ -65,6 +65,42 @@ function closeTerminal() {
         const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
         if (!anyModalOpen) setHudTemporaryExpansion(false);
     }
+}
+
+// Helper dedicati per i pulsanti rapidi Mobile ([TAB], [+STAGE], [RUN ↵])
+function triggerMobileTerminalTab() {
+    if (activeSuggestions.length > 0) {
+        applySuggestionAtIndex(selectedSuggestionIdx);
+    }
+}
+
+function triggerMobileTerminalStage() {
+    const termInput = document.getElementById('terminal-input');
+    if (!termInput) return;
+    const rawVal = termInput.value.trim();
+    if (!rawVal) return;
+
+    const matchedAliasMacro = (typeof customAliases !== 'undefined' && customAliases[rawVal.toLowerCase()])
+        ? customAliases[rawVal.toLowerCase()]
+        : null;
+
+    if (matchedAliasMacro) {
+        const aliasParts = matchedAliasMacro.split(';').map(s => s.trim()).filter(Boolean);
+        pushCommandsToStaging(aliasParts);
+    } else {
+        const parts = rawVal.split(';').map(s => s.trim()).filter(Boolean);
+        pushCommandsToStaging(parts);
+    }
+    termInput.value = '';
+    hideSuggestionsAndPreview();
+    termInput.focus();
+}
+
+function triggerMobileTerminalRun() {
+    const termInput = document.getElementById('terminal-input');
+    if (!termInput) return;
+    const enterEv = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+    termInput.dispatchEvent(enterEv);
 }
 
 function openShortcutsHelp() {
@@ -131,10 +167,13 @@ function updateLivePreviewAndSuggestions() {
             <span class="suggestion-cmd">${escapeHtml(item.display)}</span>
             <span class="suggestion-desc">${escapeHtml(item.desc)}</span>
         `;
-        row.onmousedown = (e) => {
+        const selectHandler = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             applySuggestionAtIndex(idx);
         };
+        row.onmousedown = selectHandler;
+        row.onclick = selectHandler;
         suggEl.appendChild(row);
     });
 }
@@ -278,7 +317,6 @@ function confirmStagingCommands() {
     }
 }
 
-// Traduce con Gemini una frase in linguaggio naturale e popola la Staging Area
 async function handleNaturalLanguageAiFallback(rawText, termInput) {
     if (typeof translateNaturalLanguageToDslWithGemini !== 'function') return;
 
@@ -441,10 +479,8 @@ window.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                // Verifica se è un comando DSL deterministico valido
                 const isDirectDsl = typeof isValidDslCommand === 'function' && isValidDslCommand(rawVal);
 
-                // Se NON è un comando DSL valido -> Invia automaticamente all'AI e popola la Staging Area (1A1)
                 if (!isDirectDsl) {
                     await handleNaturalLanguageAiFallback(rawVal, termInput);
                     return;
