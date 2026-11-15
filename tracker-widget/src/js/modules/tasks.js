@@ -1,19 +1,23 @@
 // --- js/modules/tasks.js ---
-// Atomic Module 2 (Tasks: Fixed, Flexible, Routines, To-Do) & Atomic Module 10 (Day Planner: Any Day >= Today, Transports Lock, Custom Mouse Drag & Resize)
+// Atomic Module 2 (Tasks: Fixed, Flexible, Routines, To-Do) & Atomic Module 10 (Day Planner: Any Day >= Today, Transports Lock, Custom Mouse Drag & Resize + Mobile Tap-to-Place)
 
 let deleteTargetType = '';
 let deleteTargetId = '';
 let tmwTimelineZoom = 46; // 46px per ora nella Timeline del Day Planner
 let planBuilderDateStr = ''; // Data attiva nel modulo Day Planner (sempre >= todayStr)
 
-// Stato per la modalità [EDIT] a monte in [TASKS ⚙] (Scelta 3A)
+// Stato per la modalità [EDIT] a monte in [TASKS ⚙]
 let isTasksManagerEditMode = false;
 let selectedManagerCats = new Set();
 let selectedManagerTasks = new Set();
 
-// Stato per il motore Custom Mouse Drag & Resize sulla Timeline del Day Planner (3A & 4B)
+// Stato per il motore Custom Mouse Drag & Resize sulla Timeline del Day Planner
 let planTimelineDragState = null;
 let planTimelineGhostEl = null;
+
+// Stato Mobile Ergonomics per Day Planner: Tap-to-Place & Tab Switcher
+let mobileSelectedPlanItemToPlace = null;
+let activeMobilePlanEditTab = 'flex'; // 'ghosts' | 'flex' | 'todo'
 
 function ensurePlanBuilderDateValid() {
     if (!planBuilderDateStr || planBuilderDateStr < todayStr) {
@@ -204,7 +208,7 @@ function toggleRoutineTimerMode() {
     const modeRadio = document.querySelector('input[name="rtn-timer-mode"]:checked');
     const isMeasured = modeRadio && modeRadio.value === 'measured';
     const grp = document.getElementById('rtn-timer-group');
-    if (grp) grp.style.display = isMeasured ? 'block' : 'none';
+    if (grp) grp.display = isMeasured ? 'block' : 'none';
 }
 
 function toggleRoutineDays() {
@@ -975,7 +979,7 @@ document.getElementById('medicineForm')?.addEventListener('submit', function(e) 
 });
 
 // ============================================================================
-// DEDICATED [TASKS ⚙] MANAGER: MODALITÀ [EDIT] A MONTE (3A), ROUTINES, MEDICINES
+// DEDICATED [TASKS ⚙] MANAGER: MODALITÀ [EDIT] A MONTE, ROUTINES, MEDICINES
 // ============================================================================
 
 function toggleTasksManagerEditMode(forceState = null) {
@@ -1376,13 +1380,13 @@ function renderTasks() {
             item.appendChild(left);
             eventGroup.appendChild(item);
 
-            item.classList.add('ev-edit-trigger'); item.style.cursor = 'pointer'; 
+            item.classList.add('ev-edit-trigger');
+            item.style.cursor = 'pointer';
             item.onclick = () => openEventQuickEditPopover(e.id, item);
         });
         schedFrag.appendChild(eventGroup);
     }
 
-    // Mostra in Fixed anche i Treni / Trasporti confermati nel Day Planner per questo giorno
     if (confirmedTransportsToday.length > 0) {
         hasSched = true;
         const trGroup = document.createElement('div');
@@ -1876,10 +1880,6 @@ document.getElementById('assignForm')?.addEventListener('submit', function(e) {
 });
 
 // ============================================================================
-// CONSISTENCY TRACKER & FOCUS LEDGER
-// ============================================================================
-
-// ============================================================================
 // SOTTO-MODULI STREAK: streak_grid (#module-streak-grid) & streak_ledger (#module-streak-ledger)
 // ============================================================================
 
@@ -1987,7 +1987,6 @@ function populateHabitGridCells(grid2DEl, strip1DEl, diffDays) {
     }
 }
 
-// SOTTO-MODULO 1: STREAK: HABIT GRID (#module-streak-grid)
 function renderStreakAtomGrid() {
     const root = document.getElementById('module-streak-grid');
     if (!root) return;
@@ -2016,7 +2015,6 @@ function renderStreakAtomGrid() {
     );
 }
 
-// SOTTO-MODULO 2: STREAK: FOCUS LEDGER (#module-streak-ledger)
 function renderStreakAtomLedger() {
     const root = document.getElementById('module-streak-ledger');
     if (!root) return;
@@ -2203,12 +2201,10 @@ function renderFocusLedger() {
     }
 }
 
-
 // ============================================================================
-// MODULO ATOMICO 10: DAY PLANNER (1A, 2B, 3A DA 15 MIN, 4B CUSTOM MOUSE DRAG & RESIZE)
+// MODULO ATOMICO 10: DAY PLANNER (CON MOBILE TAP-TO-PLACE E PROTEZIONE SCROLL)
 // ============================================================================
 
-// Compatibilità con scorciatoia P, comando DSL `plan` e vecchi alias: monta il modulo Day Planner
 function openPlanTomorrowModal() {
     closeModals();
     if (!planBuilderDateStr || planBuilderDateStr < todayStr) {
@@ -2228,6 +2224,9 @@ function toggleDayPlanMode(forceMode = null) {
     else if (forceMode === 'view' && cb) cb.checked = false;
 
     currentDayPlanMode = (cb && cb.checked) ? 'edit' : 'view';
+    if (currentDayPlanMode === 'view') {
+        mobileSelectedPlanItemToPlace = null;
+    }
     const leftCol = document.getElementById('plan-mod-left-col');
     if (leftCol) {
         leftCol.style.display = currentDayPlanMode === 'edit' ? 'flex' : 'none';
@@ -2260,7 +2259,6 @@ function togglePlanGhostLayer(refId) {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }
 
-// 2B. Fissa o sblocca un Treno / Ghost Layer nel piano del giorno selezionato
 function toggleConfirmTransportSlot(dateStr, refId, refTitle, color, startStr, endStr) {
     if (!Array.isArray(ephemeralData[dateStr])) {
         ephemeralData[dateStr] = [];
@@ -2300,13 +2298,11 @@ function toggleConfirmTransportSlot(dateStr, refId, refTitle, color, startStr, e
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }
 
-// Piazza un blocco (Flexible Task o To-Do da 15m) sulla Timeline del giorno `targetDateStr`
 function placeItemOnDayTimeline(payload, targetDateStr, startTimeStr) {
     if (!Array.isArray(ephemeralData[targetDateStr])) {
         ephemeralData[targetDateStr] = [];
     }
 
-    // Caso 1: To-Do dalla coda Unassigned -> La assegna a `targetDateStr` e la piazza a 15 minuti
     if (payload.sourceType === 'unassigned_todo') {
         const todoItem = generalTodos.find(x => x.id === payload.todoId);
         if (!todoItem) return;
@@ -2357,7 +2353,6 @@ function placeItemOnDayTimeline(payload, targetDateStr, startTimeStr) {
         return;
     }
 
-    // Caso 2: Task Flexible o To-Do già assegnata al giorno
     const t = templates.find(x => x.id === payload.templateId);
     if (!t) return;
 
@@ -2399,20 +2394,69 @@ function renderPlanTomorrowModal() {
     renderDayPlannerModule();
 }
 
+function ensureMobilePlanEditTabsExist(leftCol) {
+    if (!leftCol) return;
+    const isMob = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
+    let tabBar = document.getElementById('plan-mob-edit-tabs');
+
+    if (!isMob) {
+        if (tabBar) tabBar.style.display = 'none';
+        Array.from(leftCol.children).forEach(ch => {
+            if (ch.id !== 'plan-mob-edit-tabs' && ch.id !== 'plan-mob-place-banner') {
+                ch.style.display = 'block';
+            }
+        });
+        return;
+    }
+
+    if (!tabBar) {
+        tabBar = document.createElement('div');
+        tabBar.id = 'plan-mob-edit-tabs';
+        tabBar.style.cssText = 'display:flex; gap:6px; margin-bottom:4px; flex-shrink:0;';
+        leftCol.insertBefore(tabBar, leftCol.firstChild);
+    }
+
+    tabBar.style.display = 'flex';
+    tabBar.innerHTML = `
+        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'flex' ? 'btn-primary' : ''}" style="flex:1;" data-ptab="flex">FLEX TASKS</button>
+        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'todo' ? 'btn-primary' : ''}" style="flex:1;" data-ptab="todo">TO-DO</button>
+        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'ghosts' ? 'btn-primary' : ''}" style="flex:1;" data-ptab="ghosts">GHOSTS</button>
+    `;
+
+    tabBar.querySelectorAll('button[data-ptab]').forEach(btn => {
+        btn.onclick = () => {
+            activeMobilePlanEditTab = btn.dataset.ptab;
+            renderDayPlannerModule();
+        };
+    });
+
+    const trSec = document.getElementById('plan-mod-transports')?.parentElement;
+    const flSec = document.getElementById('plan-mod-available-blocks')?.parentElement;
+    const tdSec = document.getElementById('plan-mod-inbox')?.parentElement;
+
+    if (trSec) trSec.style.display = activeMobilePlanEditTab === 'ghosts' ? 'block' : 'none';
+    if (flSec) flSec.style.display = activeMobilePlanEditTab === 'flex' ? 'block' : 'none';
+    if (tdSec) tdSec.style.display = activeMobilePlanEditTab === 'todo' ? 'block' : 'none';
+}
+
 function renderDayPlannerModule() {
     const targetDate = ensurePlanBuilderDateValid();
     const dateLbl = document.getElementById('plan-mod-date-label');
     if (!dateLbl) return;
 
+    const isMob = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
     const dayNamesFull = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const targetDateObj = parseLocalDate(targetDate);
     const targetDayIdx = targetDateObj.getDay();
 
     dateLbl.textContent = `// ${targetDate}`;
 
+    const leftCol = document.getElementById('plan-mod-left-col');
+    ensureMobilePlanEditTabsExist(leftCol);
+
     const customBlocks = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
 
-    // 1. SEZIONE GHOST LAYERS (Banner compatto con Toggle + Click per Lockare)
+    // 1. SEZIONE GHOST LAYERS
     const trCont = document.getElementById('plan-mod-transports');
     if (trCont) {
         trCont.innerHTML = '';
@@ -2467,7 +2511,6 @@ function renderDayPlannerModule() {
                     chip.className = `btn btn-sm ${isConfirmed ? 'btn-primary' : ''}`;
                     chip.style.cssText = `padding: 1px 6px; font-size: 0.62rem; font-variant-numeric: tabular-nums; ${!isConfirmed ? 'border-style: dashed; opacity: 0.7;' : ''}`;
                     chip.textContent = `${isConfirmed ? '🔒 ' : ''}${tw.start}–${tw.end}`;
-                    chip.title = isConfirmed ? 'Click to unlock from day plan' : 'Click to lock in place on timeline';
                     chip.onclick = (e) => {
                         e.stopPropagation();
                         toggleConfirmTransportSlot(targetDate, ref.id, ref.title, ref.color, tw.start, tw.end);
@@ -2513,9 +2556,16 @@ function renderDayPlannerModule() {
 
                 totalCommittedMins += totalInstances * unitMins;
 
+                const isTapSelected = mobileSelectedPlanItemToPlace &&
+                    mobileSelectedPlanItemToPlace.templateId === t.id;
+
                 const row = document.createElement('div');
                 row.className = 'plan-draggable-card';
-                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); border-left: 3px solid ${t.color || '#fff'}; font-size: var(--font-xs); opacity: ${remainingBlocks > 0 ? '1' : '0.4'}; cursor: ${remainingBlocks > 0 ? 'grab' : 'default'}; user-select: none;`;
+                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.02)'}; border: 1px solid ${isTapSelected ? 'var(--text-main)' : 'var(--border-color)'}; border-left: 3px solid ${t.color || '#fff'}; font-size: var(--font-xs); opacity: ${remainingBlocks > 0 ? '1' : '0.4'}; cursor: ${remainingBlocks > 0 ? 'pointer' : 'default'}; user-select: none;`;
+
+                const rightHint = remainingBlocks <= 0
+                    ? '[PLACED]'
+                    : (isTapSelected ? '[TAP TIME BELOW ↓]' : (isMob ? '[TAP TO SELECT]' : '[:: DRAG]'));
 
                 row.innerHTML = `
                     <div style="flex: 1; min-width: 0;">
@@ -2526,18 +2576,34 @@ function renderDayPlannerModule() {
                             ${unitMins}m/block · <strong>${remainingBlocks}/${totalInstances} remaining</strong>
                         </div>
                     </div>
-                    <span style="font-size: 0.65rem; color: var(--text-dim); font-weight: bold;">${remainingBlocks > 0 ? '[:: DRAG]' : '[PLACED]'}</span>
+                    <span style="font-size: 0.65rem; color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; font-weight: bold;">${rightHint}</span>
                 `;
 
                 if (remainingBlocks > 0) {
-                    bindPlanTimelineDragSource(row, {
+                    const itemPayload = {
                         kind: 'new_item',
                         sourceType: 'flexible_task',
                         templateId: t.id,
                         title: t.title,
                         durationMins: unitMins,
                         color: t.color || '#ffffff'
-                    });
+                    };
+
+                    if (isMob) {
+                        row.onclick = () => {
+                            if (isTapSelected) {
+                                mobileSelectedPlanItemToPlace = null;
+                            } else {
+                                mobileSelectedPlanItemToPlace = itemPayload;
+                                if (typeof showToast === 'function') {
+                                    showToast(`[SELECTED] Now tap an hour on the timeline below to place "${t.title}"`);
+                                }
+                            }
+                            renderDayPlannerModule();
+                        };
+                    } else {
+                        bindPlanTimelineDragSource(row, itemPayload);
+                    }
                 }
 
                 availCont.appendChild(row);
@@ -2563,40 +2629,58 @@ function renderDayPlannerModule() {
             inboxCont.innerHTML = '<div class="empty-state" style="padding: 4px 0;">[ NO TO-DO IN QUEUE ]</div>';
         } else {
             assignedUnplacedTodos.forEach(t => {
+                const isTapSelected = mobileSelectedPlanItemToPlace && mobileSelectedPlanItemToPlace.templateId === t.id;
                 const row = document.createElement('div');
                 row.className = 'plan-draggable-card';
-                row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-bright); border-left: 3px solid #ffffff; font-size: var(--font-xs); cursor: grab; user-select: none;';
+                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isTapSelected ? 'var(--text-main)' : 'var(--border-bright)'}; border-left: 3px solid #ffffff; font-size: var(--font-xs); cursor: pointer; user-select: none;`;
                 row.innerHTML = `
                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><strong>[ASSIGNED]</strong> ${escapeHtml(t.title)}</span>
-                    <span style="font-size: 0.62rem; color: var(--text-dim); flex-shrink: 0; margin-left: 6px;">[:: 15m]</span>
+                    <span style="font-size: 0.62rem; color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: 15m]')}</span>
                 `;
-                bindPlanTimelineDragSource(row, {
+                const payload = {
                     kind: 'new_item',
                     sourceType: 'assigned_todo',
                     templateId: t.id,
                     title: t.title,
                     durationMins: 15,
                     color: '#ffffff'
-                });
+                };
+                if (isMob) {
+                    row.onclick = () => {
+                        mobileSelectedPlanItemToPlace = isTapSelected ? null : payload;
+                        renderDayPlannerModule();
+                    };
+                } else {
+                    bindPlanTimelineDragSource(row, payload);
+                }
                 inboxCont.appendChild(row);
             });
 
             generalTodos.forEach(item => {
+                const isTapSelected = mobileSelectedPlanItemToPlace && mobileSelectedPlanItemToPlace.todoId === item.id;
                 const row = document.createElement('div');
                 row.className = 'plan-draggable-card';
-                row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px dashed var(--border-color); font-size: var(--font-xs); cursor: grab; user-select: none;';
+                row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.02)'}; border: 1px ${isTapSelected ? 'solid var(--text-main)' : 'dashed var(--border-color)'}; font-size: var(--font-xs); cursor: pointer; user-select: none;`;
                 row.innerHTML = `
                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.title)}</span>
-                    <span style="font-size: 0.62rem; color: var(--text-dim); flex-shrink: 0; margin-left: 6px;">[:: DRAG 15m]</span>
+                    <span style="font-size: 0.62rem; color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: DRAG 15m]')}</span>
                 `;
-                bindPlanTimelineDragSource(row, {
+                const payload = {
                     kind: 'new_item',
                     sourceType: 'unassigned_todo',
                     todoId: item.id,
                     title: item.title,
                     durationMins: 15,
                     color: '#ffffff'
-                });
+                };
+                if (isMob) {
+                    row.onclick = () => {
+                        mobileSelectedPlanItemToPlace = isTapSelected ? null : payload;
+                        renderDayPlannerModule();
+                    };
+                } else {
+                    bindPlanTimelineDragSource(row, payload);
+                }
                 inboxCont.appendChild(row);
             });
         }
@@ -2606,7 +2690,7 @@ function renderDayPlannerModule() {
 }
 
 // ============================================================================
-// TIMELINE GIORNALIERA INTERATTIVA + CUSTOM MOUSE DRAG & RESIZE (3A & 4B)
+// TIMELINE GIORNALIERA INTERATTIVA + MOBILE TAP-TO-PLACE & SCROLL PROTECTION
 // ============================================================================
 
 function ensurePlanTimelineGhostEl() {
@@ -2626,7 +2710,7 @@ function bindPlanTimelineDragSource(el, payload) {
         e.stopPropagation();
 
         planTimelineDragState = {
-            mode: payload.kind, // 'new_item' | 'move_block' | 'resize_block'
+            mode: payload.kind,
             payload: payload,
             startX: e.clientX,
             startY: e.clientY,
@@ -2641,6 +2725,9 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     const labelsCol = document.getElementById('plan-mod-time-labels');
     const canvasCol = document.getElementById('plan-mod-day-canvas');
     if (!labelsCol || !canvasCol) return;
+
+    const isMob = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
+    const isInteractiveEdit = !isMob || (currentDayPlanMode === 'edit');
 
     const startHour = 6.5; // 06:30
     const totalHeight = (24 - startHour) * tmwTimelineZoom;
@@ -2670,6 +2757,24 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     canvasCol.innerHTML = '';
     canvasCol.style.height = `${totalHeight}px`;
 
+    // Su Mobile, se hai selezionato una task sopra (Tap-to-Place), toccando un punto della timeline la piazzi lì!
+    canvasCol.onclick = (e) => {
+        if (!mobileSelectedPlanItemToPlace) return;
+        if (e.target.closest('button')) return;
+        const rect = canvasCol.getBoundingClientRect();
+        const relY = Math.max(0, Math.min(totalHeight, e.clientY - rect.top));
+        const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
+        const snappedMins = Math.max(390, Math.min(24 * 60 - 15, Math.round(rawMins / 15) * 15));
+        const timeStr = minutesToTimeStr(snappedMins);
+
+        const toPlace = mobileSelectedPlanItemToPlace;
+        mobileSelectedPlanItemToPlace = null;
+        placeItemOnDayTimeline(toPlace, targetDate, timeStr);
+        if (typeof showToast === 'function') {
+            showToast(`[PLACED] "${toPlace.title}" at ${timeStr}`);
+        }
+    };
+
     if (typeof appendDayPhaseBandsToColumn === 'function') {
         appendDayPhaseBandsToColumn(canvasCol, tmwTimelineZoom, true);
     }
@@ -2683,7 +2788,6 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         canvasCol.appendChild(line);
     }
 
-    // Indicatore visivo di posizionamento durante il trascinamento col mouse
     const dropIndicator = document.createElement('div');
     dropIndicator.id = 'plan-mod-drop-indicator';
     dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border: 1px dashed var(--text-main); background: rgba(255,255,255,0.12); z-index: 80; pointer-events:none;';
@@ -2696,7 +2800,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     const dayIdx = parseLocalDate(targetDate).getDay();
     const customBlocks = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
 
-    // 1. Ghost Layers sulla Timeline: visibili SOLO se il toggle del layer è attivo (refToggles[ref.id])
+    // 1. Ghost Layers sulla Timeline
     referenceLayers.forEach(ref => {
         if (!ref || !refToggles[ref.id] || !Array.isArray(ref.timeWindows)) return;
         ref.timeWindows.forEach(tw => {
@@ -2710,24 +2814,24 @@ function renderDayPlannerTimelineCanvas(targetDate) {
                 const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 12);
                 const block = document.createElement('div');
                 block.className = 'block-absolute block-ref';
-                block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: pointer; display: flex; justify-content: space-between; align-items: center; z-index: 3; transition: opacity 0.15s, border-color 0.15s;`;
-                block.title = 'Click to lock this Ghost Layer slot in place';
-                block.onmouseenter = () => { block.style.opacity = '0.95'; block.style.borderColor = 'var(--text-main)'; };
-                block.onmouseleave = () => { block.style.opacity = '0.55'; block.style.borderColor = ref.color || '#555'; };
+                block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: ${isInteractiveEdit ? 'pointer' : 'default'}; display: flex; justify-content: space-between; align-items: center; z-index: 3;`;
                 block.innerHTML = `
                     <span style="font-size:0.62rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
-                    <span style="font-size:0.58rem; color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>
+                    ${isInteractiveEdit ? '<span style="font-size:0.58rem; color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>' : ''}
                 `;
-                block.onclick = (e) => {
-                    e.stopPropagation();
-                    toggleConfirmTransportSlot(targetDate, ref.id, ref.title, ref.color, tw.start, tw.end);
-                };
+                if (isInteractiveEdit) {
+                    block.onclick = (e) => {
+                        if (mobileSelectedPlanItemToPlace) return;
+                        e.stopPropagation();
+                        toggleConfirmTransportSlot(targetDate, ref.id, ref.title, ref.color, tw.start, tw.end);
+                    };
+                }
                 canvasCol.appendChild(block);
             }
         });
     });
 
-    // 2. Raccoglie tutti i blocchi attivi (Fixed Tasks, Timed Routines, Ephemeral/Transports, Events)
+    // 2. Blocchi attivi sulla Timeline
     const timelineBlocks = [];
 
     templates.forEach(t => {
@@ -2820,7 +2924,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         const widthPct = 100 / (b.totalCols || 1);
         const leftPct = (b.colIndex || 0) * widthPct;
         const isSmall = b.height < 18;
-        const isDraggableKind = (b.kind === 'ephemeral_task' || b.kind === 'fixed_task' || b.kind === 'event');
+        const isDraggableKind = isInteractiveEdit && (b.kind === 'ephemeral_task' || b.kind === 'fixed_task' || b.kind === 'event');
 
         block.style.cssText = `
             top: ${b.top}px;
@@ -2861,7 +2965,9 @@ function renderDayPlannerTimelineCanvas(targetDate) {
             }
         };
 
-        block.oncontextmenu = removeBlockAction;
+        if (isInteractiveEdit) {
+            block.oncontextmenu = removeBlockAction;
+        }
 
         if (isDraggableKind) {
             const delBtn = document.createElement('button');
@@ -2871,7 +2977,6 @@ function renderDayPlannerTimelineCanvas(targetDate) {
             delBtn.onclick = removeBlockAction;
             block.appendChild(delBtn);
 
-            // Trascinamento per spostare d'orario sia Ephemeral, sia Fixed Tasks, sia Single Events!
             bindPlanTimelineDragSource(block, {
                 kind: 'move_block',
                 blockKind: b.kind,
@@ -2883,7 +2988,6 @@ function renderDayPlannerTimelineCanvas(targetDate) {
                 durationMins: b.minutes
             });
 
-            // Maniglia inferiore per allungare / accorciare la durata
             const resizeHandle = document.createElement('div');
             resizeHandle.className = 'plan-block-resize-handle';
             resizeHandle.addEventListener('mousedown', (e) => {
@@ -2921,12 +3025,11 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     }
 }
 
-// Listener globali per il motore Custom Mouse Drag & Resize sulla Timeline del Day Planner
 window.addEventListener('mousemove', (e) => {
     if (!planTimelineDragState) return;
 
     const dist = Math.hypot(e.clientX - planTimelineDragState.startX, e.clientY - planTimelineDragState.startY);
-    if (!planTimelineDragState.isDragging && dist > 5) {
+    if (!planTimelineDragState.isDragging && dist > 6) {
         planTimelineDragState.isDragging = true;
         if (planTimelineDragState.mode !== 'resize_block') {
             const ghost = ensurePlanTimelineGhostEl();
@@ -3010,7 +3113,6 @@ window.addEventListener('mouseup', () => {
     if (!Array.isArray(ephemeralData[targetDate])) ephemeralData[targetDate] = [];
     const list = ephemeralData[targetDate];
 
-    // 1. RESIZE (Ephemeral, Fixed Task o Single Event)
     if (state.mode === 'resize_block' && state.currentDurationMins >= 5) {
         const p = state.payload;
         const startMins = timeToMinutes(p.startTimeStr);
@@ -3049,7 +3151,6 @@ window.addEventListener('mouseup', () => {
         return;
     }
 
-    // 2. MOVE (Ephemeral, Fixed Task o Single Event)
     if (state.mode === 'move_block' && state.currentSnappedTime) {
         const p = state.payload;
         const dur = p.durationMins || 15;
@@ -3071,7 +3172,6 @@ window.addEventListener('mouseup', () => {
                 ev.end = newEndStr;
             }
         } else if (p.blockKind === 'fixed_task') {
-            // Nasconde lo slot standard per questo giorno e crea l'override col nuovo orario
             plannerExceptions[`${p.blockId}_${targetDate}_${p.origStart}`] = true;
             list.push({
                 id: 'eb_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
@@ -3094,7 +3194,6 @@ window.addEventListener('mouseup', () => {
         return;
     }
 
-    // 3. NEW ITEM DRAGGED FROM LEFT COLUMN
     if (state.mode === 'new_item' && state.currentSnappedTime) {
         placeItemOnDayTimeline(state.payload, targetDate, state.currentSnappedTime);
     }

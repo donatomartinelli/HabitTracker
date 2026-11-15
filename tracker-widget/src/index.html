@@ -56,9 +56,17 @@
 
         <!-- CONTENITORE BARRA DSL NELL'HEADER -->
         <div id="header-ask-slot" class="header-ask-slot">
+            <button type="button" id="mobile-cmd-trigger-btn" class="btn btn-sm mobile-cmd-trigger-btn" onclick="openTerminal()">[⌘ CMD]</button>
+
             <div id="ask-bar-container" class="ask-bar-container" onclick="if(!isAskBarExpanded) openTerminal()">
                 <div class="ask-input-row">
                     <input type="text" id="terminal-input" class="ask-bar-input" placeholder="Command..." autocomplete="off">
+                    <div class="ask-mobile-quick-btns">
+                        <button type="button" class="btn btn-sm ask-mob-btn" onmousedown="event.preventDefault(); triggerMobileTerminalTab()" ontouchend="event.preventDefault(); triggerMobileTerminalTab()">[TAB]</button>
+                        <button type="button" class="btn btn-sm ask-mob-btn" onmousedown="event.preventDefault(); triggerMobileTerminalStage()" ontouchend="event.preventDefault(); triggerMobileTerminalStage()">[+STAGE]</button>
+                        <button type="button" class="btn btn-primary btn-sm ask-mob-btn" onmousedown="event.preventDefault(); triggerMobileTerminalRun()" ontouchend="event.preventDefault(); triggerMobileTerminalRun()">[RUN ↵]</button>
+                        <button type="button" class="icon-btn ask-mob-close" onmousedown="event.preventDefault(); closeTerminal()" ontouchend="event.preventDefault(); closeTerminal()">[×]</button>
+                    </div>
                 </div>
 
                 <div id="terminal-live-preview" class="terminal-live-preview" style="display: none;"></div>
@@ -82,7 +90,7 @@
         </div>
 
         <div class="header-right">
-            <button id="btn-toggle-mobile-mode" class="icon-btn win-ctrl-btn" onclick="toggleMobileViewMode()">[🖥]</button>
+            <button id="btn-toggle-mobile-mode" class="icon-btn win-ctrl-btn" onclick="toggleMobileViewMode()">[DESK]</button>
             <button id="btn-cloud-sync-hdr" class="icon-btn win-ctrl-btn" onclick="triggerManualCloudSync()">[☁]</button>
             <button id="btn-settings-app" class="icon-btn win-ctrl-btn" onclick="openSettingsModal()">[⚙]</button>
             <button id="btn-minimize-app" class="icon-btn win-ctrl-btn">[-]</button>
@@ -147,7 +155,9 @@
                 <button type="button" id="mob-date-Display-btn" class="btn btn-sm btn-primary" onclick="jumpToDate(todayStr)">TODAY</button>
                 <button type="button" class="btn btn-sm" onclick="shiftSelectedDate(1)">[&gt;]</button>
             </div>
-            <div style="display: flex; gap: 6px; align-items: center;">
+            <div style="display: flex; gap: 4px; align-items: center;">
+                <button type="button" id="mob-undo-btn" class="btn btn-sm" onclick="performGlobalUndo()" title="Undo (Ctrl+Z)">[↶]</button>
+                <button type="button" id="mob-redo-btn" class="btn btn-sm" onclick="performGlobalRedo()" title="Redo (Ctrl+Y)">[↷]</button>
                 <button type="button" class="btn btn-sm btn-notes-mic-rec" onclick="toggleLiveMicRecording()">[● REC]</button>
                 <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+NOTE]</button>
             </div>
@@ -239,7 +249,6 @@
             </div>
         </div>
 
-        <!-- 3. NOTES -->
         <!-- 3. NOTES & I SUOI 3 SOTTO-MODULI ATOMICI (notes_write, notes_browse, notes_graph) -->
         <div id="module-notes" class="module-container"></div>
         <div id="module-notes-write" class="module-container"></div>
@@ -375,7 +384,8 @@
                         <span id="plan-mod-date-label" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
                     </div>
 
-                    <div style="display: flex; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span id="plan-mobile-place-hint" style="display: none; font-size: 0.65rem; color: var(--accent-gold); font-weight: bold;"></span>
                         <label class="notes-toggle">
                             <input type="checkbox" id="day-plan-mode-checkbox" onchange="toggleDayPlanMode()">
                             <span class="notes-slider">
@@ -387,13 +397,20 @@
                 </div>
 
                 <div style="display: flex; gap: 16px; flex: 1; min-height: 0; overflow: hidden;">
-                    <div id="plan-mod-left-col" style="display: none; width: 42%; min-width: 220px; flex-direction: column; gap: 14px; overflow-y: auto; padding-right: 6px; border-right: 1px solid var(--border-color);">
-                        <div>
+                    <div id="plan-mod-left-col" style="display: none; width: 42%; min-width: 220px; flex-direction: column; gap: 10px; overflow-y: auto; padding-right: 6px; border-right: 1px solid var(--border-color);">
+                        <!-- TAB SELETTORE MOBILE PER NON ACCAVALLARE LO SCROLL -->
+                        <div id="plan-mobile-edit-tabs" class="plan-mobile-edit-tabs">
+                            <button type="button" class="btn btn-sm active" data-ptab="flex" onclick="switchPlanMobileEditTab('flex')">[FLEX TASKS]</button>
+                            <button type="button" class="btn btn-sm" data-ptab="todo" onclick="switchPlanMobileEditTab('todo')">[TO-DO]</button>
+                            <button type="button" class="btn btn-sm" data-ptab="ghosts" onclick="switchPlanMobileEditTab('ghosts')">[GHOSTS]</button>
+                        </div>
+
+                        <div id="plan-sec-ghosts" class="plan-edit-sec">
                             <div class="sub-column-header">1. Ghost Layers</div>
                             <div id="plan-mod-transports" style="display: flex; flex-direction: column; gap: 4px;"></div>
                         </div>
 
-                        <div>
+                        <div id="plan-sec-flex" class="plan-edit-sec">
                             <div class="sub-column-header" style="display: flex; justify-content: space-between; align-items: center;">
                                 <span>2. Flexible Tasks</span>
                                 <span id="plan-mod-workload-badge" style="color: var(--text-main); font-weight: bold; font-size: 0.65rem;">0.0H</span>
@@ -401,7 +418,7 @@
                             <div id="plan-mod-available-blocks" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
 
-                        <div>
+                        <div id="plan-sec-todo" class="plan-edit-sec">
                             <div class="sub-column-header">3. To-Do</div>
                             <div id="plan-mod-inbox" style="display: flex; flex-direction: column; gap: 6px;"></div>
                         </div>
@@ -424,8 +441,7 @@
     <div id="planner-tooltip" class="planner-tooltip"></div>
     <div id="terminal-toast" class="terminal-toast"></div>
 
-    <!-- Script Modulari -->
-    <script src="js/core/state.js"></script>
+    <!-- Script Modulari (Rimosso il duplicato di state.js) -->
     <script src="js/core/state.js"></script>
     <script src="js/core/cloud-sync.js"></script>
     <script src="js/core/workspace.js"></script>

@@ -1,8 +1,8 @@
 // --- js/core/mobile-touch.js ---
-// Mobile & Tablet Touch Engine v2:
-// 1. Vertical Flex Layout Stack & Saved Views Mobile Adapter
-// 2. Gym Quick-Stepper Bar ([-2.5] [-1] [+1] [+2.5] [= PREV] [✓]) quando tocchi un peso in palestra
-// 3. Swipe Orizzontale col pollice per cambiare sottomodulo + Numeric Keypad automatico
+// Mobile & Tablet Touch Engine v3:
+// 1. Encoding UTF-8 Pulito ([MOB]/[DESK], TODAY ·, [DONE ✓]) + Pulsanti Undo/Redo nella Top Bar
+// 2. Day Planner Mobile Safe-Scroll: in VIEW non sposta/cancella mai nulla per errore; in EDIT usa Long-Press (350ms) o Tap-to-Place
+// 3. Gym Quick-Stepper Bar ([-2.5] [-1] [+1] [+2.5] [= PREV] [DONE ✓]) & Swipe Orizzontale sottomoduli
 
 let isMobileViewMode = localStorage.getItem('cortex_force_mobile') === 'true' ||
     (localStorage.getItem('cortex_force_mobile') !== 'false' && window.innerWidth <= 768);
@@ -37,13 +37,26 @@ function normalizeToSingleLeafModuleKey(modKey) {
     return mapDefaults[modKey] || modKey;
 }
 
-// Aggiunge inputmode="decimal" a tutti i campi numerici per aprire il tastierino numerico rapido su iPhone/Android
 function enhanceMobileInputsErgonomics() {
     document.querySelectorAll('input[type="number"], .gym-input').forEach(inp => {
         if (!inp.getAttribute('inputmode')) {
             inp.setAttribute('inputmode', 'decimal');
         }
     });
+}
+
+function updateMobileUndoRedoButtonsUI() {
+    const undoBtn = document.getElementById('mob-undo-btn');
+    const redoBtn = document.getElementById('mob-redo-btn');
+    const hasUndo = typeof undoStack !== 'undefined' && undoStack.length > 0;
+    const hasRedo = typeof redoStack !== 'undefined' && redoStack.length > 0;
+
+    if (undoBtn) {
+        undoBtn.style.opacity = hasUndo ? '1' : '0.35';
+    }
+    if (redoBtn) {
+        redoBtn.style.opacity = hasRedo ? '1' : '0.35';
+    }
 }
 
 function toggleMobileViewMode(forceState = null) {
@@ -97,7 +110,6 @@ function mountMobileSingleModule(modKey, keepPresetStrip = false) {
     setTimeout(enhanceMobileInputsErgonomics, 40);
 }
 
-// Restituisce l'elenco di pillole (sottomoduli o moduli della Saved View) attualmente disponibili per lo swipe
 function getCurrentMobileCycleList() {
     if (Array.isArray(activeMobilePresetMods) && activeMobilePresetMods.length > 1) {
         return { list: activeMobilePresetMods, isPreset: true };
@@ -114,7 +126,7 @@ function syncMobileModeUI() {
 
     const switchBtn = document.getElementById('btn-toggle-mobile-mode');
     if (switchBtn) {
-        switchBtn.textContent = isMobileViewMode ? '[📱]' : '[🖥]';
+        switchBtn.textContent = isMobileViewMode ? '[MOB]' : '[DESK]';
         switchBtn.style.color = isMobileViewMode ? 'var(--accent-green)' : 'var(--text-dim)';
     }
 
@@ -130,6 +142,8 @@ function syncMobileModeUI() {
 
     topStrip.style.display = 'flex';
     bottomBar.style.display = 'flex';
+
+    updateMobileUndoRedoButtonsUI();
 
     const dateBtn = document.getElementById('mob-date-Display-btn');
     if (dateBtn && typeof selectedDateStr !== 'undefined') {
@@ -215,7 +229,7 @@ function ensureMobileGymStepperBar() {
     bar.addEventListener('pointerdown', (e) => {
         const btn = e.target.closest('button[data-step]');
         if (!btn || !activeFocusedGymInput) return;
-        e.preventDefault(); // Mantiene il focus sull'input senza far chiudere/riaprire la tastiera
+        e.preventDefault();
 
         const action = btn.dataset.step;
         if (action === 'done') {
@@ -263,15 +277,15 @@ function hideMobileGymQuickStepper() {
 }
 
 // ============================================================================
-// PONTE GESTI TOUCH: SWIPE SOTTOMODULI, LONG-PRESS & TOUCH-DRAG
+// PONTE GESTI TOUCH: SWIPE SOTTOMODULI, LONG-PRESS & SAFE TIMELINE DRAG
 // ============================================================================
 
 function initMobileTouchGesturesBridge() {
     let longPressTimer = null;
+    let touchDragHoldTimer = null;
     let touchStartPos = { x: 0, y: 0, time: 0 };
     let activeTouchDragTarget = null;
 
-    // Focus listener per far comparire la barra rapida dei pesi quando tocchi un box kg in palestra
     document.addEventListener('focusin', (e) => {
         if (isMobileViewMode && e.target && e.target.classList && e.target.classList.contains('gym-input')) {
             showMobileGymQuickStepper(e.target);
@@ -288,16 +302,15 @@ function initMobileTouchGesturesBridge() {
         }
     });
 
+    // Fix tap su suggerimenti della barra comando (.suggestion-item)
     const sugBox = document.getElementById('terminal-suggestions');
     if (sugBox) {
         sugBox.addEventListener('touchend', (e) => {
-            const item = e.target.closest('.terminal-suggestion-item');
+            const item = e.target.closest('.suggestion-item');
             if (item && typeof item.onclick === 'function') {
                 e.preventDefault();
                 e.stopPropagation();
                 item.onclick(e);
-                const inp = document.getElementById('terminal-input');
-                if (inp) inp.blur();
             }
         }, { passive: false });
     }
@@ -308,9 +321,11 @@ function initMobileTouchGesturesBridge() {
         touchStartPos = { x: touch.clientX, y: touch.clientY, time: Date.now() };
 
         const target = e.target;
-        const actionableEl = target.closest('.note-card, .block-absolute, .notes-graph-canvas');
 
-        if (actionableEl) {
+        // 1. Long-Press (450ms) per menu contestuale su Note Cards o Grafo (NON sui blocchi della timeline quando sei in VIEW)
+        const isPlanEditActive = typeof currentDayPlanMode !== 'undefined' && currentDayPlanMode === 'edit';
+        const noteOrGraphEl = target.closest('.note-card, .notes-graph-canvas');
+        if (noteOrGraphEl) {
             clearTimeout(longPressTimer);
             longPressTimer = setTimeout(() => {
                 if (navigator.vibrate) navigator.vibrate(20);
@@ -323,12 +338,13 @@ function initMobileTouchGesturesBridge() {
                     button: 2
                 });
                 target.dispatchEvent(ctxEv);
-            }, 420);
+            }, 450);
         }
 
-        const draggableEl = target.closest('.plan-draggable-card, .plan-block-resize-handle, #plan-mod-day-canvas .block-absolute, .notes-graph-canvas');
-        if (draggableEl && !target.closest('button, input, select, textarea')) {
-            activeTouchDragTarget = draggableEl;
+        // 2. Canvas Grafo Note: trascinamento immediato
+        const graphCanvas = target.closest('.notes-graph-canvas');
+        if (graphCanvas) {
+            activeTouchDragTarget = graphCanvas;
             const downEv = new MouseEvent('mousedown', {
                 bubbles: true,
                 cancelable: true,
@@ -337,7 +353,32 @@ function initMobileTouchGesturesBridge() {
                 clientY: touch.clientY,
                 button: 0
             });
-            draggableEl.dispatchEvent(downEv);
+            graphCanvas.dispatchEvent(downEv);
+            return;
+        }
+
+        // 3. Blocchi e Maniglie sulla Timeline del Day Planner:
+        // Attivi SOLO in modalità EDIT e SOLO dopo un Long-Press di 320ms (così lo scroll col pollice non sposta MAI i blocchi per errore!)
+        if (isPlanEditActive && !target.closest('button, input, select, textarea')) {
+            const resizeHandle = target.closest('.plan-block-resize-handle');
+            const timelineBlock = target.closest('#plan-mod-day-canvas .block-absolute:not(.block-ref)');
+
+            if (resizeHandle) {
+                activeTouchDragTarget = resizeHandle;
+                if (navigator.vibrate) navigator.vibrate(15);
+                resizeHandle.dispatchEvent(new MouseEvent('mousedown', {
+                    bubbles: true, cancelable: true, view: window, clientX: touch.clientX, clientY: touch.clientY, button: 0
+                }));
+            } else if (timelineBlock) {
+                clearTimeout(touchDragHoldTimer);
+                touchDragHoldTimer = setTimeout(() => {
+                    activeTouchDragTarget = timelineBlock;
+                    if (navigator.vibrate) navigator.vibrate(25);
+                    timelineBlock.dispatchEvent(new MouseEvent('mousedown', {
+                        bubbles: true, cancelable: true, view: window, clientX: touch.clientX, clientY: touch.clientY, button: 0
+                    }));
+                }, 320);
+            }
         }
     }, { passive: true });
 
@@ -346,6 +387,7 @@ function initMobileTouchGesturesBridge() {
         const touch = e.touches[0];
         if (Math.hypot(touch.clientX - touchStartPos.x, touch.clientY - touchStartPos.y) > 10) {
             clearTimeout(longPressTimer);
+            clearTimeout(touchDragHoldTimer);
         }
 
         if (activeTouchDragTarget) {
@@ -368,6 +410,7 @@ function initMobileTouchGesturesBridge() {
 
     const endTouchHandler = (e) => {
         clearTimeout(longPressTimer);
+        clearTimeout(touchDragHoldTimer);
         const touch = (e.changedTouches && e.changedTouches[0]) || null;
 
         if (activeTouchDragTarget) {
@@ -384,8 +427,8 @@ function initMobileTouchGesturesBridge() {
             return;
         }
 
-        // Swipe Orizzontale Rapido per cambiare Sotto-Modulo col pollice (es. WRITE <-> BROWSE <-> GRAPH)
-        if (isMobileViewMode && touch && e.target && !e.target.closest('input, textarea, select, .notes-graph-canvas, .diet-wrapper, #planner-scroll')) {
+        // Swipe Orizzontale Rapido per cambiare Sotto-Modulo col pollice
+        if (isMobileViewMode && touch && e.target && !e.target.closest('input, textarea, select, .notes-graph-canvas, .diet-wrapper, #planner-scroll, #m-chart-box')) {
             const dx = touch.clientX - touchStartPos.x;
             const dy = touch.clientY - touchStartPos.y;
             const dt = Date.now() - touchStartPos.time;
@@ -413,6 +456,18 @@ function initMobileTouchGesturesBridge() {
 
 window.addEventListener('DOMContentLoaded', () => {
     initMobileTouchGesturesBridge();
+
+    // Aggiorna lo stato dei bottoni Undo/Redo ad ogni salvataggio o azione Undo/Redo
+    ['saveData', 'saveMoneyData', 'saveHealthData', 'saveUniData', 'performGlobalUndo', 'performGlobalRedo'].forEach(fnName => {
+        const orig = window[fnName];
+        if (typeof orig === 'function') {
+            window[fnName] = function(...args) {
+                const res = orig.apply(this, args);
+                setTimeout(updateMobileUndoRedoButtonsUI, 20);
+                return res;
+            };
+        }
+    });
 
     if (typeof window.setModulesView === 'function' && !window.setModulesView._mobileHooked) {
         const origSetModulesView = window.setModulesView;
@@ -449,7 +504,7 @@ window.addEventListener('DOMContentLoaded', () => {
                     if (uniqueLeaves.length > 0) {
                         activeMobilePresetMods = uniqueLeaves;
                         activeMobilePresetName = p.name;
-                        mountMobileSingleModule(uniqueLeaves[0], true);
+                        mountMobileSingleModule(activeMobilePresetMods[0], true);
                         if (typeof closeTerminal === 'function') closeTerminal();
                         if (typeof showToast === 'function') showToast(`[VIEW] ${p.name}`);
                         return;
