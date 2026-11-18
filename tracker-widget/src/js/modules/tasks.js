@@ -1338,6 +1338,9 @@ function renderGhostLayersManagerList() {
 // ============================================================================
 
 function renderTasks() {
+    const tasksModScrollEl = document.querySelector('#module-tasks .module-body-padded');
+    const savedTasksScrollTop = tasksModScrollEl ? tasksModScrollEl.scrollTop : 0;
+
     const dateBadge = document.getElementById('tasks-date-badge');
     if (dateBadge) dateBadge.textContent = `// ${selectedDateStr}`;
 
@@ -1500,6 +1503,10 @@ function renderTasks() {
 
     renderRoutinesColumn();
     renderTodoColumn();
+
+    if (tasksModScrollEl && savedTasksScrollTop > 0) {
+        tasksModScrollEl.scrollTop = savedTasksScrollTop;
+    }
 }
 
 // --- COLONNA 3: ROUTINES + INIEZIONE AUTOMATICA MEDICINE ---
@@ -2252,11 +2259,14 @@ function shiftPlanBuilderDate(daysOffset) {
     setPlanBuilderDate(nextStr < todayStr ? todayStr : nextStr);
 }
 
+let dayPlanRefToggles = safeJsonParse(localStorage.getItem('day_plan_ref_toggles'), {});
+
 function togglePlanGhostLayer(refId) {
-    refToggles[refId] = !refToggles[refId];
-    saveData();
+    dayPlanRefToggles[refId] = !dayPlanRefToggles[refId];
+    try {
+        localStorage.setItem('day_plan_ref_toggles', JSON.stringify(dayPlanRefToggles));
+    } catch (e) {}
     renderDayPlannerModule();
-    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }
 
 function toggleConfirmTransportSlot(dateStr, refId, refTitle, color, startStr, endStr) {
@@ -2452,7 +2462,6 @@ function renderDayPlannerModule() {
     dateLbl.textContent = `// ${targetDate}`;
 
     const leftCol = document.getElementById('plan-mod-left-col');
-    ensureMobilePlanEditTabsExist(leftCol);
 
     const customBlocks = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
 
@@ -2468,7 +2477,7 @@ function renderDayPlannerModule() {
             if (slotsToday.length === 0) return;
 
             hasAnyGhost = true;
-            const isVisible = Boolean(refToggles[ref.id]);
+            const isVisible = Boolean(dayPlanRefToggles[ref.id]);
             const lockedSlotsCount = slotsToday.filter(tw =>
                 customBlocks.some(b => b.isTransport && b.refId === ref.id && b.start === tw.start && b.end === tw.end)
             ).length;
@@ -2800,37 +2809,37 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     const dayIdx = parseLocalDate(targetDate).getDay();
     const customBlocks = Array.isArray(ephemeralData[targetDate]) ? ephemeralData[targetDate] : [];
 
-    // 1. Ghost Layers sulla Timeline
-    referenceLayers.forEach(ref => {
-        if (!ref || !refToggles[ref.id] || !Array.isArray(ref.timeWindows)) return;
-        ref.timeWindows.forEach(tw => {
-            if (tw.days && tw.days.includes(dayIdx)) {
-                const alreadyConfirmed = customBlocks.some(b =>
-                    b.isTransport && b.refId === ref.id && b.start === tw.start && b.end === tw.end
-                );
-                if (alreadyConfirmed) return;
-
-                const top = timeToPx(tw.start, tmwTimelineZoom);
-                const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 12);
-                const block = document.createElement('div');
-                block.className = 'block-absolute block-ref';
-                block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: ${isInteractiveEdit ? 'pointer' : 'default'}; display: flex; justify-content: space-between; align-items: center; z-index: 3;`;
-                block.innerHTML = `
-                    <span style="font-size:0.62rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
-                    ${isInteractiveEdit ? '<span style="font-size:0.58rem; color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>' : ''}
-                `;
-                if (isInteractiveEdit) {
+    // 1. Ghost Layers sulla Timeline (Visibili SOLO in modalità EDIT del Day Planner)
+    if (currentDayPlanMode === 'edit') {
+        referenceLayers.forEach(ref => {
+            if (!ref || !dayPlanRefToggles[ref.id] || !Array.isArray(ref.timeWindows)) return;
+            ref.timeWindows.forEach(tw => {
+                if (tw.days && tw.days.includes(dayIdx)) {
+                    const alreadyConfirmed = customBlocks.some(b =>
+                        b.isTransport && b.refId === ref.id && b.start === tw.start && b.end === tw.end
+                    );
+                    if (alreadyConfirmed) return;
+                
+                    const top = timeToPx(tw.start, tmwTimelineZoom);
+                    const height = Math.max(timeToPx(tw.end, tmwTimelineZoom) - top, 12);
+                    const block = document.createElement('div');
+                    block.className = 'block-absolute block-ref';
+                    block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: pointer; display: flex; justify-content: space-between; align-items: center; z-index: 3;`;
+                    block.innerHTML = `
+                        <span style="font-size:0.62rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
+                        <span style="font-size:0.58rem; color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>
+                    `;
                     block.onclick = (e) => {
                         if (mobileSelectedPlanItemToPlace) return;
                         e.stopPropagation();
                         toggleConfirmTransportSlot(targetDate, ref.id, ref.title, ref.color, tw.start, tw.end);
                     };
+                    canvasCol.appendChild(block);
                 }
-                canvasCol.appendChild(block);
-            }
+            });
         });
-    });
-
+    }
+    
     // 2. Blocchi attivi sulla Timeline
     const timelineBlocks = [];
 

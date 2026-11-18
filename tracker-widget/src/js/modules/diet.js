@@ -286,13 +286,14 @@ function renderDietAtomToday() {
     const root = document.getElementById('module-diet-today');
     if (!root) return;
 
+    const prevScroll = root.querySelector('.module-body-padded')?.scrollTop || 0;
     const dObj = parseLocalDate(selectedDateStr);
     const dayKey = dObj.getDay();
     const dayNames = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
     const totals = calculateDayMacros(dayKey);
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
+        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
             <div class="section-header-row" style="margin-bottom:0;" id="diet-today-hdr">
                 <div>
                     <span class="section-label">Diet</span>
@@ -300,83 +301,66 @@ function renderDietAtomToday() {
                 </div>
             </div>
 
-            <!-- BARRA MACRO DEL GIORNO SELEZIONATO -->
-            <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px;">
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">KCAL</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px;">${totals.kcal}${totals.hasFreeMeal ? '*' : ''}</div>
-                </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">PROTEIN</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-green); margin-top:2px;">${totals.p}g</div>
-                </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">CARBS</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px;">${totals.c}g</div>
-                </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">FATS</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-gold); margin-top:2px;">${totals.f}g</div>
-                </div>
-            </div>
+            <div id="diet-today-list-mount" class="diet-wrapper" style="width:100%;"></div>
 
-            <!-- PASTI DEL GIORNO SELEZIONATO (MOSAICO A 2 COLONNE) -->
-            <div id="diet-today-meals-grid" class="daily-columns-wrap" style="align-items:flex-start; gap:12px;"></div>
-
-            <!-- REGOLE FISSE (COLAZIONE / CONDIMENTI) -->
-            <div id="diet-today-rules" class="diet-rules-bar" style="margin-top:auto; cursor:pointer;"></div>
+            <div id="diet-today-rules" class="diet-rules-bar" style="margin-top:2px; cursor:pointer;"></div>
         </div>
     `;
 
     root.querySelector('#diet-today-hdr').appendChild(buildDietHeaderControlsDom('today'));
 
-    const mealsGrid = root.querySelector('#diet-today-meals-grid');
-    const colL = document.createElement('div');
-    colL.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;';
-    const colR = document.createElement('div');
-    colR.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:10px;';
+    const listMount = root.querySelector('#diet-today-list-mount');
 
+    // Intestazione compatta identica alla matrice settimanale
+    const headerRow = document.createElement('div');
+    headerRow.className = 'diet-row';
+    headerRow.style.gridTemplateColumns = '95px 1fr';
+    headerRow.innerHTML = `
+        <div class="diet-header">MEAL</div>
+        <div class="diet-header diet-col-active">${dayNames[dayKey]} // ${selectedDateStr}</div>
+    `;
+    listMount.appendChild(headerRow);
+
+    // Righe dei pasti in formato lista compatta
     dietData.forEach((rowObj, rowIdx) => {
-        const mealText = (rowObj[dayKey] || '').trim();
-        const lines = mealText ? mealText.split('\n').map(s => s.trim()).filter(Boolean) : [];
+        const rowEl = document.createElement('div');
+        rowEl.className = 'diet-row';
+        rowEl.style.gridTemplateColumns = '95px 1fr';
 
-        const card = document.createElement('div');
-        card.className = 'category-group';
-        card.style.marginBottom = '0';
-        card.style.cursor = 'pointer';
+        const labelCell = document.createElement('div');
+        labelCell.className = 'diet-cell diet-row-label';
+        labelCell.textContent = rowObj.type;
 
-        const hdr = document.createElement('div');
-        hdr.className = 'category-header-wrap';
-        hdr.innerHTML = `<div class="category-title">${escapeHtml(rowObj.type)}</div>`;
-        card.appendChild(hdr);
+        const valCell = document.createElement('div');
+        valCell.className = 'diet-cell diet-col-active';
+        valCell.style.cssText = 'justify-content: flex-start; text-align: left; padding: 8px 12px;';
+        valCell.textContent = (rowObj[dayKey] || '').trim() || '—';
+        valCell.ondblclick = () => startDietCellEdit(valCell, rowIdx, dayKey);
 
-        const bodyBox = document.createElement('div');
-        if (lines.length === 0) {
-            bodyBox.innerHTML = `<div class="empty-state" style="padding:4px 0;">[ EMPTY ]</div>`;
-        } else {
-            lines.forEach(l => {
-                const itemRow = document.createElement('div');
-                itemRow.className = 'task-item';
-                itemRow.innerHTML = `<div class="task-title">${escapeHtml(l)}</div>`;
-                bodyBox.appendChild(itemRow);
-            });
-        }
-        card.appendChild(bodyBox);
-
-        card.ondblclick = () => {
-            startDietCellEdit(bodyBox, rowIdx, dayKey);
-        };
-
-        if (rowIdx % 2 === 0) colL.appendChild(card);
-        else colR.appendChild(card);
+        rowEl.appendChild(labelCell);
+        rowEl.appendChild(valCell);
+        listMount.appendChild(rowEl);
     });
 
-    mealsGrid.appendChild(colL);
-    mealsGrid.appendChild(colR);
+    // Riga finale MACROS compatta come nella vista settimanale
+    const macroRow = document.createElement('div');
+    macroRow.className = 'diet-row';
+    macroRow.style.gridTemplateColumns = '95px 1fr';
+    macroRow.innerHTML = `
+        <div class="diet-cell diet-row-label" style="border-top:1px solid var(--border-color); color:var(--text-main);">MACROS</div>
+        <div class="diet-macro-cell diet-col-active" style="flex-direction:row; justify-content:space-between; align-items:center; padding:8px 12px;">
+            <span class="diet-macro-kcal">${totals.kcal} KCAL${totals.hasFreeMeal ? '*' : ''}</span>
+            <span class="diet-macro-sub" style="color:var(--text-muted); font-weight:bold;">P: ${totals.p}g &nbsp;·&nbsp; C: ${totals.c}g &nbsp;·&nbsp; F: ${totals.f}g</span>
+        </div>
+    `;
+    listMount.appendChild(macroRow);
 
     const rulesEl = root.querySelector('#diet-today-rules');
     rulesEl.textContent = dietRules;
     rulesEl.ondblclick = () => startDietRulesEdit(rulesEl);
+
+    const padded = root.querySelector('.module-body-padded');
+    if (padded && prevScroll > 0) padded.scrollTop = prevScroll;
 }
 
 // ============================================================================

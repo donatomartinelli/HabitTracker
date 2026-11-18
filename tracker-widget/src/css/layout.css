@@ -26,6 +26,12 @@
     border-bottom: 1px solid var(--border-color);
 }
 
+/* Eleva l'header sopra il backdrop scuro quando la Command Bar è aperta */
+body.terminal-open .app-header,
+.app-header:has(.ask-bar-container.expanded) {
+    z-index: 2650 !important;
+}
+
 .header-left {
     display: flex;
     align-items: center;
@@ -209,7 +215,7 @@
     border-color: var(--text-main);
 }
 
-/* Stato espanso: scende al centro-alto e si allarga */
+/* Stato espanso: scende al centro-alto e si allarga sopra il backdrop */
 .ask-bar-container.expanded {
     position: fixed;
     top: 10px;
@@ -219,7 +225,8 @@
     transform: translate(-50%, 12vh);
     border-color: var(--text-main);
     box-shadow: 0 24px 60px rgba(0, 0, 0, 0.96);
-    z-index: 2600;
+    z-index: 2700 !important;
+    pointer-events: auto !important;
 }
 
 .ask-input-row {
@@ -245,6 +252,7 @@
     color: var(--text-main);
     font-size: var(--font-sm);
     outline: none;
+    pointer-events: auto;
 }
 
 .ask-bar-container.expanded .ask-bar-input {
@@ -333,7 +341,7 @@
     inset: 0;
     background: rgba(0, 0, 0, 0.82);
     backdrop-filter: blur(6px);
-    z-index: 2550;
+    z-index: 2500;
 }
 
 .ask-backdrop-overlay.show {
@@ -1171,11 +1179,6 @@ body.hud-mode:not(.hud-temp-expanded) #hud-tactical-pod {
     background: #050505;
 }
 
-/* Tab Day Planner su Desktop nascoste di default */
-.plan-mobile-edit-tabs {
-    display: none;
-}
-
 /* Evidenziazione card selezionata per Tap-to-Place su Mobile */
 .plan-draggable-card.mobile-tap-selected {
     border-color: var(--accent-gold) !important;
@@ -1221,6 +1224,11 @@ body.mobile-view-mode .app-header {
     z-index: 2100 !important;
 }
 
+body.mobile-view-mode.terminal-open .app-header,
+body.mobile-view-mode .app-header:has(.ask-bar-container.expanded) {
+    z-index: 3300 !important;
+}
+
 body.mobile-view-mode .header-left {
     flex: 1 1 auto !important;
     min-width: 0 !important;
@@ -1245,7 +1253,7 @@ body.mobile-view-mode .header-focus-title {
     max-width: 65px !important;
 }
 
-/* A riposo su Mobile, mostra un pulsante compatto [⌘ CMD] così l'orario e il timer a sinistra sono sempre liberi! */
+/* A riposo su Mobile, mostra un pulsante compatto [⌘ CMD] */
 body.mobile-view-mode .header-ask-slot {
     width: auto !important;
     height: auto !important;
@@ -1267,7 +1275,7 @@ body.mobile-view-mode .ask-bar-container:not(.expanded) {
     display: none !important;
 }
 
-/* Quando premi [⌘ CMD] su Mobile, la barra compare ancorata in cima allo schermo, SEMPRE sopra la tastiera virtuale! */
+/* Quando premi [⌘ CMD] su Mobile, la barra compare ancorata in cima allo schermo sopra l'overlay */
 body.mobile-view-mode .ask-bar-container.expanded {
     display: flex !important;
     position: fixed !important;
@@ -1277,7 +1285,8 @@ body.mobile-view-mode .ask-bar-container.expanded {
     max-width: 96vw !important;
     max-height: 54dvh !important;
     transform: translateX(-50%) !important;
-    z-index: 3200 !important;
+    z-index: 3400 !important;
+    pointer-events: auto !important;
     box-shadow: 0 20px 50px rgba(0, 0, 0, 0.98) !important;
 }
 
@@ -1314,7 +1323,7 @@ body.mobile-view-mode .staging-cmd-list {
     max-height: 24dvh !important;
 }
 
-/* Impedisce a iOS Safari di zoomare tutta la pagina quando tocchi un input (<16px triggera lo zoom su iOS!) */
+/* Impedisce a iOS Safari di zoomare tutta la pagina quando tocchi un input */
 body.mobile-view-mode input[type="text"],
 body.mobile-view-mode input[type="number"],
 body.mobile-view-mode input[type="password"],
@@ -1420,7 +1429,7 @@ body.mobile-view-mode .module-body-padded {
     -webkit-overflow-scrolling: touch;
 }
 
-/* Barra Rapida Pesi in Palestra (compare sopra la Bottom Bar quando tocchi un input kg) */
+/* Barra Rapida Pesi in Palestra */
 .mobile-gym-stepper-bar {
     display: none;
     width: 100%;
@@ -1532,6 +1541,10 @@ body.mobile-view-mode .diet-wrapper {
     min-width: 580px !important;
 }
 
+body.mobile-view-mode #module-diet-today .diet-wrapper {
+    min-width: 0 !important;
+}
+
 body.mobile-view-mode .daily-columns-wrap,
 body.mobile-view-mode .notes-browse-container,
 body.mobile-view-mode #gym-split-cards-row {
@@ -1555,7 +1568,7 @@ body.mobile-view-mode #module-uni-libretto .cfg-box div:last-child {
     font-size: 0.85rem !important;
 }
 
-/* DAY PLANNER SU MOBILE: TAB COMPATTA SOPRA & ISOLAMENTO SCROLL (overscroll-behavior: contain) */
+/* DAY PLANNER SU MOBILE: ISOLAMENTO SCROLL */
 body.mobile-view-mode #module-plan .module-body-padded {
     overflow: hidden !important;
     padding-bottom: 8px !important;
@@ -1568,7 +1581,7 @@ body.mobile-view-mode #module-plan .module-body-padded > div:last-child {
 
 body.mobile-view-mode #plan-mod-left-col {
     width: 100% !important;
-    max-height: 25dvh !important;
+    max-height: 28dvh !important;
     border-right: none !important;
     border-bottom: 1px solid var(--border-bright) !important;
     padding: 0 0 8px 0 !important;
@@ -1581,33 +1594,7 @@ body.mobile-view-mode #plan-mod-timeline-scroll {
     touch-action: pan-y !important;
 }
 
-body.mobile-view-mode .plan-mobile-edit-tabs {
-    display: flex !important;
-    gap: 6px;
-    position: sticky;
-    top: 0;
-    background: #050505;
-    z-index: 20;
-    padding-bottom: 6px;
-    border-bottom: 1px dotted var(--border-color);
-}
-
-body.mobile-view-mode .plan-mobile-edit-tabs .btn {
-    flex: 1;
-    padding: 5px 4px !important;
-    font-size: 0.65rem !important;
-}
-
-body.mobile-view-mode .plan-mobile-edit-tabs .btn.active {
-    background: var(--text-main) !important;
-    color: #000000 !important;
-}
-
-body.mobile-view-mode .plan-edit-sec .sub-column-header {
-    display: none !important;
-}
-
-/* Bersagli touch generosi per il pollice */
+/* Bersagli touch per il pollice */
 body.mobile-view-mode .task-item {
     padding: 8px 6px !important;
     gap: 10px !important;
@@ -1625,8 +1612,9 @@ body.mobile-view-mode .gym-ex-row {
 }
 
 body.mobile-view-mode .gym-input {
-    width: 54px !important;
-    height: 36px !important;
-    font-size: 16px !important;
+    width: 34px !important;
+    height: 30px !important;
+    font-size: 15px !important;
     font-weight: bold !important;
+    padding: 1px 0 !important;
 }
