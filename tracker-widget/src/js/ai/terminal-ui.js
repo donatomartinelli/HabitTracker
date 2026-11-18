@@ -24,6 +24,8 @@ function showToast(msg) {
 function openTerminal() {
     if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
     isAskBarExpanded = true;
+    document.body.classList.add('terminal-open');
+
     const container = document.getElementById('ask-bar-container');
     const backdrop = document.getElementById('terminalOverlay');
     const input = document.getElementById('terminal-input');
@@ -32,10 +34,12 @@ function openTerminal() {
     if (backdrop) backdrop.classList.add('show');
 
     if (input) {
-        setTimeout(() => {
+        input.disabled = false;
+        input.focus();
+        requestAnimationFrame(() => {
             input.focus();
             updateLivePreviewAndSuggestions();
-        }, 40);
+        });
     }
     historyIndex = commandHistory.length;
 }
@@ -45,6 +49,8 @@ function closeTerminal() {
     hideSuggestionsAndPreview();
 
     isAskBarExpanded = false;
+    document.body.classList.remove('terminal-open');
+
     const container = document.getElementById('ask-bar-container');
     const backdrop = document.getElementById('terminalOverlay');
     const input = document.getElementById('terminal-input');
@@ -53,6 +59,7 @@ function closeTerminal() {
     if (container) container.classList.remove('expanded');
     if (backdrop) backdrop.classList.remove('show');
     if (input) {
+        input.disabled = false;
         input.value = '';
         input.blur();
     }

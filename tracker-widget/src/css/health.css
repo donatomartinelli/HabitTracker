@@ -153,7 +153,7 @@
     flex-direction: column;
     background: rgba(255, 255, 255, 0.015);
     border: 1px solid var(--border-color);
-    padding: 14px;
+    padding: 12px;
     transition: opacity 0.2s ease;
     overflow: hidden;
 }
@@ -165,35 +165,41 @@
 .gym-ex-list {
     flex: 1;
     overflow-y: auto;
-    padding-right: 6px;
-    margin-bottom: 8px;
+    padding-right: 4px;
+    margin-bottom: 6px;
 }
 
 .gym-ex-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 7px 0;
+    padding: 6px 0;
     border-bottom: 1px dotted rgba(255, 255, 255, 0.08);
-    gap: 10px;
+    gap: 8px;
 }
 
 .gym-ex-row:last-child { border-bottom: none; }
-.gym-ex-info { display: flex; flex-direction: column; flex: 1; }
-.gym-ex-name { color: #eeeeee; font-size: var(--font-sm); }
+.gym-ex-info { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.gym-ex-name { color: #eeeeee; font-size: var(--font-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gym-ex-reps { color: var(--text-dim); font-size: var(--font-xs); margin-top: 2px; }
 
-.gym-sets-container { display: flex; gap: 5px; align-items: center; }
+.gym-sets-container {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    flex-shrink: 0;
+}
 
 .gym-input {
-    width: 40px;
+    width: 28px;
     background: transparent;
     border: none;
     border-bottom: 1px dashed var(--text-dim);
     color: white;
     text-align: center;
     font-size: var(--font-xs);
-    padding: 2px;
+    font-variant-numeric: tabular-nums;
+    padding: 1px 0;
 }
 
 .gym-input:focus {

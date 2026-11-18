@@ -235,6 +235,8 @@ function resetGymStartingPoint(startingSplitNum = 1, clearPreviousOccurrences = 
 
 // Funzione master che aggiorna tutti i sottomoduli Gym
 function renderGymDashboard() {
+    const savedScrolls = Array.from(document.querySelectorAll('.gym-ex-list')).map(el => el.scrollTop);
+
     migrateExistingGymPlanStructure();
     ensureGymModalsExist();
 
@@ -245,6 +247,10 @@ function renderGymDashboard() {
     if (legacyRoot) {
         renderGymAtomSplit(legacyRoot);
     }
+
+    document.querySelectorAll('.gym-ex-list').forEach((el, idx) => {
+        if (savedScrolls[idx] > 0) el.scrollTop = savedScrolls[idx];
+    });
 }
 
 // Costruisce una card Scheda Allenamento (per Giorno 1 o Giorno 2)
@@ -1128,7 +1134,7 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
                     inp.type = 'number';
                     inp.step = '0.5';
                     inp.className = 'gym-input no-spinners';
-                    inp.style.width = '46px';
+                    inp.style.width = '30px';
                     inp.placeholder = 'kg';
                     inp.value = savedGymWeights[inputId] || '';
                     inp.oninput = () => {
