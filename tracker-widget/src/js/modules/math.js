@@ -26,6 +26,20 @@ class MathHubProblemEngine {
 
     getTodayISO() { return todayStr; }
 
+    // Avanzamento di un corso: argomenti superati in sequenza sul totale
+    getCourseProgress(course) {
+        const courseProbs = this.problems.filter(p => p.course === course);
+        if (!courseProbs.length) return { passed: 0, total: 0 };
+        const uniqueGroups = [...new Set(courseProbs.map(p => this.getGroupKey(p)))];
+        let passed = 0;
+        for (const gKey of uniqueGroups) {
+            const rec = this.state.topicRecords[gKey];
+            if (rec && rec.status === 'passed') passed++;
+            else break;
+        }
+        return { passed, total: uniqueGroups.length };
+    }
+
     getNextProblem(forceRecompute = false) {
         if (!this.problems.length || !this.state.activeCourse) return null;
         const courseProbs = this.problems.filter(p => p.course === this.state.activeCourse);
@@ -135,6 +149,11 @@ class MathHubTrachtenbergEngine {
     get history() { return mentalMathHistory; }
     get config() { return mentalMathConfig; }
 
+    updateConfig(newConfig) {
+        mentalMathConfig = { ...mentalMathConfig, ...newConfig };
+        saveData();
+    }
+
     parseDigits(inputStr) {
         let [min, max] = inputStr.split('-').map(n => parseInt(n.trim(), 10));
         min = min || 1;
@@ -229,15 +248,23 @@ let currentErrors = 0;
 let sessionStats = [];
 
 // Carica problems.json in cache se vuoto (assume che problems.json sia nella root Tauri)
+let mathProblemsLoading = false;
 async function fetchMathProblemsIfNeeded() {
-    if (cachedMathProblems.length > 0) return;
+    if (cachedMathProblems.length > 0 || mathProblemsLoading) return;
+    mathProblemsLoading = true;
     try {
-        const res = await fetch('./problems.json', { cache: 'no-store' });
+        const res = await fetch('./problems.json', { cache: 'no-cache' });
         if (res.ok) {
             cachedMathProblems = await res.json();
             pEngine.problems = cachedMathProblems;
+            // Il render iniziale è avvenuto senza dati: ridisegna ora che ci sono
+            if (cachedMathProblems.length > 0) renderMathModule();
         }
-    } catch (e) { console.error('Math-Hub problems.json non trovato nella root.', e); }
+    } catch (e) {
+        console.error('Math-Hub: impossibile caricare problems.json', e);
+    } finally {
+        mathProblemsLoading = false;
+    }
 }
 
 window.switchMathTab = function(tabId) {

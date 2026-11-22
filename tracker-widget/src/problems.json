@@ -1,0 +1,3882 @@
+[
+  {
+    "id": "ANA-01-CBCB81F9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Numeri Reali",
+    "baseDiff": 2.0,
+    "statement": "Dimostra per assurdo che $\\sqrt{3} \\notin \\mathbb{Q}$."
+  },
+  {
+    "id": "ANA-01-1CD90FF4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Numeri Reali",
+    "baseDiff": 2.0,
+    "statement": "Dimostra per assurdo che $\\sqrt{5} \\notin \\mathbb{Q}$."
+  },
+  {
+    "id": "ANA-01-3BA35C64",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Numeri Reali",
+    "baseDiff": 3.0,
+    "statement": "Sapendo che $\\sqrt{2} \\notin \\mathbb{Q}$, dimostra per assurdo che anche $\\sqrt{2} + 1 \\notin \\mathbb{Q}$."
+  },
+  {
+    "id": "ANA-01-1FCDED44",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Numeri Reali",
+    "baseDiff": 3.0,
+    "statement": "Dimostra che la somma di un numero razionale non nullo e un numero irrazionale è sempre un numero irrazionale."
+  },
+  {
+    "id": "ANA-01-9FC43A6B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Assioma Completezza",
+    "baseDiff": 2.0,
+    "statement": "Dati $A=\\{x \\in \\mathbb{Q} \\mid x>0, x^2 < 3\\}$ e $B=\\{x \\in \\mathbb{Q} \\mid x>0, x^2 > 3\\}$, individua l'elemento separatore in $\\mathbb{R}$ e dimostra che $A$ e $B$ sono separati."
+  },
+  {
+    "id": "ANA-01-8A994606",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Assioma Completezza",
+    "baseDiff": 2.0,
+    "statement": "Dati $A=\\{x \\in \\mathbb{Q} \\mid x^3 < 2\\}$ e $B=\\{x \\in \\mathbb{Q} \\mid x^3 > 2\\}$, individua l'elemento separatore in $\\mathbb{R}$."
+  },
+  {
+    "id": "ANA-01-7A8B9172",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Assioma Completezza",
+    "baseDiff": 3.0,
+    "statement": "Spiega perché l'insieme $\\mathbb{N}$ non ammette l'assioma di completezza (fornisci un controesempio con insiemi separati)."
+  },
+  {
+    "id": "ANA-01-88452388",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Intorni",
+    "baseDiff": 1.0,
+    "statement": "Scrivi sotto forma di intervallo aperto l'intorno circolare $I_{0.1}(5)$ e calcolane l'ampiezza."
+  },
+  {
+    "id": "ANA-01-23F16432",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Intorni",
+    "baseDiff": 1.0,
+    "statement": "Determina il centro $x_0$ e il raggio $r$ dell'intorno circolare corrispondente all'intervallo aperto $(-2, 6)$."
+  },
+  {
+    "id": "ANA-01-163598D9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Intorni",
+    "baseDiff": 2.0,
+    "statement": "Interseca gli intorni $I_2(0)$ e $I_3(1)$ ed esprimi il risultato come intervallo."
+  },
+  {
+    "id": "ANA-01-D074AC07",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Valore Assoluto",
+    "baseDiff": 1.0,
+    "statement": "Scrivi l'insieme dei punti la cui distanza da $x_0 = -1$ è pari a $5$."
+  },
+  {
+    "id": "ANA-01-E005B559",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Valore Assoluto",
+    "baseDiff": 1.0,
+    "statement": "Scrivi l'insieme dei punti la cui distanza da $x_0 = 3$ è strettamente minore di $2$."
+  },
+  {
+    "id": "ANA-01-2AD86DE7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Valore Assoluto",
+    "baseDiff": 2.0,
+    "statement": "Risolvi usando il concetto di distanza sulla retta reale: $|x - 4| \\le 1$."
+  },
+  {
+    "id": "ANA-01-7E789ECD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Valore Assoluto",
+    "baseDiff": 3.0,
+    "statement": "Sfruttando la disuguaglianza triangolare, dimostra che $|a-b| \\le |a-c| + |c-b|$ per ogni $a,b,c \\in \\mathbb{R}$."
+  },
+  {
+    "id": "ANA-01-377204C9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 1.0,
+    "statement": "$(3x^2y)(-2xy^3)$"
+  },
+  {
+    "id": "ANA-01-3E3283EF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 1.0,
+    "statement": "$\\left(-\\frac{1}{2}a^3b^2\\right)\\left(\\frac{4}{3}ab\\right)$"
+  },
+  {
+    "id": "ANA-01-9AD89D3D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 1.0,
+    "statement": "$(-5x^4y^2)^3$"
+  },
+  {
+    "id": "ANA-01-31DCDCA0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 1.0,
+    "statement": "$\\left(\\frac{2}{3}m^2n^3\\right)^2 \\cdot \\left(-\\frac{9}{4}mn\\right)$"
+  },
+  {
+    "id": "ANA-01-CDE0D222",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 1.0,
+    "statement": "$(12x^5y^3) \\div (-3x^2y)$"
+  },
+  {
+    "id": "ANA-01-4D75BBD5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 2.0,
+    "statement": "$\\left(-\\frac{3}{5}a^4b^2\\right)^3 \\div \\left(\\frac{9}{25}a^6b^4\\right)$"
+  },
+  {
+    "id": "ANA-01-0A4D4F85",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 2.0,
+    "statement": "$[(-2x^2y)^3 \\cdot (xy^2)^2] \\div (-4x^4y^5)$"
+  },
+  {
+    "id": "ANA-01-FBD965BD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 2.0,
+    "statement": "$\\left(\\frac{1}{8}a^3b^3\\right) \\div \\left(-\\frac{1}{2}ab\\right)^3$"
+  },
+  {
+    "id": "ANA-01-FAB16E90",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 2.0,
+    "statement": "$3x^2y(2xy) - 5x(x^2y^2) + (-2x^3y^2)$"
+  },
+  {
+    "id": "ANA-01-D08509A8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monomi",
+    "baseDiff": 3.0,
+    "statement": "Espressione: $\\left[ \\left(-\\frac{1}{2}x^n y^{n+1}\\right)^2 \\cdot (4x^2y) \\right] \\div (x^{2n}y^{2n})$ \\textit{(con $n \\in \\mathbb{N}$)}"
+  },
+  {
+    "id": "ANA-01-22BE8728",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Polinomi",
+    "baseDiff": 1.0,
+    "statement": "Svolgi: $2x(x^2 - 3x + 1) - x^2(2x - 3)$"
+  },
+  {
+    "id": "ANA-01-CA855EF8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Polinomi",
+    "baseDiff": 1.0,
+    "statement": "Svolgi: $(a+b)(a^2-ab+b^2)$"
+  },
+  {
+    "id": "ANA-01-C8E66139",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 1.0,
+    "statement": "Sviluppa: $(3x - 2y)^2$"
+  },
+  {
+    "id": "ANA-01-F2D9E460",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 1.0,
+    "statement": "Sviluppa: $\\left(\\frac{1}{2}a + 4b\\right)^2$"
+  },
+  {
+    "id": "ANA-01-B549D0BE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 1.0,
+    "statement": "Sviluppa: $(-x^2 - 3y)^2$"
+  },
+  {
+    "id": "ANA-01-9D3F0460",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $(5a - 2b)(5a + 2b)$"
+  },
+  {
+    "id": "ANA-01-CCAEE741",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $(x^2 + \\frac{1}{3}y)(x^2 - \\frac{1}{3}y)$"
+  },
+  {
+    "id": "ANA-01-D30FB896",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa: $(2x - y + 1)^2$"
+  },
+  {
+    "id": "ANA-01-C451D9D3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa: $(a^2 - 2a + 3)^2$"
+  },
+  {
+    "id": "ANA-01-8C5570F6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa: $(x - 2y)^3$"
+  },
+  {
+    "id": "ANA-01-4D786366",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa: $\\left(2a + \\frac{1}{2}\\right)^3$"
+  },
+  {
+    "id": "ANA-01-3B5631A7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prod Notevole",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa: $(-x^2 - y)^3$"
+  },
+  {
+    "id": "ANA-01-2B285E6E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Tartaglia",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa: $(a - b)^4$"
+  },
+  {
+    "id": "ANA-01-70A46187",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Tartaglia",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa: $(2x + y)^5$"
+  },
+  {
+    "id": "ANA-01-E8C1BF5D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Tartaglia",
+    "baseDiff": 3.0,
+    "statement": "Determina il coefficiente di $x^4y^2$ nello sviluppo di $(x - 2y)^6$"
+  },
+  {
+    "id": "ANA-01-FF560C82",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Div Euclidea",
+    "baseDiff": 1.0,
+    "statement": "$(x^3 - 4x^2 + 5x - 2) \\div (x^2 - x + 1)$"
+  },
+  {
+    "id": "ANA-01-2798CACF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Div Euclidea",
+    "baseDiff": 1.0,
+    "statement": "$(2x^4 - 3x^3 + 5x - 1) \\div (x^2 + 2)$"
+  },
+  {
+    "id": "ANA-01-372E1141",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Div Euclidea",
+    "baseDiff": 1.0,
+    "statement": "$(x^5 + 3x^2 - 4) \\div (x^3 - 1)$"
+  },
+  {
+    "id": "ANA-01-C7370DF0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Div Euclidea",
+    "baseDiff": 2.0,
+    "statement": "$(3x^4 - x^2 + 2x - 5) \\div (x^2 - 2x + 3)$"
+  },
+  {
+    "id": "ANA-01-23C4EA11",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Div Euclidea",
+    "baseDiff": 2.0,
+    "statement": "$(a^4 - b^4) \\div (a^2 + b^2)$"
+  },
+  {
+    "id": "ANA-01-50BC9F01",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Resto",
+    "baseDiff": 1.0,
+    "statement": "Calcola il resto: $(x^3 - 2x^2 + 4x - 5) \\div (x - 2)$"
+  },
+  {
+    "id": "ANA-01-469295D4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Resto",
+    "baseDiff": 1.0,
+    "statement": "Calcola il resto: $(2x^4 + 3x^3 - x + 1) \\div (x + 1)$"
+  },
+  {
+    "id": "ANA-01-2BBF9FDD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Resto",
+    "baseDiff": 2.0,
+    "statement": "Determina $k$ affinché $P(x) = x^3 - kx^2 + x + 6$ sia divisibile per $(x - 3)$."
+  },
+  {
+    "id": "ANA-01-F3994125",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Resto",
+    "baseDiff": 2.0,
+    "statement": "Determina $k$ affinché il resto di $(2x^3 + kx - 4) \\div (x + 2)$ sia pari a $10$."
+  },
+  {
+    "id": "ANA-01-3BDC63FC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ruffini",
+    "baseDiff": 1.0,
+    "statement": "Dividi con Ruffini: $(x^3 - 6x^2 + 11x - 6) \\div (x - 1)$"
+  },
+  {
+    "id": "ANA-01-FCE33B7D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ruffini",
+    "baseDiff": 1.0,
+    "statement": "Dividi con Ruffini: $(2x^4 - 5x^3 + 3x - 2) \\div (x - 2)$"
+  },
+  {
+    "id": "ANA-01-E76EF0A8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ruffini",
+    "baseDiff": 1.0,
+    "statement": "Dividi con Ruffini: $(x^5 + 32) \\div (x + 2)$"
+  },
+  {
+    "id": "ANA-01-F1631EAF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ruffini",
+    "baseDiff": 2.0,
+    "statement": "Dividi con Ruffini: $(3x^3 - 4x^2 - 5x + 2) \\div \\left(x - \\frac{1}{3}\\right)$"
+  },
+  {
+    "id": "ANA-01-21CD56A7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ruffini",
+    "baseDiff": 2.0,
+    "statement": "Dividi con Ruffini (esteso): $(2x^3 - x^2 - x + 3) \\div (2x + 1)$"
+  },
+  {
+    "id": "ANA-01-0AB9DDDA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ruffini",
+    "baseDiff": 3.0,
+    "statement": "Determina per quali $n \\in \\mathbb{N}$ il polinomio $x^n + 1$ è divisibile per $x+1$."
+  },
+  {
+    "id": "ANA-01-698513E3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 1.0,
+    "statement": "$12a^3b^2 - 18a^2b^3 + 6a^2b^2$"
+  },
+  {
+    "id": "ANA-01-07FBAAA4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 1.0,
+    "statement": "$5x^4y - 10x^3y^2 + 15x^2y^3$"
+  },
+  {
+    "id": "ANA-01-629EF339",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 1.0,
+    "statement": "$x(a-b) - y(a-b)$"
+  },
+  {
+    "id": "ANA-01-CD992B70",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 1.0,
+    "statement": "$a(x+1) + 2(x+1)^2$"
+  },
+  {
+    "id": "ANA-01-E794C226",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 2.0,
+    "statement": "$ax - ay + bx - by$"
+  },
+  {
+    "id": "ANA-01-F0CD391F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 2.0,
+    "statement": "$x^3 - 2x^2 + 3x - 6$"
+  },
+  {
+    "id": "ANA-01-1D10E37B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 2.0,
+    "statement": "$2a^3 - 3a^2b + 4ab^2 - 6b^3$"
+  },
+  {
+    "id": "ANA-01-7DEC00D8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 2.0,
+    "statement": "$x^2y - x^2 + y - 1$"
+  },
+  {
+    "id": "ANA-01-93BE55FA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 2.0,
+    "statement": "$5ax - 5ay - 2bx + 2by$"
+  },
+  {
+    "id": "ANA-01-2CEB6C63",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Raccoglimento",
+    "baseDiff": 3.0,
+    "statement": "$x^{n+2} - x^{n+1} + x^n$ \\textit{(con $n \\ge 1$)}\n    \n    % Prodotti Notevoli (10 varianti)"
+  },
+  {
+    "id": "ANA-01-77F59D43",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 1.0,
+    "statement": "$x^2 - 16y^2$"
+  },
+  {
+    "id": "ANA-01-CAC4508D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 1.0,
+    "statement": "$25a^4 - 9b^2$"
+  },
+  {
+    "id": "ANA-01-200AD869",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 1.0,
+    "statement": "$x^2 + 6x + 9$"
+  },
+  {
+    "id": "ANA-01-BABA6658",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 1.0,
+    "statement": "$4a^2 - 12ab + 9b^2$"
+  },
+  {
+    "id": "ANA-01-EBDFECA6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 2.0,
+    "statement": "$a^3 - 8$"
+  },
+  {
+    "id": "ANA-01-FCCA58A2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 2.0,
+    "statement": "$27x^3 + 1$"
+  },
+  {
+    "id": "ANA-01-A0342391",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 2.0,
+    "statement": "$x^4 - 81$"
+  },
+  {
+    "id": "ANA-01-5E429A8D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 2.0,
+    "statement": "$16x^4 - y^4$"
+  },
+  {
+    "id": "ANA-01-C8855E5A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 3.0,
+    "statement": "$a^2 - b^2 - 2a + 1$"
+  },
+  {
+    "id": "ANA-01-DE7F32C7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Notevole",
+    "baseDiff": 3.0,
+    "statement": "$x^2 - y^2 + 4x + 4$\n    \n    % Trinomio Speciale (10 varianti)"
+  },
+  {
+    "id": "ANA-01-456C9273",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 1.0,
+    "statement": "$x^2 - 5x + 6$"
+  },
+  {
+    "id": "ANA-01-7B75EB3A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 1.0,
+    "statement": "$x^2 + 7x + 10$"
+  },
+  {
+    "id": "ANA-01-B6958479",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 1.0,
+    "statement": "$x^2 - x - 12$"
+  },
+  {
+    "id": "ANA-01-482CE1C6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 1.0,
+    "statement": "$x^2 + 3x - 18$"
+  },
+  {
+    "id": "ANA-01-1D3F330C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 1.0,
+    "statement": "$x^2 - 8x + 15$"
+  },
+  {
+    "id": "ANA-01-8F08D7E9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 2.0,
+    "statement": "$2x^2 - 5x + 3$"
+  },
+  {
+    "id": "ANA-01-A612A597",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 2.0,
+    "statement": "$3x^2 + 5x - 2$"
+  },
+  {
+    "id": "ANA-01-5F479556",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 2.0,
+    "statement": "$4x^2 - 4x - 3$"
+  },
+  {
+    "id": "ANA-01-206550C2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 3.0,
+    "statement": "$x^4 - 5x^2 + 4$ \\textit{(Biquadratica)}"
+  },
+  {
+    "id": "ANA-01-DEDABCA2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Trinomio",
+    "baseDiff": 3.0,
+    "statement": "$x^4 - 13x^2 + 36$\n    \n    % Ruffini e Misti (10 varianti)"
+  },
+  {
+    "id": "ANA-01-9FD32E94",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Ruffini",
+    "baseDiff": 2.0,
+    "statement": "$x^3 - 2x^2 - x + 2$"
+  },
+  {
+    "id": "ANA-01-3C1BA527",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Ruffini",
+    "baseDiff": 2.0,
+    "statement": "$x^3 - 7x + 6$"
+  },
+  {
+    "id": "ANA-01-044787EE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Ruffini",
+    "baseDiff": 2.0,
+    "statement": "$x^3 - 4x^2 + 5x - 2$"
+  },
+  {
+    "id": "ANA-01-889BB67A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Ruffini",
+    "baseDiff": 2.0,
+    "statement": "$x^3 + 2x^2 - 5x - 6$"
+  },
+  {
+    "id": "ANA-01-63F1C1D6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Ruffini",
+    "baseDiff": 3.0,
+    "statement": "$2x^3 - 3x^2 - 8x - 3$"
+  },
+  {
+    "id": "ANA-01-50741AD7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Ruffini",
+    "baseDiff": 3.0,
+    "statement": "$3x^3 - 10x^2 + 9x - 2$"
+  },
+  {
+    "id": "ANA-01-65B07233",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Mista",
+    "baseDiff": 3.0,
+    "statement": "$x^6 - 64$"
+  },
+  {
+    "id": "ANA-01-F19F4374",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Mista",
+    "baseDiff": 3.0,
+    "statement": "$x^5 - x^4 - x + 1$"
+  },
+  {
+    "id": "ANA-01-28D667F8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Mista",
+    "baseDiff": 3.0,
+    "statement": "$a^4 + 4$ \\textit{(Suggerimento: completa il quadrato)}"
+  },
+  {
+    "id": "ANA-01-BE7AA4E4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Scomp Mista",
+    "baseDiff": 3.0,
+    "statement": "$x^4 + x^2 + 1$"
+  },
+  {
+    "id": "ANA-01-9D712180",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Frazioni CE",
+    "baseDiff": 1.0,
+    "statement": "Determina le C.E.: $\\frac{5x}{x^2 - 25}$"
+  },
+  {
+    "id": "ANA-01-09B0DCDE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Frazioni CE",
+    "baseDiff": 1.0,
+    "statement": "Determina le C.E.: $\\frac{x-1}{x^3 - x}$"
+  },
+  {
+    "id": "ANA-01-2C1668C3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Frazioni CE",
+    "baseDiff": 2.0,
+    "statement": "Determina le C.E.: $\\frac{1}{x^2 - 5x + 6}$"
+  },
+  {
+    "id": "ANA-01-6FF5BC03",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Frazioni CE",
+    "baseDiff": 2.0,
+    "statement": "Determina le C.E.: $\\frac{x+y}{x^3 + y^3}$"
+  },
+  {
+    "id": "ANA-01-6339E7C7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Semplifica",
+    "baseDiff": 1.0,
+    "statement": "Semplifica: $\\frac{6a^2b^3}{8a^3b}$"
+  },
+  {
+    "id": "ANA-01-04CD83D3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Semplifica",
+    "baseDiff": 1.0,
+    "statement": "Semplifica: $\\frac{x^2 - 4x + 4}{x^2 - 4}$"
+  },
+  {
+    "id": "ANA-01-F8381728",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Semplifica",
+    "baseDiff": 1.0,
+    "statement": "Semplifica: $\\frac{a^2 - ab}{a^2 - b^2}$"
+  },
+  {
+    "id": "ANA-01-081692AA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Semplifica",
+    "baseDiff": 2.0,
+    "statement": "Semplifica: $\\frac{x^3 - 8}{x^2 - 4}$"
+  },
+  {
+    "id": "ANA-01-F583643F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Semplifica",
+    "baseDiff": 2.0,
+    "statement": "Semplifica: $\\frac{2x^2 - 5x + 3}{x^2 - 1}$"
+  },
+  {
+    "id": "ANA-01-B877F39B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Semplifica",
+    "baseDiff": 3.0,
+    "statement": "Semplifica: $\\frac{x^4 - y^4}{x^3 + x^2y + xy^2 + y^3}$\n    \n    % Operazioni (10 varianti)"
+  },
+  {
+    "id": "ANA-01-F865ABB1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Addizione",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\frac{2}{x-1} + \\frac{3}{x+1}$"
+  },
+  {
+    "id": "ANA-01-F6BD7B7B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Addizione",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\frac{x}{x^2 - 4} - \\frac{1}{x-2}$"
+  },
+  {
+    "id": "ANA-01-36B1FC3E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Addizione",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\frac{a+1}{a-2} + \\frac{a-1}{a+2} - \\frac{4a}{a^2-4}$"
+  },
+  {
+    "id": "ANA-01-67958665",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Addizione",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\frac{1}{x^2-3x+2} + \\frac{1}{x^2-5x+6}$"
+  },
+  {
+    "id": "ANA-01-AA0CD9BF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Moltiplica",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\frac{x^2 - 9}{x^2} \\cdot \\frac{x}{x - 3}$"
+  },
+  {
+    "id": "ANA-01-12BCB1D7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Moltiplica",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\frac{a^2 - 4a + 4}{a^2 - a - 2} \\cdot \\frac{a^2 - 1}{a^2 - 2a}$"
+  },
+  {
+    "id": "ANA-01-271FE538",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Divisione",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\frac{x^2 - y^2}{2x} \\div \\frac{x + y}{4x^2}$"
+  },
+  {
+    "id": "ANA-01-C0591D1E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Divisione",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\frac{x^3 - 1}{x^2 + x} \\div \\frac{x^2 + x + 1}{x^2 - 1}$"
+  },
+  {
+    "id": "ANA-01-D95377BC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Mista",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\left( \\frac{1}{x-1} - \\frac{1}{x+1} \\right) \\cdot \\frac{x^2 - 1}{2}$"
+  },
+  {
+    "id": "ANA-01-F4347779",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fraz Mista",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\left( \\frac{x+y}{x-y} - \\frac{x-y}{x+y} \\right) \\div \\frac{4xy}{x^2 - 2xy + y^2}$"
+  },
+  {
+    "id": "ANA-01-85866FA0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 1° Grado",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $3(x - 2) - 2(2x + 1) = 4 - x$"
+  },
+  {
+    "id": "ANA-01-9FB01D91",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 1° Grado",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\frac{x-1}{2} - \\frac{2x+3}{3} = 1 - x$"
+  },
+  {
+    "id": "ANA-01-0D188C0D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Fratta",
+    "baseDiff": 1.0,
+    "statement": "Risolvi determinando le C.E.: $\\frac{2x}{x-3} - \\frac{5}{x+3} = \\frac{18}{x^2-9}$"
+  },
+  {
+    "id": "ANA-01-21966722",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Fratta",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\frac{x+1}{x-1} - \\frac{x-1}{x+1} = \\frac{4}{x^2-1}$"
+  },
+  {
+    "id": "ANA-01-0CD88E65",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Fratta",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\frac{1}{x^2-4x+3} + \\frac{2}{x-1} = \\frac{1}{x-3}$\n    % Equazioni letterali"
+  },
+  {
+    "id": "ANA-01-7EEFDAB9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Letterale",
+    "baseDiff": 2.0,
+    "statement": "Discuti al variare di $a \\in \\mathbb{R}$: $ax - 2 = 3x + a$"
+  },
+  {
+    "id": "ANA-01-9E75D355",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Letterale",
+    "baseDiff": 2.0,
+    "statement": "Discuti: $k^2x - k = 4x + 2$"
+  },
+  {
+    "id": "ANA-01-2888B3F6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Letterale",
+    "baseDiff": 3.0,
+    "statement": "Discuti con incognita a denominatore: $\\frac{x+a}{x-a} = 2$\n    % Disequazioni"
+  },
+  {
+    "id": "ANA-01-E9E629F2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis 1° Grado",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $4(x-1) - 3x \\ge 2(x+5)$"
+  },
+  {
+    "id": "ANA-01-03598449",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Fratta",
+    "baseDiff": 1.0,
+    "statement": "Studia il segno: $\\frac{2x-5}{3-x} \\ge 0$"
+  },
+  {
+    "id": "ANA-01-19A69574",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Fratta",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\frac{x}{x-2} - \\frac{1}{x+2} > \\frac{4}{x^2-4}$"
+  },
+  {
+    "id": "ANA-01-3C8F2239",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Fratta",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\frac{1-x^2}{x^2+1} < 0$\n    % Valore assoluto (Equazioni)"
+  },
+  {
+    "id": "ANA-01-AA3AB1BB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Eq",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $|2x - 3| = 5$"
+  },
+  {
+    "id": "ANA-01-429DE5D0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Eq",
+    "baseDiff": 2.0,
+    "statement": "Risolvi esplicitando: $|x - 1| = 2x - 4$"
+  },
+  {
+    "id": "ANA-01-CC22F9B1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Eq",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $|x - 2| + |x + 1| = 5$"
+  },
+  {
+    "id": "ANA-01-3DD87088",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Eq",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $||x| - 3| = 1$\n    % Valore assoluto (Disequazioni)"
+  },
+  {
+    "id": "ANA-01-5E6DED2C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Dis",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $|3x + 1| < 7$"
+  },
+  {
+    "id": "ANA-01-0878F417",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Dis",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $|2 - x| \\ge 4$"
+  },
+  {
+    "id": "ANA-01-119B4936",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Dis",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $|x^2 - 4| < 5$ \\textit{(ibridazione 2° grado)}"
+  },
+  {
+    "id": "ANA-01-1937A276",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Modulo Dis",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $|x - 3| > |2x + 1|$"
+  },
+  {
+    "id": "ANA-01-0B395CF4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist 2x2",
+    "baseDiff": 1.0,
+    "statement": "Risolvi per sostituzione: $\\begin{cases} 2x - y = 4 \\\\ x + 3y = -5 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-559DCB80",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist 2x2",
+    "baseDiff": 1.0,
+    "statement": "Risolvi per confronto: $\\begin{cases} x = 3y + 2 \\\\ 2x - 5y = 7 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-17F40FEC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist 2x2",
+    "baseDiff": 1.0,
+    "statement": "Risolvi per riduzione: $\\begin{cases} 3x + 4y = 10 \\\\ 5x - 2y = 8 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-26BBBDC6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Cramer",
+    "baseDiff": 1.0,
+    "statement": "Risolvi con Cramer: $\\begin{cases} 4x - 3y = 1 \\\\ 2x + y = 3 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-0599DBB3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Letterale",
+    "baseDiff": 2.0,
+    "statement": "Discuti al variare di $k$: $\\begin{cases} kx + y = 2 \\\\ x + ky = 2 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-EA3B91CB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Letterale",
+    "baseDiff": 3.0,
+    "statement": "Determina $k$ affinché il sistema sia indeterminato: $\\begin{cases} (k-1)x + 2y = 4 \\\\ x + ky = 2 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-CCA8E39D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist 3x3",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\begin{cases} x+y+z=6 \\\\ 2x-y+z=3 \\\\ x-y-z=0 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-B64B505E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Fratto",
+    "baseDiff": 2.0,
+    "statement": "Risolvi dopo aver posto le C.E.: $\\begin{cases} \\frac{x+y}{x-y}=2 \\\\ 3x-y=8 \\end{cases}$\n    % Sistemi di disequazioni"
+  },
+  {
+    "id": "ANA-01-23F30BAA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Dis",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\begin{cases} 2x-1 > 0 \\\\ x \\le 4 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-5732C98B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Dis",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\begin{cases} 3x+5 \\le x-1 \\\\ -2x < 4 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-4DD11AD2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Dis",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\begin{cases} \\frac{x-1}{x} > 0 \\\\ |x| < 3 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-D9EE0B83",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Dis",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $\\begin{cases} \\frac{x^2-1}{x^2+1} \\le 0 \\\\ |x-1/2| > 1 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-C7BBE880",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Radicali CE",
+    "baseDiff": 1.0,
+    "statement": "Determina le C.E.: $\\sqrt[4]{x-3}$"
+  },
+  {
+    "id": "ANA-01-4E927BAD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Radicali CE",
+    "baseDiff": 1.0,
+    "statement": "Determina le C.E.: $\\sqrt[3]{x^2-4}$"
+  },
+  {
+    "id": "ANA-01-F6AA3A57",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Radicali CE",
+    "baseDiff": 2.0,
+    "statement": "Determina le C.E.: $\\sqrt{\\frac{x-1}{x+2}}$"
+  },
+  {
+    "id": "ANA-01-59701F06",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Semplifica",
+    "baseDiff": 1.0,
+    "statement": "Semplifica: $\\sqrt[6]{8a^3b^3}$ \\textit{(Attenzione al modulo se $a,b \\in \\mathbb{R}$)}"
+  },
+  {
+    "id": "ANA-01-40C2EDD6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Semplifica",
+    "baseDiff": 2.0,
+    "statement": "Semplifica: $\\sqrt[4]{(x-1)^2}$"
+  },
+  {
+    "id": "ANA-01-1FA65D73",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Fuori",
+    "baseDiff": 1.0,
+    "statement": "Trasporta fuori ($a>0$): $\\sqrt{12a^3}$"
+  },
+  {
+    "id": "ANA-01-37377A0E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Fuori",
+    "baseDiff": 2.0,
+    "statement": "Trasporta fuori: $\\sqrt[3]{16x^4y^5}$"
+  },
+  {
+    "id": "ANA-01-11F453E9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Dentro",
+    "baseDiff": 1.0,
+    "statement": "Trasporta dentro: $2x \\sqrt[3]{y}$\n    % Operazioni"
+  },
+  {
+    "id": "ANA-01-BE872E19",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Prodotto",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\sqrt{2x} \\cdot \\sqrt[3]{4x^2}$"
+  },
+  {
+    "id": "ANA-01-6F509BD9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Quoziente",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\frac{\\sqrt[4]{a^3}}{\\sqrt{a}}$"
+  },
+  {
+    "id": "ANA-01-96305946",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Potenza",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $(\\sqrt[3]{2x^2})^2$"
+  },
+  {
+    "id": "ANA-01-5A3F5842",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Radice Radice",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\sqrt{\\sqrt[3]{5x}}$"
+  },
+  {
+    "id": "ANA-01-B0CD3560",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Somma",
+    "baseDiff": 2.0,
+    "statement": "Somma radicali simili: $3\\sqrt{8} - 2\\sqrt{18} + \\sqrt{50}$"
+  },
+  {
+    "id": "ANA-01-3D8F8E74",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Somma",
+    "baseDiff": 2.0,
+    "statement": "Semplifica: $\\sqrt{a^3} + 2a\\sqrt{a} - \\sqrt{4a^3}$ \\textit{($a>0$)}\n    % Razionalizzazione e Radicali doppi"
+  },
+  {
+    "id": "ANA-01-9C9BC822",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizza",
+    "baseDiff": 1.0,
+    "statement": "Razionalizza: $\\frac{5}{\\sqrt{5}}$"
+  },
+  {
+    "id": "ANA-01-AEACDEFB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizza",
+    "baseDiff": 1.0,
+    "statement": "Razionalizza: $\\frac{2}{\\sqrt[3]{4}}$"
+  },
+  {
+    "id": "ANA-01-55D3FEB2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizza",
+    "baseDiff": 1.0,
+    "statement": "Razionalizza: $\\frac{1}{\\sqrt{3}-\\sqrt{2}}$"
+  },
+  {
+    "id": "ANA-01-C33BA907",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizza",
+    "baseDiff": 2.0,
+    "statement": "Razionalizza: $\\frac{x-y}{\\sqrt{x}+\\sqrt{y}}$"
+  },
+  {
+    "id": "ANA-01-16C4C98C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizza",
+    "baseDiff": 3.0,
+    "statement": "Razionalizza: $\\frac{1}{\\sqrt[3]{2}-1}$ \\textit{(Usa la diff. di cubi)}"
+  },
+  {
+    "id": "ANA-01-C42B2307",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Rad Doppio",
+    "baseDiff": 3.0,
+    "statement": "Trasforma il radicale doppio: $\\sqrt{7 - \\sqrt{40}}$"
+  },
+  {
+    "id": "ANA-01-372EC9D6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Spuria: $3x^2 - 12x = 0$"
+  },
+  {
+    "id": "ANA-01-B482D18B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Pura: $4x^2 - 25 = 0$"
+  },
+  {
+    "id": "ANA-01-DB61AE4F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Pura impossibile: $x^2 + 9 = 0$"
+  },
+  {
+    "id": "ANA-01-53F9DA3B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Formula completa: $2x^2 - 5x + 2 = 0$"
+  },
+  {
+    "id": "ANA-01-381304E0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Formula ridotta: $x^2 - 6x + 5 = 0$"
+  },
+  {
+    "id": "ANA-01-CA3E9E69",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq 2 Grado",
+    "baseDiff": 2.0,
+    "statement": "Mista fratta: $\\frac{x^2-1}{x} = \\frac{x+3}{2}$\n    % Viète e Cartesio"
+  },
+  {
+    "id": "ANA-01-E85E52D8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Viète",
+    "baseDiff": 2.0,
+    "statement": "Senza risolvere, calcola la somma dei quadrati delle radici $x_1^2 + x_2^2$ dell'equazione $x^2 - 4x + 1 = 0$."
+  },
+  {
+    "id": "ANA-01-959E9173",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Cartesio",
+    "baseDiff": 2.0,
+    "statement": "Determina il segno delle radici (se reali) di $3x^2 + 5x - 2 = 0$ senza risolverla.\n    % Parametriche (Cruciali per l'università)"
+  },
+  {
+    "id": "ANA-01-D52C6C8D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Parametrica",
+    "baseDiff": 2.0,
+    "statement": "Data $x^2 - 2kx + k + 2 = 0$, trova $k$ affinché ammetta radici reali e coincidenti."
+  },
+  {
+    "id": "ANA-01-56F6E7DD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Parametrica",
+    "baseDiff": 2.0,
+    "statement": "Data l'equazione precedente, trova $k$ affinché la somma delle radici sia 4."
+  },
+  {
+    "id": "ANA-01-9DCA4A29",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Parametrica",
+    "baseDiff": 2.0,
+    "statement": "Trova $k$ affinché il prodotto delle radici sia -1."
+  },
+  {
+    "id": "ANA-01-CEF57BE0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Parametrica",
+    "baseDiff": 3.0,
+    "statement": "Trova $k$ affinché $x_1 + x_2 = x_1 \\cdot x_2$."
+  },
+  {
+    "id": "ANA-01-A203B152",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Parametrica",
+    "baseDiff": 3.0,
+    "statement": "Trova $k$ affinché l'equazione ammetta radici reali e discordi."
+  },
+  {
+    "id": "ANA-01-A2EC91D9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Parametrica",
+    "baseDiff": 3.0,
+    "statement": "Trova $k$ affinché le radici siano reali e positive (Sistema di Cartesio/Viète)."
+  },
+  {
+    "id": "ANA-01-89D82DF2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $x^2 - 5x + 6 > 0$"
+  },
+  {
+    "id": "ANA-01-24E32CD9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $x^2 + 4x + 4 \\le 0$"
+  },
+  {
+    "id": "ANA-01-A201E5F8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis 2 Grado",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $-2x^2 + 3x - 5 < 0$"
+  },
+  {
+    "id": "ANA-01-AFECB1FE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Fratta",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\frac{x^2-4}{1-x} \\ge 0$"
+  },
+  {
+    "id": "ANA-01-EBB3885F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Fratta",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\frac{x^2-3x}{x^2+x+1} > 0$"
+  },
+  {
+    "id": "ANA-01-ECB07B1B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Dis 2G",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\begin{cases} x^2-1 > 0 \\\\ 4-x^2 \\ge 0 \\end{cases}$\n    % Eq e Dis di Grado Superiore"
+  },
+  {
+    "id": "ANA-01-99499CA7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Biquadratica Eq",
+    "baseDiff": 2.0,
+    "statement": "Risolvi in $\\mathbb{R}$: $x^4 - 5x^2 + 4 = 0$"
+  },
+  {
+    "id": "ANA-01-9405AEE7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Biquadratica Eq",
+    "baseDiff": 2.0,
+    "statement": "Risolvi in $\\mathbb{R}$: $x^4 + 3x^2 - 4 = 0$"
+  },
+  {
+    "id": "ANA-01-5C923969",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Biquadratica Dis",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $x^4 - 10x^2 + 9 \\le 0$"
+  },
+  {
+    "id": "ANA-01-380ED897",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Binomia",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $8x^3 - 27 = 0$"
+  },
+  {
+    "id": "ANA-01-C8007349",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Binomia",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $16x^4 - 1 = 0$"
+  },
+  {
+    "id": "ANA-01-A83C26E4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Grado Sup Scomp",
+    "baseDiff": 2.0,
+    "statement": "Risolvi per scomposizione: $x^3 - 2x^2 - x + 2 = 0$"
+  },
+  {
+    "id": "ANA-01-BD5D6CFD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Grado Sup Dis",
+    "baseDiff": 2.0,
+    "statement": "Studia il segno: $x^3 - 4x > 0$"
+  },
+  {
+    "id": "ANA-01-1F0C48CB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ruffini Eq",
+    "baseDiff": 2.0,
+    "statement": "Risolvi trovando uno zero razionale: $2x^3 - 3x^2 - 8x - 3 = 0$"
+  },
+  {
+    "id": "ANA-01-DE8BB3F6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Grado Sup Fratta",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $\\frac{x^4-16}{x^3-1} \\le 0$"
+  },
+  {
+    "id": "ANA-01-EC7352DB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Eq",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\sqrt{x-2} = 4$"
+  },
+  {
+    "id": "ANA-01-552FE955",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Eq",
+    "baseDiff": 2.0,
+    "statement": "Risolvi imponendo le condizioni: $\\sqrt{x^2 - 4} = x - 2$"
+  },
+  {
+    "id": "ANA-01-2D6E6101",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Eq",
+    "baseDiff": 2.0,
+    "statement": "Risolvi il sistema equivalente: $\\sqrt{2x+3} = x$"
+  },
+  {
+    "id": "ANA-01-A984F486",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Eq",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $\\sqrt{x+1} + \\sqrt{x-2} = 3$ \\textit{(Doppio quadrato)}\n    % Irrazionali Dis (sqrt(A) < B e sqrt(A) > B)"
+  },
+  {
+    "id": "ANA-01-2AFA9D4A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Dis <",
+    "baseDiff": 2.0,
+    "statement": "Risolvi con il sistema equivalente: $\\sqrt{x-1} < 2$"
+  },
+  {
+    "id": "ANA-01-74DF403B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Dis <",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\sqrt{x^2 - 9} < x - 1$"
+  },
+  {
+    "id": "ANA-01-31489AEC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Dis >",
+    "baseDiff": 2.0,
+    "statement": "Risolvi con l'unione dei due sistemi: $\\sqrt{2x+1} > 3$"
+  },
+  {
+    "id": "ANA-01-B6608DB5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irrazionale Dis >",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $\\sqrt{x^2 - x - 2} > x - 3$\n    % Misti assoluti e irrazionali"
+  },
+  {
+    "id": "ANA-01-586BCAC1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Irraz Modulo",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $\\sqrt{|x| - 1} = 2$"
+  },
+  {
+    "id": "ANA-01-098D722F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Fratta Irraz",
+    "baseDiff": 3.0,
+    "statement": "Dominio e segno: $\\frac{\\sqrt{x^2-4}}{x} \\ge 0$\n    % Sistemi grado superiore"
+  },
+  {
+    "id": "ANA-01-88435172",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist 2 Grado",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\begin{cases} y = x^2 - 4x \\\\ y = 2x - 5 \\end{cases}$ \\textit{(Intersezione parabola-retta)}"
+  },
+  {
+    "id": "ANA-01-8A3CD039",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Simmetrico",
+    "baseDiff": 3.0,
+    "statement": "Risolvi trovando $x,y$ come radici di una eq. 2° grado: $\\begin{cases} x+y=5 \\\\ xy=6 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-E4379A6E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist 2 Grado",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $\\begin{cases} x^2 + y^2 = 25 \\\\ x - y = 1 \\end{cases}$ \\textit{(Intersezione circonferenza-retta)}"
+  },
+  {
+    "id": "ANA-01-426A9BF1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 1.0,
+    "statement": "Determina il dominio: $f(x) = \\frac{3x - 1}{x^2 - 4}$"
+  },
+  {
+    "id": "ANA-01-6FD17AD9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 1.0,
+    "statement": "Determina il dominio: $f(x) = \\sqrt{x^2 - 5x + 6}$"
+  },
+  {
+    "id": "ANA-01-E35123A3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 1.0,
+    "statement": "Determina il dominio: $f(x) = \\frac{x}{\\sqrt{x - 2}}$"
+  },
+  {
+    "id": "ANA-01-CFFFFFD9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 2.0,
+    "statement": "Determina il dominio: $f(x) = \\sqrt{\\frac{x + 1}{x - 3}}$"
+  },
+  {
+    "id": "ANA-01-99F33115",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 2.0,
+    "statement": "Determina il dominio: $f(x) = \\frac{\\sqrt{x+1}}{\\sqrt{x-3}}$ \\textit{(Confronta col precedente)}"
+  },
+  {
+    "id": "ANA-01-2246B7D6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 2.0,
+    "statement": "Determina il dominio: $f(x) = \\frac{1}{|x| - 2}$"
+  },
+  {
+    "id": "ANA-01-B549C365",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 2.0,
+    "statement": "Determina il dominio: $f(x) = \\sqrt{|x-1| - 3}$"
+  },
+  {
+    "id": "ANA-01-EAA2B798",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 3.0,
+    "statement": "Determina il dominio: $f(x) = \\sqrt{x - \\sqrt{x^2 - 1}}$"
+  },
+  {
+    "id": "ANA-01-F6030812",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 3.0,
+    "statement": "Determina il dominio: $f(x) = \\frac{x^2+1}{\\sqrt{4 - |x^2-5|}}$"
+  },
+  {
+    "id": "ANA-01-30A7C0B5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dominio",
+    "baseDiff": 3.0,
+    "statement": "Determina il dominio: $f(x) = \\sqrt{1 - \\sqrt{2 - x}}$\n    \n    % Simmetrie (Pari/Dispari) (10 varianti)"
+  },
+  {
+    "id": "ANA-01-D38E0612",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 1.0,
+    "statement": "Stabilisci se $f(x) = x^4 - 2x^2 + 3$ è pari, dispari o né pari né dispari."
+  },
+  {
+    "id": "ANA-01-7DF5A454",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 1.0,
+    "statement": "Stabilisci se $f(x) = x^3 - 5x$ è pari o dispari."
+  },
+  {
+    "id": "ANA-01-2146943D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 1.0,
+    "statement": "Stabilisci la simmetria di $f(x) = \\frac{x}{x^2 + 1}$."
+  },
+  {
+    "id": "ANA-01-5C5D3050",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 2.0,
+    "statement": "Stabilisci la simmetria di $f(x) = |x| \\cdot x^3$."
+  },
+  {
+    "id": "ANA-01-946678B4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 2.0,
+    "statement": "Stabilisci la simmetria di $f(x) = \\frac{|x-1| + |x+1|}{2}$."
+  },
+  {
+    "id": "ANA-01-CFB646B7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 2.0,
+    "statement": "Stabilisci la simmetria di $f(x) = (x+1)^2$."
+  },
+  {
+    "id": "ANA-01-CB5E7B57",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 2.0,
+    "statement": "Dimostra che $f(x) = f_1(x) \\cdot f_2(x)$ è dispari se $f_1$ è pari e $f_2$ è dispari."
+  },
+  {
+    "id": "ANA-01-5AE850AD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 3.0,
+    "statement": "Stabilisci la simmetria di $f(x) = \\ln\\left(\\frac{1+x}{1-x}\\right)$."
+  },
+  {
+    "id": "ANA-01-8837C638",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 3.0,
+    "statement": "Dimostra che ogni funzione definita su $\\mathbb{R}$ può essere scritta come somma di una funzione pari e una dispari."
+  },
+  {
+    "id": "ANA-01-371A7A90",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Simmetrie",
+    "baseDiff": 3.0,
+    "statement": "Stabilisci la simmetria di $f(x) = e^x - e^{-x}$.\n    \n    % Funzione Inversa e Composta (10 varianti)"
+  },
+  {
+    "id": "ANA-01-4E190F9F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Composta",
+    "baseDiff": 1.0,
+    "statement": "Date $f(x)=2x+1$ e $g(x)=x^2$, calcola $(g \\circ f)(x)$."
+  },
+  {
+    "id": "ANA-01-E24965F1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Composta",
+    "baseDiff": 1.0,
+    "statement": "Date le funzioni precedenti, calcola $(f \\circ g)(x)$ e verifica che la composizione non è commutativa."
+  },
+  {
+    "id": "ANA-01-20604B53",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Composta",
+    "baseDiff": 2.0,
+    "statement": "Date $f(x)=\\frac{1}{x-1}$ e $g(x)=\\sqrt{x}$, calcola $f(g(x))$ e il suo dominio."
+  },
+  {
+    "id": "ANA-01-D1C70290",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Composta",
+    "baseDiff": 2.0,
+    "statement": "Esprimi $h(x) = \\sqrt{x^2+1}$ come composizione di due funzioni elementari."
+  },
+  {
+    "id": "ANA-01-47379FEC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 1.0,
+    "statement": "Dimostra che $f(x) = 3x - 5$ è biunivoca e calcola $f^{-1}(x)$."
+  },
+  {
+    "id": "ANA-01-F2A888B1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 1.0,
+    "statement": "Calcola l'inversa di $f(x) = \\frac{x+2}{x-1}$."
+  },
+  {
+    "id": "ANA-01-D53B2846",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 2.0,
+    "statement": "Determina l'inversa di $f(x) = x^3 + 1$."
+  },
+  {
+    "id": "ANA-01-25CBE808",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 2.0,
+    "statement": "Data $f(x) = x^2 - 4x + 3$, restringi il dominio a $[2, +\\infty)$ per renderla invertibile e calcola l'inversa."
+  },
+  {
+    "id": "ANA-01-A0288811",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 3.0,
+    "statement": "Determina l'inversa di $f(x) = \\frac{e^x - e^{-x}}{2}$."
+  },
+  {
+    "id": "ANA-01-341F80B3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 3.0,
+    "statement": "Dimostra che se $f$ è strettamente decrescente su $\\mathbb{R}$, allora è invertibile."
+  },
+  {
+    "id": "ANA-01-2EBE8983",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 1.0,
+    "statement": "Determina le C.E.: $f(x) = \\log_2(3x - 6)$"
+  },
+  {
+    "id": "ANA-01-C290A674",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 1.0,
+    "statement": "Determina le C.E.: $f(x) = \\ln(4 - x^2)$"
+  },
+  {
+    "id": "ANA-01-ABC98A88",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 1.0,
+    "statement": "Determina le C.E.: $f(x) = \\log_{1/2}\\left(\\frac{x}{x+1}\\right)$"
+  },
+  {
+    "id": "ANA-01-B956D304",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 2.0,
+    "statement": "Determina le C.E.: $f(x) = \\ln(x^2 + 1)$"
+  },
+  {
+    "id": "ANA-01-59A838C7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 2.0,
+    "statement": "Determina le C.E.: $f(x) = \\log_3(|x| - 2)$"
+  },
+  {
+    "id": "ANA-01-8A654533",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 2.0,
+    "statement": "Determina le C.E.: $f(x) = \\sqrt{\\ln(x - 1)}$"
+  },
+  {
+    "id": "ANA-01-FDE09A13",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 2.0,
+    "statement": "Determina le C.E.: $f(x) = \\ln(\\ln x)$"
+  },
+  {
+    "id": "ANA-01-CA23EBC7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 3.0,
+    "statement": "Determina le C.E.: $f(x) = \\ln(e^x - 1)$"
+  },
+  {
+    "id": "ANA-01-4A62D27E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 3.0,
+    "statement": "Determina le C.E.: $f(x) = \\frac{1}{\\log_2(x^2 - 3x + 3)}$"
+  },
+  {
+    "id": "ANA-01-74506C06",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "C.E. Logaritmo",
+    "baseDiff": 3.0,
+    "statement": "Determina le C.E.: $f(x) = \\log_x(2 - x)$ \\textit{(Attenzione alla base)}\n    \n    % Equazioni Esponenziali e Logaritmiche (10 varianti)"
+  },
+  {
+    "id": "ANA-01-A21D241F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Esponenziale",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $2^{3x-1} = 16$"
+  },
+  {
+    "id": "ANA-01-6D47781F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Esponenziale",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $3^{x^2 - 4} = 1$"
+  },
+  {
+    "id": "ANA-01-03A62B3E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Esponenziale",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $5^{2x} - 6 \\cdot 5^x + 5 = 0$"
+  },
+  {
+    "id": "ANA-01-F449F7A5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Esponenziale",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $e^{2x} + 2e^x - 3 = 0$"
+  },
+  {
+    "id": "ANA-01-99B963E3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Esponenziale",
+    "baseDiff": 3.0,
+    "statement": "Risolvi tramite logaritmi: $2^{x+1} = 3^{x-1}$"
+  },
+  {
+    "id": "ANA-01-72211750",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Logaritmica",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\log_2(x-1) = 3$"
+  },
+  {
+    "id": "ANA-01-E0F8A4A5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Logaritmica",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\ln(2x) + \\ln(3) = \\ln(12)$"
+  },
+  {
+    "id": "ANA-01-62F6D4DD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Logaritmica",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\log_3(x) + \\log_3(x-8) = 2$"
+  },
+  {
+    "id": "ANA-01-9DA91A17",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Logaritmica",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\log_{1/2}^2(x) - \\log_{1/2}(x) - 2 = 0$"
+  },
+  {
+    "id": "ANA-01-62B6F064",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Logaritmica",
+    "baseDiff": 3.0,
+    "statement": "Risolvi cambiando base: $\\log_2(x) + \\log_4(x) = 3$\n    \n    % Disequazioni Esponenziali e Logaritmiche (10 varianti)"
+  },
+  {
+    "id": "ANA-01-CB49E8AA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Esponenziale",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $3^{2x-1} \\ge 27$"
+  },
+  {
+    "id": "ANA-01-8CF5B1EF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Esponenziale",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\left(\\frac{1}{2}\\right)^{x+3} < \\frac{1}{8}$"
+  },
+  {
+    "id": "ANA-01-0762DB48",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Esponenziale",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $4^x - 2^x - 2 > 0$"
+  },
+  {
+    "id": "ANA-01-1E5D954A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Esponenziale",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $e^{x^2 - 3x} < \\frac{1}{e^2}$"
+  },
+  {
+    "id": "ANA-01-0F96B8DF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Esponenziale",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $2^x \\ge 3$"
+  },
+  {
+    "id": "ANA-01-0FC5362A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Logaritmica",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\ln(x - 2) \\ge 0$"
+  },
+  {
+    "id": "ANA-01-F92111BF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Logaritmica",
+    "baseDiff": 1.0,
+    "statement": "Risolvi (attenzione alla base): $\\log_{1/3}(2x-5) > -1$"
+  },
+  {
+    "id": "ANA-01-BAFC1D9B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Logaritmica",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\log_2(x^2 - 2x) < 3$"
+  },
+  {
+    "id": "ANA-01-3F42CB06",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Logaritmica",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\ln^2(x) - 4 \\ge 0$"
+  },
+  {
+    "id": "ANA-01-8DBC8DD4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Logaritmica",
+    "baseDiff": 3.0,
+    "statement": "Risolvi: $\\log_{1/2}(x) > \\log_{1/2}(x^2 - 2)$"
+  },
+  {
+    "id": "ANA-01-BCAF4277",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Archi Associati",
+    "baseDiff": 1.0,
+    "statement": "Semplifica: $\\sin(\\pi - \\alpha) + \\cos(\\pi/2 + \\alpha) - \\sin(2\\pi - \\alpha)$"
+  },
+  {
+    "id": "ANA-01-847A862C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Archi Associati",
+    "baseDiff": 1.0,
+    "statement": "Calcola senza calcolatrice: $\\cos(120^\\circ) + \\sin(210^\\circ) + \\tan(315^\\circ)$"
+  },
+  {
+    "id": "ANA-01-632C1512",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Identità",
+    "baseDiff": 1.0,
+    "statement": "Verifica: $\\tan \\alpha + \\cot \\alpha = \\frac{1}{\\sin \\alpha \\cos \\alpha}$"
+  },
+  {
+    "id": "ANA-01-4B535838",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Identità",
+    "baseDiff": 2.0,
+    "statement": "Verifica: $\\frac{\\sin^3 \\alpha - \\cos^3 \\alpha}{\\sin \\alpha - \\cos \\alpha} = 1 + \\sin \\alpha \\cos \\alpha$"
+  },
+  {
+    "id": "ANA-01-0FE33DFB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Addizione",
+    "baseDiff": 1.0,
+    "statement": "Calcola il valore esatto di $\\sin(75^\\circ)$ sfruttando $75^\\circ = 45^\\circ + 30^\\circ$."
+  },
+  {
+    "id": "ANA-01-5A98F6CC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Addizione",
+    "baseDiff": 2.0,
+    "statement": "Sviluppa e semplifica: $\\cos(\\alpha + \\pi/6) + \\cos(\\alpha - \\pi/6)$"
+  },
+  {
+    "id": "ANA-01-0F0F061B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Duplicazione",
+    "baseDiff": 1.0,
+    "statement": "Sapendo che $\\sin \\alpha = \\frac{3}{5}$ e $0 < \\alpha < \\pi/2$, calcola $\\sin(2\\alpha)$ e $\\cos(2\\alpha)$."
+  },
+  {
+    "id": "ANA-01-E57E2889",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Bisezione",
+    "baseDiff": 2.0,
+    "statement": "Calcola il valore esatto di $\\cos(\\pi/8)$."
+  },
+  {
+    "id": "ANA-01-F638F13D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prostaferesi",
+    "baseDiff": 2.0,
+    "statement": "Trasforma in prodotto: $\\sin(5\\alpha) - \\sin(3\\alpha)$"
+  },
+  {
+    "id": "ANA-01-0B0CE109",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Parametriche",
+    "baseDiff": 3.0,
+    "statement": "Esprimi l'espressione $y = \\frac{1 - \\cos x}{\\sin x}$ in funzione di $t = \\tan(x/2)$ e semplifica.\n    \n    % Equazioni Goniometriche (10 varianti)"
+  },
+  {
+    "id": "ANA-01-6862D94D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 1.0,
+    "statement": "Elementare: $2\\sin x - 1 = 0$"
+  },
+  {
+    "id": "ANA-01-D71F3099",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 1.0,
+    "statement": "Elementare: $\\sqrt{3}\\tan x - 1 = 0$"
+  },
+  {
+    "id": "ANA-01-1E1C5E9F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 2.0,
+    "statement": "Riconducibile: $2\\cos^2 x - \\cos x - 1 = 0$"
+  },
+  {
+    "id": "ANA-01-CC585499",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 2.0,
+    "statement": "Scomposizione: $\\sin(2x) - \\sin x = 0$"
+  },
+  {
+    "id": "ANA-01-EBCA492C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 2.0,
+    "statement": "Lineare: $\\sin x + \\cos x = 1$ \\textit{(Usa metodo grafico o angolo aggiunto)}"
+  },
+  {
+    "id": "ANA-01-A5FF383F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 2.0,
+    "statement": "Lineare: $\\sqrt{3}\\sin x - \\cos x = 2$"
+  },
+  {
+    "id": "ANA-01-E87A0922",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 2.0,
+    "statement": "Omogenea: $\\sin^2 x - 3\\sin x \\cos x + 2\\cos^2 x = 0$"
+  },
+  {
+    "id": "ANA-01-584792FC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 3.0,
+    "statement": "Omogenea non nulla: $3\\sin^2 x + \\sin x \\cos x - 2\\cos^2 x = 1$"
+  },
+  {
+    "id": "ANA-01-A322F4C9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 3.0,
+    "statement": "Con formule: $\\cos(2x) + 3\\sin x - 2 = 0$"
+  },
+  {
+    "id": "ANA-01-B005130C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Goniometrica",
+    "baseDiff": 3.0,
+    "statement": "Con argomenti multipli: $\\cos(3x) = \\cos x$\n    \n    % Disequazioni e Funz Inverse (10 varianti)"
+  },
+  {
+    "id": "ANA-01-524618B3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Goniometrica",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $2\\cos x - 1 \\ge 0$ in $[0, 2\\pi]$"
+  },
+  {
+    "id": "ANA-01-83AF7045",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Goniometrica",
+    "baseDiff": 1.0,
+    "statement": "Risolvi: $\\tan x \\le 1$ in $(-\\pi/2, \\pi/2)$"
+  },
+  {
+    "id": "ANA-01-BF75369E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Goniometrica",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $2\\sin^2 x + \\sin x - 1 > 0$"
+  },
+  {
+    "id": "ANA-01-E15B6F42",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Dis Goniometrica",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $\\sqrt{3}\\sin x - \\cos x < 0$"
+  },
+  {
+    "id": "ANA-01-3683F2BC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Sist Goniometrico",
+    "baseDiff": 2.0,
+    "statement": "Risolvi in $[0, 2\\pi]$: $\\begin{cases} \\sin x > 0 \\\\ \\cos x < 1/2 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-6224A869",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\arcsin(1/2) + \\arccos(-\\sqrt{2}/2)$"
+  },
+  {
+    "id": "ANA-01-ADD09ECD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 2.0,
+    "statement": "Determina il dominio di $f(x) = \\arcsin(2x - 3)$."
+  },
+  {
+    "id": "ANA-01-B828EFDC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 2.0,
+    "statement": "Calcola l'espressione: $\\cos(\\arcsin(4/5))$."
+  },
+  {
+    "id": "ANA-01-A3947812",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 3.0,
+    "statement": "Risolvi l'equazione: $\\arctan x + \\arctan(2x) = \\pi/4$."
+  },
+  {
+    "id": "ANA-01-285496F2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funz Inversa",
+    "baseDiff": 3.0,
+    "statement": "Dimostra l'identità: $\\arcsin x + \\arccos x = \\pi/2$ per ogni $x \\in [-1, 1]$."
+  },
+  {
+    "id": "ANA-01-4ABB2DA8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Algebrica",
+    "baseDiff": 1.0,
+    "statement": "Calcola $(2 - 3i) + (4 + 5i) - (1 - i)$."
+  },
+  {
+    "id": "ANA-01-3FAE7AC7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Algebrica",
+    "baseDiff": 1.0,
+    "statement": "Calcola il prodotto: $(3 + 2i)(3 - 2i)$."
+  },
+  {
+    "id": "ANA-01-34D2B4ED",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Algebrica",
+    "baseDiff": 1.0,
+    "statement": "Esegui la divisione: $\\frac{1 + 2i}{2 - i}$."
+  },
+  {
+    "id": "ANA-01-1970E06F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Algebrica",
+    "baseDiff": 2.0,
+    "statement": "Calcola il modulo di $z = \\frac{3+4i}{1-i}$."
+  },
+  {
+    "id": "ANA-01-470BDE1D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Potenze di i",
+    "baseDiff": 1.0,
+    "statement": "Semplifica: $i^{15} - i^{22} + i^{33}$."
+  },
+  {
+    "id": "ANA-01-CB1C2D8C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Potenze di i",
+    "baseDiff": 2.0,
+    "statement": "Calcola $(1+i)^4$ in forma algebrica."
+  },
+  {
+    "id": "ANA-01-0B003E56",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Algebrica",
+    "baseDiff": 2.0,
+    "statement": "Trova i numeri reali $x,y$ tali che $(x+iy)(1-i) = 3 + i$."
+  },
+  {
+    "id": "ANA-01-02030B9D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Algebrica",
+    "baseDiff": 2.0,
+    "statement": "Risolvi l'equazione $z + 2\\bar{z} = 3 - i$."
+  },
+  {
+    "id": "ANA-01-EBCC5BA1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Algebrica",
+    "baseDiff": 3.0,
+    "statement": "Risolvi l'equazione $z \\cdot \\bar{z} - i z = 2 + 2i$."
+  },
+  {
+    "id": "ANA-01-A92B2CB2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Luoghi Geom",
+    "baseDiff": 3.0,
+    "statement": "Disegna nel piano di Gauss l'insieme dei punti $z$ tali che $|z - 2i| \\le 3$.\n    \n    % Forma Trigonometrica, Esponenziale e Radici (10 varianti)"
+  },
+  {
+    "id": "ANA-01-80898D70",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Trigonometrica",
+    "baseDiff": 1.0,
+    "statement": "Scrivi in forma trigonometrica: $z = 1 - \\sqrt{3}i$."
+  },
+  {
+    "id": "ANA-01-13C78A77",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Trigonometrica",
+    "baseDiff": 1.0,
+    "statement": "Scrivi in forma trigonometrica: $z = -2i$."
+  },
+  {
+    "id": "ANA-01-9DF484C7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Trigonometrica",
+    "baseDiff": 2.0,
+    "statement": "Calcola il prodotto in forma trigonometrica tra $z_1 = 2(\\cos(\\pi/6) + i\\sin(\\pi/6))$ e $z_2 = 3(\\cos(\\pi/3) + i\\sin(\\pi/3))$."
+  },
+  {
+    "id": "ANA-01-360C2962",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Esponenziale",
+    "baseDiff": 1.0,
+    "statement": "Scrivi in forma esponenziale: $z = -1 + i$."
+  },
+  {
+    "id": "ANA-01-F2496525",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Esponenziale",
+    "baseDiff": 2.0,
+    "statement": "Scrivi in forma algebrica il numero $z = 2e^{i\\frac{3\\pi}{4}}$."
+  },
+  {
+    "id": "ANA-01-95979D5B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "De Moivre",
+    "baseDiff": 2.0,
+    "statement": "Usando De Moivre, calcola $(\\sqrt{3} + i)^6$."
+  },
+  {
+    "id": "ANA-01-74FA5D66",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Radici C",
+    "baseDiff": 2.0,
+    "statement": "Calcola le 3 radici cubiche dell'unità ($z^3 = 1$) e rappresentale nel piano di Gauss."
+  },
+  {
+    "id": "ANA-01-D87B8BF7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Radici C",
+    "baseDiff": 3.0,
+    "statement": "Calcola le radici quarte di $z = -16$ ed esprimile in forma algebrica."
+  },
+  {
+    "id": "ANA-01-C537D325",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq in C",
+    "baseDiff": 2.0,
+    "statement": "Risolvi nel campo complesso: $x^2 - 4x + 13 = 0$."
+  },
+  {
+    "id": "ANA-01-D749DCFF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq in C",
+    "baseDiff": 3.0,
+    "statement": "Risolvi nel campo complesso: $z^4 + 3z^2 - 4 = 0$ \\textit{(Biquadratica)}."
+  },
+  {
+    "id": "ANA-01-88C58223",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prog Aritmetica",
+    "baseDiff": 1.0,
+    "statement": "In una progressione aritmetica $a_1 = 3$ e la ragione $d = 4$. Calcola il $15^\\circ$ termine."
+  },
+  {
+    "id": "ANA-01-F5A7A33B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prog Aritmetica",
+    "baseDiff": 1.0,
+    "statement": "Calcola la somma dei primi 20 termini della progressione aritmetica con $a_1 = 5$ e $a_2 = 8$."
+  },
+  {
+    "id": "ANA-01-916B73F8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prog Geometrica",
+    "baseDiff": 1.0,
+    "statement": "In una progressione geometrica $a_1 = 2$ e $a_4 = 54$. Determina la ragione $q$."
+  },
+  {
+    "id": "ANA-01-67343E33",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Prog Geometrica",
+    "baseDiff": 2.0,
+    "statement": "Calcola la somma dei primi 10 termini della progressione geometrica definita da $a_n = 3 \\cdot (1/2)^{n-1}$.\n    % Monotonia e Limitatezza"
+  },
+  {
+    "id": "ANA-01-FC618E10",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monotonia",
+    "baseDiff": 1.0,
+    "statement": "Dimostra che la successione $a_n = \\frac{n}{n+1}$ è strettamente crescente."
+  },
+  {
+    "id": "ANA-01-E29549F2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monotonia",
+    "baseDiff": 2.0,
+    "statement": "Studia la monotonia della successione $a_n = \\frac{2n+1}{3n-2}$ per $n \\ge 1$."
+  },
+  {
+    "id": "ANA-01-3EA96C51",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monotonia",
+    "baseDiff": 3.0,
+    "statement": "Dimostra che la successione $a_n = \\left(1+\\frac{1}{n}\\right)^n$ è strettamente crescente."
+  },
+  {
+    "id": "ANA-01-98AA4F41",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Limitatezza",
+    "baseDiff": 2.0,
+    "statement": "Verifica che la successione $a_n = \\frac{3n-1}{n+2}$ è limitata, determinandone l'estremo superiore e inferiore.\n    % Limiti di Successioni"
+  },
+  {
+    "id": "ANA-01-FA64852B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Limite Succ",
+    "baseDiff": 2.0,
+    "statement": "Usando la definizione, verifica che $\\lim_{n \\to \\infty} \\frac{2n}{n+1} = 2$."
+  },
+  {
+    "id": "ANA-01-1E714BEB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Limite Succ",
+    "baseDiff": 3.0,
+    "statement": "Usando la definizione, verifica che $\\lim_{n \\to \\infty} \\frac{1-n^2}{n} = -\\infty$."
+  },
+  {
+    "id": "ANA-01-937FF4D1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Limite Finito",
+    "baseDiff": 1.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to 2} (3x - 1) = 5$."
+  },
+  {
+    "id": "ANA-01-34254372",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Limite Finito",
+    "baseDiff": 2.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to 1} (x^2 + 2) = 3$."
+  },
+  {
+    "id": "ANA-01-2875D0E2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Limite Finito",
+    "baseDiff": 2.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to -1} \\frac{2x+1}{x} = 1$."
+  },
+  {
+    "id": "ANA-01-C2F615E2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Limite Finito",
+    "baseDiff": 3.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to 3} \\sqrt{x+1} = 2$."
+  },
+  {
+    "id": "ANA-01-879B8163",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Asintoto Vert",
+    "baseDiff": 1.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to 0^+} \\frac{1}{x} = +\\infty$."
+  },
+  {
+    "id": "ANA-01-B8407BB9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Asintoto Vert",
+    "baseDiff": 2.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to 2} \\frac{1}{(x-2)^2} = +\\infty$."
+  },
+  {
+    "id": "ANA-01-FEF2126F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Asintoto Orizz",
+    "baseDiff": 1.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to +\\infty} \\frac{2x}{x+1} = 2$."
+  },
+  {
+    "id": "ANA-01-3E310D23",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Asintoto Orizz",
+    "baseDiff": 2.0,
+    "statement": "Verifica tramite la definizione: $\\lim_{x \\to -\\infty} e^x = 0$.\n    % Teoremi sui Limiti"
+  },
+  {
+    "id": "ANA-01-7A94154D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Carabinieri",
+    "baseDiff": 2.0,
+    "statement": "Sapendo che $1-\\frac{x^2}{2} \\le f(x) \\le 1$ per ogni $x$ in un intorno di $0$, calcola $\\lim_{x \\to 0} f(x)$."
+  },
+  {
+    "id": "ANA-01-37B32559",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Carabinieri",
+    "baseDiff": 3.0,
+    "statement": "Dimostra tramite il Teorema dei Carabinieri che $\\lim_{x \\to +\\infty} \\frac{\\sin x}{x} = 0$."
+  },
+  {
+    "id": "ANA-01-F88D51E8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Forma 0/0",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to 2} \\frac{x^2 - 4}{x - 2}$"
+  },
+  {
+    "id": "ANA-01-15FABCEB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Forma 0/0",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to -1} \\frac{x^2 + 3x + 2}{x^2 - 1}$"
+  },
+  {
+    "id": "ANA-01-613CD755",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Forma 0/0",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to 3} \\frac{x^3 - 27}{x^2 - 9}$"
+  },
+  {
+    "id": "ANA-01-72A546B0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Forma 0/0",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to 1} \\frac{2x^3 - x^2 - x}{x^3 - 1}$"
+  },
+  {
+    "id": "ANA-01-7A02431A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Forma inf/inf",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to +\\infty} \\frac{3x^2 - 5x + 1}{2x^2 + 4}$"
+  },
+  {
+    "id": "ANA-01-AAD8796B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Forma inf/inf",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to -\\infty} \\frac{x^3 - 1}{4x^2 + x}$"
+  },
+  {
+    "id": "ANA-01-77C35DFF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Forma inf/inf",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to +\\infty} \\frac{(2x-1)^3}{x(x^2+2)}$\n    % Razionalizzazione (Radici)"
+  },
+  {
+    "id": "ANA-01-DCFF697E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizzazione",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to 4} \\frac{\\sqrt{x} - 2}{x - 4}$"
+  },
+  {
+    "id": "ANA-01-302BDB8A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizzazione",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{\\sqrt{1+x} - \\sqrt{1-x}}{x}$"
+  },
+  {
+    "id": "ANA-01-4F91A9F3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Razionalizzazione",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\lim_{x \\to +\\infty} (\\sqrt{x^2+3x} - x)$ \\textit{(Forma $\\infty - \\infty$)}\n    % Limiti Notevoli Goniometrici"
+  },
+  {
+    "id": "ANA-01-513ED5FB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{\\sin(3x)}{x}$"
+  },
+  {
+    "id": "ANA-01-BC4E2FDE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{1 - \\cos x}{4x^2}$"
+  },
+  {
+    "id": "ANA-01-8126C4B9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{\\tan x}{x}$"
+  },
+  {
+    "id": "ANA-01-756477D4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{\\sin(2x)}{\\sin(5x)}$"
+  },
+  {
+    "id": "ANA-01-65680D6C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{1 - \\cos(2x)}{x \\sin x}$\n    % Limiti Notevoli Exp/Log"
+  },
+  {
+    "id": "ANA-01-B88D4DDD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{e^{2x} - 1}{x}$"
+  },
+  {
+    "id": "ANA-01-3B3A2402",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{\\ln(1+4x)}{x}$"
+  },
+  {
+    "id": "ANA-01-8FCB80E5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to +\\infty} \\left(1 + \\frac{3}{x}\\right)^x$"
+  },
+  {
+    "id": "ANA-01-74251A0B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{e^x - e^{-x}}{\\sin x}$"
+  },
+  {
+    "id": "ANA-01-7E405290",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Lim Notevoli",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\lim_{x \\to 0^+} x \\ln x$ \\textit{(Tramite sostituzione o gerarchie)}"
+  },
+  {
+    "id": "ANA-01-83B0939E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Continuità",
+    "baseDiff": 1.0,
+    "statement": "Determina se $f(x) = \\frac{x^2-9}{x-3}$ prolungata con $f(3)=6$ è continua in $x=3$."
+  },
+  {
+    "id": "ANA-01-5AB688F4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Continuità",
+    "baseDiff": 2.0,
+    "statement": "Determina $k$ affinché $f(x) = \\begin{cases} 2x+k & x < 1 \\\\ x^2-1 & x \\ge 1 \\end{cases}$ sia continua in $\\mathbb{R}$."
+  },
+  {
+    "id": "ANA-01-2085D575",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Discontinuità",
+    "baseDiff": 1.0,
+    "statement": "Classifica la discontinuità in $x=0$ per $f(x) = \\frac{|x|}{x}$."
+  },
+  {
+    "id": "ANA-01-A79ABE52",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Discontinuità",
+    "baseDiff": 1.0,
+    "statement": "Classifica la discontinuità in $x=2$ per $f(x) = \\frac{1}{x-2}$."
+  },
+  {
+    "id": "ANA-01-9591D42B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Discontinuità",
+    "baseDiff": 2.0,
+    "statement": "Classifica la discontinuità in $x=0$ per $f(x) = e^{1/x}$."
+  },
+  {
+    "id": "ANA-01-59BA2D54",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Discontinuità",
+    "baseDiff": 2.0,
+    "statement": "Classifica le discontinuità di $f(x) = \\frac{x^2-x}{x^2-1}$.\n    % Asintoti"
+  },
+  {
+    "id": "ANA-01-357A10CC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Asintoti Vert",
+    "baseDiff": 1.0,
+    "statement": "Determina gli asintoti verticali di $f(x) = \\frac{2x}{x^2-4}$."
+  },
+  {
+    "id": "ANA-01-B1D4A80A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Asintoti Orizz",
+    "baseDiff": 1.0,
+    "statement": "Determina gli asintoti orizzontali di $f(x) = \\frac{3x^2-1}{x^2+2}$."
+  },
+  {
+    "id": "ANA-01-1065F945",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Asintoti Obliqui",
+    "baseDiff": 2.0,
+    "statement": "Determina l'asintoto obliquo di $f(x) = \\frac{x^2+3x+1}{x-1}$."
+  },
+  {
+    "id": "ANA-01-0E896360",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Asintoti Misti",
+    "baseDiff": 3.0,
+    "statement": "Determina tutti gli asintoti di $f(x) = \\frac{x^3 - 2x^2}{x^2 - 1}$."
+  },
+  {
+    "id": "ANA-01-2DA42E02",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Asintoti Exp",
+    "baseDiff": 3.0,
+    "statement": "Determina gli asintoti di $f(x) = x e^{-x}$.\n    % Teoremi sulle Funzioni Continue"
+  },
+  {
+    "id": "ANA-01-76D3588A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Zeri",
+    "baseDiff": 2.0,
+    "statement": "Dimostra che l'equazione $x^3 + x - 1 = 0$ ammette almeno una soluzione in $[0, 1]$."
+  },
+  {
+    "id": "ANA-01-38DDE124",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Zeri",
+    "baseDiff": 3.0,
+    "statement": "Dimostra che $e^x + x = 0$ ammette una radice reale."
+  },
+  {
+    "id": "ANA-01-1DE31250",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Derivata",
+    "baseDiff": 1.0,
+    "statement": "Calcola $f'(2)$ per $f(x) = x^2$ applicando la definizione di limite del rapporto incrementale."
+  },
+  {
+    "id": "ANA-01-DAA7B963",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Derivata",
+    "baseDiff": 2.0,
+    "statement": "Calcola $f'(x)$ per $f(x) = \\sqrt{x}$ applicando la definizione (razionalizzando il rapporto incrementale)."
+  },
+  {
+    "id": "ANA-01-FBA2938B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Def Derivata",
+    "baseDiff": 3.0,
+    "statement": "Calcola $f'(x)$ per $f(x) = \\frac{1}{x}$ applicando la definizione.\n    % Retta Tangente"
+  },
+  {
+    "id": "ANA-01-D4A26C5D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Retta Tangente",
+    "baseDiff": 1.0,
+    "statement": "Determina l'equazione della retta tangente a $y = x^2 - 3x$ nel punto di ascissa $x_0 = 1$."
+  },
+  {
+    "id": "ANA-01-84294F96",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Retta Tangente",
+    "baseDiff": 2.0,
+    "statement": "Determina la tangente a $y = e^x$ nel punto di intersezione con l'asse $y$."
+  },
+  {
+    "id": "ANA-01-3751F538",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Retta Tangente",
+    "baseDiff": 3.0,
+    "statement": "Trova i punti in cui la tangente a $y = \\frac{x}{x^2+1}$ è orizzontale.\n    % Regole Base, Prodotto e Quoziente"
+  },
+  {
+    "id": "ANA-01-8D5E0F2B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Regole",
+    "baseDiff": 1.0,
+    "statement": "Calcola la derivata: $y = 3x^4 - 2x^2 + 5x - \\pi$"
+  },
+  {
+    "id": "ANA-01-BBBD9A96",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Prodotto",
+    "baseDiff": 1.0,
+    "statement": "Calcola la derivata: $y = x^2 \\sin x$"
+  },
+  {
+    "id": "ANA-01-F3C00129",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Prodotto",
+    "baseDiff": 2.0,
+    "statement": "Calcola la derivata: $y = x^3 e^x \\ln x$"
+  },
+  {
+    "id": "ANA-01-1AEFAFBA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Quoziente",
+    "baseDiff": 1.0,
+    "statement": "Calcola la derivata: $y = \\frac{2x-1}{x+3}$"
+  },
+  {
+    "id": "ANA-01-BF156DFA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Quoziente",
+    "baseDiff": 2.0,
+    "statement": "Calcola la derivata: $y = \\frac{\\ln x}{x}$"
+  },
+  {
+    "id": "ANA-01-51EB86A5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Quoziente",
+    "baseDiff": 2.0,
+    "statement": "Calcola la derivata: $y = \\frac{e^x}{1+x^2}$\n    % Derivata di Funzione Composta"
+  },
+  {
+    "id": "ANA-01-7D9D7751",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Composta",
+    "baseDiff": 1.0,
+    "statement": "Calcola la derivata: $y = (3x^2 - x)^5$"
+  },
+  {
+    "id": "ANA-01-86BDBEFB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Composta",
+    "baseDiff": 1.0,
+    "statement": "Calcola la derivata: $y = \\sin(4x)$"
+  },
+  {
+    "id": "ANA-01-E93CB07F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Composta",
+    "baseDiff": 2.0,
+    "statement": "Calcola la derivata: $y = e^{-x^2/2}$"
+  },
+  {
+    "id": "ANA-01-E0ECBBC1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Composta",
+    "baseDiff": 2.0,
+    "statement": "Calcola la derivata: $y = \\ln(x^2 + \\sin x)$"
+  },
+  {
+    "id": "ANA-01-69400E93",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Derivata Composta",
+    "baseDiff": 3.0,
+    "statement": "Calcola la derivata iterata: $y = \\sqrt{\\cos(e^x)}$\n    % Derivata dell'Inversa e De L'Hôpital"
+  },
+  {
+    "id": "ANA-01-2E43FF42",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Deriv Inversa",
+    "baseDiff": 3.0,
+    "statement": "Sfruttando la derivata dell'inversa, calcola $D[\\arctan x]$ partendo da $y = \\tan x$."
+  },
+  {
+    "id": "ANA-01-2F56946E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "De L'Hôpital",
+    "baseDiff": 1.0,
+    "statement": "Calcola applicando De L'Hôpital: $\\lim_{x \\to 0} \\frac{e^x - 1 - x}{x^2}$"
+  },
+  {
+    "id": "ANA-01-E8B7D1B8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "De L'Hôpital",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\lim_{x \\to 0} \\frac{x - \\sin x}{x^3}$"
+  },
+  {
+    "id": "ANA-01-7FD1CC1D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Rolle",
+    "baseDiff": 1.0,
+    "statement": "Verifica se $f(x) = x^2 - 4x$ soddisfa le ipotesi di Rolle in $[0,4]$ e trova il punto $c$."
+  },
+  {
+    "id": "ANA-01-79D941FA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Rolle",
+    "baseDiff": 2.0,
+    "statement": "Spiega perché non si può applicare Rolle a $f(x) = |x|$ nell'intervallo $[-1,1]$."
+  },
+  {
+    "id": "ANA-01-170BC680",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Lagrange",
+    "baseDiff": 2.0,
+    "statement": "Applica Lagrange a $f(x) = \\ln x$ in $[1, e]$ e determina l'ascissa del punto $c$."
+  },
+  {
+    "id": "ANA-01-344DAFA3",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Non Derivabilità",
+    "baseDiff": 2.0,
+    "statement": "Classifica il punto di non derivabilità in $x=0$ per $y = \\sqrt[3]{x^2}$."
+  },
+  {
+    "id": "ANA-01-BB88F18E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Non Derivabilità",
+    "baseDiff": 3.0,
+    "statement": "Classifica il punto di non derivabilità per $y = |x^2 - 1|$ in $x=1$.\n    % Crescenza, Decrescenza, Massimi e Minimi"
+  },
+  {
+    "id": "ANA-01-AE9FD72E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monotonia Max/Min",
+    "baseDiff": 1.0,
+    "statement": "Trova gli intervalli di monotonia e gli estremi relativi di $y = x^3 - 3x^2$."
+  },
+  {
+    "id": "ANA-01-79E239D9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monotonia Max/Min",
+    "baseDiff": 2.0,
+    "statement": "Determina i massimi e minimi relativi di $y = x^2 e^{-x}$."
+  },
+  {
+    "id": "ANA-01-E6FDC0C0",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Monotonia Max/Min",
+    "baseDiff": 2.0,
+    "statement": "Studia il segno della derivata prima di $y = \\frac{x^2}{x-1}$.\n    % Concavità e Flessi"
+  },
+  {
+    "id": "ANA-01-3CEAC624",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Concavità Flessi",
+    "baseDiff": 1.0,
+    "statement": "Determina concavità e flessi di $y = x^4 - 6x^2$."
+  },
+  {
+    "id": "ANA-01-2B2B03FE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Concavità Flessi",
+    "baseDiff": 2.0,
+    "statement": "Trova il punto di flesso della funzione logistica $y = \\frac{1}{1+e^{-x}}$."
+  },
+  {
+    "id": "ANA-01-5686079B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Concavità Flessi",
+    "baseDiff": 3.0,
+    "statement": "Dimostra che $y = x^3$ ha un flesso a tangente orizzontale nell'origine.\n    % Studio di Funzione Completo (Indicazioni per tracciamento)"
+  },
+  {
+    "id": "ANA-01-D7C5E886",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Studio Funzione",
+    "baseDiff": 2.0,
+    "statement": "Studia e traccia il grafico probabile: $f(x) = \\frac{x}{x^2 - 1}$"
+  },
+  {
+    "id": "ANA-01-6EB8803B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Studio Funzione",
+    "baseDiff": 2.0,
+    "statement": "Studia e traccia il grafico: $f(x) = x e^{-x^2/2}$ \\textit{(Campana di Gauss)}"
+  },
+  {
+    "id": "ANA-01-80612B59",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Studio Funzione",
+    "baseDiff": 3.0,
+    "statement": "Studia e traccia il grafico: $f(x) = \\frac{\\ln x}{x}$"
+  },
+  {
+    "id": "ANA-01-1B0AE7EA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Studio Funzione",
+    "baseDiff": 3.0,
+    "statement": "Studia e traccia il grafico (con modulo): $f(x) = e^{-|x|}$\n    % Ottimizzazione (Problemi di Massimo e Minimo)"
+  },
+  {
+    "id": "ANA-01-D5B61A9E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ottimizzazione",
+    "baseDiff": 1.0,
+    "statement": "Tra tutti i rettangoli di perimetro $40$, determina quello di area massima."
+  },
+  {
+    "id": "ANA-01-C98DAA8B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ottimizzazione",
+    "baseDiff": 2.0,
+    "statement": "In un triangolo rettangolo di ipotenusa $a$, determina i cateti affinché l'area sia massima."
+  },
+  {
+    "id": "ANA-01-DBD157EF",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Ottimizzazione",
+    "baseDiff": 3.0,
+    "statement": "Determina le dimensioni del cilindro circolare retto di volume massimo inscrivibile in una sfera di raggio $R$."
+  },
+  {
+    "id": "ANA-01-DC1DA664",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Immediato",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\int (3x^2 - 4x + 5) \\, dx$"
+  },
+  {
+    "id": "ANA-01-0CFB9C23",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Immediato",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\int \\left(\\frac{1}{x} + \\frac{2}{x^2} - e^x\\right) \\, dx$"
+  },
+  {
+    "id": "ANA-01-22D97C00",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Scomposizione",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\int \\frac{x^2 - 3x + 1}{x} \\, dx$"
+  },
+  {
+    "id": "ANA-01-40842DAB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Scomposizione",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\int \\frac{x^3 + 8}{x+2} \\, dx$ \\textit{(Suggerimento: somma di cubi)}"
+  },
+  {
+    "id": "ANA-01-71C1DF65",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Quasi Immediato",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\int \\sin(3x) \\, dx$"
+  },
+  {
+    "id": "ANA-01-96588979",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Quasi Immediato",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\int x e^{x^2} \\, dx$"
+  },
+  {
+    "id": "ANA-01-A6B159A8",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Quasi Immediato",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\int \\frac{2x}{x^2+4} \\, dx$"
+  },
+  {
+    "id": "ANA-01-12CDC77C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Quasi Immediato",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\int \\tan x \\, dx$ \\textit{(Suggerimento: $\\tan x = \\frac{\\sin x}{\\cos x}$)}"
+  },
+  {
+    "id": "ANA-01-2E75770F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Scomposizione",
+    "baseDiff": 2.0,
+    "statement": "Calcola sfruttando identità trigonometriche: $\\int \\cos^2 x \\, dx$"
+  },
+  {
+    "id": "ANA-01-C8C83DE1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Scomposizione",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\int \\frac{1}{\\sin^2 x \\cos^2 x} \\, dx$ \\textit{(Suggerimento: $1 = \\sin^2 x + \\cos^2 x$)}\n    \n    % Integrazione Funzioni Razionali Fratte"
+  },
+  {
+    "id": "ANA-01-A1F75309",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 1.0,
+    "statement": "Divisione tra polinomi: $\\int \\frac{x^2+1}{x-1} \\, dx$"
+  },
+  {
+    "id": "ANA-01-A9C1322C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 1.0,
+    "statement": "Denominatore radici reali distinte: $\\int \\frac{1}{x^2 - 4} \\, dx$"
+  },
+  {
+    "id": "ANA-01-9424D46F",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 2.0,
+    "statement": "Denominatore radici reali distinte: $\\int \\frac{3x}{x^2 - 3x + 2} \\, dx$"
+  },
+  {
+    "id": "ANA-01-1E10F2B6",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 2.0,
+    "statement": "Denominatore radice doppia: $\\int \\frac{x}{(x-1)^2} \\, dx$"
+  },
+  {
+    "id": "ANA-01-DC630142",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 2.0,
+    "statement": "Denominatore non fattorizzabile ($\\Delta < 0$): $\\int \\frac{1}{x^2 + 4x + 5} \\, dx$"
+  },
+  {
+    "id": "ANA-01-39B4E006",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 2.0,
+    "statement": "Denominatore con $\\Delta < 0$ e numeratore grado 1: $\\int \\frac{2x+1}{x^2+9} \\, dx$"
+  },
+  {
+    "id": "ANA-01-5E7DB810",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 3.0,
+    "statement": "Numeratore grado superiore: $\\int \\frac{x^3 - 1}{x^2 - x - 2} \\, dx$"
+  },
+  {
+    "id": "ANA-01-42351458",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 3.0,
+    "statement": "Metodo dei fratti complessi: $\\int \\frac{1}{x(x^2+1)} \\, dx$"
+  },
+  {
+    "id": "ANA-01-0B6854F7",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\int \\frac{2x^2+3}{(x^2+1)(x-2)} \\, dx$"
+  },
+  {
+    "id": "ANA-01-5B002520",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Fratti Sempl",
+    "baseDiff": 3.0,
+    "statement": "Calcola (Hermite/Radici multiple): $\\int \\frac{1}{(x^2-1)^2} \\, dx$"
+  },
+  {
+    "id": "ANA-01-A9A1B220",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Sostituzione",
+    "baseDiff": 1.0,
+    "statement": "Calcola ponendo $t = x^2$: $\\int x \\cos(x^2) \\, dx$"
+  },
+  {
+    "id": "ANA-01-F5D86380",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Sostituzione",
+    "baseDiff": 1.0,
+    "statement": "Calcola ponendo $t = \\ln x$: $\\int \\frac{\\ln x}{x} \\, dx$"
+  },
+  {
+    "id": "ANA-01-7DFA8720",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Sostituzione",
+    "baseDiff": 2.0,
+    "statement": "Calcola ponendo $t = \\sqrt{x-1}$: $\\int \\frac{x}{\\sqrt{x-1}} \\, dx$"
+  },
+  {
+    "id": "ANA-01-C8721743",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Sostituzione",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\int \\frac{e^x}{e^{2x} + 1} \\, dx$"
+  },
+  {
+    "id": "ANA-01-9F38D36D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Sostituzione",
+    "baseDiff": 2.0,
+    "statement": "Calcola: $\\int \\frac{1}{x \\sqrt{\\ln x}} \\, dx$"
+  },
+  {
+    "id": "ANA-01-7636A50D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Sostituzione",
+    "baseDiff": 3.0,
+    "statement": "Calcola ponendo $t = e^x$: $\\int \\frac{e^{2x}}{e^x - 1} \\, dx$"
+  },
+  {
+    "id": "ANA-01-F03D1CEE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Sostituzione",
+    "baseDiff": 3.0,
+    "statement": "Calcola ponendo $x = \\sin t$: $\\int \\sqrt{1 - x^2} \\, dx$\n    \n    % Per Parti"
+  },
+  {
+    "id": "ANA-01-8E35F17B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 1.0,
+    "statement": "Calcola scegliendo $f(x)=x$: $\\int x e^x \\, dx$"
+  },
+  {
+    "id": "ANA-01-D628A170",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 1.0,
+    "statement": "Calcola scegliendo $f(x)=x$: $\\int x \\sin x \\, dx$"
+  },
+  {
+    "id": "ANA-01-91333D7E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 2.0,
+    "statement": "Calcola (fattore differenziale $1 \\, dx$): $\\int \\ln x \\, dx$"
+  },
+  {
+    "id": "ANA-01-59AAEC38",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 2.0,
+    "statement": "Calcola (fattore differenziale $1 \\, dx$): $\\int \\arctan x \\, dx$"
+  },
+  {
+    "id": "ANA-01-62D2B5D9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 2.0,
+    "statement": "Calcola applicando le parti due volte: $\\int x^2 e^{-x} \\, dx$"
+  },
+  {
+    "id": "ANA-01-3115500A",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 3.0,
+    "statement": "Calcola (integrale ciclico): $\\int e^x \\sin x \\, dx$"
+  },
+  {
+    "id": "ANA-01-FCFC4FA2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 3.0,
+    "statement": "Calcola: $\\int x \\ln(x^2) \\, dx$"
+  },
+  {
+    "id": "ANA-01-009F5963",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Parti",
+    "baseDiff": 3.0,
+    "statement": "Calcola applicando prima sostituzione e poi parti: $\\int \\sin(\\ln x) \\, dx$"
+  },
+  {
+    "id": "ANA-01-2A2E4D8C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Definito",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\int_1^2 (3x^2 - 1) \\, dx$"
+  },
+  {
+    "id": "ANA-01-6F3EECBD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Definito",
+    "baseDiff": 1.0,
+    "statement": "Calcola: $\\int_0^{\\pi/2} \\cos x \\, dx$"
+  },
+  {
+    "id": "ANA-01-41D01345",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Definito",
+    "baseDiff": 2.0,
+    "statement": "Calcola applicando la sostituzione e aggiornando gli estremi: $\\int_0^1 x e^{x^2} \\, dx$"
+  },
+  {
+    "id": "ANA-01-C171346C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Definito",
+    "baseDiff": 2.0,
+    "statement": "Calcola integrando per parti: $\\int_1^e \\ln x \\, dx$"
+  },
+  {
+    "id": "ANA-01-655A84B5",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Definito",
+    "baseDiff": 2.0,
+    "statement": "Calcola gestendo il valore assoluto: $\\int_{-1}^2 |x| \\, dx$\n    \n    % Calcolo di Aree"
+  },
+  {
+    "id": "ANA-01-FA4EFA9E",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Area Piana",
+    "baseDiff": 1.0,
+    "statement": "Calcola l'area della regione sottesa dalla parabola $y=4-x^2$ e l'asse $x$."
+  },
+  {
+    "id": "ANA-01-78D24531",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Area Piana",
+    "baseDiff": 2.0,
+    "statement": "Calcola l'area compresa tra $y = x^2$ e la retta $y = x$."
+  },
+  {
+    "id": "ANA-01-B6D46983",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Area Piana",
+    "baseDiff": 2.0,
+    "statement": "Calcola l'area compresa tra $y = \\sin x$ e l'asse $x$ nell'intervallo $[0, 2\\pi]$."
+  },
+  {
+    "id": "ANA-01-51FCBBDD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Area Piana",
+    "baseDiff": 3.0,
+    "statement": "Calcola l'area della regione finita compresa tra $y = e^x$, $y = e^{-x}$ e la retta $x = \\ln 2$."
+  },
+  {
+    "id": "ANA-01-4411DD02",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Area Piana",
+    "baseDiff": 3.0,
+    "statement": "Calcola l'area compresa tra $y = \\frac{1}{x}$ e la retta passante per i punti $(1,1)$ e $(2, 1/2)$.\n    \n    % Volumi e Teorema Media"
+  },
+  {
+    "id": "ANA-01-F3C414CE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Volume Rotazione",
+    "baseDiff": 2.0,
+    "statement": "Calcola il volume del cono ottenuto ruotando $y = x$ per $x \\in [0, h]$ attorno all'asse $x$."
+  },
+  {
+    "id": "ANA-01-E0D46BE4",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Volume Rotazione",
+    "baseDiff": 2.0,
+    "statement": "Calcola il volume del solido (paraboloide) ottenuto ruotando $y = \\sqrt{x}$ per $x \\in [0, 4]$ attorno all'asse $x$."
+  },
+  {
+    "id": "ANA-01-4A784C10",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Volume Rotazione",
+    "baseDiff": 3.0,
+    "statement": "Sfruttando il metodo dei gusci, calcola il volume ottenuto ruotando $y = 4-x^2$ (con $x \\in [0,2]$) attorno all'asse $y$."
+  },
+  {
+    "id": "ANA-01-A69F71FB",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Teorema Media",
+    "baseDiff": 2.0,
+    "statement": "Determina il valore medio della funzione $f(x) = x^2$ in $[0,3]$ e trova il punto $c$ garantito dal teorema."
+  },
+  {
+    "id": "ANA-01-18840A50",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Funzione Integrale",
+    "baseDiff": 3.0,
+    "statement": "Data $F(x) = \\int_0^x e^{t^2} dt$, scrivi l'equazione della retta tangente al grafico di $F(x)$ in $x=0$."
+  },
+  {
+    "id": "ANA-01-24D7EB67",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Improprio",
+    "baseDiff": 1.0,
+    "statement": "Stabilisci se converge e, in caso, calcola: $\\int_1^{+\\infty} \\frac{1}{x^2} \\, dx$"
+  },
+  {
+    "id": "ANA-01-5091A670",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Improprio",
+    "baseDiff": 1.0,
+    "statement": "Mostra tramite calcolo diretto che $\\int_1^{+\\infty} \\frac{1}{x} \\, dx$ diverge."
+  },
+  {
+    "id": "ANA-01-798BB6BC",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Improprio",
+    "baseDiff": 2.0,
+    "statement": "Stabilisci se converge e calcola: $\\int_0^1 \\frac{1}{\\sqrt{x}} \\, dx$"
+  },
+  {
+    "id": "ANA-01-27D67602",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Int Improprio",
+    "baseDiff": 3.0,
+    "statement": "Stabilisci se l'integrale \\textit{campana di Gauss} (solo $x \\ge 0$) converge: $\\int_0^{+\\infty} x e^{-x^2} \\, dx$.\n    \n    % Serie Numeriche e Taylor"
+  },
+  {
+    "id": "ANA-01-C342185D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Serie Geometrica",
+    "baseDiff": 1.0,
+    "statement": "Calcola la somma della serie $\\sum_{n=0}^\\infty \\left(\\frac{1}{3}\\right)^n$."
+  },
+  {
+    "id": "ANA-01-B716C3B9",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Serie Armonica",
+    "baseDiff": 1.0,
+    "statement": "Determina il carattere della serie $\\sum_{n=1}^\\infty \\frac{1}{\\sqrt{n}}$."
+  },
+  {
+    "id": "ANA-01-4BACA069",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Serie Criterio",
+    "baseDiff": 2.0,
+    "statement": "Usa il criterio del rapporto per studiare $\\sum_{n=1}^\\infty \\frac{n}{2^n}$."
+  },
+  {
+    "id": "ANA-01-71517B66",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Serie Criterio",
+    "baseDiff": 2.0,
+    "statement": "Usa il criterio della radice per studiare $\\sum_{n=1}^\\infty \\left(\\frac{n}{3n+1}\\right)^n$."
+  },
+  {
+    "id": "ANA-01-DE1ACB04",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Serie Confronto",
+    "baseDiff": 3.0,
+    "statement": "Studia il carattere della serie usando il confronto asintotico: $\\sum_{n=1}^\\infty \\sin\\left(\\frac{1}{n^2}\\right)$."
+  },
+  {
+    "id": "ANA-01-85FA3FAD",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Polinomio Taylor",
+    "baseDiff": 2.0,
+    "statement": "Scrivi il polinomio di Maclaurin di grado 3 per $f(x) = e^{2x}$."
+  },
+  {
+    "id": "ANA-01-C816C9E1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Polinomio Taylor",
+    "baseDiff": 3.0,
+    "statement": "Usando gli sviluppi notevoli, calcola $\\lim_{x \\to 0} \\frac{x - \\sin x}{x^3}$."
+  },
+  {
+    "id": "ANA-01-94120294",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff Separabili",
+    "baseDiff": 1.0,
+    "statement": "Risolvi determinando l'integrale generale: $y' = 2x y$"
+  },
+  {
+    "id": "ANA-01-F9B41410",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff Separabili",
+    "baseDiff": 1.0,
+    "statement": "Risolvi l'equazione differenziale: $y' = x^2 e^{-y}$"
+  },
+  {
+    "id": "ANA-01-5C28FFE2",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Cauchy Separabili",
+    "baseDiff": 2.0,
+    "statement": "Risolvi il problema di Cauchy: $\\begin{cases} y' = -y \\\\ y(0) = 5 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-DF8FD48C",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Cauchy Separabili",
+    "baseDiff": 2.0,
+    "statement": "Risolvi il problema di Cauchy: $\\begin{cases} y' = y \\cos x \\\\ y(\\pi/2) = 1 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-D6F6E5EA",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff Separabili",
+    "baseDiff": 3.0,
+    "statement": "Trova la soluzione in forma implicita di $y' = \\frac{x}{y}$.\n    \n    % Lineari del 1° ordine"
+  },
+  {
+    "id": "ANA-01-DD85DF8D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff 1 Ordine",
+    "baseDiff": 2.0,
+    "statement": "Determina l'integrale generale: $y' + 2y = e^{-x}$"
+  },
+  {
+    "id": "ANA-01-FCEE0F9B",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff 1 Ordine",
+    "baseDiff": 2.0,
+    "statement": "Risolvi: $y' - \\frac{1}{x} y = x^2$"
+  },
+  {
+    "id": "ANA-01-382028DE",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Cauchy 1 Ordine",
+    "baseDiff": 3.0,
+    "statement": "Risolvi il problema di Cauchy: $\\begin{cases} y' + y \\tan x = \\sin x \\\\ y(0) = 2 \\end{cases}$ \\textit{(per $x \\in (-\\pi/2, \\pi/2)$)}\n    \n    % Lineari del 2° ordine a coefficienti costanti"
+  },
+  {
+    "id": "ANA-01-ABE1CD21",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff 2 Ordine",
+    "baseDiff": 1.0,
+    "statement": "Omogenea ($\\Delta > 0$): $y'' - 5y' + 6y = 0$"
+  },
+  {
+    "id": "ANA-01-526733A1",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff 2 Ordine",
+    "baseDiff": 1.0,
+    "statement": "Omogenea ($\\Delta = 0$): $y'' - 4y' + 4y = 0$"
+  },
+  {
+    "id": "ANA-01-109D8C25",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff 2 Ordine",
+    "baseDiff": 2.0,
+    "statement": "Omogenea ($\\Delta < 0$): $y'' + 9y = 0$ (Eq. dell'oscillatore armonico)"
+  },
+  {
+    "id": "ANA-01-E7E7BE61",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Cauchy 2 Ordine",
+    "baseDiff": 2.0,
+    "statement": "Risolvi il problema di Cauchy: $\\begin{cases} y'' - y = 0 \\\\ y(0) = 1 \\\\ y'(0) = 0 \\end{cases}$"
+  },
+  {
+    "id": "ANA-01-B47F9C05",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff Completa",
+    "baseDiff": 3.0,
+    "statement": "Usa il metodo di somiglianza per risolvere: $y'' - y' = 2x$"
+  },
+  {
+    "id": "ANA-01-E391606D",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff Completa",
+    "baseDiff": 3.0,
+    "statement": "Usa il metodo di somiglianza per risolvere: $y'' + y = e^x$"
+  },
+  {
+    "id": "ANA-01-AF3B4A04",
+    "core": "Analisi",
+    "course": "01-PreAnalisi",
+    "topic": "Eq Diff Mista",
+    "baseDiff": 3.0,
+    "statement": "Determina la famiglia di curve tali che la derivata seconda è costantemente uguale a 4 e che passano per l'origine."
+  }
+]

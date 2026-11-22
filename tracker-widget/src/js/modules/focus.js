@@ -34,7 +34,7 @@ function injectFocusIntoDayPlanner(task, mins) {
     if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
 }
 
-const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+// audioCtx è condiviso: viene creato una sola volta in js/core/audio.js
 function playBeep(frequency, duration) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const oscillator = audioCtx.createOscillator();
