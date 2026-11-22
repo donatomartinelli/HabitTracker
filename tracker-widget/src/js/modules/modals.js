@@ -569,8 +569,8 @@ function initModalsHtml() {
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" class="btn btn-sm" onclick="pushStateToCloudGist(true)">[↑ PUSH NOW]</button>
-                                <button type="button" class="btn btn-sm" onclick="pullStateFromCloudGist(true, true)">[↓ FORCE PULL]</button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="syncNow(true)">[⇅ SINCRONIZZA ORA]</button>
+                                <button type="button" class="btn btn-sm" id="cloud-sync-conflicts-btn" onclick="showSyncConflictsModal()">[CONFLITTI SALVATI: 0]</button>
                             </div>
                             <button type="button" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="copyMagicMobileSetupUrl()">[🔗 COPY MAGIC SETUP URL]</button>
                         </div>

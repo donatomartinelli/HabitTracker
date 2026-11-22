@@ -1,26 +1,61 @@
 // --- js/core/cloud-sync.js ---
-// Motore Cloud Sync Peer-to-Peer Simmetrico (PC <-> Tablet <-> Telefono)
-// - Su PC Tauri: rimuove eventuali vecchi Service Worker così non appare mai la schermata d'errore offline di Chromium
-// - Nessuna istanza ha priorità: vince sempre l'ultima modifica effettuata su qualsiasi dispositivo
-// - Rilevamento automatico basato sull'impronta reale dei dati (Fingerprint)
+// SINCRONIZZAZIONE PC ↔ TELEFONO ↔ TABLET (GitHub Gist segreto)
+//
+// Come funziona (v3, "unione intelligente"):
+//   1. Scarica lo stato dal cloud.
+//   2. Lo UNISCE con quello di questo dispositivo usando la "base" (lo stato
+//      dell'ultima sincronizzazione riuscita) → vedi js/core/sync-merge.js.
+//      Nessun dispositivo sovrascrive più alla cieca il lavoro dell'altro.
+//   3. Applica il risultato qui e lo carica nel cloud (solo se serve).
+//   4. Nei conflitti veri (stesso campo cambiato su due dispositivi) vince il
+//      più recente; la versione scartata è salvata in "cortex_sync_conflicts".
+//
+// Quando parte da sola:
+//   all'avvio · 3s dopo una modifica · quando torni sull'app · quando torna la rete ·
+//   ogni 60s se l'app è aperta · subito quando chiudi/nascondi l'app con modifiche in sospeso.
 
 const GIST_FILENAME = 'cortex_cloud_state.json';
+const SYNC_PAYLOAD_VERSION = 3;
+const SYNC_BASE_KEY = 'cortex_sync_base';
+const SYNC_CONFLICTS_KEY = 'cortex_sync_conflicts';
+const SYNC_CHANGE_DEBOUNCE_MS = 3000;
+const SYNC_POLL_MS = 60000;
+const SYNC_FOCUS_THROTTLE_MS = 10000;
+const SYNC_MAX_CONFLICTS = 100;
+const SYNC_DIRTY_KEY = 'cortex_sync_dirty_since';
 
 let cloudGithubToken = (cortexStore.getItem('cortex_gist_token') || '').trim();
 let cloudGistId = (cortexStore.getItem('cortex_gist_id') || '').trim();
 let lastCloudSyncedUpdatedAt = parseInt(cortexStore.getItem('cortex_last_cloud_ts') || '0', 10) || 0;
 
+// Pulizia chiavi della versione precedente
 cortexStore.removeItem('cortex_pending_push_ts');
 
-let isBootSyncing = true;
+// Stato del motore
 let isCloudSyncInProgress = false;
-let isApplyingCloudPull = false;
-let hasUnsentLocalEdit = false;
-let pendingPushAfterCurrentOp = false;
-let localEditTimestampMs = 0;
-let cloudPushDebounceTimer = null;
-let lastKnownDataFingerprint = '';
+let isApplyingCloudPull = false;     // usato anche da altri moduli per ignorare i salvataggi durante l'applicazione
+let syncRequestedAgain = false;
+let localChangeSeq = 0;              // aumenta a ogni modifica locale
+let localSyncedSeq = 0;              // valore di localChangeSeq all'ultima sync riuscita
+let localDirtySinceMs = 0;           // quando è iniziata la modifica locale non ancora sincronizzata
+let syncDebounceTimer = null;
+let lastSyncAttemptMs = 0;
+let lastSyncOkMs = 0;
 let cloudSyncStatus = 'idle';
+
+// Modifiche rimaste in sospeso dalla sessione precedente (es. app chiusa offline)
+(function restorePendingFromLastSession() {
+    const since = parseInt(cortexStore.getItem('cortex_sync_dirty_since') || '0', 10) || 0;
+    if (since) { localDirtySinceMs = since; localChangeSeq = 1; }
+})();
+
+// Compatibilità con il codice esistente
+let isBootSyncing = false;
+function hasLocalChangesPending() { return localChangeSeq !== localSyncedSeq; }
+
+// ============================================================================
+// SERVICE WORKER (copia offline per telefono)
+// ============================================================================
 
 function registerAndRefreshServiceWorker() {
     const isDesktopTauri = Boolean(window.__TAURI__ || window.location.hostname.includes('tauri'));
@@ -35,19 +70,17 @@ function registerAndRefreshServiceWorker() {
         return;
     }
 
-    if ('caches' in window) {
-        caches.keys().then(keys => {
-            keys.forEach(k => {
-                if (k !== 'cortex-os-cache-v4') caches.delete(k);
-            });
-        }).catch(() => {});
-    }
+    // La pulizia delle vecchie cache la fa sw.js stesso all'attivazione.
     if ('serviceWorker' in navigator && window.location.protocol.startsWith('http')) {
         navigator.serviceWorker.register('./sw.js', { updateViaCache: 'none' }).then(reg => {
             reg.update().catch(() => {});
         }).catch(() => {});
     }
 }
+
+// ============================================================================
+// CONFIGURAZIONE
+// ============================================================================
 
 function checkUrlHashForMagicSyncSetup() {
     const hash = window.location.hash || '';
@@ -66,10 +99,7 @@ function checkUrlHashForMagicSyncSetup() {
         cortexStore.setItem('cortex_gist_token', cloudGithubToken);
         cortexStore.setItem('cortex_gist_id', cloudGistId);
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
-
-        if (typeof showToast === 'function') {
-            showToast('[☁ CLOUD SYNC] Device linked! Syncing...');
-        }
+        if (typeof showToast === 'function') showToast('[☁ SYNC] Dispositivo collegato! Sincronizzo...');
         return true;
     }
     return false;
@@ -77,6 +107,20 @@ function checkUrlHashForMagicSyncSetup() {
 
 function isCloudSyncConfigured() {
     return Boolean(cloudGithubToken && cloudGistId);
+}
+
+// ============================================================================
+// INDICATORE DI STATO NELL'HEADER
+// ============================================================================
+
+function formatAgo(ms) {
+    if (!ms) return 'mai';
+    const s = Math.round((Date.now() - ms) / 1000);
+    if (s < 10) return 'adesso';
+    if (s < 60) return `${s}s fa`;
+    const m = Math.round(s / 60);
+    if (m < 60) return `${m} min fa`;
+    return new Date(ms).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 }
 
 function setCloudSyncHeaderIndicator(state, tooltipMsg = '') {
@@ -87,27 +131,43 @@ function setCloudSyncHeaderIndicator(state, tooltipMsg = '') {
     if (!isCloudSyncConfigured()) {
         btn.textContent = '[☁]';
         btn.style.color = 'var(--text-dim)';
-        btn.title = 'Cloud Sync not configured (Click to open Settings)';
+        btn.title = 'Sincronizzazione non configurata — clic per impostarla';
+        btn.dataset.syncState = 'off';
         return;
     }
 
     const map = {
-        'idle': { text: '[☁]', color: 'var(--text-dim)' },
-        'syncing': { text: '[☁ ⇅]', color: 'var(--accent-gold)' },
-        'queued': { text: '[☁ ⏳]', color: 'var(--accent-gold)' },
-        'offline': { text: '[☁ OFF]', color: 'var(--text-muted)' },
-        'ok': { text: '[☁ ✓]', color: 'var(--accent-green)' },
-        'error': { text: '[☁ !]', color: 'var(--accent-red)' }
+        'idle':    { text: '[☁]',     color: 'var(--text-dim)',     tip: 'Sincronizzazione pronta' },
+        'syncing': { text: '[☁ ⇅]',   color: 'var(--accent-gold)',  tip: 'Sincronizzazione in corso…' },
+        'queued':  { text: '[☁ •]',   color: 'var(--accent-gold)',  tip: 'Modifiche in attesa di essere inviate' },
+        'offline': { text: '[☁ OFF]', color: 'var(--text-muted)',   tip: 'Offline — le modifiche sono salvate qui e verranno inviate appena torna la rete' },
+        'ok':      { text: '[☁ ✓]',   color: 'var(--accent-green)', tip: 'Sincronizzato' },
+        'error':   { text: '[☁ !]',   color: 'var(--accent-red)',   tip: 'Errore di sincronizzazione' }
     };
     const cfg = map[state] || map['idle'];
     btn.textContent = cfg.text;
     btn.style.color = cfg.color;
-    btn.title = tooltipMsg || `Cloud Sync (${state.toUpperCase()})`;
+    btn.dataset.syncState = state;
+    const lastLine = lastSyncOkMs ? `\nUltima sincronizzazione: ${formatAgo(lastSyncOkMs)}` : '';
+    btn.title = (tooltipMsg || cfg.tip) + lastLine + '\n(clic = sincronizza ora)';
 }
+
+function refreshSyncIndicatorFromState() {
+    if (!isCloudSyncConfigured()) { setCloudSyncHeaderIndicator('idle'); return; }
+    if (isCloudSyncInProgress) return;
+    if (!navigator.onLine) { setCloudSyncHeaderIndicator('offline'); return; }
+    if (hasLocalChangesPending()) { setCloudSyncHeaderIndicator('queued'); return; }
+    if (cloudSyncStatus === 'error') return;
+    setCloudSyncHeaderIndicator(lastSyncOkMs ? 'ok' : 'idle');
+}
+
+// ============================================================================
+// STATO SINCRONIZZATO: cosa va nel cloud e come si riapplica
+// ============================================================================
 
 function buildFullCortexCloudPayload(timestampMs) {
     return {
-        version: 2,
+        version: SYNC_PAYLOAD_VERSION,
         updatedAt: timestampMs,
         data: {
             templates: typeof templates !== 'undefined' ? templates : [],
@@ -115,12 +175,14 @@ function buildFullCortexCloudPayload(timestampMs) {
             specificEvents: typeof specificEvents !== 'undefined' ? specificEvents : [],
             noteCategories: typeof noteCategories !== 'undefined' ? noteCategories : ['General', 'Registrazioni'],
             notesContent: typeof notesContent !== 'undefined' ? notesContent : {},
+            journals: typeof journals !== 'undefined' ? journals : {},
             categoryOrder: typeof categoryOrder !== 'undefined' ? categoryOrder : [],
             referenceLayers: typeof referenceLayers !== 'undefined' ? referenceLayers : [],
             refToggles: typeof refToggles !== 'undefined' ? refToggles : {},
             ephemeralData: typeof ephemeralData !== 'undefined' ? ephemeralData : {},
             generalTodos: typeof generalTodos !== 'undefined' ? generalTodos : [],
             plannerExceptions: typeof plannerExceptions !== 'undefined' ? plannerExceptions : {},
+            dailyPriorities: typeof dailyPriorities !== 'undefined' ? dailyPriorities : {},
             routinesData: typeof routinesData !== 'undefined' ? routinesData : [],
             routineLogs: typeof routineLogs !== 'undefined' ? routineLogs : {},
             focusLogs: typeof focusLogs !== 'undefined' ? focusLogs : [],
@@ -142,6 +204,10 @@ function buildFullCortexCloudPayload(timestampMs) {
             gymStartDate: typeof gymStartDate !== 'undefined' ? gymStartDate : '',
             gymEndDate: typeof gymEndDate !== 'undefined' ? gymEndDate : '',
             uniData: typeof uniData !== 'undefined' ? uniData : {},
+            mathHubState: typeof mathHubState !== 'undefined' ? mathHubState : {},
+            mentalMathWeights: typeof mentalMathWeights !== 'undefined' ? mentalMathWeights : {},
+            mentalMathHistory: typeof mentalMathHistory !== 'undefined' ? mentalMathHistory : {},
+            mentalMathConfig: typeof mentalMathConfig !== 'undefined' ? mentalMathConfig : {},
             workspacePresets: typeof workspacePresets !== 'undefined' ? workspacePresets : [],
             customAliases: typeof customAliases !== 'undefined' ? customAliases : {},
             macroDefaultTrees: typeof macroDefaultTrees !== 'undefined' ? macroDefaultTrees : {},
@@ -153,12 +219,9 @@ function buildFullCortexCloudPayload(timestampMs) {
     };
 }
 
-function getLocalDataFingerprint() {
-    try {
-        return JSON.stringify(buildFullCortexCloudPayload(0).data);
-    } catch (e) {
-        return '';
-    }
+function buildLocalSyncState() {
+    // Copia profonda: il merge non deve mai toccare gli oggetti vivi dell'app
+    return JSON.parse(JSON.stringify(buildFullCortexCloudPayload(0).data));
 }
 
 function applyFullCortexCloudPayload(payloadObj) {
@@ -172,12 +235,14 @@ function applyFullCortexCloudPayload(payloadObj) {
         if (Array.isArray(d.specificEvents)) specificEvents = d.specificEvents;
         if (Array.isArray(d.noteCategories)) noteCategories = d.noteCategories;
         if (d.notesContent && typeof d.notesContent === 'object') notesContent = d.notesContent;
+        if (d.journals && typeof d.journals === 'object') journals = d.journals;
         if (Array.isArray(d.categoryOrder)) categoryOrder = d.categoryOrder;
         if (Array.isArray(d.referenceLayers)) referenceLayers = d.referenceLayers;
         if (d.refToggles && typeof d.refToggles === 'object') refToggles = d.refToggles;
         if (d.ephemeralData && typeof d.ephemeralData === 'object') ephemeralData = d.ephemeralData;
         if (Array.isArray(d.generalTodos)) generalTodos = d.generalTodos;
         if (d.plannerExceptions && typeof d.plannerExceptions === 'object') plannerExceptions = d.plannerExceptions;
+        if (d.dailyPriorities && typeof d.dailyPriorities === 'object') dailyPriorities = d.dailyPriorities;
         if (Array.isArray(d.routinesData)) routinesData = d.routinesData;
         if (d.routineLogs && typeof d.routineLogs === 'object') routineLogs = d.routineLogs;
         if (Array.isArray(d.focusLogs)) focusLogs = d.focusLogs;
@@ -202,43 +267,16 @@ function applyFullCortexCloudPayload(payloadObj) {
         if (typeof d.gymEndDate === 'string') gymEndDate = d.gymEndDate;
 
         if (d.uniData && typeof d.uniData === 'object') uniData = d.uniData;
+        if (d.mathHubState && typeof d.mathHubState === 'object' && Object.keys(d.mathHubState).length) mathHubState = d.mathHubState;
+        if (d.mentalMathWeights && typeof d.mentalMathWeights === 'object') mentalMathWeights = d.mentalMathWeights;
+        if (d.mentalMathHistory && typeof d.mentalMathHistory === 'object') mentalMathHistory = d.mentalMathHistory;
+        if (d.mentalMathConfig && typeof d.mentalMathConfig === 'object' && Object.keys(d.mentalMathConfig).length) mentalMathConfig = d.mentalMathConfig;
         if (Array.isArray(d.workspacePresets)) workspacePresets = d.workspacePresets;
         if (d.customAliases && typeof d.customAliases === 'object') customAliases = d.customAliases;
         if (d.macroDefaultTrees && typeof d.macroDefaultTrees === 'object') {
             macroDefaultTrees = d.macroDefaultTrees;
             cortexStore.setItem('tracker_macro_default_trees', JSON.stringify(macroDefaultTrees));
         }
-
-        saveData();
-        saveMoneyData();
-        saveHealthData();
-        saveUniData();
-        saveWorkspaceState();
-        if (typeof saveCustomAliases === 'function') saveCustomAliases();
-
-        if (payloadObj.updatedAt) {
-            lastCloudSyncedUpdatedAt = Math.max(lastCloudSyncedUpdatedAt, parseInt(payloadObj.updatedAt, 10) || 0);
-            cortexStore.setItem('cortex_last_cloud_ts', String(lastCloudSyncedUpdatedAt));
-        }
-
-        hasUnsentLocalEdit = false;
-        localEditTimestampMs = 0;
-        lastKnownDataFingerprint = getLocalDataFingerprint();
-
-        if (typeof refreshActivePanesInPlace === 'function') {
-            refreshActivePanesInPlace();
-        }
-        if (typeof renderTasks === 'function') renderTasks();
-        if (typeof renderCalendar === 'function') renderCalendar();
-        if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
-        if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
-        if (typeof renderDiet === 'function') renderDiet();
-        if (typeof renderGymDashboard === 'function') renderGymDashboard();
-        if (typeof renderMoneyDashboard === 'function') renderMoneyDashboard();
-        if (typeof renderUniDashboard === 'function') renderUniDashboard();
-        if (typeof renderNoteCategories === 'function') renderNoteCategories();
-        if (typeof syncMobileModeUI === 'function') syncMobileModeUI();
-        if (typeof updateWorkspaceDropdownUI === 'function') updateWorkspaceDropdownUI();
         if (typeof d.bridgeWebAppUrl === 'string' && d.bridgeWebAppUrl) {
             bridgeWebAppUrl = d.bridgeWebAppUrl;
             cortexStore.setItem('cortex_bridge_url', bridgeWebAppUrl);
@@ -255,19 +293,138 @@ function applyFullCortexCloudPayload(payloadObj) {
             processedBankEmails = d.processedBankEmails;
             cortexStore.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
         }
-        if (typeof updateExternalBridgeSettingsUI === 'function') updateExternalBridgeSettingsUI();
+
+        saveData();
+        saveMoneyData();
+        saveHealthData();
+        saveUniData();
+        saveWorkspaceState();
+        if (typeof saveCustomAliases === 'function') saveCustomAliases();
+
+        rerenderAllAfterSync();
 
         if (typeof captureCurrentStateSnapshotString === 'function') {
             lastCapturedSnapshotStr = captureCurrentStateSnapshotString();
         }
     } catch (err) {
-        console.error('[CLOUD APPLY ERROR]', err);
+        console.error('[SYNC] errore applicando i dati', err);
         isApplyingCloudPull = false;
         return false;
     }
     isApplyingCloudPull = false;
     return true;
 }
+
+function rerenderAllAfterSync() {
+    const calls = [
+        'refreshActivePanesInPlace', 'renderTasks', 'renderCalendar', 'renderWeeklyPlanner',
+        'renderDayPlannerModule', 'renderDiet', 'renderGymDashboard', 'renderMoneyDashboard',
+        'renderUniDashboard', 'renderNoteCategories', 'syncMobileModeUI',
+        'updateWorkspaceDropdownUI', 'updateExternalBridgeSettingsUI'
+    ];
+    for (const fn of calls) {
+        try { if (typeof window[fn] === 'function') window[fn](); }
+        catch (e) { console.error('[SYNC] errore ridisegnando', fn, e); }
+    }
+}
+
+// ============================================================================
+// BASE E CONFLITTI
+// ============================================================================
+
+function loadSyncBase() {
+    const raw = cortexStore.getItem(SYNC_BASE_KEY);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch (e) { return null; }
+}
+
+function saveSyncBase(stateObj) {
+    cortexStore.setItem(SYNC_BASE_KEY, JSON.stringify(stateObj));
+}
+
+function recordSyncConflicts(conflicts, keptSide) {
+    if (!conflicts || !conflicts.length) return;
+    let list = [];
+    try { list = JSON.parse(cortexStore.getItem(SYNC_CONFLICTS_KEY) || '[]'); } catch (e) { list = []; }
+    const at = new Date().toISOString();
+    for (const c of conflicts) list.unshift({ at, keptSide, path: c.path, kept: c.kept, discarded: c.discarded });
+    cortexStore.setItem(SYNC_CONFLICTS_KEY, JSON.stringify(list.slice(0, SYNC_MAX_CONFLICTS)));
+    if (typeof showToast === 'function') {
+        const n = conflicts.length;
+        showToast(`[☁ SYNC] ${n} ${n === 1 ? 'modifica in conflitto' : 'modifiche in conflitto'}: tenuta la più recente, l'altra è salvata in Impostazioni → Sistema.`);
+    }
+    updateCloudSyncSettingsUI();
+}
+
+function getSyncConflicts() {
+    try { return JSON.parse(cortexStore.getItem(SYNC_CONFLICTS_KEY) || '[]'); } catch (e) { return []; }
+}
+
+// Nomi leggibili per le sezioni dei dati (usati nell'elenco conflitti)
+const SYNC_SECTION_LABELS = {
+    templates: 'Task', logs: 'Storico task', specificEvents: 'Eventi', noteCategories: 'Categorie note',
+    notesContent: 'Note', journals: 'Diario', categoryOrder: 'Ordine categorie', referenceLayers: 'Livelli planner',
+    refToggles: 'Livelli attivi', ephemeralData: 'Blocchi del giorno', generalTodos: 'To-Do',
+    plannerExceptions: 'Eccezioni planner', dailyPriorities: 'Priorità del giorno', routinesData: 'Routine',
+    routineLogs: 'Storico routine', focusLogs: 'Sessioni focus', mBalance: 'Saldo', mTransactions: 'Movimenti',
+    mRecurring: 'Bollette', mWishlist: 'Wishlist', mVaults: 'Salvadanai', mCategories: 'Categorie spese',
+    savedGymWeights: 'Pesi palestra', dietData: 'Dieta', dietRules: 'Regole dieta', foodDb: 'Alimenti',
+    bodyLogs: 'Peso corporeo', gymPlan: 'Scheda palestra', gymRoutine: 'Routine palestra', uniData: 'Università',
+    mathHubState: 'Matematica', workspacePresets: 'Viste salvate', customAliases: 'Comandi personalizzati'
+};
+function humanSyncPath(path) {
+    const parts = String(path || '').split('.');
+    if (parts[0] && SYNC_SECTION_LABELS[parts[0]]) parts[0] = SYNC_SECTION_LABELS[parts[0]];
+    return parts.join(' › ');
+}
+
+function showSyncConflictsModal() {
+    const list = getSyncConflicts();
+    const esc = (s) => (typeof escapeHtml === 'function' ? escapeHtml(String(s)) : String(s).replace(/[&<>"]/g, ''));
+    const fmt = (v) => esc(typeof v === 'string' ? v : JSON.stringify(v, null, 2));
+    const rows = list.length
+        ? list.map((c) => `
+            <div class="cfg-box" style="display:flex; flex-direction:column; gap:6px;">
+                <div style="display:flex; justify-content:space-between; font-size:var(--font-2xs); color:var(--text-dim);">
+                    <span>${esc(humanSyncPath(c.path))}</span><span>${esc(new Date(c.at).toLocaleString('it-IT'))}</span>
+                </div>
+                <div style="font-size:var(--font-2xs); color:var(--text-dim);">VERSIONE SCARTATA</div>
+                <pre style="white-space:pre-wrap; margin:0; font-size:var(--font-xs); max-height:160px; overflow:auto;">${fmt(c.discarded)}</pre>
+            </div>`).join('')
+        : '<div class="empty-state">[ NESSUN CONFLITTO ]</div>';
+
+    const root = document.getElementById('modals-root');
+    if (!root) return;
+    const wrap = document.createElement('div');
+    wrap.className = 'modal-overlay';
+    wrap.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:var(--z-modal); padding:var(--space-4);';
+    wrap.innerHTML = `
+        <div class="modal-content" style="background:var(--bg-sec); border:1px solid var(--border-bright); width:min(640px,100%); max-height:85vh; display:flex; flex-direction:column; gap:var(--space-3); padding:var(--space-4);">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <span class="section-label">Conflitti di sincronizzazione</span>
+                <button type="button" class="icon-btn" data-close>[×]</button>
+            </div>
+            <div style="font-size:var(--font-xs); color:var(--text-dim); line-height:var(--line-normal);">
+                Quando la stessa cosa è stata modificata in modo diverso su due dispositivi, Cortex tiene la versione più recente.
+                Qui trovi quella scartata, se ti serve recuperarla.
+            </div>
+            <div style="overflow:auto; display:flex; flex-direction:column; gap:var(--space-2);">${rows}</div>
+            ${list.length ? '<button type="button" class="btn btn-sm" data-clear>[SVUOTA ELENCO]</button>' : ''}
+        </div>`;
+    wrap.addEventListener('click', (e) => {
+        if (e.target === wrap || e.target.closest('[data-close]')) wrap.remove();
+        if (e.target.closest('[data-clear]')) {
+            cortexStore.setItem(SYNC_CONFLICTS_KEY, '[]');
+            updateCloudSyncSettingsUI();
+            wrap.remove();
+        }
+    });
+    root.appendChild(wrap);
+}
+
+// ============================================================================
+// COMUNICAZIONE CON GITHUB GIST
+// ============================================================================
 
 async function fetchRemoteGistPayload() {
     const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}?t=${Date.now()}`, {
@@ -286,9 +443,7 @@ async function fetchRemoteGistPayload() {
 
     const gistData = await res.json();
     const fileObj = gistData.files && (gistData.files[GIST_FILENAME] || Object.values(gistData.files)[0]);
-    if (!fileObj) {
-        throw new Error(`File "${GIST_FILENAME}" not found in Gist`);
-    }
+    if (!fileObj) throw new Error(`File "${GIST_FILENAME}" non trovato nel Gist`);
 
     let rawContent = fileObj.content;
     if (fileObj.truncated && fileObj.raw_url) {
@@ -298,8 +453,25 @@ async function fetchRemoteGistPayload() {
         });
         rawContent = await rawRes.text();
     }
-
+    if (!rawContent || !rawContent.trim()) return { version: SYNC_PAYLOAD_VERSION, updatedAt: 0, data: {} };
     return JSON.parse(rawContent);
+}
+
+async function uploadPayloadToGist(payload) {
+    const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}`, {
+        method: 'PATCH',
+        headers: {
+            'Accept': 'application/vnd.github+json',
+            'Authorization': `Bearer ${cloudGithubToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(payload) } } }),
+        keepalive: JSON.stringify(payload).length < 60000 // permette l'invio anche se l'app si sta chiudendo
+    });
+    if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.message || `HTTP ${res.status}`);
+    }
 }
 
 async function createNewSecretGistForCortex() {
@@ -310,11 +482,11 @@ async function createNewSecretGistForCortex() {
     }
 
     if (!cloudGithubToken) {
-        if (typeof showToast === 'function') showToast('[CLOUD ERROR] Paste your GitHub Token first!');
+        if (typeof showToast === 'function') showToast('[SYNC] Incolla prima il token GitHub!');
         return false;
     }
 
-    setCloudSyncHeaderIndicator('syncing', 'Creating new Secret Gist...');
+    setCloudSyncHeaderIndicator('syncing', 'Creazione del Gist segreto...');
     const nowTs = Date.now();
     const payload = buildFullCortexCloudPayload(nowTs);
 
@@ -327,13 +499,9 @@ async function createNewSecretGistForCortex() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                description: 'Cortex Personal OS — Encrypted/Private Sync State',
+                description: 'Cortex — stato di sincronizzazione privato',
                 public: false,
-                files: {
-                    [GIST_FILENAME]: {
-                        content: JSON.stringify(payload)
-                    }
-                }
+                files: { [GIST_FILENAME]: { content: JSON.stringify(payload) } }
             })
         });
 
@@ -345,9 +513,9 @@ async function createNewSecretGistForCortex() {
         const data = await res.json();
         cloudGistId = data.id;
         lastCloudSyncedUpdatedAt = nowTs;
-        hasUnsentLocalEdit = false;
-        isBootSyncing = false;
-        lastKnownDataFingerprint = getLocalDataFingerprint();
+        lastSyncOkMs = Date.now();
+        localSyncedSeq = localChangeSeq;
+        saveSyncBase(payload.data);
 
         cortexStore.setItem('cortex_gist_id', cloudGistId);
         cortexStore.setItem('cortex_last_cloud_ts', String(nowTs));
@@ -355,248 +523,169 @@ async function createNewSecretGistForCortex() {
         const idInp = document.getElementById('cloud-gist-id-inp');
         if (idInp) idInp.value = cloudGistId;
 
-        setCloudSyncHeaderIndicator('ok', `Synced (Gist: ${cloudGistId.slice(0, 8)}...)`);
+        setCloudSyncHeaderIndicator('ok');
         updateCloudSyncSettingsUI();
-        if (typeof showToast === 'function') {
-            showToast(`[☁ GIST CREATED] ID: ${cloudGistId}`);
-        }
+        if (typeof showToast === 'function') showToast(`[☁ GIST CREATO] ID: ${cloudGistId}`);
         return true;
     } catch (err) {
         setCloudSyncHeaderIndicator('error', err.message);
-        if (typeof showToast === 'function') showToast(`[GIST ERROR] ${err.message}`);
+        if (typeof showToast === 'function') showToast(`[ERRORE GIST] ${err.message}`);
         return false;
     }
 }
 
-async function pushStateToCloudGist(isManual = false) {
+// ============================================================================
+// IL CUORE: SINCRONIZZAZIONE CON UNIONE A TRE VIE
+// ============================================================================
+
+async function syncNow(isManual = false) {
     if (!isCloudSyncConfigured()) {
         if (isManual && typeof openSettingsModal === 'function') openSettingsModal('tab-system');
         return false;
     }
-
     if (!navigator.onLine) {
-        hasUnsentLocalEdit = true;
-        setCloudSyncHeaderIndicator('offline', 'Offline — Will upload when online');
+        setCloudSyncHeaderIndicator('offline');
         updateCloudSyncSettingsUI();
+        if (isManual && typeof showToast === 'function') showToast('[☁ SYNC] Sei offline: le modifiche restano salvate qui.');
         return false;
     }
-
     if (isCloudSyncInProgress) {
-        pendingPushAfterCurrentOp = true;
+        syncRequestedAgain = true;
+        return false;
+    }
+    if (typeof CortexMerge === 'undefined') {
+        console.error('[SYNC] motore di unione non caricato');
         return false;
     }
 
     isCloudSyncInProgress = true;
-    setCloudSyncHeaderIndicator('syncing', 'Uploading to Cloud...');
-
-    const nowTs = Math.max(Date.now(), localEditTimestampMs || 0, lastCloudSyncedUpdatedAt + 1);
-    const payload = buildFullCortexCloudPayload(nowTs);
-    const pushedFp = JSON.stringify(payload.data);
-
-    try {
-        const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}`, {
-            method: 'PATCH',
-            headers: {
-                'Accept': 'application/vnd.github+json',
-                'Authorization': `Bearer ${cloudGithubToken}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                files: {
-                    [GIST_FILENAME]: {
-                        content: JSON.stringify(payload)
-                    }
-                }
-            })
-        });
-
-        if (!res.ok) {
-            const errJson = await res.json().catch(() => ({}));
-            throw new Error(errJson.message || `HTTP ${res.status}`);
-        }
-
-        lastCloudSyncedUpdatedAt = nowTs;
-        cortexStore.setItem('cortex_last_cloud_ts', String(nowTs));
-
-        const currentFpNow = getLocalDataFingerprint();
-        if (currentFpNow === pushedFp) {
-            hasUnsentLocalEdit = false;
-            localEditTimestampMs = 0;
-            lastKnownDataFingerprint = pushedFp;
-        } else {
-            pendingPushAfterCurrentOp = true;
-        }
-
-        isCloudSyncInProgress = false;
-        const timeStr = new Date(nowTs).toLocaleTimeString('en-US', { hour12: false });
-        setCloudSyncHeaderIndicator('ok', `Synced (${timeStr})`);
-        updateCloudSyncSettingsUI();
-
-        if (isManual && typeof showToast === 'function') {
-            showToast(`[☁ PUSH OK] Uploaded to Cloud (${timeStr})`);
-        }
-
-        if (pendingPushAfterCurrentOp) {
-            pendingPushAfterCurrentOp = false;
-            setTimeout(() => pushStateToCloudGist(false), 150);
-        }
-        return true;
-    } catch (err) {
-        isCloudSyncInProgress = false;
-        console.error('[GIST PUSH ERROR]', err);
-        setCloudSyncHeaderIndicator(navigator.onLine ? 'error' : 'offline', `Push failed: ${err.message}`);
-        updateCloudSyncSettingsUI();
-        if (isManual && typeof showToast === 'function') {
-            showToast(`[CLOUD PUSH ERROR] ${err.message}`);
-        }
-        return false;
-    }
-}
-
-async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) {
-    if (!isCloudSyncConfigured()) {
-        if (isManual && typeof openSettingsModal === 'function') openSettingsModal('tab-system');
-        return false;
-    }
-
-    if (!navigator.onLine) {
-        setCloudSyncHeaderIndicator('offline', 'Offline');
-        updateCloudSyncSettingsUI();
-        return false;
-    }
-
-    if (!forceOverwrite && hasUnsentLocalEdit) {
-        return pushStateToCloudGist(isManual);
-    }
-
-    if (isCloudSyncInProgress) return false;
-    isCloudSyncInProgress = true;
-
-    if (isManual || isBootSyncing) {
-        setCloudSyncHeaderIndicator('syncing', 'Checking cloud...');
-    }
+    lastSyncAttemptMs = Date.now();
+    if (syncDebounceTimer) { clearTimeout(syncDebounceTimer); syncDebounceTimer = null; }
+    setCloudSyncHeaderIndicator('syncing');
+    updateCloudSyncSettingsUI();
 
     try {
         const remotePayload = await fetchRemoteGistPayload();
-        const remoteTs = parseInt(remotePayload.updatedAt || '0', 10) || 0;
+        const remoteData = (remotePayload && remotePayload.data) || {};
+        const remoteTs = parseInt(remotePayload && remotePayload.updatedAt, 10) || 0;
 
-        if (!forceOverwrite && hasUnsentLocalEdit) {
-            isBootSyncing = false;
-            isCloudSyncInProgress = false;
-            return pushStateToCloudGist(false);
-        }
+        // Da qui in poi tutto è sincrono fino all'upload: nessuna modifica locale può infilarsi
+        const seqAtMerge = localChangeSeq;
+        const local = buildLocalSyncState();
+        const base = loadSyncBase();
+        const localWins = hasLocalChangesPending() && localDirtySinceMs > remoteTs;
 
-        const remoteFp = (remotePayload && remotePayload.data) ? JSON.stringify(remotePayload.data) : '';
-        const localFp = getLocalDataFingerprint();
+        const { merged, conflicts } = CortexMerge.mergeStates(base, local, remoteData, { localWins });
 
-        if (forceOverwrite || remoteTs > lastCloudSyncedUpdatedAt || (isBootSyncing && remoteFp && remoteFp !== localFp)) {
-            if (remoteFp && remoteFp !== localFp) {
-                applyFullCortexCloudPayload(remotePayload);
-                const timeStr = new Date(remoteTs || Date.now()).toLocaleTimeString('en-US', { hour12: false });
-                if (!isBootSyncing && typeof showToast === 'function') {
-                    showToast(`[☁ SYNCED] Updated from other device (${timeStr})`);
-                }
-            } else if (remoteTs > lastCloudSyncedUpdatedAt) {
-                lastCloudSyncedUpdatedAt = remoteTs;
-                cortexStore.setItem('cortex_last_cloud_ts', String(remoteTs));
-                lastKnownDataFingerprint = localFp;
+        const changedHere = !CortexMerge.same(merged, local);
+        const changedRemote = !CortexMerge.same(merged, remoteData);
+
+        if (changedHere) {
+            applyFullCortexCloudPayload({ data: merged });
+            if (!isManual && typeof showToast === 'function' && base) {
+                showToast('[☁ SYNC] Aggiornato con le modifiche dell\'altro dispositivo');
             }
-        } else {
-            lastKnownDataFingerprint = localFp;
         }
 
-        isBootSyncing = false;
+        let newTs = remoteTs;
+        if (changedRemote) {
+            newTs = Math.max(Date.now(), remoteTs + 1);
+            await uploadPayloadToGist({
+                version: SYNC_PAYLOAD_VERSION,
+                updatedAt: newTs,
+                data: merged
+            });
+        }
+
+        saveSyncBase(merged);
+        lastCloudSyncedUpdatedAt = newTs;
+        cortexStore.setItem('cortex_last_cloud_ts', String(newTs));
+        localSyncedSeq = seqAtMerge;              // le modifiche fatte durante l'upload restano "in attesa"
+        if (!hasLocalChangesPending()) {
+            localDirtySinceMs = 0;
+            cortexStore.removeItem(SYNC_DIRTY_KEY);
+        }
+        lastSyncOkMs = Date.now();
+
+        recordSyncConflicts(conflicts, localWins ? 'questo dispositivo' : 'altro dispositivo');
+
         isCloudSyncInProgress = false;
-        setCloudSyncHeaderIndicator('ok', 'In sync across devices');
+        setCloudSyncHeaderIndicator(hasLocalChangesPending() ? 'queued' : 'ok');
         updateCloudSyncSettingsUI();
-
-        if (isManual && typeof showToast === 'function') {
-            showToast('[☁ SYNC OK] Up to date');
-        }
-
-        if (pendingPushAfterCurrentOp || hasUnsentLocalEdit) {
-            pendingPushAfterCurrentOp = false;
-            setTimeout(() => pushStateToCloudGist(false), 100);
-        }
-        return true;
+        if (isManual && typeof showToast === 'function') showToast('[☁ SYNC] Tutto sincronizzato');
     } catch (err) {
-        isBootSyncing = false;
         isCloudSyncInProgress = false;
-        console.error('[GIST PULL ERROR]', err);
-        setCloudSyncHeaderIndicator(navigator.onLine ? 'error' : 'offline', `Sync error: ${err.message}`);
+        console.error('[SYNC] errore', err);
+        setCloudSyncHeaderIndicator(navigator.onLine ? 'error' : 'offline', `Errore: ${err.message}`);
         updateCloudSyncSettingsUI();
-        if (isManual && typeof showToast === 'function') {
-            showToast(`[CLOUD SYNC ERROR] ${err.message}`);
-        }
+        if (isManual && typeof showToast === 'function') showToast(`[☁ SYNC ERRORE] ${err.message}`);
         return false;
     }
+
+    if (syncRequestedAgain || hasLocalChangesPending()) {
+        syncRequestedAgain = false;
+        scheduleSyncSoon(SYNC_CHANGE_DEBOUNCE_MS);
+    }
+    return true;
 }
 
-function checkAndQueueLocalChangeForCloud() {
-    if (!isStorageHydrated || isBootSyncing || isApplyingCloudPull || isApplyingUndoRedo) return;
+function scheduleSyncSoon(delayMs = SYNC_CHANGE_DEBOUNCE_MS) {
     if (!isCloudSyncConfigured()) return;
-
-    const currentFp = getLocalDataFingerprint();
-    if (!currentFp || currentFp === lastKnownDataFingerprint) return;
-
-    lastKnownDataFingerprint = currentFp;
-    hasUnsentLocalEdit = true;
-    localEditTimestampMs = Date.now();
-
-    if (!navigator.onLine) {
-        setCloudSyncHeaderIndicator('offline', 'Offline — Changes saved locally');
-        updateCloudSyncSettingsUI();
-        return;
-    }
-
-    setCloudSyncHeaderIndicator('syncing', 'Syncing change...');
-
-    if (cloudPushDebounceTimer) {
-        clearTimeout(cloudPushDebounceTimer);
-    }
-    cloudPushDebounceTimer = setTimeout(() => {
-        cloudPushDebounceTimer = null;
-        pushStateToCloudGist(false);
-    }, 400);
+    if (syncDebounceTimer) clearTimeout(syncDebounceTimer);
+    syncDebounceTimer = setTimeout(() => {
+        syncDebounceTimer = null;
+        syncNow(false);
+    }, delayMs);
 }
 
-function scheduleDebouncedCloudPush() {
-    checkAndQueueLocalChangeForCloud();
+// Chiamata a ogni salvataggio locale
+function markLocalChangeForCloud() {
+    if (isApplyingCloudPull) return;
+    localChangeSeq++;
+    if (!localDirtySinceMs) {
+        localDirtySinceMs = Date.now();
+        // Ricordato anche se l'app viene chiusa offline
+        cortexStore.setItem(SYNC_DIRTY_KEY, String(localDirtySinceMs));
+    }
+    if (!isCloudSyncConfigured()) return;
+    if (!navigator.onLine) { setCloudSyncHeaderIndicator('offline'); return; }
+    if (!isCloudSyncInProgress) setCloudSyncHeaderIndicator('queued');
+    scheduleSyncSoon(SYNC_CHANGE_DEBOUNCE_MS);
 }
 
-function triggerManualCloudSync() {
-    if (!isCloudSyncConfigured()) {
-        if (typeof openSettingsModal === 'function') openSettingsModal('tab-system');
-        return;
-    }
-    if (hasUnsentLocalEdit) {
-        pushStateToCloudGist(true);
-    } else {
-        pullStateFromCloudGist(true, true);
-    }
-}
+// Nomi della versione precedente, usati da altri moduli e dalle impostazioni
+function checkAndQueueLocalChangeForCloud() { markLocalChangeForCloud(); }
+function scheduleDebouncedCloudPush() { markLocalChangeForCloud(); }
+function pushStateToCloudGist(isManual = false) { return syncNow(isManual); }
+function pullStateFromCloudGist(_force = false, isManual = false) { return syncNow(isManual); }
+function triggerManualCloudSync() { return syncNow(true); }
+
+// ============================================================================
+// IMPOSTAZIONI
+// ============================================================================
 
 function saveCloudSyncCredentialsFromUI() {
     const tokInp = document.getElementById('cloud-gist-token-inp');
     const idInp = document.getElementById('cloud-gist-id-inp');
+    const prevGist = cloudGistId;
     if (tokInp) cloudGithubToken = tokInp.value.trim();
     if (idInp) cloudGistId = idInp.value.trim();
 
     cortexStore.setItem('cortex_gist_token', cloudGithubToken);
     cortexStore.setItem('cortex_gist_id', cloudGistId);
 
+    // Gist diverso = storia diversa: la vecchia base non vale più (unione senza cancellazioni)
+    if (prevGist && prevGist !== cloudGistId) cortexStore.removeItem(SYNC_BASE_KEY);
+
     updateCloudSyncSettingsUI();
-    if (isCloudSyncConfigured()) {
-        pullStateFromCloudGist(true, true);
-    } else {
-        setCloudSyncHeaderIndicator('idle');
-    }
+    if (isCloudSyncConfigured()) syncNow(true);
+    else setCloudSyncHeaderIndicator('idle');
 }
 
 function copyMagicMobileSetupUrl() {
     saveCloudSyncCredentialsFromUI();
     if (!isCloudSyncConfigured()) {
-        if (typeof showToast === 'function') showToast('[ERROR] Configure Token & Gist ID first!');
+        if (typeof showToast === 'function') showToast('[ERRORE] Configura prima token e Gist ID!');
         return;
     }
     const baseUrl = window.location.protocol.startsWith('http') && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('tauri')
@@ -606,7 +695,7 @@ function copyMagicMobileSetupUrl() {
     const magicUrl = `${baseUrl}#cortex_sync=${encodeURIComponent(cloudGithubToken + ':' + cloudGistId)}`;
     navigator.clipboard.writeText(magicUrl);
     if (typeof showToast === 'function') {
-        showToast('[🔗 MAGIC URL COPIED] Open this link once on Phone/Tablet to auto-connect!');
+        showToast('[🔗 LINK COPIATO] Aprilo una volta sul telefono per collegarlo. Contiene la tua chiave: non condividerlo.');
     }
 }
 
@@ -614,100 +703,100 @@ function updateCloudSyncSettingsUI() {
     const tokInp = document.getElementById('cloud-gist-token-inp');
     const idInp = document.getElementById('cloud-gist-id-inp');
     const statusLbl = document.getElementById('cloud-sync-settings-status');
+    const conflictsBtn = document.getElementById('cloud-sync-conflicts-btn');
 
     if (tokInp && tokInp !== document.activeElement) tokInp.value = cloudGithubToken;
     if (idInp && idInp !== document.activeElement) idInp.value = cloudGistId;
 
+    if (conflictsBtn) {
+        const n = getSyncConflicts().length;
+        conflictsBtn.textContent = `[CONFLITTI SALVATI: ${n}]`;
+        conflictsBtn.style.color = n ? 'var(--accent-gold)' : '';
+    }
+
     if (statusLbl) {
         if (!isCloudSyncConfigured()) {
-            statusLbl.textContent = '[NOT CONFIGURED]';
+            statusLbl.textContent = '[NON CONFIGURATO]';
             statusLbl.style.color = 'var(--text-dim)';
         } else if (!navigator.onLine) {
-            statusLbl.textContent = '[OFFLINE // LOCAL CACHE]';
+            statusLbl.textContent = '[OFFLINE // SALVATO QUI]';
             statusLbl.style.color = 'var(--accent-gold)';
-        } else if (hasUnsentLocalEdit || isCloudSyncInProgress) {
-            statusLbl.textContent = '[SYNCING...]';
+        } else if (isCloudSyncInProgress) {
+            statusLbl.textContent = '[SINCRONIZZAZIONE...]';
             statusLbl.style.color = 'var(--accent-gold)';
+        } else if (hasLocalChangesPending()) {
+            statusLbl.textContent = '[MODIFICHE IN ATTESA]';
+            statusLbl.style.color = 'var(--accent-gold)';
+        } else if (cloudSyncStatus === 'error') {
+            statusLbl.textContent = '[ERRORE — RIPROVA]';
+            statusLbl.style.color = 'var(--accent-red)';
         } else {
-            const lastStr = lastCloudSyncedUpdatedAt > 0
-                ? new Date(lastCloudSyncedUpdatedAt).toLocaleTimeString('en-US', { hour12: false })
-                : 'READY';
-            statusLbl.textContent = `[CONNECTED // LAST SYNC: ${lastStr}]`;
+            statusLbl.textContent = `[COLLEGATO // ULTIMA SYNC: ${formatAgo(lastSyncOkMs).toUpperCase()}]`;
             statusLbl.style.color = 'var(--accent-green)';
         }
     }
 }
 
+// ============================================================================
+// AVVIO E TRIGGER AUTOMATICI
+// ============================================================================
+
 window.addEventListener('DOMContentLoaded', () => {
     registerAndRefreshServiceWorker();
     const linkedFromHash = checkUrlHashForMagicSyncSetup();
 
+    // Ogni funzione di salvataggio segnala la modifica alla sincronizzazione
     ['saveData', 'saveMoneyData', 'saveHealthData', 'saveUniData', 'saveWorkspaceState', 'saveCustomAliases'].forEach(fnName => {
         const origFn = window[fnName];
-        if (typeof origFn === 'function') {
-            window[fnName] = function(...args) {
+        if (typeof origFn === 'function' && !origFn.__cortexSyncWrapped) {
+            const wrapped = function (...args) {
                 const res = origFn.apply(this, args);
-                checkAndQueueLocalChangeForCloud();
+                markLocalChangeForCloud();
                 return res;
             };
+            wrapped.__cortexSyncWrapped = true;
+            window[fnName] = wrapped;
         }
     });
 
+    // Prima della nuova versione non esisteva la "base": se c'è un'impronta salvata
+    // la ignoriamo e la prima sync farà un'unione senza cancellazioni (nessuna perdita).
+    refreshSyncIndicatorFromState();
     updateCloudSyncSettingsUI();
 
-    setTimeout(() => {
-        lastKnownDataFingerprint = getLocalDataFingerprint();
-        if (isCloudSyncConfigured() && navigator.onLine) {
-            pullStateFromCloudGist(linkedFromHash, false);
-        } else {
-            isBootSyncing = false;
-            setCloudSyncHeaderIndicator(navigator.onLine ? 'idle' : 'offline');
-        }
-    }, 250);
+    if (isCloudSyncConfigured()) {
+        setTimeout(() => syncNow(linkedFromHash), 600);
+    }
 
+    // Controllo periodico (solo se l'app è visibile)
     setInterval(() => {
-        if (!isBootSyncing && !isApplyingCloudPull) {
-            checkAndQueueLocalChangeForCloud();
-        }
-    }, 1000);
+        if (document.visibilityState !== 'visible' || !isCloudSyncConfigured() || !navigator.onLine) return;
+        if (Date.now() - lastSyncAttemptMs < SYNC_POLL_MS - 1000) return;
+        syncNow(false);
+    }, SYNC_POLL_MS);
 
-    setInterval(() => {
-        if (document.visibilityState === 'visible' && isCloudSyncConfigured() && navigator.onLine && !isBootSyncing && !cloudPushDebounceTimer) {
-            if (hasUnsentLocalEdit) {
-                pushStateToCloudGist(false);
-            } else {
-                pullStateFromCloudGist(false, false);
-            }
-        }
-    }, 4000);
+    // Aggiorna i "x min fa" dell'indicatore
+    setInterval(() => { if (cloudSyncStatus === 'ok') setCloudSyncHeaderIndicator('ok'); }, 30000);
 
-    window.addEventListener('online', () => {
-        if (!isCloudSyncConfigured()) return;
-        if (hasUnsentLocalEdit) pushStateToCloudGist(true);
-        else pullStateFromCloudGist(false, true);
-    });
+    const syncOnReturn = () => {
+        if (!isCloudSyncConfigured() || !navigator.onLine) return;
+        if (Date.now() - lastSyncAttemptMs < SYNC_FOCUS_THROTTLE_MS) return;
+        syncNow(false);
+    };
 
+    window.addEventListener('online', () => { if (isCloudSyncConfigured()) syncNow(false); });
     window.addEventListener('offline', () => {
         if (!isCloudSyncConfigured()) return;
-        setCloudSyncHeaderIndicator('offline', 'Working offline');
+        setCloudSyncHeaderIndicator('offline');
         updateCloudSyncSettingsUI();
     });
-
-    window.addEventListener('focus', () => {
-        if (isCloudSyncConfigured() && navigator.onLine && !isBootSyncing && !cloudPushDebounceTimer) {
-            pullStateFromCloudGist(false, false);
-        }
-    });
-
+    window.addEventListener('focus', syncOnReturn);
     document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible' && isCloudSyncConfigured() && navigator.onLine && !isBootSyncing) {
-            pullStateFromCloudGist(false, false);
-        } else if (document.visibilityState === 'hidden' && hasUnsentLocalEdit && navigator.onLine) {
-            if (cloudPushDebounceTimer) {
-                clearTimeout(cloudPushDebounceTimer);
-                cloudPushDebounceTimer = null;
-            }
-            pushStateToCloudGist(false);
+        if (document.visibilityState === 'visible') {
+            syncOnReturn();
+        } else if (hasLocalChangesPending() && isCloudSyncConfigured() && navigator.onLine) {
+            // L'app viene nascosta/chiusa: invia subito le modifiche in sospeso
+            syncNow(false);
         }
     });
 });

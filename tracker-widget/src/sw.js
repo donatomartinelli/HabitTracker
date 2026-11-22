@@ -7,7 +7,7 @@
 // IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
 // e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v5';
+const CACHE_NAME = 'cortex-os-cache-v6';
 const NAV_TIMEOUT_MS = 3000;
 
 const CORE_ASSETS = [
@@ -23,6 +23,7 @@ const CORE_ASSETS = [
     './js/core/boot.js',
     './js/core/audio.js',
     './js/core/state.js',
+    './js/core/sync-merge.js',
     './js/core/cloud-sync.js',
     './js/core/workspace.js',
     './js/core/dsl.js',
