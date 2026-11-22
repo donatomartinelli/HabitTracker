@@ -161,7 +161,7 @@ function syncMobileModeUI() {
     if (subStrip) {
         if (Array.isArray(activeMobilePresetMods) && activeMobilePresetMods.length > 1) {
             subStrip.style.display = 'flex';
-            subStrip.innerHTML = `<span style="font-size:0.62rem; color:var(--accent-gold); font-weight:bold; flex-shrink:0;">${escapeHtml(activeMobilePresetName)}:</span>`;
+            subStrip.innerHTML = `<span style="font-size:var(--font-2xs); color:var(--accent-gold); font-weight:bold; flex-shrink:0;">${escapeHtml(activeMobilePresetName)}:</span>`;
             activeMobilePresetMods.forEach(mk => {
                 if (!dashboardModules[mk]) return;
                 const b = document.createElement('button');

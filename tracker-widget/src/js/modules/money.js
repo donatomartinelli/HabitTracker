@@ -458,7 +458,7 @@ function renderMoneyAtomSummary(precomputedMetrics = null) {
                 </div>
             </div>
 
-            <div style="font-size:0.65rem; color:var(--text-dim); font-variant-numeric:tabular-nums; border-top:1px dotted rgba(255,255,255,0.06); padding-top:6px;">
+            <div style="font-size:var(--font-2xs); color:var(--text-dim); font-variant-numeric:tabular-nums; border-top:1px dotted rgba(255,255,255,0.06); padding-top:6px;">
                 LOCKED IN VAULTS: <strong style="color:var(--text-muted);">€${metrics.vaulted.toFixed(2)}</strong> &nbsp;|&nbsp;
                 PENDING BILLS: <strong style="color:var(--text-muted);">€${metrics.pendingBills.toFixed(2)}</strong> &nbsp;|&nbsp;
                 MONTH IN: <strong style="color:var(--accent-green);">+€${metrics.monthIn.toFixed(2)}</strong>
@@ -568,12 +568,12 @@ function renderMoneyAtomTransactions() {
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                     <button type="button" class="btn btn-sm" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
-                    <select id="m-tx-cat-filter-sel" class="form-control form-control-sm" style="width:auto; max-width:130px; padding:2px 6px; font-size:0.65rem;">
+                    <select id="m-tx-cat-filter-sel" class="form-control form-control-sm" style="width:auto; max-width:130px; padding:2px 6px; font-size:var(--font-2xs);">
                         ${allCats.map(c => `<option value="${escapeHtml(c)}" ${c.toLowerCase() === mTxCategoryFilter.toLowerCase() ? 'selected' : ''}>${escapeHtml(c.toUpperCase())}</option>`).join('')}
                     </select>
                     <div style="display:flex; gap:2px;">
                         ${[5, 10, 25, 0].map(lim => `
-                            <button type="button" class="btn btn-sm ${mTxLimit === lim ? 'btn-primary' : ''}" style="padding:2px 6px; font-size:0.62rem;" data-lim="${lim}">
+                            <button type="button" class="btn btn-sm ${mTxLimit === lim ? 'btn-primary' : ''}" style="padding:2px 6px; font-size:var(--font-2xs);" data-lim="${lim}">
                                 ${lim === 0 ? 'ALL' : lim}
                             </button>
                         `).join('')}
@@ -684,19 +684,19 @@ function renderMoneyAtomAnalytics(precomputedMetrics = null) {
 
             <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
                 <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:0.62rem; color:var(--text-dim);">THIS MONTH OUT</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">THIS MONTH OUT</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-red); margin-top:2px; font-variant-numeric:tabular-nums;">€${metrics.monthOut.toFixed(2)}</div>
                 </div>
                 <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:0.62rem; color:var(--text-dim);">VS LAST MO (€${metrics.prevMonthOut.toFixed(0)})</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">VS LAST MO (€${metrics.prevMonthOut.toFixed(0)})</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:${deltaColor}; margin-top:2px; font-variant-numeric:tabular-nums;">${deltaSign}€${deltaPrev.toFixed(2)}</div>
                 </div>
                 <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:0.62rem; color:var(--text-dim);">DAILY AVG</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">DAILY AVG</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">€${metrics.avgDailySpend.toFixed(2)}/d</div>
                 </div>
                 <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:0.62rem; color:var(--text-dim);">ALL-TIME OUT</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">ALL-TIME OUT</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-muted); margin-top:2px; font-variant-numeric:tabular-nums;">€${metrics.allTimeOut.toFixed(2)}</div>
                 </div>
             </div>
@@ -733,14 +733,14 @@ function renderMoneyAtomAnalytics(precomputedMetrics = null) {
         row.innerHTML = `
             <div style="cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" class="cat-jump-trigger" title="Click to filter Transactions by ${escapeHtml(catName)}">
                 <strong style="color:var(--text-main); text-transform:uppercase;">${escapeHtml(catName)}</strong>
-                <div style="font-size:0.6rem; color:var(--text-dim);">${st.countMonth} tx (${pctOfMonth}%)</div>
+                <div style="font-size:var(--font-2xs); color:var(--text-dim);">${st.countMonth} tx (${pctOfMonth}%)</div>
             </div>
             <div style="height:6px; background:#111; border:1px solid #2a2a2a; position:relative; overflow:hidden;">
                 <div style="height:100%; width:${barWidth}%; background:var(--text-main);"></div>
             </div>
             <div style="text-align:right; font-variant-numeric:tabular-nums;">
                 <strong style="color:${st.monthOut > 0 ? 'var(--text-main)' : 'var(--text-dim)'};">€${st.monthOut.toFixed(2)}</strong>
-                <span style="color:var(--text-dim); font-size:0.62rem;"> / €${st.allTimeOut.toFixed(0)}</span>
+                <span style="color:var(--text-dim); font-size:var(--font-2xs);"> / €${st.allTimeOut.toFixed(0)}</span>
             </div>
             <div style="display:flex; gap:4px;">
                 <button type="button" class="icon-btn btn-ren-cat" title="Rename category">[✎]</button>
@@ -830,7 +830,7 @@ function renderMoneyAtomIncubator() {
         headerWrap.innerHTML = `
             <div class="category-title">${escapeHtml(catName)}</div>
             <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:0.65rem; color:var(--text-dim); font-variant-numeric:tabular-nums;">${catSum > 0 ? '€' + catSum.toFixed(2) : ''}</span>
+                <span style="font-size:var(--font-2xs); color:var(--text-dim); font-variant-numeric:tabular-nums;">${catSum > 0 ? '€' + catSum.toFixed(2) : ''}</span>
                 <div class="action-btns">
                     <button type="button" class="icon-btn delete btn-del-wcat" title="Delete category">[×]</button>
                 </div>
@@ -904,7 +904,7 @@ function buildTransactionRowDom(t) {
 
         row.style.cssText = 'flex-direction:column; align-items:stretch; gap:8px; padding:10px; border-color:var(--text-main); background:#080808;';
         row.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.65rem; color:var(--text-dim);">
+            <div style="display:flex; justify-content:space-between; align-items:center; font-size:var(--font-2xs); color:var(--text-dim);">
                 <strong>EDIT TRANSACTION (${isOut ? 'EXPENSE' : 'INCOME'})</strong>
                 <span>[ENTER] SAVE · [ESC] CANCEL</span>
             </div>
@@ -1024,7 +1024,7 @@ function buildTransactionRowDom(t) {
                 const delCatBtn = document.createElement('button');
                 delCatBtn.type = 'button';
                 delCatBtn.className = 'icon-btn delete';
-                delCatBtn.style.cssText = 'font-size:0.65rem; padding:0 4px;';
+                delCatBtn.style.cssText = 'font-size:var(--font-2xs); padding:0 4px;';
                 delCatBtn.textContent = '[×]';
                 delCatBtn.title = `Delete category "${cName}"`;
                 delCatBtn.onclick = (ev) => {
@@ -1047,7 +1047,7 @@ function buildTransactionRowDom(t) {
         const addBox = document.createElement('div');
         addBox.className = 'm-cat-popover-add';
         addBox.innerHTML = `
-            <input type="text" class="form-control form-control-sm new-pop-cat-inp" placeholder="+ New category..." style="padding:3px 6px; font-size:0.65rem;">
+            <input type="text" class="form-control form-control-sm new-pop-cat-inp" placeholder="+ New category..." style="padding:3px 6px; font-size:var(--font-2xs);">
             <button type="button" class="btn btn-primary btn-sm btn-pop-cat-add" style="padding:2px 6px;">[+]</button>
         `;
 

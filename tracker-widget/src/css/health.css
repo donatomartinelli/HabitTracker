@@ -63,7 +63,7 @@
 .diet-macro-cell {
     background: rgba(255, 255, 255, 0.025);
     padding: 8px 4px;
-    font-size: 0.68rem;
+    font-size: var(--font-2xs);
     text-align: center;
     display: flex;
     flex-direction: column;

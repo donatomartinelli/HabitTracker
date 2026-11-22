@@ -95,11 +95,11 @@ function renderTreeSidebar(containerEl) {
 
         const count = parseCategoryIntoCards(notesContent[fullPath] || '').length;
         const countBadge = document.createElement('span');
-        countBadge.style.cssText = 'color: var(--text-dim); font-size: 0.6rem;';
+        countBadge.style.cssText = 'color: var(--text-dim); font-size: var(--font-2xs);';
         countBadge.textContent = count > 0 ? count : '';
 
         const addBtn = document.createElement('span');
-        addBtn.style.cssText = 'display:none; color: var(--text-dim); font-size: 0.65rem; font-weight: bold;';
+        addBtn.style.cssText = 'display:none; color: var(--text-dim); font-size: var(--font-2xs); font-weight: bold;';
         addBtn.textContent = '[+]';
         addBtn.onclick = (e) => {
             e.stopPropagation();
@@ -377,7 +377,7 @@ function renderNotesAtomWrite(customContainer = null) {
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
                     <button type="button" class="btn btn-sm btn-notes-mic-rec ${isMicRecording ? 'btn-rec-active' : ''}" onclick="toggleLiveMicRecording()">${getMicRecButtonLabel()}</button>
-                    <select class="form-control form-control-sm nw-cat-select" style="width:160px; font-weight:bold; font-size:0.65rem;">
+                    <select class="form-control form-control-sm nw-cat-select" style="width:160px; font-weight:bold; font-size:var(--font-2xs);">
                         ${buildFlatTreeOptions()}
                     </select>
                     <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+]</button>
@@ -868,7 +868,7 @@ function renderNotesAtomGraph() {
 
         previewCard.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                <select id="ng-prev-cat-sel" class="form-control form-control-sm" style="flex:1; padding:2px 6px; font-size:0.65rem; font-weight:bold;">${moveOpts}</select>
+                <select id="ng-prev-cat-sel" class="form-control form-control-sm" style="flex:1; padding:2px 6px; font-size:var(--font-2xs); font-weight:bold;">${moveOpts}</select>
                 <button type="button" class="icon-btn" id="ng-prev-close">[×]</button>
             </div>
             <div style="font-size:var(--font-xs); color:var(--text-main); line-height:1.5; max-height:190px; overflow-y:auto; white-space:pre-wrap; word-break:break-word; padding:4px 0;">${escapeHtml(n.card.body)}</div>
@@ -1739,7 +1739,7 @@ function renderNotesManager() {
             actions.appendChild(delBtn);
         } else {
             const sysBadge = document.createElement('span');
-            sysBadge.style.cssText = 'font-size:0.65rem; color:var(--text-dim);';
+            sysBadge.style.cssText = 'font-size:var(--font-2xs); color:var(--text-dim);';
             sysBadge.textContent = '[SYS]';
             actions.appendChild(sysBadge);
         }

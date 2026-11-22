@@ -676,7 +676,7 @@ input:checked + .notes-slider:before {
 }
 
 .t-label {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     font-weight: bold;
     color: var(--text-dim);
     z-index: 2;
@@ -698,7 +698,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 
 .note-subcat-pill {
     padding: 2px 8px;
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     font-weight: bold;
     text-transform: uppercase;
     border: 1px solid var(--border-color);
@@ -791,7 +791,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 
 .note-info-popover {
     display: none;
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-dim);
     border-bottom: 1px dotted var(--border-color);
     padding-bottom: 4px;
@@ -820,7 +820,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 }
 
 .note-expand-hint {
-    font-size: 0.62rem;
+    font-size: var(--font-2xs);
     color: var(--text-dim);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -990,7 +990,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 }
 
 .routine-subsection-title {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-dim);
     font-weight: bold;
     text-transform: uppercase;
@@ -1051,7 +1051,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     justify-content: center;
     padding: 2px 4px;
     text-align: center;
-    font-size: 0.56rem;
+    font-size: var(--font-2xs);
     font-weight: bold;
     color: var(--text-dim);
     letter-spacing: 0.5px;
@@ -1151,7 +1151,7 @@ body.zenith-mode .app-header {
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     font-weight: bold;
     color: var(--accent-red);
     background: #000;

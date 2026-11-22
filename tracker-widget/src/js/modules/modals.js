@@ -856,27 +856,27 @@ function initModalsHtml() {
             <p class="modal-subtitle">Used to automatically estimate daily Kcal, Proteins (P), Carbs (C) and Fats (F) from your Diet table.</p>
             <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; gap: 6px; margin-bottom: 14px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
                 <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">FOOD NAME</label>
+                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">FOOD NAME</label>
                     <input type="text" id="fdb-name" class="form-control form-control-sm" placeholder="e.g. Avena">
                 </div>
                 <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">KCAL/100G</label>
+                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">KCAL/100G</label>
                     <input type="number" id="fdb-kcal" class="form-control form-control-sm no-spinners" placeholder="389">
                 </div>
                 <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">PROT (G)</label>
+                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">PROT (G)</label>
                     <input type="number" id="fdb-p" class="form-control form-control-sm no-spinners" step="0.1" placeholder="16.9">
                 </div>
                 <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">CARB (G)</label>
+                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">CARB (G)</label>
                     <input type="number" id="fdb-c" class="form-control form-control-sm no-spinners" step="0.1" placeholder="66.3">
                 </div>
                 <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">FAT (G)</label>
+                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">FAT (G)</label>
                     <input type="number" id="fdb-f" class="form-control form-control-sm no-spinners" step="0.1" placeholder="6.9">
                 </div>
                 <div>
-                    <label style="font-size: 0.65rem; color: var(--text-dim); display: block; margin-bottom: 4px;">STD GRAMS</label>
+                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">STD GRAMS</label>
                     <input type="number" id="fdb-defg" class="form-control form-control-sm no-spinners" placeholder="100" value="100">
                 </div>
                 <button type="button" class="btn btn-primary btn-sm" style="height: 29px;" onclick="addFoodDbItem()">[+ ADD]</button>
@@ -1095,7 +1095,7 @@ function renderCustomAliasesSettingsUI() {
 
     let html = `
         <div style="margin-bottom: 12px;">
-            <div style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">
+            <div style="font-size: var(--font-2xs); color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">
                 Idee &amp; Template:
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="alias-inspiration-chips"></div>
@@ -1118,7 +1118,7 @@ function renderCustomAliasesSettingsUI() {
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.className = 'btn btn-sm';
-        chip.style.cssText = 'font-size: 0.65rem; padding: 3px 8px; border-style: dashed; text-transform: none;';
+        chip.style.cssText = 'font-size: var(--font-2xs); padding: 3px 8px; border-style: dashed; text-transform: none;';
         chip.title = `${tpl.desc}\nComandi: ${tpl.cmds}`;
         chip.innerHTML = `<strong>${escapeHtml(tpl.name)}</strong> <span style="color:var(--text-dim);">→ ${escapeHtml(tpl.cmds)}</span>`;
         chip.onclick = () => {
@@ -1334,7 +1334,7 @@ function renderQuickSwitcherContent(filterStr = '') {
         mainBtn.style.cssText = 'flex:1; text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; min-width:0;';
         mainBtn.innerHTML = `
             <div style="font-weight:bold; font-size:var(--font-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(cleanMacroName)}</div>
-            <span style="font-size:0.62rem; margin-left:4px;">${isStaged ? '[+]' : (isCurrentlyMounted ? '●' : '')}</span>
+            <span style="font-size:var(--font-2xs); margin-left:4px;">${isStaged ? '[+]' : (isCurrentlyMounted ? '●' : '')}</span>
         `;
 
         mainBtn.onclick = (e) => {
@@ -1383,7 +1383,7 @@ function renderQuickSwitcherContent(filterStr = '') {
                 subBtn.style.cssText = 'text-align:left; display:flex; justify-content:space-between; align-items:center; padding: 5px 8px;';
                 subBtn.innerHTML = `
                     <span>↳ ${escapeHtml(shortSubName)}</span>
-                    <span style="font-size:0.6rem; opacity:0.75;">${subStaged ? '[+]' : (subMounted ? '●' : '')}</span>
+                    <span style="font-size:var(--font-2xs); opacity:0.75;">${subStaged ? '[+]' : (subMounted ? '●' : '')}</span>
                 `;
                 subBtn.onclick = (ev) => {
                     ev.stopPropagation();

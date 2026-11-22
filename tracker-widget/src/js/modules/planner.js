@@ -272,7 +272,7 @@ function renderWeeklyPlanner() {
             allDayEvents.forEach(ev => {
                 const badge = document.createElement('div');
                 badge.className = 'flexible-task-badge';
-                badge.style.cssText = `border-left: 2px solid ${ev.color || '#b84b4b'}; color: ${ev.color || '#fff'}; font-size: 0.6rem; padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`;
+                badge.style.cssText = `border-left: 2px solid ${ev.color || '#b84b4b'}; color: ${ev.color || '#fff'}; font-size: var(--font-2xs); padding: 1px 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;`;
                 badge.textContent = ev.title;
                 badge.oncontextmenu = (e) => {
                     e.preventDefault();

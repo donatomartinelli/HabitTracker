@@ -507,7 +507,7 @@ function openFloatingDockPopover(anchorBtn, modKey) {
     const setDefBtn = document.createElement('button');
     setDefBtn.type = 'button';
     setDefBtn.className = 'btn btn-primary btn-sm';
-    setDefBtn.style.cssText = 'width: 100%; margin-top: 2px; font-size: 0.62rem;';
+    setDefBtn.style.cssText = 'width: 100%; margin-top: 2px; font-size: var(--font-2xs);';
     setDefBtn.textContent = '[★ SET AS DEFAULT]';
     setDefBtn.onclick = (e) => {
         e.stopPropagation();
@@ -795,7 +795,7 @@ function renderEditDockChips() {
         const dropBtn = document.createElement('button');
         dropBtn.type = 'button';
         dropBtn.className = 'btn btn-sm dock-sub-drop-btn';
-        dropBtn.style.cssText = 'padding: 4px 6px; margin-left: -1px; font-size: 0.65rem; border-color: var(--border-bright);';
+        dropBtn.style.cssText = 'padding: 4px 6px; margin-left: -1px; font-size: var(--font-2xs); border-color: var(--border-bright);';
         dropBtn.textContent = '▾';
         dropBtn.onclick = (e) => {
             e.stopPropagation();
@@ -1453,7 +1453,7 @@ function updateWorkspaceDropdownUI() {
     });
 
     let html = `
-        <div style="padding: 7px 12px; font-size: 0.65rem; color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase;">
+        <div style="padding: 7px 12px; font-size: var(--font-2xs); color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase;">
             Startup Default
         </div>
         <div class="startup-option-row ${isLastStartup ? 'active' : ''}" onclick="setStartupViewPreference('last')">
@@ -1471,7 +1471,7 @@ function updateWorkspaceDropdownUI() {
             </select>
         </div>
 
-        <div style="padding: 7px 12px; font-size: 0.65rem; color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase; margin-top: 6px;">
+        <div style="padding: 7px 12px; font-size: var(--font-2xs); color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase; margin-top: 6px;">
             Saved Views
         </div>
         <div id="settings-saved-views-list"></div>
@@ -1825,16 +1825,16 @@ function renderHudPod() {
                     <div style="height:100%; width:${pct.toFixed(1)}%; background:${activeColor};"></div>
                 </div>
                 <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
-                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:0.62rem;" onclick="togglePomodoroPause(); renderHudPod();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
-                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:0.62rem;" onclick="skipPomodoroPhase(); renderHudPod();">[SKIP ✓]</button>
-                    <button type="button" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:0.62rem;" onclick="stopPomodoro(); renderHudPod();">[×]</button>
+                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="togglePomodoroPause(); renderHudPod();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
+                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="skipPomodoroPhase(); renderHudPod();">[SKIP ✓]</button>
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="stopPomodoro(); renderHudPod();">[×]</button>
                 </div>
             `;
         } else {
             focusBox.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold;">FOCUS // IDLE</span>
-                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:0.62rem;" onclick="openTimerModal()">[▶]</button>
+                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:var(--font-2xs);" onclick="openTimerModal()">[▶]</button>
                 </div>
             `;
         }
@@ -1891,7 +1891,7 @@ function renderHudPod() {
                 left.style.cssText = 'flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
                 left.innerHTML = `
                     <strong style="color:var(--text-main); ${isAllDone ? 'text-decoration:line-through;' : ''}">${escapeHtml(t.title)}</strong>
-                    <span style="font-size:0.6rem; color:var(--text-dim); margin-left:4px;">${escapeHtml(t.category)}</span>
+                    <span style="font-size:var(--font-2xs); color:var(--text-dim); margin-left:4px;">${escapeHtml(t.category)}</span>
                 `;
 
                 const right = document.createElement('div');
@@ -1901,7 +1901,7 @@ function renderHudPod() {
                     const playBtn = document.createElement('button');
                     playBtn.type = 'button';
                     playBtn.className = 'icon-btn';
-                    playBtn.style.cssText = 'font-size:0.65rem; padding:1px 4px; color:var(--text-main);';
+                    playBtn.style.cssText = 'font-size:var(--font-2xs); padding:1px 4px; color:var(--text-main);';
                     playBtn.textContent = '▶';
                     playBtn.onclick = () => {
                         if (typeof quickStartTaskFocus === 'function') {
@@ -1949,11 +1949,11 @@ function renderHudPodStaging() {
 
     box.style.display = 'flex';
     box.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.62rem; color:var(--accent-gold); font-weight:bold;">
+        <div style="display:flex; justify-content:space-between; align-items:center; font-size:var(--font-2xs); color:var(--accent-gold); font-weight:bold;">
             <span>STAGED (${hudPodStagedCommands.length})</span>
             <div style="display:flex; gap:4px;">
-                <button type="button" class="btn btn-sm" style="padding:1px 5px; font-size:0.6rem;" id="hud-stg-cancel">[ESC]</button>
-                <button type="button" class="btn btn-primary btn-sm" style="padding:1px 6px; font-size:0.6rem;" id="hud-stg-run">[RUN]</button>
+                <button type="button" class="btn btn-sm" style="padding:1px 5px; font-size:var(--font-2xs);" id="hud-stg-cancel">[ESC]</button>
+                <button type="button" class="btn btn-primary btn-sm" style="padding:1px 6px; font-size:var(--font-2xs);" id="hud-stg-run">[RUN]</button>
             </div>
         </div>
         <div id="hud-stg-list" style="display:flex; flex-direction:column; gap:4px;"></div>
@@ -1964,7 +1964,7 @@ function renderHudPodStaging() {
         const inp = document.createElement('input');
         inp.type = 'text';
         inp.className = 'form-control form-control-sm';
-        inp.style.cssText = 'padding:3px 6px; font-size:0.65rem;';
+        inp.style.cssText = 'padding:3px 6px; font-size:var(--font-2xs);';
         inp.value = cmd;
         inp.oninput = () => { hudPodStagedCommands[idx] = inp.value.trim(); };
         inp.onkeydown = (e) => {

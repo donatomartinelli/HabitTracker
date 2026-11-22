@@ -12,11 +12,64 @@
     --accent-red: #ff5555;
     --accent-gold: #b08d43;
 
-    --font-xs: 0.72rem;
-    --font-sm: 0.82rem;
-    --font-md: 0.92rem;
-    --font-lg: 1.15rem;
-    --font-xl: 2.2rem;
+    /* ------------------------------------------------------------------
+       DESIGN TOKENS — unica fonte di verità per misure e ritmo visivo.
+       Usa sempre queste variabili invece di numeri scritti a mano.
+       ------------------------------------------------------------------ */
+
+    /* Tipografia (minimo leggibile: --font-2xs ≈ 11px) */
+    --font-2xs: 0.7rem;    /* etichette, badge, metadati */
+    --font-xs: 0.75rem;    /* testo secondario */
+    --font-sm: 0.85rem;    /* testo normale dei moduli */
+    --font-md: 0.95rem;    /* testo principale / input */
+    --font-lg: 1.15rem;    /* titoli di sezione */
+    --font-xl: 2.2rem;     /* numeri grandi (timer, saldo) */
+    --line-tight: 1.25;
+    --line-normal: 1.5;
+    --tracking-label: 0.06em;
+
+    /* Spaziatura: scala a passi di 4px */
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+
+    /* Forme: brutalista = angoli vivi */
+    --radius: 0;
+    --border-w: 1px;
+
+    /* Movimento */
+    --ease: cubic-bezier(0.2, 0, 0, 1);
+    --dur-fast: 120ms;
+    --dur-base: 200ms;
+
+    /* Livelli di sovrapposizione */
+    --z-dock: 50;
+    --z-overlay: 900;
+    --z-modal: 1000;
+    --z-toast: 2000;
+
+    /* Focus da tastiera */
+    --focus-ring: 0 0 0 1px var(--bg-main), 0 0 0 2px var(--text-main);
+}
+
+/* Accessibilità: anello di focus visibile solo con la tastiera */
+:focus { outline: none; }
+:focus-visible {
+    outline: 1px solid var(--text-main);
+    outline-offset: 2px;
+}
+
+/* Rispetta chi ha chiesto meno animazioni nel sistema operativo */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
 }
 
 /* --- RED MODE (EFFETTO GELATINA ROSSA UNIFORME) --- */

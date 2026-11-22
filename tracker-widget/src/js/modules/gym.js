@@ -332,7 +332,7 @@ function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleT
             let progBadgeHtml = '';
             if (meta.isProg) {
                 const curR = ex.currentReps || meta.minR || 5;
-                progBadgeHtml = `<span class="gym-prog-badge" style="display:inline-block; margin-left:6px; padding:1px 5px; border:1px solid var(--text-main); color:var(--text-main); font-weight:bold; font-size:0.65rem;">[${ex.sets}x${curR}]</span>`;
+                progBadgeHtml = `<span class="gym-prog-badge" style="display:inline-block; margin-left:6px; padding:1px 5px; border:1px solid var(--text-main); color:var(--text-main); font-weight:bold; font-size:var(--font-2xs);">[${ex.sets}x${curR}]</span>`;
             }
 
             info.innerHTML = `
@@ -760,7 +760,7 @@ function renderGymSettingsRoutineTab() {
         <div class="cfg-box" style="margin-bottom:0; border-color:var(--border-bright);">
             <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
                 <span>1. Starting Split &amp; Reset</span>
-                <span style="font-size:0.65rem; color:var(--accent-green);">ACTIVE: ${escapeHtml(nextWorkoutDay === 1 ? info1.acronym : info2.acronym)}</span>
+                <span style="font-size:var(--font-2xs); color:var(--accent-green);">ACTIVE: ${escapeHtml(nextWorkoutDay === 1 ? info1.acronym : info2.acronym)}</span>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="btn-reset-start-1">

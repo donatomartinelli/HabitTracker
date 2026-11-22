@@ -455,7 +455,7 @@ function renderMathModule() {
             btn.className = 'btn';
             btn.style.cssText = 'text-align:left; display:flex; justify-content:space-between;';
             const prog = pEngine.getCourseProgress(c);
-            btn.innerHTML = `<strong>${escapeHtml(c.toUpperCase())}</strong> <span style="font-size:0.65rem; color:var(--text-dim);">${prog.passed}/${prog.total}</span>`;
+            btn.innerHTML = `<strong>${escapeHtml(c.toUpperCase())}</strong> <span style="font-size:var(--font-2xs); color:var(--text-dim);">${prog.passed}/${prog.total}</span>`;
             btn.onclick = () => {
                 pEngine.setActiveCourse(c);
                 courseBox.style.display = 'none';

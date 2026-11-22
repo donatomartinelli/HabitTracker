@@ -938,19 +938,19 @@ function renderUniAtomLibretto() {
             <!-- METRICHE CARRIERA COMPATTE -->
             <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px;">
                 <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">WEIGHTED AVG</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">WEIGHTED AVG</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-green); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.weightedMean.toFixed(2)}</div>
                 </div>
                 <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">ARITHMETIC AVG</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">ARITHMETIC AVG</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.arithmeticMean.toFixed(2)}</div>
                 </div>
                 <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">BASE /110</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">BASE /110</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-gold); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.base110.toFixed(1)}</div>
                 </div>
                 <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:0.6rem; color:var(--text-dim);">EXAMS PASSED</div>
+                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">EXAMS PASSED</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.count}${stats.laudeCount > 0 ? ' (' + stats.laudeCount + 'L)' : ''}</div>
                 </div>
             </div>

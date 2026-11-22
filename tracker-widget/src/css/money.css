@@ -82,7 +82,7 @@
 }
 
 .vault-rule-badge {
-    font-size: 0.62rem;
+    font-size: var(--font-2xs);
     color: var(--text-dim);
     text-transform: uppercase;
     padding: 1px 5px;
@@ -152,7 +152,7 @@
     right: 10px;
     display: flex;
     justify-content: space-between;
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-dim);
     pointer-events: none;
 }
@@ -202,7 +202,7 @@
 
 .m-cat-badge {
     display: inline-block;
-    font-size: 0.62rem;
+    font-size: var(--font-2xs);
     padding: 1px 5px;
     border: 1px solid #444;
     color: var(--text-muted);
@@ -219,7 +219,7 @@
 
 .m-vault-linked-badge {
     display: inline-block;
-    font-size: 0.62rem;
+    font-size: var(--font-2xs);
     padding: 1px 5px;
     border: 1px solid var(--text-main);
     color: var(--text-main);
@@ -228,7 +228,7 @@
 }
 
 .m-sub {
-    font-size: 0.65rem;
+    font-size: var(--font-2xs);
     color: var(--text-dim);
     margin-top: 2px;
     text-transform: uppercase;

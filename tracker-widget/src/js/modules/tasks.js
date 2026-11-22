@@ -1670,7 +1670,7 @@ function renderRoutinesColumn() {
                 const titleEl = document.createElement('div');
                 titleEl.className = 'task-title';
                 const lowStock = (m.stock || 0) <= (m.alertDays || 7);
-                titleEl.innerHTML = `${escapeHtml(m.title)} <span style="font-size:0.65rem; color:${lowStock ? 'var(--accent-red)' : 'var(--text-dim)'};">(${m.stock ?? 0})</span>`;
+                titleEl.innerHTML = `${escapeHtml(m.title)} <span style="font-size:var(--font-2xs); color:${lowStock ? 'var(--accent-red)' : 'var(--text-dim)'};">(${m.stock ?? 0})</span>`;
                 left.appendChild(titleEl);
 
                 const instCont = document.createElement('div');
@@ -2543,7 +2543,7 @@ function renderDayPlannerModule() {
             bannerRow.onclick = () => togglePlanGhostLayer(ref.id);
 
             const lockedBadge = lockedSlotsCount > 0
-                ? `<span style="color: var(--accent-green); font-size: 0.6rem; margin-left: 6px;">[${lockedSlotsCount} LOCKED]</span>`
+                ? `<span style="color: var(--accent-green); font-size: var(--font-2xs); margin-left: 6px;">[${lockedSlotsCount} LOCKED]</span>`
                 : '';
 
             bannerRow.innerHTML = `
@@ -2554,7 +2554,7 @@ function renderDayPlannerModule() {
                     </span>
                     ${lockedBadge}
                 </div>
-                <span style="font-size: 0.58rem; color: var(--text-dim); flex-shrink: 0;">
+                <span style="font-size: var(--font-2xs); color: var(--text-dim); flex-shrink: 0;">
                     ${isVisible ? '[HIDE ▲]' : `[SHOW ${slotsToday.length} ▼]`}
                 </span>
             `;
@@ -2571,7 +2571,7 @@ function renderDayPlannerModule() {
                     const chip = document.createElement('button');
                     chip.type = 'button';
                     chip.className = `btn btn-sm ${isConfirmed ? 'btn-primary' : ''}`;
-                    chip.style.cssText = `padding: 1px 6px; font-size: 0.62rem; font-variant-numeric: tabular-nums; ${!isConfirmed ? 'border-style: dashed; opacity: 0.7;' : ''}`;
+                    chip.style.cssText = `padding: 1px 6px; font-size: var(--font-2xs); font-variant-numeric: tabular-nums; ${!isConfirmed ? 'border-style: dashed; opacity: 0.7;' : ''}`;
                     chip.textContent = `${isConfirmed ? '🔒 ' : ''}${tw.start}–${tw.end}`;
                     chip.onclick = (e) => {
                         e.stopPropagation();
@@ -2634,11 +2634,11 @@ function renderDayPlannerModule() {
                         <div style="font-weight: bold; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                             <span style="color: var(--text-dim);">[${escapeHtml(t.category)}]</span> ${escapeHtml(t.title)}
                         </div>
-                        <div style="font-size: 0.65rem; color: var(--text-dim); margin-top: 2px;">
+                        <div style="font-size: var(--font-2xs); color: var(--text-dim); margin-top: 2px;">
                             ${unitMins}m/block · <strong>${remainingBlocks}/${totalInstances} remaining</strong>
                         </div>
                     </div>
-                    <span style="font-size: 0.65rem; color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; font-weight: bold;">${rightHint}</span>
+                    <span style="font-size: var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; font-weight: bold;">${rightHint}</span>
                 `;
 
                 if (remainingBlocks > 0) {
@@ -2697,7 +2697,7 @@ function renderDayPlannerModule() {
                 row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isTapSelected ? 'var(--text-main)' : 'var(--border-bright)'}; border-left: 3px solid #ffffff; font-size: var(--font-xs); cursor: pointer; user-select: none;`;
                 row.innerHTML = `
                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><strong>[ASSIGNED]</strong> ${escapeHtml(t.title)}</span>
-                    <span style="font-size: 0.62rem; color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: 15m]')}</span>
+                    <span style="font-size: var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: 15m]')}</span>
                 `;
                 const payload = {
                     kind: 'new_item',
@@ -2725,7 +2725,7 @@ function renderDayPlannerModule() {
                 row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.02)'}; border: 1px ${isTapSelected ? 'solid var(--text-main)' : 'dashed var(--border-color)'}; font-size: var(--font-xs); cursor: pointer; user-select: none;`;
                 row.innerHTML = `
                     <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.title)}</span>
-                    <span style="font-size: 0.62rem; color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: DRAG 15m]')}</span>
+                    <span style="font-size: var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: DRAG 15m]')}</span>
                 `;
                 const payload = {
                     kind: 'new_item',
@@ -2855,7 +2855,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border: 1px dashed var(--text-main); background: rgba(255,255,255,0.12); z-index: 80; pointer-events:none;';
     const dropBadge = document.createElement('span');
     dropBadge.id = 'plan-mod-drop-badge';
-    dropBadge.style.cssText = 'position:absolute; right:6px; top:2px; background:#000; color:var(--text-main); border:1px solid var(--text-main); font-size:0.65rem; padding:1px 6px; font-weight:bold;';
+    dropBadge.style.cssText = 'position:absolute; right:6px; top:2px; background:#000; color:var(--text-main); border:1px solid var(--text-main); font-size:var(--font-2xs); padding:1px 6px; font-weight:bold;';
     dropIndicator.appendChild(dropBadge);
     canvasCol.appendChild(dropIndicator);
 
@@ -2879,8 +2879,8 @@ function renderDayPlannerTimelineCanvas(targetDate) {
                     block.className = 'block-absolute block-ref';
                     block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: pointer; display: flex; justify-content: space-between; align-items: center; z-index: 3;`;
                     block.innerHTML = `
-                        <span style="font-size:0.62rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
-                        <span style="font-size:0.58rem; color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>
+                        <span style="font-size:var(--font-2xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
+                        <span style="font-size:var(--font-2xs); color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>
                     `;
                     block.onclick = (e) => {
                         if (mobileSelectedPlanItemToPlace) return;
@@ -3034,7 +3034,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         if (isDraggableKind) {
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.style.cssText = 'font-size: 0.65rem; z-index: 15;';
+            delBtn.style.cssText = 'font-size: var(--font-2xs); z-index: 15;';
             delBtn.textContent = '[×]';
             delBtn.onclick = removeBlockAction;
             block.appendChild(delBtn);

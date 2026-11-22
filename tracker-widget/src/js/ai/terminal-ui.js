@@ -148,7 +148,7 @@ function updateLivePreviewAndSuggestions() {
     prevEl.style.display = 'flex';
     prevEl.innerHTML = `
         <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:${isDsl ? 'var(--text-muted)' : 'var(--accent-gold)'};">${escapeHtml(previewStr)}</span>
-        <span style="color:var(--text-dim); font-size:0.65rem; flex-shrink:0;">${isDsl ? '[ENTER] RUN · [SHIFT+ENTER] STAGE' : '[ENTER] AI ➔ STAGING'}</span>
+        <span style="color:var(--text-dim); font-size:var(--font-2xs); flex-shrink:0;">${isDsl ? '[ENTER] RUN · [SHIFT+ENTER] STAGE' : '[ENTER] AI ➔ STAGING'}</span>
     `;
 
     activeSuggestions = typeof getContextualSuggestions === 'function' ? getContextualSuggestions(rawVal) : [];
