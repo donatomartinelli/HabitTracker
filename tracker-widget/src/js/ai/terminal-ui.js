@@ -262,7 +262,7 @@ function renderStagingCommandList() {
         const delBtn = document.createElement('button');
         delBtn.type = 'button';
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[X]';
+        delBtn.textContent = '×';
         delBtn.onclick = () => {
             stagedCommands.splice(idx, 1);
             renderStagingCommandList();

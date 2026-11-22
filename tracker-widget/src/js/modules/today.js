@@ -45,6 +45,25 @@
         });
     }
 
+    function renderRoutines() {
+        const active = (typeof routinesData !== 'undefined' ? routinesData : []).filter(r =>
+            typeof isRoutineActiveOnDate === 'function' && isRoutineActiveOnDate(r, todayStr)
+        );
+        if (!active.length) return '';
+        const blocks = active.map(r => {
+            const items = (r.sections || []).flatMap(sec => (sec.items || []).map(it => ({ sec: sec.title, title: it.title })));
+            const list = items.map(it => `<li><span class="dim">${esc(it.sec)}</span> ${esc(it.title)}</li>`).join('');
+            return `
+                <details class="today-routine" style="--task-color:${esc(r.color || '#ffffff')}">
+                    <summary><span>${esc(r.title)}</span><span class="dim">${items.length} steps</span></summary>
+                    <ul>${list || '<li class="dim">No steps</li>'}</ul>
+                </details>`;
+        }).join('');
+        return `
+            <div class="today-section-head"><span>ROUTINES</span><span class="dim">${active.length}</span></div>
+            <div class="today-routines">${blocks}</div>`;
+    }
+
     function getTimelineBlocks() {
         const dayIdx = (typeof getNow === 'function' ? getNow() : new Date()).getDay();
         const blocks = [];
@@ -206,6 +225,7 @@
         const dateObj = typeof parseLocalDate === 'function' ? parseLocalDate(todayStr) : new Date();
         const dateLabel = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
+        const openRoutines = new Set([...root.querySelectorAll('.today-routine[open] summary span:first-child')].map(e => e.textContent));
         const keepInput = root.querySelector('#today-add-input');
         const draft = keepInput ? keepInput.value : '';
         const hadFocus = keepInput && document.activeElement === keepInput;
@@ -221,6 +241,7 @@
                     </div>
                     <div class="today-tasks">${renderTaskRows(items)}</div>
                     <input type="text" id="today-add-input" class="today-add" placeholder="+ Add a to-do for today" autocomplete="off">
+                    ${renderRoutines()}
                     <div class="today-stats">
                         <div class="today-stat"><span class="dim">STREAK</span><strong>${st.streak}d</strong></div>
                         <div class="today-stat"><span class="dim">FOCUS</span><strong>${focusH}h</strong></div>
@@ -235,6 +256,10 @@
                     <div class="today-timeline">${renderTimeline(blocks)}</div>
                 </section>
             </div>`;
+
+        root.querySelectorAll('.today-routine').forEach(d => {
+            if (openRoutines.has(d.querySelector('summary span')?.textContent)) d.open = true;
+        });
 
         const input = root.querySelector('#today-add-input');
         if (input) {

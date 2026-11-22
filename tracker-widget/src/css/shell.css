@@ -341,3 +341,19 @@ body.mobile-view-mode .mobile-bottom-nav { order: 4; }
 }
 .section-subtab:hover { color: var(--text-main); }
 .section-subtab.active { color: var(--text-main); border-color: var(--border-bright); }
+
+/* Today: routines (collapsible reminder lists) */
+.today-routines { display: flex; flex-direction: column; gap: var(--space-1); }
+.today-routine { border-left: 2px solid var(--task-color, var(--border-color)); background: transparent; }
+.today-routine summary {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: var(--space-2) var(--space-2); cursor: pointer; list-style: none;
+}
+.today-routine summary::-webkit-details-marker { display: none; }
+.today-routine summary::before { content: '›'; color: var(--text-dim); margin-right: var(--space-2); transition: transform var(--dur-fast) var(--ease); display: inline-block; }
+.today-routine[open] summary::before { transform: rotate(90deg); }
+.today-routine summary > span:first-child { flex: 1; }
+.today-routine summary:hover { background: var(--bg-elevated); }
+.today-routine ul { list-style: none; margin: 0; padding: 0 var(--space-2) var(--space-2) var(--space-5); display: flex; flex-direction: column; gap: var(--space-1); }
+.today-routine li { font-size: var(--font-xs); }
+.today-routine li .dim { font-size: var(--font-2xs); margin-right: var(--space-1); text-transform: uppercase; }

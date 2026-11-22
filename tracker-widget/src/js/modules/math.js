@@ -470,7 +470,7 @@ function renderMathModule() {
         const next = pEngine.getNextProblem(true);
         if (!next || !next.problem) {
             root.querySelector('#mh-prob-bread').textContent = '// FINE CORSO';
-            root.querySelector('#mh-prob-statement').textContent = 'Nessun problema rimanente in coda di ripasso per questo corso.';
+            root.querySelector('#mh-prob-statement').textContent = 'No problems left in the review queue for this course.';
             root.querySelector('#mh-prob-actions').style.display = 'none';
             return;
         }

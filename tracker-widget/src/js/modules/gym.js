@@ -408,7 +408,7 @@ function renderGymAtomToday() {
                 <div style="display:flex; gap:6px; align-items:center;">
                     <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="gt-sw-1">[${escapeHtml(info1.acronym)}]</button>
                     <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="gt-sw-2">[${escapeHtml(info2.acronym)}]</button>
-                    <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">[⚙]</button>
+                    <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">⚙</button>
                 </div>
             </div>
             <div id="gym-today-body" style="flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;"></div>
@@ -468,7 +468,7 @@ function renderGymAtomSplit(customContainer = null) {
             <div style="display:flex; gap:6px; align-items:center;">
                 <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="gs-sw-1">[${escapeHtml(info1.acronym)}]</button>
                 <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="gs-sw-2">[${escapeHtml(info2.acronym)}]</button>
-                <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">[⚙]</button>
+                <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">⚙</button>
             </div>
         </div>
         <div id="gym-split-cards-row" style="flex:1; display:flex; flex-direction:row; gap:16px; overflow:hidden; min-height:0;"></div>
@@ -692,7 +692,7 @@ function renderGymSettingsSplitTab() {
                 <select class="form-control form-control-sm ex-grp-sel">${groupOptionsHtml}</select>
                 <select class="form-control form-control-sm ex-scheme-sel">${schemeOptionsHtml}</select>
                 <input type="number" class="form-control form-control-sm no-spinners ex-sets-inp" min="0" max="10" value="${ex.sets ?? 3}" title="Weight boxes">
-                <button type="button" class="icon-btn delete ex-del-btn">[X]</button>
+                <button type="button" class="icon-btn delete ex-del-btn">×</button>
             `;
 
             row.querySelector('.ex-name-inp').onchange = (e) => {
@@ -833,7 +833,7 @@ function renderGymSettingsRoutineTab() {
                     <input type="time" class="form-control form-control-sm tw-start-inp" style="width:92px;" value="${tw.start || '19:45'}">
                     <span style="color:var(--text-dim);">-</span>
                     <input type="time" class="form-control form-control-sm tw-end-inp" style="width:92px;" value="${tw.end || '21:15'}">
-                    <button type="button" class="icon-btn delete btn-del-tw">[X]</button>
+                    <button type="button" class="icon-btn delete btn-del-tw">×</button>
                 </div>
             `;
 
@@ -1100,7 +1100,7 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
                 const renderProgCtrl = (bumpedWeightNotice = false) => {
                     const cur = ex.currentReps || 5;
                     progCtrl.innerHTML = `
-                        <button type="button" class="icon-btn btn-rep-minus">[-]</button>
+                        <button type="button" class="icon-btn btn-rep-minus">–</button>
                         <span style="font-size:var(--font-xs); font-weight:bold; color:${bumpedWeightNotice ? 'var(--accent-green)' : 'var(--text-main)'}; min-width:64px; text-align:center;">
                             ${ex.sets}x${cur} ${bumpedWeightNotice ? '[+KG]' : ''}
                         </span>

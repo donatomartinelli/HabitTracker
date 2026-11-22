@@ -135,7 +135,7 @@
         const db = await openDB();
         if (!db) {
             if (!idbAvailable) return; // browser senza IndexedDB: resta solo localStorage
-            notify('⚠ SALVATAGGIO NON RIUSCITO: memoria del dispositivo non disponibile. Esporta un backup.');
+            notify('⚠ Save failed: device storage unavailable. Export a backup.');
             return;
         }
         const txP = new Promise((resolve) => {
@@ -146,10 +146,10 @@
                     if (v === null) store.delete(k); else store.put(v, k);
                 }
                 tx.oncomplete = () => resolve(true);
-                tx.onerror = () => { notify('⚠ SALVATAGGIO NON RIUSCITO: alcune modifiche potrebbero non essere state salvate.'); resolve(false); };
-                tx.onabort = () => { notify('⚠ SALVATAGGIO NON RIUSCITO: spazio esaurito o memoria bloccata.'); resolve(false); };
+                tx.onerror = () => { notify('⚠ Save failed: some changes may not have been saved.'); resolve(false); };
+                tx.onabort = () => { notify('⚠ Save failed: storage full or blocked.'); resolve(false); };
             } catch (err) {
-                notify('⚠ SALVATAGGIO NON RIUSCITO: ' + (err && err.message ? err.message : err));
+                notify('⚠ Save failed: ' + (err && err.message ? err.message : err));
                 resolve(false);
             }
         });
@@ -268,7 +268,7 @@
     // ------------------------------------------------------------------
     window.addEventListener('error', (e) => {
         if (!e || !e.message) return;
-        notify('⚠ ERRORE: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ')' : ''));
+        notify('⚠ Error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ')' : ''));
     });
     window.addEventListener('unhandledrejection', (e) => {
         const r = e && e.reason;
@@ -288,7 +288,7 @@
             s.src = src;
             s.async = false;
             s.onload = () => resolve();
-            s.onerror = () => { notify('⚠ Impossibile caricare ' + src); resolve(); };
+            s.onerror = () => { notify("⚠ Couldn't load " + src); resolve(); };
             document.body.appendChild(s);
         })), Promise.resolve());
     }
@@ -317,7 +317,7 @@
             for (const k of missingInIdb) pendingPuts.set(k, mem.get(k));
             if (missingInIdb.length) scheduleFlush();
         } else {
-            notify('⚠ Memoria principale non disponibile: i dati sono salvati solo in modo limitato. Esporta spesso un backup.', 'warn');
+            notify('⚠ Main storage unavailable: data is only saved in limited mode. Export backups often.', 'warn');
         }
 
         // 4. Chiedi al browser di non cancellare mai i dati (importante su telefono)

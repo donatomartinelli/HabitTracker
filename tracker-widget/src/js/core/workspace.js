@@ -950,7 +950,7 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         const closeBtn = document.createElement('button');
         closeBtn.className = 'icon-btn delete';
         closeBtn.style.fontSize = '0.72rem';
-        closeBtn.textContent = '[×]';
+        closeBtn.textContent = '×';
         closeBtn.onclick = () => {
             layoutTree = removePaneById(layoutTree, node.id);
             renderQuadrantLayout();
@@ -1458,11 +1458,11 @@ function updateWorkspaceDropdownUI() {
         </div>
         <div class="startup-option-row ${isLastStartup ? 'active' : ''}" onclick="setStartupViewPreference('last')">
             <span>Restore Last Active Layout</span>
-            <span>${isLastStartup ? '[★]' : '[SET]'}</span>
+            <span>${isLastStartup ? '★' : '[SET]'}</span>
         </div>
         <div class="startup-option-row ${isZeroStartup ? 'active' : ''}" onclick="setStartupViewPreference('zero')">
             <span>0 // Zero-UI</span>
-            <span>${isZeroStartup ? '[★]' : '[SET]'}</span>
+            <span>${isZeroStartup ? '★' : '[SET]'}</span>
         </div>
         <div style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
             <span style="font-size:var(--font-xs); color:var(--text-muted);">Single Module:</span>
@@ -1510,7 +1510,7 @@ function updateWorkspaceDropdownUI() {
             actionsDiv.style.cssText = 'display:flex; align-items:center; gap:4px; flex-shrink:0;';
             actionsDiv.innerHTML = `
                 <button class="startup-star-btn ${isPresetStartup ? 'active' : ''}">${isPresetStartup ? '★' : '☆'}</button>
-                <button class="icon-btn delete">[X]</button>
+                <button class="icon-btn delete">×</button>
             `;
             actionsDiv.children[0].onclick = () => setStartupViewPreference(`preset:${p.id}`);
             actionsDiv.children[1].onclick = () => {
@@ -1827,14 +1827,14 @@ function renderHudPod() {
                 <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
                     <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="togglePomodoroPause(); renderHudPod();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
                     <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="skipPomodoroPhase(); renderHudPod();">[SKIP ✓]</button>
-                    <button type="button" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="stopPomodoro(); renderHudPod();">[×]</button>
+                    <button type="button" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="stopPomodoro(); renderHudPod();">×</button>
                 </div>
             `;
         } else {
             focusBox.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:center;">
                     <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold;">FOCUS // IDLE</span>
-                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:var(--font-2xs);" onclick="openTimerModal()">[▶]</button>
+                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:var(--font-2xs);" onclick="openTimerModal()">▶</button>
                 </div>
             `;
         }

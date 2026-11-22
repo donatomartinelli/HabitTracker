@@ -99,7 +99,7 @@ function checkUrlHashForMagicSyncSetup() {
         cortexStore.setItem('cortex_gist_token', cloudGithubToken);
         cortexStore.setItem('cortex_gist_id', cloudGistId);
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
-        if (typeof showToast === 'function') showToast('[☁ SYNC] Dispositivo collegato! Sincronizzo...');
+        if (typeof showToast === 'function') showToast('[☁ SYNC] Device linked. Syncing…');
         return true;
     }
     return false;
@@ -114,13 +114,13 @@ function isCloudSyncConfigured() {
 // ============================================================================
 
 function formatAgo(ms) {
-    if (!ms) return 'mai';
+    if (!ms) return 'never';
     const s = Math.round((Date.now() - ms) / 1000);
-    if (s < 10) return 'adesso';
-    if (s < 60) return `${s}s fa`;
+    if (s < 10) return 'just now';
+    if (s < 60) return `${s}s ago`;
     const m = Math.round(s / 60);
-    if (m < 60) return `${m} min fa`;
-    return new Date(ms).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    if (m < 60) return `${m} min ago`;
+    return new Date(ms).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
 }
 
 function setCloudSyncHeaderIndicator(state, tooltipMsg = '') {
@@ -129,27 +129,27 @@ function setCloudSyncHeaderIndicator(state, tooltipMsg = '') {
     if (!btn) return;
 
     if (!isCloudSyncConfigured()) {
-        btn.textContent = '[☁]';
+        btn.textContent = '☁';
         btn.style.color = 'var(--text-dim)';
-        btn.title = 'Sincronizzazione non configurata — clic per impostarla';
+        btn.title = 'Sync not set up — click to set it up';
         btn.dataset.syncState = 'off';
         return;
     }
 
     const map = {
-        'idle':    { text: '[☁]',     color: 'var(--text-dim)',     tip: 'Sincronizzazione pronta' },
-        'syncing': { text: '[☁ ⇅]',   color: 'var(--accent-gold)',  tip: 'Sincronizzazione in corso…' },
-        'queued':  { text: '[☁ •]',   color: 'var(--accent-gold)',  tip: 'Modifiche in attesa di essere inviate' },
-        'offline': { text: '[☁ OFF]', color: 'var(--text-muted)',   tip: 'Offline — le modifiche sono salvate qui e verranno inviate appena torna la rete' },
-        'ok':      { text: '[☁ ✓]',   color: 'var(--accent-green)', tip: 'Sincronizzato' },
-        'error':   { text: '[☁ !]',   color: 'var(--accent-red)',   tip: 'Errore di sincronizzazione' }
+        'idle':    { text: '☁',     color: 'var(--text-dim)',     tip: 'Sync ready' },
+        'syncing': { text: '☁ ⇅',   color: 'var(--accent-gold)',  tip: 'Syncing…' },
+        'queued':  { text: '☁ •',   color: 'var(--accent-gold)',  tip: 'Changes waiting to be sent' },
+        'offline': { text: '☁ OFF', color: 'var(--text-muted)',   tip: "Offline — changes are saved here and will be sent when you're back online" },
+        'ok':      { text: '☁ ✓',   color: 'var(--accent-green)', tip: 'Synced' },
+        'error':   { text: '☁ !',   color: 'var(--accent-red)',   tip: 'Sync error' }
     };
     const cfg = map[state] || map['idle'];
     btn.textContent = cfg.text;
     btn.style.color = cfg.color;
     btn.dataset.syncState = state;
-    const lastLine = lastSyncOkMs ? `\nUltima sincronizzazione: ${formatAgo(lastSyncOkMs)}` : '';
-    btn.title = (tooltipMsg || cfg.tip) + lastLine + '\n(clic = sincronizza ora)';
+    const lastLine = lastSyncOkMs ? `\nLast sync: ${formatAgo(lastSyncOkMs)}` : '';
+    btn.title = (tooltipMsg || cfg.tip) + lastLine + '\n(click to sync now)';
 }
 
 function refreshSyncIndicatorFromState() {
@@ -351,7 +351,7 @@ function recordSyncConflicts(conflicts, keptSide) {
     cortexStore.setItem(SYNC_CONFLICTS_KEY, JSON.stringify(list.slice(0, SYNC_MAX_CONFLICTS)));
     if (typeof showToast === 'function') {
         const n = conflicts.length;
-        showToast(`[☁ SYNC] ${n} ${n === 1 ? 'modifica in conflitto' : 'modifiche in conflitto'}: tenuta la più recente, l'altra è salvata in Impostazioni → Sistema.`);
+        showToast(`[☁ SYNC] ${n} ${n === 1 ? 'conflicting change' : 'conflicting changes'}: kept the newest, the other is saved in Settings → System.`);
     }
     updateCloudSyncSettingsUI();
 }
@@ -362,15 +362,15 @@ function getSyncConflicts() {
 
 // Nomi leggibili per le sezioni dei dati (usati nell'elenco conflitti)
 const SYNC_SECTION_LABELS = {
-    templates: 'Task', logs: 'Storico task', specificEvents: 'Eventi', noteCategories: 'Categorie note',
-    notesContent: 'Note', journals: 'Diario', categoryOrder: 'Ordine categorie', referenceLayers: 'Livelli planner',
-    refToggles: 'Livelli attivi', ephemeralData: 'Blocchi del giorno', generalTodos: 'To-Do',
-    plannerExceptions: 'Eccezioni planner', dailyPriorities: 'Priorità del giorno', routinesData: 'Routine',
-    routineLogs: 'Storico routine', focusLogs: 'Sessioni focus', mBalance: 'Saldo', mTransactions: 'Movimenti',
-    mRecurring: 'Bollette', mWishlist: 'Wishlist', mVaults: 'Salvadanai', mCategories: 'Categorie spese',
-    savedGymWeights: 'Pesi palestra', dietData: 'Dieta', dietRules: 'Regole dieta', foodDb: 'Alimenti',
-    bodyLogs: 'Peso corporeo', gymPlan: 'Scheda palestra', gymRoutine: 'Routine palestra', uniData: 'Università',
-    mathHubState: 'Matematica', workspacePresets: 'Viste salvate', customAliases: 'Comandi personalizzati'
+    templates: 'Tasks', logs: 'Task history', specificEvents: 'Events', noteCategories: 'Note categories',
+    notesContent: 'Notes', journals: 'Journal', categoryOrder: 'Category order', referenceLayers: 'Planner layers',
+    refToggles: 'Active layers', ephemeralData: 'Day blocks', generalTodos: 'To-dos',
+    plannerExceptions: 'Planner exceptions', dailyPriorities: 'Daily priorities', routinesData: 'Routines',
+    routineLogs: 'Routine history', focusLogs: 'Focus sessions', mBalance: 'Balance', mTransactions: 'Transactions',
+    mRecurring: 'Bills', mWishlist: 'Wishlist', mVaults: 'Vaults', mCategories: 'Spending categories',
+    savedGymWeights: 'Gym weights', dietData: 'Diet', dietRules: 'Diet rules', foodDb: 'Foods',
+    bodyLogs: 'Body weight', gymPlan: 'Gym plan', gymRoutine: 'Gym routine', uniData: 'University',
+    mathHubState: 'Math', workspacePresets: 'Saved views', customAliases: 'Custom commands'
 };
 function humanSyncPath(path) {
     const parts = String(path || '').split('.');
@@ -386,12 +386,12 @@ function showSyncConflictsModal() {
         ? list.map((c) => `
             <div class="cfg-box" style="display:flex; flex-direction:column; gap:6px;">
                 <div style="display:flex; justify-content:space-between; font-size:var(--font-2xs); color:var(--text-dim);">
-                    <span>${esc(humanSyncPath(c.path))}</span><span>${esc(new Date(c.at).toLocaleString('it-IT'))}</span>
+                    <span>${esc(humanSyncPath(c.path))}</span><span>${esc(new Date(c.at).toLocaleString('en-GB'))}</span>
                 </div>
-                <div style="font-size:var(--font-2xs); color:var(--text-dim);">VERSIONE SCARTATA</div>
+                <div style="font-size:var(--font-2xs); color:var(--text-dim);">DISCARDED VERSION</div>
                 <pre style="white-space:pre-wrap; margin:0; font-size:var(--font-xs); max-height:160px; overflow:auto;">${fmt(c.discarded)}</pre>
             </div>`).join('')
-        : '<div class="empty-state">[ NESSUN CONFLITTO ]</div>';
+        : '<div class="empty-state">[ NO CONFLICTS ]</div>';
 
     const root = document.getElementById('modals-root');
     if (!root) return;
@@ -401,15 +401,15 @@ function showSyncConflictsModal() {
     wrap.innerHTML = `
         <div class="modal-content" style="background:var(--bg-sec); border:1px solid var(--border-bright); width:min(640px,100%); max-height:85vh; display:flex; flex-direction:column; gap:var(--space-3); padding:var(--space-4);">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span class="section-label">Conflitti di sincronizzazione</span>
-                <button type="button" class="icon-btn" data-close>[×]</button>
+                <span class="section-label">Sync conflicts</span>
+                <button type="button" class="icon-btn" data-close>×</button>
             </div>
             <div style="font-size:var(--font-xs); color:var(--text-dim); line-height:var(--line-normal);">
-                Quando la stessa cosa è stata modificata in modo diverso su due dispositivi, Cortex tiene la versione più recente.
-                Qui trovi quella scartata, se ti serve recuperarla.
+                When the same thing was changed differently on two devices, Cortex keeps the newest version.
+                The discarded one is here in case you need it back.
             </div>
             <div style="overflow:auto; display:flex; flex-direction:column; gap:var(--space-2);">${rows}</div>
-            ${list.length ? '<button type="button" class="btn btn-sm" data-clear>[SVUOTA ELENCO]</button>' : ''}
+            ${list.length ? '<button type="button" class="btn btn-sm" data-clear>[CLEAR LIST]</button>' : ''}
         </div>`;
     wrap.addEventListener('click', (e) => {
         if (e.target === wrap || e.target.closest('[data-close]')) wrap.remove();
@@ -435,7 +435,7 @@ function gistHeaders(extra = {}) {
 
 async function parseGistPayload(gistData) {
     const fileObj = gistData.files && (gistData.files[GIST_FILENAME] || Object.values(gistData.files)[0]);
-    if (!fileObj) throw new Error(`File "${GIST_FILENAME}" non trovato nel Gist`);
+    if (!fileObj) throw new Error(`File "${GIST_FILENAME}" not found in the Gist`);
     let rawContent = fileObj.content;
     if (fileObj.truncated && fileObj.raw_url) {
         const rawRes = await fetch(fileObj.raw_url, { headers: { 'Authorization': `Bearer ${cloudGithubToken}` }, cache: 'no-store' });
@@ -502,11 +502,11 @@ async function createNewSecretGistForCortex() {
     }
 
     if (!cloudGithubToken) {
-        if (typeof showToast === 'function') showToast('[SYNC] Incolla prima il token GitHub!');
+        if (typeof showToast === 'function') showToast('[SYNC] Paste your GitHub token first');
         return false;
     }
 
-    setCloudSyncHeaderIndicator('syncing', 'Creazione del Gist segreto...');
+    setCloudSyncHeaderIndicator('syncing', 'Creating the secret Gist…');
     const nowTs = Date.now();
     const payload = buildFullCortexCloudPayload(nowTs);
 
@@ -519,7 +519,7 @@ async function createNewSecretGistForCortex() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                description: 'Cortex — stato di sincronizzazione privato',
+                description: 'Cortex — private sync state',
                 public: false,
                 files: { [GIST_FILENAME]: { content: JSON.stringify(payload) } }
             })
@@ -545,11 +545,11 @@ async function createNewSecretGistForCortex() {
 
         setCloudSyncHeaderIndicator('ok');
         updateCloudSyncSettingsUI();
-        if (typeof showToast === 'function') showToast(`[☁ GIST CREATO] ID: ${cloudGistId}`);
+        if (typeof showToast === 'function') showToast(`[☁ GIST CREATED] ID: ${cloudGistId}`);
         return true;
     } catch (err) {
         setCloudSyncHeaderIndicator('error', err.message);
-        if (typeof showToast === 'function') showToast(`[ERRORE GIST] ${err.message}`);
+        if (typeof showToast === 'function') showToast(`[GIST ERROR] ${err.message}`);
         return false;
     }
 }
@@ -566,7 +566,7 @@ async function syncNow(isManual = false) {
     if (!navigator.onLine) {
         setCloudSyncHeaderIndicator('offline');
         updateCloudSyncSettingsUI();
-        if (isManual && typeof showToast === 'function') showToast('[☁ SYNC] Sei offline: le modifiche restano salvate qui.');
+        if (isManual && typeof showToast === 'function') showToast("[☁ SYNC] You're offline: changes stay saved on this device.");
         return false;
     }
     if (isCloudSyncInProgress) {
@@ -603,7 +603,7 @@ async function syncNow(isManual = false) {
         if (changedHere) {
             applyFullCortexCloudPayload({ data: merged });
             if (!isManual && typeof showToast === 'function' && base) {
-                showToast('[☁ SYNC] Aggiornato con le modifiche dell\'altro dispositivo');
+                showToast('[☁ SYNC] Updated with changes from your other device');
             }
         }
 
@@ -648,18 +648,18 @@ async function syncNow(isManual = false) {
         }
         lastSyncOkMs = Date.now();
 
-        recordSyncConflicts(conflicts, localWins ? 'questo dispositivo' : 'altro dispositivo');
+        recordSyncConflicts(conflicts, localWins ? 'this device' : 'other device');
 
         isCloudSyncInProgress = false;
         setCloudSyncHeaderIndicator(hasLocalChangesPending() ? 'queued' : 'ok');
         updateCloudSyncSettingsUI();
-        if (isManual && typeof showToast === 'function') showToast('[☁ SYNC] Tutto sincronizzato');
+        if (isManual && typeof showToast === 'function') showToast('[☁ SYNC] Everything is in sync');
     } catch (err) {
         isCloudSyncInProgress = false;
         console.error('[SYNC] errore', err);
-        setCloudSyncHeaderIndicator(navigator.onLine ? 'error' : 'offline', `Errore: ${err.message}`);
+        setCloudSyncHeaderIndicator(navigator.onLine ? 'error' : 'offline', `Error: ${err.message}`);
         updateCloudSyncSettingsUI();
-        if (isManual && typeof showToast === 'function') showToast(`[☁ SYNC ERRORE] ${err.message}`);
+        if (isManual && typeof showToast === 'function') showToast(`[☁ SYNC ERROR] ${err.message}`);
         return false;
     }
 
@@ -726,7 +726,7 @@ function saveCloudSyncCredentialsFromUI() {
 function copyMagicMobileSetupUrl() {
     saveCloudSyncCredentialsFromUI();
     if (!isCloudSyncConfigured()) {
-        if (typeof showToast === 'function') showToast('[ERRORE] Configura prima token e Gist ID!');
+        if (typeof showToast === 'function') showToast('[SYNC] Set up the token and Gist ID first');
         return;
     }
     const baseUrl = window.location.protocol.startsWith('http') && !window.location.hostname.includes('localhost') && !window.location.hostname.includes('tauri')
@@ -736,7 +736,7 @@ function copyMagicMobileSetupUrl() {
     const magicUrl = `${baseUrl}#cortex_sync=${encodeURIComponent(cloudGithubToken + ':' + cloudGistId)}`;
     navigator.clipboard.writeText(magicUrl);
     if (typeof showToast === 'function') {
-        showToast('[🔗 LINK COPIATO] Aprilo una volta sul telefono per collegarlo. Contiene la tua chiave: non condividerlo.');
+        showToast("[🔗 LINK COPIED] Open it once on your phone to link it. It contains your key, so don't share it.");
     }
 }
 
@@ -751,28 +751,28 @@ function updateCloudSyncSettingsUI() {
 
     if (conflictsBtn) {
         const n = getSyncConflicts().length;
-        conflictsBtn.textContent = `[CONFLITTI SALVATI: ${n}]`;
+        conflictsBtn.textContent = `[SAVED CONFLICTS: ${n}]`;
         conflictsBtn.style.color = n ? 'var(--accent-gold)' : '';
     }
 
     if (statusLbl) {
         if (!isCloudSyncConfigured()) {
-            statusLbl.textContent = '[NON CONFIGURATO]';
+            statusLbl.textContent = '[NOT SET UP]';
             statusLbl.style.color = 'var(--text-dim)';
         } else if (!navigator.onLine) {
-            statusLbl.textContent = '[OFFLINE // SALVATO QUI]';
+            statusLbl.textContent = '[OFFLINE // SAVED HERE]';
             statusLbl.style.color = 'var(--accent-gold)';
         } else if (isCloudSyncInProgress) {
-            statusLbl.textContent = '[SINCRONIZZAZIONE...]';
+            statusLbl.textContent = '[SYNCING…]';
             statusLbl.style.color = 'var(--accent-gold)';
         } else if (hasLocalChangesPending()) {
-            statusLbl.textContent = '[MODIFICHE IN ATTESA]';
+            statusLbl.textContent = '[CHANGES WAITING]';
             statusLbl.style.color = 'var(--accent-gold)';
         } else if (cloudSyncStatus === 'error') {
-            statusLbl.textContent = '[ERRORE — RIPROVA]';
+            statusLbl.textContent = '[ERROR — TRY AGAIN]';
             statusLbl.style.color = 'var(--accent-red)';
         } else {
-            statusLbl.textContent = `[COLLEGATO // ULTIMA SYNC: ${formatAgo(lastSyncOkMs).toUpperCase()}]`;
+            statusLbl.textContent = `[CONNECTED // LAST SYNC: ${formatAgo(lastSyncOkMs).toUpperCase()}]`;
             statusLbl.style.color = 'var(--accent-green)';
         }
     }

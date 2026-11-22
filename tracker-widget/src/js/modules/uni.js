@@ -494,7 +494,7 @@ function renderUniAtomRoadmap(customContainer = null) {
             </div>
             <div style="display:flex; gap:6px;">
                 <button type="button" class="btn btn-sm" onclick="toggleRoadmapView()">[VIEW: ${roadmapViewMode.toUpperCase()}]</button>
-                <button type="button" class="btn btn-sm ${showRoadmapAddForm ? 'btn-primary' : ''}" id="btn-toggle-roadmap-add">[+]</button>
+                <button type="button" class="btn btn-sm ${showRoadmapAddForm ? 'btn-primary' : ''}" id="btn-toggle-roadmap-add">+</button>
             </div>
         </div>
 
@@ -595,7 +595,7 @@ function renderUniAtomRoadmap(customContainer = null) {
                     const btnPass = document.createElement('button');
                     btnPass.className = 'icon-btn';
                     btnPass.style.cssText = 'color:var(--accent-green); border:1px solid var(--accent-green); margin-left:4px;';
-                    btnPass.textContent = '[✓]';
+                    btnPass.textContent = '✓';
                     btnPass.onclick = () => {
                         const g = prompt(`Grade (18-30 or 30L) for "${course.name}" (${course.cfu} CFU):`, '30');
                         if (g !== null && g.trim() !== '') recordPassedExam(course.id, g.trim(), course.cfu, todayStr);
@@ -603,12 +603,12 @@ function renderUniAtomRoadmap(customContainer = null) {
 
                     const btnEdit = document.createElement('button');
                     btnEdit.className = 'icon-btn';
-                    btnEdit.textContent = '[✎]';
+                    btnEdit.textContent = '✎';
                     btnEdit.onclick = renderEditMode;
 
                     const btnDel = document.createElement('button');
                     btnDel.className = 'icon-btn delete';
-                    btnDel.textContent = '[X]';
+                    btnDel.textContent = '×';
                     btnDel.onclick = () => {
                         templates.filter(t => t.uniExamId === course.id).forEach(t => archiveTemplateSafely(t));
                         uniData.remainingExams = uniData.remainingExams.filter(x => x.id !== course.id);
@@ -744,7 +744,7 @@ function renderUniAtomLectures() {
                 sRow.innerHTML = `<span><strong>${escapeHtml(dayNamesStr)}</strong> // ${escapeHtml(slot.start)} – ${escapeHtml(slot.end)}</span>`;
                 const delBtn = document.createElement('button');
                 delBtn.className = 'icon-btn delete';
-                delBtn.textContent = '[X]';
+                delBtn.textContent = '×';
                 delBtn.onclick = () => {
                     course.lectures.splice(sIdx, 1);
                     syncCourseLecturesToEvents(course);
@@ -800,7 +800,7 @@ function renderUniAtomAppeals() {
                         <input type="text" id="uni-app-name" class="form-control form-control-sm" style="flex:1; min-width:100px;" placeholder="Exam...">
                         <input type="date" id="uni-app-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
                         <input type="time" id="uni-app-time" class="form-control form-control-sm" style="width:80px;" value="09:00">
-                        <button type="button" id="btn-add-uni-appeal" class="btn btn-primary btn-sm">[+]</button>
+                        <button type="button" id="btn-add-uni-appeal" class="btn btn-primary btn-sm">+</button>
                     </div>
                     <div id="uni-appeals-list" style="display:flex; flex-direction:column; gap:6px;"></div>
                 </div>
@@ -812,7 +812,7 @@ function renderUniAtomAppeals() {
                         <input type="text" id="uni-tax-title" class="form-control form-control-sm" style="flex:1; min-width:95px;" placeholder="Tax name...">
                         <input type="number" id="uni-tax-amount" class="form-control form-control-sm no-spinners" style="width:75px;" step="0.01" placeholder="€">
                         <input type="date" id="uni-tax-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
-                        <button type="button" id="btn-add-uni-tax" class="btn btn-danger btn-sm">[+]</button>
+                        <button type="button" id="btn-add-uni-tax" class="btn btn-danger btn-sm">+</button>
                     </div>
                     <div id="uni-taxes-list" style="display:flex; flex-direction:column; gap:6px;"></div>
                 </div>
@@ -861,7 +861,7 @@ function renderUniAtomAppeals() {
             `;
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.textContent = '[X]';
+            delBtn.textContent = '×';
             delBtn.onclick = (e) => { e.stopPropagation(); deleteUniAppeal(app.id); };
             row.lastElementChild.appendChild(delBtn);
             appListEl.appendChild(row);
@@ -905,7 +905,7 @@ function renderUniAtomAppeals() {
 
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.textContent = '[X]';
+            delBtn.textContent = '×';
             delBtn.onclick = () => deleteUniTax(tax.id);
             row.lastElementChild.appendChild(delBtn);
 
@@ -932,7 +932,7 @@ function renderUniAtomLibretto() {
                     <span class="section-label">Libretto</span>
                     <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px; font-variant-numeric:tabular-nums;">// ${stats.totalCfu}/${stats.targetCfu} CFU (${stats.cfuPct}%)</span>
                 </div>
-                <button type="button" class="btn btn-sm ${showLibrettoAddForm ? 'btn-primary' : ''}" id="btn-toggle-lib-add">[+]</button>
+                <button type="button" class="btn btn-sm ${showLibrettoAddForm ? 'btn-primary' : ''}" id="btn-toggle-lib-add">+</button>
             </div>
 
             <!-- METRICHE CARRIERA COMPATTE -->
@@ -1007,7 +1007,7 @@ function renderUniAtomLibretto() {
 
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[X]';
+        delBtn.textContent = '×';
         delBtn.onclick = () => {
             uniData.passedExams = uniData.passedExams.filter(p => p.id !== ex.id);
             saveUniData();

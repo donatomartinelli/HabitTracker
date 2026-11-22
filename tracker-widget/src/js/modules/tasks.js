@@ -643,7 +643,7 @@ function addHabitTimeWindow(start = '', end = '', days = []) {
                 <label>End</label>
                 <input type="time" class="form-control h-end" value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">[X]</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
         </div>
         <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
     `;
@@ -676,7 +676,7 @@ function addRoutineTimeWindow(start = '', end = '', days = []) {
                 <label>End</label>
                 <input type="time" class="form-control rtn-end" value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">[X]</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
         </div>
         <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
     `;
@@ -695,7 +695,7 @@ function addRoutineFormSubsection(secTitle = '', stepTitlesArray = [], existingS
     secBox.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
             <input type="text" class="form-control form-control-sm rtn-sec-name-inp" placeholder="Sub-section Name (e.g. Grooming, Casa, Chiusura)..." value="${escapeHtml(secTitle)}" style="font-weight: bold;">
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" title="Remove Sub-section">[X]</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" title="Remove Sub-section">×</button>
         </div>
         <div class="rtn-sec-steps-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
         <div style="display: flex; gap: 6px;">
@@ -713,7 +713,7 @@ function addRoutineFormSubsection(secTitle = '', stepTitlesArray = [], existingS
         row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 3px 6px; background: rgba(255,255,255,0.02); border: 1px solid #222;';
         row.innerHTML = `
             <input type="text" class="form-control form-control-sm rtn-step-val-inp" value="${escapeHtml(clean)}" style="border: none; background: transparent; padding: 2px 4px;">
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.remove()">[×]</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.remove()">×</button>
         `;
         stepsList.appendChild(row);
     };
@@ -1225,7 +1225,7 @@ function renderRoutinesManagerList() {
                 </div>
                 <div style="display:flex; gap:8px;">
                     <button type="button" class="btn btn-sm btn-edit-rtn">[EDIT]</button>
-                    <button type="button" class="icon-btn delete btn-del-rtn">[X]</button>
+                    <button type="button" class="icon-btn delete btn-del-rtn">×</button>
                 </div>
             </div>
         `;
@@ -1279,7 +1279,7 @@ function renderMedsManagerList() {
                     <input type="number" class="form-control form-control-sm no-spinners med-stock-quick" style="width:65px; text-align:center;" value="${m.stock ?? 0}">
                 </div>
                 <button type="button" class="btn btn-sm btn-edit-med">[EDIT]</button>
-                <button type="button" class="icon-btn delete btn-del-med">[X]</button>
+                <button type="button" class="icon-btn delete btn-del-med">×</button>
             </div>
         `;
 
@@ -1329,7 +1329,7 @@ function renderGhostLayersManagerList() {
                 </div>
                 <div style="display:flex; gap:8px; flex-shrink:0;">
                     <button type="button" class="btn btn-sm btn-edit-ghost">[EDIT]</button>
-                    <button type="button" class="icon-btn delete btn-del-ghost">[X]</button>
+                    <button type="button" class="icon-btn delete btn-del-ghost">×</button>
                 </div>
             </div>
         `;
@@ -1882,7 +1882,7 @@ function renderGeneralTodos() {
 
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[×]';
+        delBtn.textContent = '×';
         delBtn.onclick = (ev) => { ev.stopPropagation(); deleteGeneralTodo(t.id); };
 
         item.appendChild(left);
@@ -3035,7 +3035,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
             delBtn.style.cssText = 'font-size: var(--font-2xs); z-index: 15;';
-            delBtn.textContent = '[×]';
+            delBtn.textContent = '×';
             delBtn.onclick = removeBlockAction;
             block.appendChild(delBtn);
 

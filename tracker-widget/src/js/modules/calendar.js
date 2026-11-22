@@ -223,7 +223,7 @@ function buildDayEventsListDom(targetListEl) {
 
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[X]';
+        delBtn.textContent = '×';
         delBtn.onclick = (ev) => {
             ev.stopPropagation();
             deleteEvent(e.id);
@@ -256,8 +256,8 @@ function renderCalendarAtomGrid() {
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
                     <button type="button" class="btn btn-sm" onclick="syncExternalCalendarsNow(true)" title="Sync Google & Apple Calendar">[📅 SYNC]</button>
-                    <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">[&lt;]</button>
-                    <button type="button" class="btn btn-sm" onclick="changeMonth(1)">[&gt;]</button>
+                    <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">‹</button>
+                    <button type="button" class="btn btn-sm" onclick="changeMonth(1)">›</button>
                 </div>
             </div>
             <div class="month-grid" id="cal-atom-grid-mount"></div>
@@ -282,7 +282,7 @@ function renderCalendarAtomAgenda() {
                     <span class="section-label">Day Events</span>
                     <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${selectedDateStr}</span>
                 </div>
-                <button type="button" class="btn btn-sm" onclick="openCreationModal('event')">[+]</button>
+                <button type="button" class="btn btn-sm" onclick="openCreationModal('event')">+</button>
             </div>
             <div id="cal-atom-agenda-mount" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>

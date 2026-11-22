@@ -55,7 +55,7 @@
                         <button type="button" id="btn-header-focus-pause" class="header-focus-btn" onclick="togglePomodoroPause()">[PAUSE]</button>
                         <button type="button" class="header-focus-btn" onclick="skipPomodoroPhase()">[SKIP]</button>
                         <button type="button" class="header-focus-btn" onclick="openFullscreenFocusOverlay()">[FULL]</button>
-                        <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()">[×]</button>
+                        <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()">×</button>
                     </div>
                 </div>
             </div>
@@ -72,7 +72,7 @@
                         <button type="button" class="btn btn-sm ask-mob-btn" onmousedown="event.preventDefault(); triggerMobileTerminalTab()" ontouchend="event.preventDefault(); triggerMobileTerminalTab()">[TAB]</button>
                         <button type="button" class="btn btn-sm ask-mob-btn" onmousedown="event.preventDefault(); triggerMobileTerminalStage()" ontouchend="event.preventDefault(); triggerMobileTerminalStage()">[+STAGE]</button>
                         <button type="button" class="btn btn-primary btn-sm ask-mob-btn" onmousedown="event.preventDefault(); triggerMobileTerminalRun()" ontouchend="event.preventDefault(); triggerMobileTerminalRun()">[RUN ↵]</button>
-                        <button type="button" class="icon-btn ask-mob-close" onmousedown="event.preventDefault(); closeTerminal()" ontouchend="event.preventDefault(); closeTerminal()">[×]</button>
+                        <button type="button" class="icon-btn ask-mob-close" onmousedown="event.preventDefault(); closeTerminal()" ontouchend="event.preventDefault(); closeTerminal()">×</button>
                     </div>
                 </div>
 
@@ -118,8 +118,8 @@
             <div class="hud-pod-win-btns">
                 <button type="button" class="icon-btn win-ctrl-btn" onclick="openQuickNoteModal()">[+NOTE]</button>
                 <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false)">[FULL]</button>
-                <button type="button" class="icon-btn win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().minimize()">[-]</button>
-                <button type="button" class="icon-btn delete win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().close(); else window.close();">[X]</button>
+                <button type="button" class="icon-btn win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().minimize()">–</button>
+                <button type="button" class="icon-btn delete win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().close(); else window.close();">×</button>
             </div>
         </div>
 
@@ -199,8 +199,8 @@
                         <span id="calendar-month-name" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px; text-transform: uppercase;">// MONTH YEAR</span>
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
-                        <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">[&lt;]</button>
-                        <button type="button" class="btn btn-sm" onclick="changeMonth(1)">[&gt;]</button>
+                        <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">‹</button>
+                        <button type="button" class="btn btn-sm" onclick="changeMonth(1)">›</button>
                     </div>
                 </div>
 
@@ -224,8 +224,8 @@
                         <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">[▶]</button>
-                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()">[⚙]</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">▶</button>
+                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()">⚙</button>
                     </div>
                 </div>
                 
@@ -310,12 +310,12 @@
                                 <div style="display: flex; gap: 6px; margin-bottom: 10px;">
                                     <input type="number" id="body-weight-input" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg" style="width: 85px;">
                                     <input type="text" id="body-note-input" class="form-control form-control-sm" placeholder="Note..." style="flex: 1;" onkeydown="if(event.key==='Enter'){event.preventDefault(); addBodyMetricLog();}">
-                                    <button type="button" class="btn btn-primary btn-sm" onclick="addBodyMetricLog()">[+]</button>
+                                    <button type="button" class="btn btn-primary btn-sm" onclick="addBodyMetricLog()">+</button>
                                 </div>
                                 <div id="body-history-chips" style="display: flex; flex-direction: column; gap: 4px; max-height: 140px; overflow-y: auto;"></div>
                             </div>
                         </div>
-                        <button class="btn btn-sm" onclick="openFoodDbModal()">[⚙]</button>
+                        <button class="btn btn-sm" onclick="openFoodDbModal()">⚙</button>
                     </div>
                 </div>
 

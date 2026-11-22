@@ -738,8 +738,8 @@ function refreshActivePanesInPlace() {
                 try {
                     dashboardModules[modKey].render();
                 } catch (e) {
-                    console.error('[Cortex] errore nel modulo', modKey, e);
-                    if (typeof cortexNotify === 'function') cortexNotify('⚠ Il modulo "' + modKey + '" ha avuto un errore: ' + e.message);
+                    console.error('[Cortex] module error', modKey, e);
+                    if (typeof cortexNotify === 'function') cortexNotify('⚠ The "' + modKey + '" module hit an error: ' + e.message);
                 }
             }
         });

@@ -569,8 +569,8 @@ function initModalsHtml() {
                         </div>
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
                             <div style="display: flex; gap: 6px;">
-                                <button type="button" class="btn btn-primary btn-sm" onclick="syncNow(true)">[⇅ SINCRONIZZA ORA]</button>
-                                <button type="button" class="btn btn-sm" id="cloud-sync-conflicts-btn" onclick="showSyncConflictsModal()">[CONFLITTI SALVATI: 0]</button>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="syncNow(true)">[⇅ SYNC NOW]</button>
+                                <button type="button" class="btn btn-sm" id="cloud-sync-conflicts-btn" onclick="showSyncConflictsModal()">[SAVED CONFLICTS: 0]</button>
                             </div>
                             <button type="button" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="copyMagicMobileSetupUrl()">[🔗 COPY MAGIC SETUP URL]</button>
                         </div>
@@ -697,7 +697,7 @@ function initModalsHtml() {
     <!-- 13B. Create / Edit Vault Modal -->
     <div id="mVaultModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 450px;">
-            <h2>Create / Edit Vault (Salvadanaio)</h2>
+            <h2>Create / Edit Vault</h2>
             <form id="mVaultForm">
                 <input type="hidden" id="m-vault-id">
                 <div class="form-group">
@@ -905,43 +905,43 @@ function initModalsHtml() {
                     <div class="help-section-title">1. Task, Focus, Calendario &amp; Note</div>
                     <div class="help-grid">
                         <div class="help-key"><code>done [task]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>done Duolingo</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Spunta la prima casella libera della task attiva oggi.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Checks the first open box of the matching task active today.</div>
 
                         <div class="help-key"><code>focus [task/cat]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>focus Analisi</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Avvia il timer Pomodoro con la durata configurata. Inietta un blocco nel Day Planner.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Starts the Pomodoro timer with the configured length and adds a block to the Day Planner.</div>
 
                         <div class="help-key"><code>task [titolo] [@day]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>task Studio @domani</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Crea una task flessibile.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Creates a flexible task.</div>
 
                         <div class="help-key"><code>todo [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>todo Bolletta</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge una voce non schedulata in Inbox.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Adds an unscheduled item to the Inbox.</div>
 
                         <div class="help-key"><code>event [@day] [titolo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>event @domani Esame</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Inserisce un evento singolo sul Calendario e Planner.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Adds a one-off event to the Calendar and Planner.</div>
 
                         <div class="help-key"><code>note [Cat]: [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>note Math: Teorema</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Accoda la nota nella categoria (Crea la cartella se non esiste).</div>
+                        <div class="help-desc"><strong>Effect:</strong> Appends the note to the category (creates the folder if it doesn't exist).</div>
                     </div>
                 </div>
 
                 <!-- 2. MONEY, VAULTS, DIETA & PALESTRA -->
                 <div class="help-section-card">
-                    <div class="help-section-title">2. Money, Salvadanai, Dieta &amp; Palestra</div>
+                    <div class="help-section-title">2. Money, vaults, diet and gym</div>
                     <div class="help-grid">
                         <div class="help-key"><code>out [€] #[Cat/Vault] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>out 20 #Amazon Cavo</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Sottrae l'importo dal saldo. Se <code>#Nome</code> corrisponde a un <strong>Vault</strong>, scala da lì.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Subtracts the amount from the balance. If <code>#Name</code> matches a <strong>Vault</strong>, it comes out of that vault.</div>
 
                         <div class="help-key"><code>in [€] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>in 500 Borsa</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge <code>+€</code> al saldo totale.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Adds <code>+€</code> to the total balance.</div>
 
                         <div class="help-key"><code>wish [item] [€ opz.]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>wish Libro 18</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Inserisce idea d'acquisto in Incubator.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Adds a purchase idea to the Incubator.</div>
 
                         <div class="help-key"><code>weight [kg] [nota]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>weight 74.5 digiuno</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Registra il peso corporeo.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Logs your body weight.</div>
 
                         <div class="help-key"><code>gym done</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Salva la scheda attiva e avanza allo split successivo.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Saves the active workout and moves to the next split.</div>
                     </div>
                 </div>
 
@@ -950,16 +950,16 @@ function initModalsHtml() {
                     <div class="help-section-title">3. Ispezione Rapida in Sola Lettura</div>
                     <div class="help-grid">
                         <div class="help-key"><code>diet</code> / <code>diet @domani</code></div>
-                        <div class="help-desc">Mostra pasti, regole fisse e macro calcolati.</div>
+                        <div class="help-desc">Shows meals, fixed rules and calculated macros.</div>
 
                         <div class="help-key"><code>gym</code></div>
-                        <div class="help-desc">Mostra gli esercizi del <code>Day</code> attivo in palestra.</div>
+                        <div class="help-desc">Shows the exercises of the active gym <code>Day</code>.</div>
 
                         <div class="help-key"><code>today</code> / <code>tomorrow</code></div>
-                        <div class="help-desc">Mostra il riepilogo di task orarie/flessibili.</div>
+                        <div class="help-desc">Shows a summary of timed and flexible tasks.</div>
 
                         <div class="help-key"><code>bal</code> / <code>money</code></div>
-                        <div class="help-desc">Mostra Spendable Balance e stato dei Vault.</div>
+                        <div class="help-desc">Shows the spendable balance and vault status.</div>
                     </div>
                 </div>
 
@@ -968,16 +968,16 @@ function initModalsHtml() {
                     <div class="help-section-title">4. Workspace, Staging &amp; Scorciatoie da Tastiera</div>
                     <div class="help-grid">
                         <div class="help-key"><code>summon [modulo]</code> · <code>swap</code> · <code>zero</code></div>
-                        <div class="help-desc">Monta un modulo nel layout tiling (incluso <code>math</code>).</div>
+                        <div class="help-desc">Opens a module (including <code>math</code>).</div>
 
                         <div class="help-key"><code>plan</code> · <code>ledger</code> · <code>food</code> · <code>vault</code></div>
-                        <div class="help-desc">Apre rispettivamente Planner, Ledger, Food DB, Vault.</div>
+                        <div class="help-desc">Opens Planner, Ledger, Food DB and Vault respectively.</div>
 
                         <div class="help-key">[SHIFT + ENTER] / <code>;</code></div>
-                        <div class="help-desc">Mette il comando nella <strong>Staging Area</strong>.</div>
+                        <div class="help-desc">Puts the command in the <strong>staging area</strong>.</div>
 
                         <div class="help-key">[CTRL+SPACE] · [?] · [,] · [E]</div>
-                        <div class="help-desc">Barra comandi / Manuale / Settings / Edit Layout.</div>
+                        <div class="help-desc">Command bar / Manual / Settings / Edit layout.</div>
                     </div>
                 </div>
 
@@ -985,16 +985,16 @@ function initModalsHtml() {
                     <div class="help-section-title">5. University Bridge (180 CFU, Appelli &amp; Tasse)</div>
                     <div class="help-grid">
                         <div class="help-key"><code>uni</code> · <code>uni info</code></div>
-                        <div class="help-desc">Monta il modulo <code>University</code> o mostra le medie.</div>
+                        <div class="help-desc">Opens <code>University</code> or shows your grade averages.</div>
 
                         <div class="help-key"><code>esame [Nome] [Voto] [CFU]</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Registra il voto nel Libretto e muove le note in <strong>Archive</strong>.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Records the grade in the Libretto and moves the notes to <strong>Archive</strong>.</div>
 
                         <div class="help-key"><code>tassa [€] [Data] [Nome]</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Crea un evento in rosso sul Calendario.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Creates a red event on the Calendar.</div>
 
                         <div class="help-key"><code>appello [Nome] [Data] [Ora]</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge l'appello con countdown.</div>
+                        <div class="help-desc"><strong>Effect:</strong> Adds the exam session with a countdown.</div>
                     </div>
                 </div>
             </div>
@@ -1080,11 +1080,11 @@ function closeModals() {
 // ============================================================================
 
 const ALIAS_INSPIRATION_TEMPLATES = [
-    { name: 'sera', cmds: 'red on; tasks; plan', desc: 'Attiva Gelatina Rossa, monta Daily Tasks e apre la Timeline di domani' },
-    { name: 'mattina', cmds: 'red off; tasks + planner; today', desc: 'Ripristina colori, affianca Tasks + Planner e mostra il riepilogo di oggi' },
-    { name: 'sessione', cmds: 'uni roadmap + notes', desc: 'Sovrappone sullo schermo University Roadmap e Notes affiancati' },
-    { name: 'conti', cmds: 'money; bal', desc: 'Apre il modulo Money a tutto schermo e mostra lo snapshot dei Vault' },
-    { name: 'barra', cmds: 'hud on', desc: 'Collassa Cortex nella striscia HUD da 56px Always-on-Top' }
+    { name: 'sera', cmds: 'red on; tasks; plan', desc: "Turns on red mode, opens Daily Tasks and tomorrow's timeline" },
+    { name: 'mattina', cmds: 'red off; tasks + planner; today', desc: "Restores colors, shows Tasks + Planner side by side and today's summary" },
+    { name: 'sessione', cmds: 'uni roadmap + notes', desc: 'Shows University Roadmap and Notes side by side' },
+    { name: 'conti', cmds: 'money; bal', desc: 'Opens Money full screen and shows the vault snapshot' },
+    { name: 'barra', cmds: 'hud on', desc: 'Collapses Cortex into the always-on-top HUD strip' }
 ];
 
 function renderCustomAliasesSettingsUI() {
@@ -1148,8 +1148,8 @@ function renderCustomAliasesSettingsUI() {
                 </div>
                 <div style="display:flex; gap:6px; flex-shrink:0;">
                     <button type="button" class="btn btn-sm btn-run-alias" title="Esegui ora questo alias">[▶ RUN]</button>
-                    <button type="button" class="icon-btn btn-edit-alias" title="Modifica">[✎]</button>
-                    <button type="button" class="icon-btn delete btn-del-alias" title="Elimina">[X]</button>
+                    <button type="button" class="icon-btn btn-edit-alias" title="Modifica">✎</button>
+                    <button type="button" class="icon-btn delete btn-del-alias" title="Delete">×</button>
                 </div>
             `;
             row.querySelector('.btn-run-alias').onclick = () => {
@@ -1334,7 +1334,7 @@ function renderQuickSwitcherContent(filterStr = '') {
         mainBtn.style.cssText = 'flex:1; text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; min-width:0;';
         mainBtn.innerHTML = `
             <div style="font-weight:bold; font-size:var(--font-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(cleanMacroName)}</div>
-            <span style="font-size:var(--font-2xs); margin-left:4px;">${isStaged ? '[+]' : (isCurrentlyMounted ? '●' : '')}</span>
+            <span style="font-size:var(--font-2xs); margin-left:4px;">${isStaged ? '+' : (isCurrentlyMounted ? '●' : '')}</span>
         `;
 
         mainBtn.onclick = (e) => {
@@ -1383,7 +1383,7 @@ function renderQuickSwitcherContent(filterStr = '') {
                 subBtn.style.cssText = 'text-align:left; display:flex; justify-content:space-between; align-items:center; padding: 5px 8px;';
                 subBtn.innerHTML = `
                     <span>↳ ${escapeHtml(shortSubName)}</span>
-                    <span style="font-size:var(--font-2xs); opacity:0.75;">${subStaged ? '[+]' : (subMounted ? '●' : '')}</span>
+                    <span style="font-size:var(--font-2xs); opacity:0.75;">${subStaged ? '+' : (subMounted ? '●' : '')}</span>
                 `;
                 subBtn.onclick = (ev) => {
                     ev.stopPropagation();

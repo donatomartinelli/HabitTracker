@@ -206,7 +206,7 @@ function renderWeeklyPlanner() {
 
             const delBtn = document.createElement('button');
             delBtn.className = 'ref-del-btn';
-            delBtn.textContent = '[X]';
+            delBtn.textContent = '×';
             delBtn.onclick = (e) => {
                 e.stopPropagation();
                 deleteReference(ref.id);
@@ -606,7 +606,7 @@ function addRefTimeWindow(start = '', end = '', days = []) {
                 <label>End</label>
                 <input type="time" class="form-control ref-end" required value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">[X]</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
         </div>
         <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
     `;

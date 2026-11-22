@@ -78,7 +78,7 @@ function renderTreeSidebar(containerEl) {
 
         const icon = document.createElement('span');
         icon.style.cssText = 'width: 12px; text-align: center; color: var(--text-dim); font-weight: bold; cursor: pointer;';
-        icon.textContent = hasChildren ? (isExpanded ? '[-]' : '[+]') : '·';
+        icon.textContent = hasChildren ? (isExpanded ? '–' : '+') : '·';
         
         if (hasChildren) {
             icon.onclick = (e) => {
@@ -100,7 +100,7 @@ function renderTreeSidebar(containerEl) {
 
         const addBtn = document.createElement('span');
         addBtn.style.cssText = 'display:none; color: var(--text-dim); font-size: var(--font-2xs); font-weight: bold;';
-        addBtn.textContent = '[+]';
+        addBtn.textContent = '+';
         addBtn.onclick = (e) => {
             e.stopPropagation();
             const entered = prompt(`Nuova sottocartella in "${nodeName}":`);
@@ -380,8 +380,8 @@ function renderNotesAtomWrite(customContainer = null) {
                     <select class="form-control form-control-sm nw-cat-select" style="width:160px; font-weight:bold; font-size:var(--font-2xs);">
                         ${buildFlatTreeOptions()}
                     </select>
-                    <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+]</button>
-                    <button type="button" class="btn btn-sm" onclick="openManageNotesModal()">[⚙]</button>
+                    <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">+</button>
+                    <button type="button" class="btn btn-sm" onclick="openManageNotesModal()">⚙</button>
                 </div>
             </div>
 
@@ -440,8 +440,8 @@ function renderNotesAtomBrowse(customContainer = null) {
                     <input type="text" class="form-control form-control-sm nb-search-inp" style="width:110px;" placeholder="Filter..." value="${escapeHtml(currentBrowseFilterQuery)}">
                     <button type="button" class="btn btn-sm nb-sort-btn">${sortLabels[notesSortMode]}</button>
                     <button type="button" class="btn btn-sm btn-notes-mic-rec ${isMicRecording ? 'btn-rec-active' : ''}" onclick="toggleLiveMicRecording()">${getMicRecButtonLabel()}</button>
-                    <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+]</button>
-                    <button type="button" class="btn btn-sm" onclick="openManageNotesModal()">[⚙]</button>
+                    <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">+</button>
+                    <button type="button" class="btn btn-sm" onclick="openManageNotesModal()">⚙</button>
                 </div>
             </div>
 
@@ -558,7 +558,7 @@ function populateBrowseMasonryDom(browseCont, filterQuery = '') {
         btnEdit.type = 'button';
         btnEdit.className = 'icon-btn';
         btnEdit.style.fontSize = '0.68rem';
-        btnEdit.textContent = '[✎]';
+        btnEdit.textContent = '✎';
         btnEdit.onclick = (e) => { e.stopPropagation(); openCentralNoteEditorModal(catKey, storageIdx); };
 
         hoverTools.appendChild(btnInfo);
@@ -869,7 +869,7 @@ function renderNotesAtomGraph() {
         previewCard.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
                 <select id="ng-prev-cat-sel" class="form-control form-control-sm" style="flex:1; padding:2px 6px; font-size:var(--font-2xs); font-weight:bold;">${moveOpts}</select>
-                <button type="button" class="icon-btn" id="ng-prev-close">[×]</button>
+                <button type="button" class="icon-btn" id="ng-prev-close">×</button>
             </div>
             <div style="font-size:var(--font-xs); color:var(--text-main); line-height:1.5; max-height:190px; overflow-y:auto; white-space:pre-wrap; word-break:break-word; padding:4px 0;">${escapeHtml(n.card.body)}</div>
             <div style="display:flex; gap:6px; justify-content:flex-end; padding-top:4px; flex-wrap:wrap;">
@@ -1568,7 +1568,7 @@ async function triggerBatchSummaryGeneration() {
         drawer.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <span style="font-size:var(--font-xs); color:var(--accent-gold); font-weight:bold; text-transform:uppercase;">✦ Structured Summary &amp; Prompt-Ready Rewrite</span>
-                <button type="button" class="icon-btn" id="btn-close-sum-drawer">[×]</button>
+                <button type="button" class="icon-btn" id="btn-close-sum-drawer">×</button>
             </div>
             <textarea id="sum-drawer-textarea" class="note-inline-editor" style="min-height: 140px;"></textarea>
             <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
@@ -1674,7 +1674,7 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, keysToRemoveOnSubm
                 const delBtn = document.createElement('button');
                 delBtn.type = 'button';
                 delBtn.className = 'icon-btn delete';
-                delBtn.textContent = '[X]';
+                delBtn.textContent = '×';
                 delBtn.onclick = () => { localCmds.splice(idx, 1); drawList(); };
                 line.appendChild(badge); line.appendChild(inp); line.appendChild(delBtn);
                 itemBox.appendChild(line); itemBox.appendChild(preview); drawerEl.appendChild(itemBox);
@@ -1734,7 +1734,7 @@ function renderNotesManager() {
         if (!protectedCats.includes(cat) && !cat.startsWith('Archive')) {
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.textContent = '[X]';
+            delBtn.textContent = '×';
             delBtn.onclick = () => removeNoteCategory(cat);
             actions.appendChild(delBtn);
         } else {

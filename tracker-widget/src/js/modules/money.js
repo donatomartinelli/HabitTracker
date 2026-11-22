@@ -627,7 +627,7 @@ function renderMoneyAtomBills() {
                     <span class="section-label">Fixed Bills</span>
                     <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// €${totalMonthlyFixed.toFixed(2)}/MO</span>
                 </div>
-                <button type="button" class="icon-btn" onclick="openRecurringModal()" title="Add recurring bill">[+]</button>
+                <button type="button" class="icon-btn" onclick="openRecurringModal()" title="Add recurring bill">+</button>
             </div>
             <div id="m-recurring-container" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>
@@ -650,7 +650,7 @@ function renderMoneyAtomBills() {
                 <div style="display:flex; align-items:center; gap:8px;">
                     <div class="m-amt neg">-€${absAmount}</div>
                     <div class="m-row-hover-tools">
-                        <button type="button" class="icon-btn delete" title="Delete">[×]</button>
+                        <button type="button" class="icon-btn delete" title="Delete">×</button>
                     </div>
                 </div>
             `;
@@ -743,8 +743,8 @@ function renderMoneyAtomAnalytics(precomputedMetrics = null) {
                 <span style="color:var(--text-dim); font-size:var(--font-2xs);"> / €${st.allTimeOut.toFixed(0)}</span>
             </div>
             <div style="display:flex; gap:4px;">
-                <button type="button" class="icon-btn btn-ren-cat" title="Rename category">[✎]</button>
-                <button type="button" class="icon-btn delete btn-del-cat" title="Delete category">[×]</button>
+                <button type="button" class="icon-btn btn-ren-cat" title="Rename category">✎</button>
+                <button type="button" class="icon-btn delete btn-del-cat" title="Delete category">×</button>
             </div>
         `;
 
@@ -832,7 +832,7 @@ function renderMoneyAtomIncubator() {
             <div style="display:flex; align-items:center; gap:8px;">
                 <span style="font-size:var(--font-2xs); color:var(--text-dim); font-variant-numeric:tabular-nums;">${catSum > 0 ? '€' + catSum.toFixed(2) : ''}</span>
                 <div class="action-btns">
-                    <button type="button" class="icon-btn delete btn-del-wcat" title="Delete category">[×]</button>
+                    <button type="button" class="icon-btn delete btn-del-wcat" title="Delete category">×</button>
                 </div>
             </div>
         `;
@@ -969,8 +969,8 @@ function buildTransactionRowDom(t) {
         <div style="display:flex; align-items:center;">
             <div class="m-amt ${isOut ? 'neg' : 'pos'}">${isOut ? '-' : '+'}€${absAmount}</div>
             <div class="m-row-hover-tools">
-                <button type="button" class="icon-btn btn-edit-tx" title="Edit date or amount">[✎]</button>
-                <button type="button" class="icon-btn delete btn-del-tx" title="Delete transaction">[×]</button>
+                <button type="button" class="icon-btn btn-edit-tx" title="Edit date or amount">✎</button>
+                <button type="button" class="icon-btn delete btn-del-tx" title="Delete transaction">×</button>
             </div>
         </div>
     `;
@@ -1025,7 +1025,7 @@ function buildTransactionRowDom(t) {
                 delCatBtn.type = 'button';
                 delCatBtn.className = 'icon-btn delete';
                 delCatBtn.style.cssText = 'font-size:var(--font-2xs); padding:0 4px;';
-                delCatBtn.textContent = '[×]';
+                delCatBtn.textContent = '×';
                 delCatBtn.title = `Delete category "${cName}"`;
                 delCatBtn.onclick = (ev) => {
                     ev.stopPropagation();
@@ -1048,7 +1048,7 @@ function buildTransactionRowDom(t) {
         addBox.className = 'm-cat-popover-add';
         addBox.innerHTML = `
             <input type="text" class="form-control form-control-sm new-pop-cat-inp" placeholder="+ New category..." style="padding:3px 6px; font-size:var(--font-2xs);">
-            <button type="button" class="btn btn-primary btn-sm btn-pop-cat-add" style="padding:2px 6px;">[+]</button>
+            <button type="button" class="btn btn-primary btn-sm btn-pop-cat-add" style="padding:2px 6px;">+</button>
         `;
 
         const newInp = addBox.querySelector('.new-pop-cat-inp');
@@ -1232,8 +1232,8 @@ function buildWishItemRowDom(w) {
             <span style="font-size:var(--font-xs); color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Buy <strong>${escapeHtml(w.title)}</strong>:</span>
             <div style="display:flex; gap:4px; align-items:center;">
                 <input type="number" step="0.01" class="form-control form-control-sm no-spinners inline-buy-price" style="width:75px;" placeholder="€ Price" value="${costVal}">
-                <button type="button" class="btn btn-primary btn-sm btn-confirm-buy">[✓]</button>
-                <button type="button" class="btn btn-sm btn-cancel-buy">[×]</button>
+                <button type="button" class="btn btn-primary btn-sm btn-confirm-buy">✓</button>
+                <button type="button" class="btn btn-sm btn-cancel-buy">×</button>
             </div>
         `;
         const priceInp = row.querySelector('.inline-buy-price');
@@ -1267,9 +1267,9 @@ function buildWishItemRowDom(w) {
         <div style="display:flex; align-items:center; gap:6px;">
             <span class="wish-price-badge" style="font-size:var(--font-xs); color:${hasCost ? 'var(--text-main)' : 'var(--text-dim)'}; font-weight:${hasCost ? 'bold' : 'normal'}; font-variant-numeric:tabular-nums; cursor:pointer;" title="Click to set or edit price">${costDisplay}</span>
             <div class="m-row-hover-tools">
-                <button type="button" class="icon-btn btn-wish-buy" style="color:var(--accent-green);" title="Mark as purchased & log expense">[✓]</button>
-                <button type="button" class="icon-btn btn-wish-edit" title="Edit name, price or category">[✎]</button>
-                <button type="button" class="icon-btn delete btn-wish-del" title="Delete idea">[×]</button>
+                <button type="button" class="icon-btn btn-wish-buy" style="color:var(--accent-green);" title="Mark as purchased & log expense">✓</button>
+                <button type="button" class="icon-btn btn-wish-edit" title="Edit name, price or category">✎</button>
+                <button type="button" class="icon-btn delete btn-wish-del" title="Delete idea">×</button>
             </div>
         </div>
     `;
@@ -1392,17 +1392,17 @@ function renderVaultsSection(targetContainer = null) {
         const btnAdd = document.createElement('button');
         btnAdd.className = 'btn btn-sm';
         btnAdd.style.padding = '2px 6px';
-        btnAdd.textContent = '[+]';
+        btnAdd.textContent = '+';
         btnAdd.onclick = () => openVaultTransferModal(v.id, 'in');
 
         const btnEdit = document.createElement('button');
         btnEdit.className = 'icon-btn';
-        btnEdit.textContent = '[✎]';
+        btnEdit.textContent = '✎';
         btnEdit.onclick = () => openVaultModal(v.id);
 
         const btnDel = document.createElement('button');
         btnDel.className = 'icon-btn delete';
-        btnDel.textContent = '[×]';
+        btnDel.textContent = '×';
         btnDel.onclick = () => deleteVault(v.id);
 
         actBox.appendChild(btnSpend);

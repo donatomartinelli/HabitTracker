@@ -126,7 +126,7 @@ function renderFoodDbList() {
 
         const delBtn = document.createElement('button');
         delBtn.className = 'icon-btn delete';
-        delBtn.textContent = '[X]';
+        delBtn.textContent = '×';
         delBtn.onclick = () => {
             foodDb.splice(idx, 1);
             saveHealthData();
@@ -228,7 +228,7 @@ function buildDietHeaderControlsDom(suffixId) {
             <div style="display:flex; gap:6px; margin-bottom:10px;">
                 <input type="number" id="${wInpId}" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg" style="width:80px;">
                 <input type="text" id="${nInpId}" class="form-control form-control-sm" placeholder="Note..." style="flex:1;">
-                <button type="button" class="btn btn-primary btn-sm btn-log-w">[+]</button>
+                <button type="button" class="btn btn-primary btn-sm btn-log-w">+</button>
             </div>
             <div class="bw-chips-list" style="display:flex; flex-direction:column; gap:4px; max-height:130px; overflow-y:auto;"></div>
         </div>
@@ -261,7 +261,7 @@ function buildDietHeaderControlsDom(suffixId) {
             chip.innerHTML = `<span><strong style="color:var(--text-main);">${entry.weight.toFixed(1)}kg</strong> <span style="color:var(--text-dim);">${escapeHtml(entry.date)}${escapeHtml(noteStr)}</span></span>`;
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.textContent = '[X]';
+            delBtn.textContent = '×';
             delBtn.onclick = () => deleteBodyMetricLog(entry.id);
             chip.appendChild(delBtn);
             chipsList.appendChild(chip);
@@ -271,7 +271,7 @@ function buildDietHeaderControlsDom(suffixId) {
     const cfgBtn = document.createElement('button');
     cfgBtn.type = 'button';
     cfgBtn.className = 'btn btn-sm';
-    cfgBtn.textContent = '[⚙]';
+    cfgBtn.textContent = '⚙';
     cfgBtn.onclick = openFoodDbModal;
 
     wrap.appendChild(drop);

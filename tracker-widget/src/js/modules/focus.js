@@ -334,7 +334,7 @@ function renderFocusPlaylist() {
                         <input type="number" class="form-control form-control-sm no-spinners" style="width: 48px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> 
                         <span style="font-size:var(--font-xs); color:var(--text-dim);">MIN</span>
                         <button type="button" class="btn btn-sm" onclick="splitPlaylistTask(${index})">SPLIT</button>
-                        <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">[X]</button>
+                        <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
                     </div>
                 </div>
             `;
@@ -344,7 +344,7 @@ function renderFocusPlaylist() {
                     <span style="font-size: var(--font-xs); color: var(--text-dim);">BREAK</span>
                     <input type="number" class="form-control form-control-sm no-spinners" style="width: 48px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)">
                     <span style="font-size: var(--font-xs); color: var(--text-dim);">MIN</span>
-                    <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">[X]</button>
+                    <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
                 </div>
             `;
         }
