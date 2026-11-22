@@ -2,13 +2,13 @@
 // 1. Unione Bidirezionale Eventi (Cortex <-> Google Calendar <-> Apple Calendar, senza Palestra)
 // 2. Parser Email Isybank (Pagamenti Carta, BANCOMAT Pay, Versamenti, Accrediti, Bonifici) integrato col modulo Money originale
 
-const DEFAULT_ISYBANK_QUERY = 'newer_than:60d isybank';
+const DEFAULT_ISYBANK_QUERY = 'newer_than:60d (from:isybank OR from:intesasanpaolo)';
 
 let bridgeWebAppUrl = (localStorage.getItem('cortex_bridge_url') || '').trim();
 let icloudIcsUrl = (localStorage.getItem('cortex_icloud_ics_url') || '').trim();
 let bankGmailQuery = (localStorage.getItem('cortex_bank_gmail_query') || '').trim();
 
-if (!bankGmailQuery || bankGmailQuery.includes('intesasanpaolo') || bankGmailQuery.includes('paypal')) {
+if (!bankGmailQuery || bankGmailQuery.includes('paypal')) {
     bankGmailQuery = DEFAULT_ISYBANK_QUERY;
     localStorage.setItem('cortex_bank_gmail_query', bankGmailQuery);
 }
@@ -205,6 +205,12 @@ function inferExpenseCategoryFromMerchant(merchant) {
 function parseIsybankEmailFast(mail) {
     const fromStr = (mail.from || '').toLowerCase();
     const subjStr = (mail.subject || '').trim();
+    
+    // FORZA SINGLE SOURCE OF TRUTH: Ignora categoricamente Klarna, PayPal, Amazon ecc.
+    if (!fromStr.includes('isybank') && !fromStr.includes('intesasanpaolo')) {
+        return null;
+    }
+
     const bodyClean = (mail.body || '')
         .replace(/Il team isybank[\s\S]*$/i, '')
         .replace(/\s+/g, ' ')
@@ -212,11 +218,7 @@ function parseIsybankEmailFast(mail) {
     const combined = `${subjStr} ${bodyClean}`;
     const lower = combined.toLowerCase();
 
-    if (!fromStr.includes('isybank') && !lower.includes('isybank')) {
-        return null;
-    }
-
-    // Scarta email non transazionali (codici OTP, login, documenti/estratti conto in archivio)
+    // Scarta email non transazionali
     const ignoreKeywords = [
         'codice di sicurezza', 'otp', 'accesso effettuato', 'password', 'pin',
         'estratto conto', 'documento disponibile', 'condizioni contrattuali', 'modifica unilaterale'

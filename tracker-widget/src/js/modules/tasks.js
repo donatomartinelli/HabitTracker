@@ -19,6 +19,14 @@ let planTimelineGhostEl = null;
 let mobileSelectedPlanItemToPlace = null;
 let activeMobilePlanEditTab = 'flex'; // 'ghosts' | 'flex' | 'todo'
 
+let tasksViewMode = localStorage.getItem('cortex_tasks_view') || 'all';
+
+function switchTasksViewMode(mode) {
+    tasksViewMode = mode;
+    localStorage.setItem('cortex_tasks_view', mode);
+    renderTasks();
+}
+
 function ensurePlanBuilderDateValid() {
     if (!planBuilderDateStr || planBuilderDateStr < todayStr) {
         planBuilderDateStr = (selectedDateStr && selectedDateStr >= todayStr) ? selectedDateStr : todayStr;
@@ -1344,6 +1352,24 @@ function renderTasks() {
     const dateBadge = document.getElementById('tasks-date-badge');
     if (dateBadge) dateBadge.textContent = `// ${selectedDateStr}`;
 
+    // INIEZIONE PULSANTI VISTA COLONNE
+    const headerRow = document.querySelector('#module-tasks .section-header-row > div:last-child');
+    if (headerRow && !document.getElementById('tasks-view-toggles')) {
+        const viewToggles = document.createElement('div');
+        viewToggles.id = 'tasks-view-toggles';
+        viewToggles.style.cssText = 'display:flex; gap:2px; margin-right:8px; border-right:1px dotted #333; padding-right:8px;';
+        headerRow.insertBefore(viewToggles, headerRow.firstChild);
+    }
+    const viewTogglesEl = document.getElementById('tasks-view-toggles');
+    if (viewTogglesEl) {
+        viewTogglesEl.innerHTML = `
+            <button type="button" class="btn btn-sm ${tasksViewMode==='all'?'btn-primary':''}" onclick="switchTasksViewMode('all')">ALL</button>
+            <button type="button" class="btn btn-sm ${tasksViewMode==='fixed'?'btn-primary':''}" onclick="switchTasksViewMode('fixed')">FIXED+RTN</button>
+            <button type="button" class="btn btn-sm ${tasksViewMode==='flex'?'btn-primary':''}" onclick="switchTasksViewMode('flex')">FLEX</button>
+            <button type="button" class="btn btn-sm ${tasksViewMode==='todo'?'btn-primary':''}" onclick="switchTasksViewMode('todo')">TO-DO</button>
+        `;
+    }
+
     const schedContainer = document.getElementById('scheduled-tasks-list');
     const flexContainer = document.getElementById('flexible-tasks-list');
     if (!schedContainer || !flexContainer) return;
@@ -1504,6 +1530,43 @@ function renderTasks() {
     renderRoutinesColumn();
     renderTodoColumn();
 
+    // GESTIONE DINAMICA COLONNE
+    const schedCol = document.getElementById('scheduled-tasks-col');
+    const rtnCol = document.getElementById('routines-tasks-col');
+    const flexCol = document.getElementById('flexible-tasks-col');
+    const todoCol = document.getElementById('todo-tasks-col');
+
+    schedCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'fixed') ? 'block' : 'none';
+    rtnCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'fixed') ? 'block' : 'none';
+    flexCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'flex') ? 'block' : 'none';
+    
+    const assignedUnplacedTodos = templates.filter(t => isSingleDayTodoTemplate(t) && isTaskActiveOnDate(t, selectedDateStr));
+    const hasAnyTodo = assignedUnplacedTodos.length > 0 || generalTodos.length > 0;
+    
+    if (!hasAnyTodo && tasksViewMode === 'all') {
+        todoCol.style.display = 'none'; // Nascondi To-Do vuoti in ALL view
+    } else {
+        todoCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'todo') ? 'block' : 'none';
+    }
+
+    const colWrap1 = schedCol.parentElement;
+    const colWrap2 = flexCol.parentElement;
+
+    if (tasksViewMode === 'all') {
+        colWrap1.style.display = 'flex';
+        colWrap2.style.display = 'flex';
+    } else if (tasksViewMode === 'fixed') {
+        colWrap1.style.display = 'flex';
+        colWrap2.style.display = 'none';
+    } else if (tasksViewMode === 'flex') {
+        colWrap1.style.display = 'none';
+        colWrap2.style.display = 'flex';
+    } else if (tasksViewMode === 'todo') {
+        colWrap1.style.display = 'none';
+        colWrap2.style.display = 'flex';
+        flexCol.style.display = 'none';
+    }
+
     if (tasksModScrollEl && savedTasksScrollTop > 0) {
         tasksModScrollEl.scrollTop = savedTasksScrollTop;
     }
@@ -1632,32 +1695,16 @@ function renderRoutinesColumn() {
             secBlock.appendChild(secTitle);
 
             sec.items.forEach(item => {
-                const isChecked = Boolean(rLog[item.id]);
                 const row = document.createElement('div');
                 row.className = 'task-item';
-
-                const left = document.createElement('div');
-                left.className = 'task-left';
-
+                row.style.paddingLeft = '4px';
+                
                 const titleEl = document.createElement('div');
                 titleEl.className = 'task-title';
-                if (isChecked) {
-                    titleEl.style.textDecoration = 'line-through';
-                    titleEl.style.color = 'var(--text-dim)';
-                }
-                titleEl.textContent = item.title;
-                left.appendChild(titleEl);
-
-                const right = document.createElement('div');
-                right.className = 'instances-container';
-
-                const cb = document.createElement('div');
-                cb.className = `check-box ${isChecked ? 'checked' : ''}`;
-                cb.onclick = () => toggleRoutineStepCheckbox(routine.id, item.id, selectedDateStr);
-                right.appendChild(cb);
-
-                row.appendChild(left);
-                row.appendChild(right);
+                titleEl.style.color = 'var(--text-dim)';
+                titleEl.textContent = `• ${item.title}`;
+                
+                row.appendChild(titleEl);
                 secBlock.appendChild(row);
             });
 

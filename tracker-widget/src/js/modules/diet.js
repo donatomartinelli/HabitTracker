@@ -3,6 +3,14 @@
 // - diet_today (#module-diet-today): Visione giornaliera sincronizzata con selectedDateStr (<-, ->, T)
 // - diet_week (#module-diet-week): Matrice settimanale completa (Zero istruzioni superflue)
 
+let hideBreakfast = localStorage.getItem('cortex_hide_breakfast') === 'true';
+
+function toggleBreakfastVisibility() {
+    hideBreakfast = !hideBreakfast;
+    localStorage.setItem('cortex_hide_breakfast', String(hideBreakfast));
+    renderDiet();
+}
+
 function parseFoodSegmentMacros(segmentText) {
     let kcal = 0, p = 0, c = 0, f = 0;
     if (!segmentText || segmentText.includes('PASTO') || segmentText.includes('LIBERO')) {
@@ -299,6 +307,9 @@ function renderDietAtomToday() {
                     <span class="section-label">Diet</span>
                     <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${dayNames[dayKey]} ${selectedDateStr}</span>
                 </div>
+                <div style="display:flex; gap:6px; align-items:center;" id="diet-today-right-controls">
+                    <button type="button" class="btn btn-sm" onclick="toggleBreakfastVisibility()">${hideBreakfast ? '[👁 SHOW BRKFST]' : '[Ø HIDE BRKFST]'}</button>
+                </div>
             </div>
 
             <div id="diet-today-list-mount" class="diet-wrapper" style="width:100%;"></div>
@@ -307,7 +318,8 @@ function renderDietAtomToday() {
         </div>
     `;
 
-    root.querySelector('#diet-today-hdr').appendChild(buildDietHeaderControlsDom('today'));
+    // Aggiunge i controlli del peso corporeo di fianco al bottone della colazione
+    root.querySelector('#diet-today-right-controls').appendChild(buildDietHeaderControlsDom('today'));
 
     const listMount = root.querySelector('#diet-today-list-mount');
 
@@ -323,6 +335,11 @@ function renderDietAtomToday() {
 
     // Righe dei pasti in formato lista compatta
     dietData.forEach((rowObj, rowIdx) => {
+        // FILTRO OPZIONALE COLAZIONE
+        if (hideBreakfast && (rowObj.type.toLowerCase().includes('spuntino 1') || rowObj.type.toLowerCase().includes('colazione'))) {
+            return;
+        }
+
         const rowEl = document.createElement('div');
         rowEl.className = 'diet-row';
         rowEl.style.gridTemplateColumns = '95px 1fr';
@@ -342,7 +359,7 @@ function renderDietAtomToday() {
         listMount.appendChild(rowEl);
     });
 
-    // Riga finale MACROS compatta come nella vista settimanale
+    // Riga finale MACROS compatta
     const macroRow = document.createElement('div');
     macroRow.className = 'diet-row';
     macroRow.style.gridTemplateColumns = '95px 1fr';

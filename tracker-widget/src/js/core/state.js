@@ -758,7 +758,10 @@ syncCategoryOrder();
 
 function isTaskActiveOnDate(template, dateStr) {
     if (!template) return false;
-    if (template.exceptions && template.exceptions.includes(dateStr)) return false;
+    
+    // Controllo eccezioni rigoroso sulle stringhe
+    if (Array.isArray(template.exceptions) && template.exceptions.includes(dateStr)) return false;
+    
     if (template.startDate && dateStr < template.startDate) return false;
     if (template.endDate && dateStr > template.endDate) return false;
 
@@ -770,12 +773,10 @@ function isTaskActiveOnDate(template, dateStr) {
             const activeWindowsToday = template.timeWindows.filter(tw => tw.days && tw.days.includes(dayOfWeek));
             if (activeWindowsToday.length === 0) return false;
 
-            // Se l'utente ha creato un override orario in ephemeralData per oggi, la task resta attiva col nuovo orario
             const hasCustomOverrideToday = Array.isArray(ephemeralData[dateStr]) &&
                 ephemeralData[dateStr].some(b => b.templateId === template.id);
             if (hasCustomOverrideToday) return true;
 
-            // Se tutti gli slot orari del giorno sono stati nascosti col tasto destro sul Planner, la task è inattiva anche in Tasks!
             const anySlotVisible = activeWindowsToday.some(tw => !plannerExceptions[`${template.id}_${dateStr}_${tw.start}`]);
             return anySlotVisible;
         }

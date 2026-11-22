@@ -10,6 +10,30 @@ let timeRemaining = 0;
 let totalPhaseTime = 0;
 let phaseEndTimeMs = 0;
 
+function injectFocusIntoDayPlanner(task, mins) {
+    if (!task) return;
+    const now = getNow();
+    const startMins = now.getHours() * 60 + now.getMinutes();
+    const endMins = Math.min(24 * 60, startMins + mins);
+    const targetDateStr = todayStr;
+
+    if (!ephemeralData[targetDateStr]) ephemeralData[targetDateStr] = [];
+    ephemeralData[targetDateStr].push({
+        id: 'eb_focus_' + Date.now(),
+        templateId: task.id,
+        title: '[FOCUS] ' + task.title,
+        category: 'Focus',
+        color: task.color || '#b08d43',
+        start: minutesToTimeStr(startMins),
+        end: minutesToTimeStr(endMins),
+        minutes: mins,
+        blocksUsed: 0
+    });
+    saveData();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+}
+
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 function playBeep(frequency, duration) {
     if (audioCtx.state === 'suspended') audioCtx.resume();
@@ -93,6 +117,7 @@ function quickStartTaskFocus(templateId) {
     }];
     currentPlaylistIndex = 0;
     isFullscreenFocusOpen = false;
+    injectFocusIntoDayPlanner(t, mins);
     startCurrentPlaylistPhase();
     if (typeof showToast === 'function') {
         showToast(`[FOCUS INLINE] Started ${mins}m: ${t.title} [${t.category}]`);
@@ -119,6 +144,7 @@ function startTaskFocusByQuery(queryStr, overrideMinutes = null) {
         }];
         currentPlaylistIndex = 0;
         isFullscreenFocusOpen = false;
+        injectFocusIntoDayPlanner(matchedTask, mins);
         startCurrentPlaylistPhase();
         if (typeof showToast === 'function') {
             showToast(`[FOCUS INLINE] ${matchedTask.title} (${matchedTask.category}) — ${mins}m`);
