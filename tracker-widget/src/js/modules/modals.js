@@ -1496,7 +1496,7 @@ function updateOpacity(val) {
     if (typeof persistKeysMap === 'function') {
         persistKeysMap({ 'tracker_opacity': String(val) });
     } else {
-        localStorage.setItem('tracker_opacity', val);
+        cortexStore.setItem('tracker_opacity', val);
     }
 }
 

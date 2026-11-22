@@ -3,11 +3,11 @@
 // - diet_today (#module-diet-today): Visione giornaliera sincronizzata con selectedDateStr (<-, ->, T)
 // - diet_week (#module-diet-week): Matrice settimanale completa (Zero istruzioni superflue)
 
-let hideBreakfast = localStorage.getItem('cortex_hide_breakfast') === 'true';
+let hideBreakfast = cortexStore.getItem('cortex_hide_breakfast') === 'true';
 
 function toggleBreakfastVisibility() {
     hideBreakfast = !hideBreakfast;
-    localStorage.setItem('cortex_hide_breakfast', String(hideBreakfast));
+    cortexStore.setItem('cortex_hide_breakfast', String(hideBreakfast));
     renderDiet();
 }
 

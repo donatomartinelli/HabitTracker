@@ -6,11 +6,11 @@
 
 const GIST_FILENAME = 'cortex_cloud_state.json';
 
-let cloudGithubToken = (localStorage.getItem('cortex_gist_token') || '').trim();
-let cloudGistId = (localStorage.getItem('cortex_gist_id') || '').trim();
-let lastCloudSyncedUpdatedAt = parseInt(localStorage.getItem('cortex_last_cloud_ts') || '0', 10) || 0;
+let cloudGithubToken = (cortexStore.getItem('cortex_gist_token') || '').trim();
+let cloudGistId = (cortexStore.getItem('cortex_gist_id') || '').trim();
+let lastCloudSyncedUpdatedAt = parseInt(cortexStore.getItem('cortex_last_cloud_ts') || '0', 10) || 0;
 
-localStorage.removeItem('cortex_pending_push_ts');
+cortexStore.removeItem('cortex_pending_push_ts');
 
 let isBootSyncing = true;
 let isCloudSyncInProgress = false;
@@ -63,8 +63,8 @@ function checkUrlHashForMagicSyncSetup() {
     if (token && gistId) {
         cloudGithubToken = token;
         cloudGistId = gistId;
-        localStorage.setItem('cortex_gist_token', cloudGithubToken);
-        localStorage.setItem('cortex_gist_id', cloudGistId);
+        cortexStore.setItem('cortex_gist_token', cloudGithubToken);
+        cortexStore.setItem('cortex_gist_id', cloudGistId);
         history.replaceState(null, document.title, window.location.pathname + window.location.search);
 
         if (typeof showToast === 'function') {
@@ -206,7 +206,7 @@ function applyFullCortexCloudPayload(payloadObj) {
         if (d.customAliases && typeof d.customAliases === 'object') customAliases = d.customAliases;
         if (d.macroDefaultTrees && typeof d.macroDefaultTrees === 'object') {
             macroDefaultTrees = d.macroDefaultTrees;
-            localStorage.setItem('tracker_macro_default_trees', JSON.stringify(macroDefaultTrees));
+            cortexStore.setItem('tracker_macro_default_trees', JSON.stringify(macroDefaultTrees));
         }
 
         saveData();
@@ -218,7 +218,7 @@ function applyFullCortexCloudPayload(payloadObj) {
 
         if (payloadObj.updatedAt) {
             lastCloudSyncedUpdatedAt = Math.max(lastCloudSyncedUpdatedAt, parseInt(payloadObj.updatedAt, 10) || 0);
-            localStorage.setItem('cortex_last_cloud_ts', String(lastCloudSyncedUpdatedAt));
+            cortexStore.setItem('cortex_last_cloud_ts', String(lastCloudSyncedUpdatedAt));
         }
 
         hasUnsentLocalEdit = false;
@@ -241,19 +241,19 @@ function applyFullCortexCloudPayload(payloadObj) {
         if (typeof updateWorkspaceDropdownUI === 'function') updateWorkspaceDropdownUI();
         if (typeof d.bridgeWebAppUrl === 'string' && d.bridgeWebAppUrl) {
             bridgeWebAppUrl = d.bridgeWebAppUrl;
-            localStorage.setItem('cortex_bridge_url', bridgeWebAppUrl);
+            cortexStore.setItem('cortex_bridge_url', bridgeWebAppUrl);
         }
         if (typeof d.icloudIcsUrl === 'string') {
             icloudIcsUrl = d.icloudIcsUrl;
-            localStorage.setItem('cortex_icloud_ics_url', icloudIcsUrl);
+            cortexStore.setItem('cortex_icloud_ics_url', icloudIcsUrl);
         }
         if (typeof d.bankGmailQuery === 'string' && d.bankGmailQuery) {
             bankGmailQuery = d.bankGmailQuery;
-            localStorage.setItem('cortex_bank_gmail_query', bankGmailQuery);
+            cortexStore.setItem('cortex_bank_gmail_query', bankGmailQuery);
         }
         if (Array.isArray(d.processedBankEmails)) {
             processedBankEmails = d.processedBankEmails;
-            localStorage.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
+            cortexStore.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
         }
         if (typeof updateExternalBridgeSettingsUI === 'function') updateExternalBridgeSettingsUI();
 
@@ -306,7 +306,7 @@ async function createNewSecretGistForCortex() {
     const tokInp = document.getElementById('cloud-gist-token-inp');
     if (tokInp && tokInp.value.trim()) {
         cloudGithubToken = tokInp.value.trim();
-        localStorage.setItem('cortex_gist_token', cloudGithubToken);
+        cortexStore.setItem('cortex_gist_token', cloudGithubToken);
     }
 
     if (!cloudGithubToken) {
@@ -349,8 +349,8 @@ async function createNewSecretGistForCortex() {
         isBootSyncing = false;
         lastKnownDataFingerprint = getLocalDataFingerprint();
 
-        localStorage.setItem('cortex_gist_id', cloudGistId);
-        localStorage.setItem('cortex_last_cloud_ts', String(nowTs));
+        cortexStore.setItem('cortex_gist_id', cloudGistId);
+        cortexStore.setItem('cortex_last_cloud_ts', String(nowTs));
 
         const idInp = document.getElementById('cloud-gist-id-inp');
         if (idInp) idInp.value = cloudGistId;
@@ -416,7 +416,7 @@ async function pushStateToCloudGist(isManual = false) {
         }
 
         lastCloudSyncedUpdatedAt = nowTs;
-        localStorage.setItem('cortex_last_cloud_ts', String(nowTs));
+        cortexStore.setItem('cortex_last_cloud_ts', String(nowTs));
 
         const currentFpNow = getLocalDataFingerprint();
         if (currentFpNow === pushedFp) {
@@ -498,7 +498,7 @@ async function pullStateFromCloudGist(forceOverwrite = false, isManual = false) 
                 }
             } else if (remoteTs > lastCloudSyncedUpdatedAt) {
                 lastCloudSyncedUpdatedAt = remoteTs;
-                localStorage.setItem('cortex_last_cloud_ts', String(remoteTs));
+                cortexStore.setItem('cortex_last_cloud_ts', String(remoteTs));
                 lastKnownDataFingerprint = localFp;
             }
         } else {
@@ -582,8 +582,8 @@ function saveCloudSyncCredentialsFromUI() {
     if (tokInp) cloudGithubToken = tokInp.value.trim();
     if (idInp) cloudGistId = idInp.value.trim();
 
-    localStorage.setItem('cortex_gist_token', cloudGithubToken);
-    localStorage.setItem('cortex_gist_id', cloudGistId);
+    cortexStore.setItem('cortex_gist_token', cloudGithubToken);
+    cortexStore.setItem('cortex_gist_id', cloudGistId);
 
     updateCloudSyncSettingsUI();
     if (isCloudSyncConfigured()) {

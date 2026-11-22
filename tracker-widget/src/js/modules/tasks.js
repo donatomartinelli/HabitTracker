@@ -19,11 +19,11 @@ let planTimelineGhostEl = null;
 let mobileSelectedPlanItemToPlace = null;
 let activeMobilePlanEditTab = 'flex'; // 'ghosts' | 'flex' | 'todo'
 
-let tasksViewMode = localStorage.getItem('cortex_tasks_view') || 'all';
+let tasksViewMode = cortexStore.getItem('cortex_tasks_view') || 'all';
 
 function switchTasksViewMode(mode) {
     tasksViewMode = mode;
-    localStorage.setItem('cortex_tasks_view', mode);
+    cortexStore.setItem('cortex_tasks_view', mode);
     renderTasks();
 }
 
@@ -2312,12 +2312,12 @@ function shiftPlanBuilderDate(daysOffset) {
     setPlanBuilderDate(nextStr < todayStr ? todayStr : nextStr);
 }
 
-let dayPlanRefToggles = safeJsonParse(localStorage.getItem('day_plan_ref_toggles'), {});
+let dayPlanRefToggles = safeJsonParse(cortexStore.getItem('day_plan_ref_toggles'), {});
 
 function togglePlanGhostLayer(refId) {
     dayPlanRefToggles[refId] = !dayPlanRefToggles[refId];
     try {
-        localStorage.setItem('day_plan_ref_toggles', JSON.stringify(dayPlanRefToggles));
+        cortexStore.setItem('day_plan_ref_toggles', JSON.stringify(dayPlanRefToggles));
     } catch (e) {}
     renderDayPlannerModule();
 }

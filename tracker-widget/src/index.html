@@ -442,26 +442,8 @@
     <div id="planner-tooltip" class="planner-tooltip"></div>
     <div id="terminal-toast" class="terminal-toast"></div>
 
-    <!-- Script Modulari (Rimosso il duplicato di state.js) -->
-    <script src="js/core/audio.js"></script>
-    <script src="js/core/state.js"></script>
-    <script src="js/core/cloud-sync.js"></script>
-    <script src="js/core/workspace.js"></script>
-    <script src="js/core/dsl.js"></script>
-    <script src="js/core/external-bridge.js"></script>
-    <script src="js/modules/modals.js"></script>
-    <script src="js/modules/calendar.js"></script>
-    <script src="js/modules/tasks.js"></script>
-    <script src="js/modules/notes.js"></script>
-    <script src="js/modules/planner.js"></script>
-    <script src="js/modules/focus.js"></script>
-    <script src="js/modules/diet.js"></script>
-    <script src="js/modules/gym.js"></script>
-    <script src="js/modules/money.js"></script>
-    <script src="js/modules/uni.js"></script>
-    <script src="js/modules/math.js"></script>
-    <script src="js/ai/gemini-agent.js"></script>
-    <script src="js/ai/terminal-ui.js"></script>
-    <script src="js/core/mobile-touch.js"></script>
+    <!-- Avvio: carica i dati (IndexedDB) e poi gli script dell'app nell'ordine giusto.
+         L'elenco degli script è in js/core/boot.js -->
+    <script src="js/core/boot.js"></script>
 </body>
 </html>

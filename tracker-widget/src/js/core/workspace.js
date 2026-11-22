@@ -313,7 +313,7 @@ const MACRO_SUBMODULES_MAP = {
     'math':     ['math'] // <-- AGGIUNGI QUESTO
 };
 
-let macroDefaultTrees = safeJsonParse(localStorage.getItem('tracker_macro_default_trees'), {});
+let macroDefaultTrees = safeJsonParse(cortexStore.getItem('tracker_macro_default_trees'), {});
 let isLayoutEditMode = false;
 
 let pointerDragCandidate = null;
@@ -326,7 +326,7 @@ function saveMacroDefaultTrees() {
     if (typeof persistKeysMap === 'function') {
         persistKeysMap({ 'tracker_macro_default_trees': macroDefaultTrees });
     } else {
-        localStorage.setItem('tracker_macro_default_trees', JSON.stringify(macroDefaultTrees));
+        cortexStore.setItem('tracker_macro_default_trees', JSON.stringify(macroDefaultTrees));
     }
 }
 

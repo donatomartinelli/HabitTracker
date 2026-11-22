@@ -3,13 +3,13 @@
 // m_summary | m_vaults | m_chart | m_tx | m_bills | m_analytics | m_incubator
 
 let currentChartStepData = [];
-let mTxLimit = parseInt(localStorage.getItem('m_tx_limit'), 10) || 5;
+let mTxLimit = parseInt(cortexStore.getItem('m_tx_limit'), 10) || 5;
 let mTxCategoryFilter = 'ALL';
 let editingTxId = null;
 let activeCatPopoverTxId = null;
 
 // Categorie per le Purchase Ideas (stile Tasks)
-let mWishCategories = safeJsonParse(localStorage.getItem('m_wish_cats'), ['General', 'Vestiti', 'Office Supplies', 'Tech']);
+let mWishCategories = safeJsonParse(cortexStore.getItem('m_wish_cats'), ['General', 'Vestiti', 'Office Supplies', 'Tech']);
 let editingWishId = null;
 let buyingInlineWishId = null;
 
@@ -28,8 +28,8 @@ function saveMoneyUiPrefs() {
             'm_wish_cats': mWishCategories
         });
     } else {
-        localStorage.setItem('m_tx_limit', String(mTxLimit));
-        localStorage.setItem('m_wish_cats', JSON.stringify(mWishCategories));
+        cortexStore.setItem('m_tx_limit', String(mTxLimit));
+        cortexStore.setItem('m_wish_cats', JSON.stringify(mWishCategories));
     }
 }
 

@@ -4,9 +4,9 @@
 // 2. Day Planner Mobile Safe-Scroll: in VIEW non sposta/cancella mai nulla per errore; in EDIT usa Long-Press (350ms) o Tap-to-Place
 // 3. Gym Quick-Stepper Bar ([-2.5] [-1] [+1] [+2.5] [= PREV] [DONE ✓]) & Swipe Orizzontale sottomoduli
 
-let isMobileViewMode = localStorage.getItem('cortex_force_mobile') === 'true' ||
-    (localStorage.getItem('cortex_force_mobile') !== 'false' && window.innerWidth <= 768);
-let activeMobileModKey = localStorage.getItem('cortex_mobile_active_mod') || 'tasks';
+let isMobileViewMode = cortexStore.getItem('cortex_force_mobile') === 'true' ||
+    (cortexStore.getItem('cortex_force_mobile') !== 'false' && window.innerWidth <= 768);
+let activeMobileModKey = cortexStore.getItem('cortex_mobile_active_mod') || 'tasks';
 let activeMobilePresetMods = null;
 let activeMobilePresetName = '';
 let savedDesktopLayoutTreeBeforeMobile = null;
@@ -67,7 +67,7 @@ function toggleMobileViewMode(forceState = null) {
             savedDesktopLayoutTreeBeforeMobile = JSON.parse(JSON.stringify(layoutTree));
         }
         isMobileViewMode = true;
-        localStorage.setItem('cortex_force_mobile', 'true');
+        cortexStore.setItem('cortex_force_mobile', 'true');
         const currentLeaves = typeof collectLeafPanes === 'function' ? collectLeafPanes(layoutTree) : [];
         if (currentLeaves.length > 1) {
             activeMobilePresetMods = currentLeaves.map(l => normalizeToSingleLeafModuleKey(l.module));
@@ -79,7 +79,7 @@ function toggleMobileViewMode(forceState = null) {
         mountMobileSingleModule(activeMobileModKey, true);
     } else if (!nextState && isMobileViewMode) {
         isMobileViewMode = false;
-        localStorage.setItem('cortex_force_mobile', 'false');
+        cortexStore.setItem('cortex_force_mobile', 'false');
         document.body.classList.remove('mobile-view-mode');
         hideMobileGymQuickStepper();
         if (savedDesktopLayoutTreeBeforeMobile) {
@@ -93,7 +93,7 @@ function toggleMobileViewMode(forceState = null) {
 function mountMobileSingleModule(modKey, keepPresetStrip = false) {
     const cleanKey = normalizeToSingleLeafModuleKey(modKey);
     activeMobileModKey = cleanKey;
-    localStorage.setItem('cortex_mobile_active_mod', activeMobileModKey);
+    cortexStore.setItem('cortex_mobile_active_mod', activeMobileModKey);
     hideMobileGymQuickStepper();
 
     if (!keepPresetStrip) {

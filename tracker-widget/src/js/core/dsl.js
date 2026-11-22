@@ -1,7 +1,7 @@
 // --- js/core/dsl.js ---
 // Motore DSL 100% Locale + Riconoscimento Validità per Fallback AI + Event Parser Avanzato (Data, Orario/Durata, Colore)
 
-let isRedMode = localStorage.getItem('tracker_red_mode') === 'true';
+let isRedMode = cortexStore.getItem('tracker_red_mode') === 'true';
 
 const EVENT_COLOR_MAP = {
     'red': '#b84b4b',
@@ -119,7 +119,7 @@ function applyRedModeUI() {
 
 function toggleRedMode(forceState = null) {
     isRedMode = forceState !== null ? Boolean(forceState) : !isRedMode;
-    localStorage.setItem('tracker_red_mode', isRedMode ? 'true' : 'false');
+    cortexStore.setItem('tracker_red_mode', isRedMode ? 'true' : 'false');
     applyRedModeUI();
     if (typeof showToast === 'function') {
         showToast(isRedMode ? '[RED MODE] Gelatina Rossa ACTIVE' : '[RED MODE] Standard Palette Restored');

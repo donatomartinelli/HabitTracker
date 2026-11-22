@@ -55,7 +55,7 @@ fn poll_and_move_sony_audio(
     processed_signatures: Vec<String>,
     include_pending_archive: bool,
 ) -> Result<Vec<SonyTransferredAudio>, String> {
-    let default_archive = r"C:\Users\donat\Desktop\Progetti\Cortex\SonyArchive";
+    let default_archive = r"C:\Users\donat\Desktop\Progetti\SonyArchive";
     let archive_path = match custom_archive_dir {
         Some(ref s) if !s.trim().is_empty() => PathBuf::from(s.trim()),
         _ => PathBuf::from(default_archive),

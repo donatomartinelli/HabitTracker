@@ -4,16 +4,16 @@
 
 const DEFAULT_ISYBANK_QUERY = 'newer_than:60d (from:isybank OR from:intesasanpaolo)';
 
-let bridgeWebAppUrl = (localStorage.getItem('cortex_bridge_url') || '').trim();
-let icloudIcsUrl = (localStorage.getItem('cortex_icloud_ics_url') || '').trim();
-let bankGmailQuery = (localStorage.getItem('cortex_bank_gmail_query') || '').trim();
+let bridgeWebAppUrl = (cortexStore.getItem('cortex_bridge_url') || '').trim();
+let icloudIcsUrl = (cortexStore.getItem('cortex_icloud_ics_url') || '').trim();
+let bankGmailQuery = (cortexStore.getItem('cortex_bank_gmail_query') || '').trim();
 
 if (!bankGmailQuery || bankGmailQuery.includes('paypal')) {
     bankGmailQuery = DEFAULT_ISYBANK_QUERY;
-    localStorage.setItem('cortex_bank_gmail_query', bankGmailQuery);
+    cortexStore.setItem('cortex_bank_gmail_query', bankGmailQuery);
 }
 
-let processedBankEmails = JSON.parse(localStorage.getItem('cortex_processed_bank_emails') || '[]');
+let processedBankEmails = JSON.parse(cortexStore.getItem('cortex_processed_bank_emails') || '[]');
 let isBridgeSyncRunning = false;
 let autoCalSyncDebounceTimer = null;
 let lastCalendarEventsSignature = '';
@@ -27,10 +27,10 @@ function saveExternalBridgeConfigFromUI() {
     if (icsInp) icloudIcsUrl = icsInp.value.trim();
     if (qInp && qInp.value.trim()) bankGmailQuery = qInp.value.trim();
 
-    localStorage.setItem('cortex_bridge_url', bridgeWebAppUrl);
-    localStorage.setItem('cortex_icloud_ics_url', icloudIcsUrl);
-    localStorage.setItem('cortex_bank_gmail_query', bankGmailQuery);
-    localStorage.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
+    cortexStore.setItem('cortex_bridge_url', bridgeWebAppUrl);
+    cortexStore.setItem('cortex_icloud_ics_url', icloudIcsUrl);
+    cortexStore.setItem('cortex_bank_gmail_query', bankGmailQuery);
+    cortexStore.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
 
     updateExternalBridgeSettingsUI();
     if (typeof checkAndQueueLocalChangeForCloud === 'function') {

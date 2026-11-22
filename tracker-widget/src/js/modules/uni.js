@@ -21,11 +21,11 @@ function getYesterdayDateStr() {
     return formatDate(d);
 }
 
-let roadmapViewMode = localStorage.getItem('cortex_roadmap_view') || 'grid';
+let roadmapViewMode = cortexStore.getItem('cortex_roadmap_view') || 'grid';
 
 function toggleRoadmapView() {
     roadmapViewMode = roadmapViewMode === 'list' ? 'grid' : 'list';
-    localStorage.setItem('cortex_roadmap_view', roadmapViewMode);
+    cortexStore.setItem('cortex_roadmap_view', roadmapViewMode);
     renderUniAtomRoadmap();
 }
 

@@ -1,19 +1,27 @@
 // --- src/sw.js ---
-// Service Worker v4:
-// - Disabilitato automaticamente su Desktop Tauri (zero schermate d'errore WebView)
-// - App Shell Navigation Fallback immediato + Tutti i CSS/JS aggiornati per PWA Mobile
+// Service Worker v5 (copia offline per telefono / PWA)
+// - Disabilitato automaticamente su Desktop Tauri (vedi cloud-sync.js)
+// - Con rete: scarica SEMPRE la versione più recente e aggiorna la copia offline
+// - Senza rete (o rete lentissima): usa la copia offline
+//
+// IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
+// e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v4';
+const CACHE_NAME = 'cortex-os-cache-v5';
+const NAV_TIMEOUT_MS = 3000;
 
 const CORE_ASSETS = [
     './',
     './index.html',
     './manifest.json',
+    './problems.json',
     './css/base.css',
     './css/layout.css',
     './css/features.css',
     './css/money.css',
     './css/health.css',
+    './js/core/boot.js',
+    './js/core/audio.js',
     './js/core/state.js',
     './js/core/cloud-sync.js',
     './js/core/workspace.js',
@@ -30,17 +38,22 @@ const CORE_ASSETS = [
     './js/modules/gym.js',
     './js/modules/money.js',
     './js/modules/uni.js',
+    './js/modules/math.js',
     './js/ai/gemini-agent.js',
-    './js/ai/terminal-ui.js'
+    './js/ai/terminal-ui.js',
+    // Libreria formule (Math-Hub)
+    'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css',
+    'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js',
+    'https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js'
 ];
 
 self.addEventListener('install', (event) => {
     event.waitUntil(
-        caches.open(CACHE_NAME).then((cache) => {
-            return Promise.allSettled(
+        caches.open(CACHE_NAME).then((cache) =>
+            Promise.allSettled(
                 CORE_ASSETS.map((url) => cache.add(new Request(url, { cache: 'reload' })))
-            );
-        })
+            )
+        )
     );
     self.skipWaiting();
 });
@@ -48,63 +61,65 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
     event.waitUntil(
         caches.keys().then((keys) =>
-            Promise.all(
-                keys.map((k) => {
-                    if (k !== CACHE_NAME) return caches.delete(k);
-                })
-            )
+            Promise.all(keys.map((k) => (k !== CACHE_NAME ? caches.delete(k) : undefined)))
         )
     );
     self.clients.claim();
 });
 
-self.addEventListener('fetch', (event) => {
-    const req = event.request;
-    if (req.method !== 'GET') return;
-
-    const url = new URL(req.url);
-
-    // Ignora chiamate API esterne o schemi interni Tauri
-    if (
+function isBypassed(url) {
+    return (
         !url.protocol.startsWith('http') ||
         url.hostname.includes('tauri.localhost') ||
         url.hostname.includes('api.github.com') ||
         url.hostname.includes('githubusercontent.com') ||
         url.hostname.includes('googleapis.com') ||
         url.hostname.includes('script.google.com')
-    ) {
-        return;
-    }
-
-    // Per la navigazione principale (index.html), rispondi subito dalla cache se presente (zero schermata "Impossibile aprire pagina") e aggiorna in background
-    if (req.mode === 'navigate') {
-        event.respondWith(
-            caches.match('./index.html').then((cachedPage) => {
-                const networkFetch = fetch(req)
-                    .then((networkResp) => {
-                        if (networkResp && networkResp.status === 200) {
-                            const clone = networkResp.clone();
-                            caches.open(CACHE_NAME).then((c) => c.put('./index.html', clone));
-                        }
-                        return networkResp;
-                    })
-                    .catch(() => cachedPage);
-
-                return cachedPage || networkFetch;
-            })
-        );
-        return;
-    }
-
-    event.respondWith(
-        fetch(req)
-            .then((networkResp) => {
-                if (networkResp && networkResp.status === 200) {
-                    const respClone = networkResp.clone();
-                    caches.open(CACHE_NAME).then((cache) => cache.put(req, respClone));
-                }
-                return networkResp;
-            })
-            .catch(() => caches.match(req))
     );
+}
+
+// Rete prima (con timeout), poi copia offline. Aggiorna sempre la cache quando la rete risponde.
+function networkFirst(req, cacheKey, timeoutMs) {
+    return new Promise((resolve) => {
+        let settled = false;
+        const fallback = () =>
+            caches.match(cacheKey || req).then((cached) => {
+                if (!settled && cached) { settled = true; resolve(cached); }
+                return cached;
+            });
+
+        const timer = timeoutMs ? setTimeout(fallback, timeoutMs) : null;
+
+        fetch(req, { cache: 'no-cache' })
+            .then((resp) => {
+                if (timer) clearTimeout(timer);
+                if (resp && resp.ok) {
+                    const clone = resp.clone();
+                    caches.open(CACHE_NAME).then((c) => c.put(cacheKey || req, clone));
+                }
+                if (!settled) { settled = true; resolve(resp); }
+            })
+            .catch(() => {
+                if (timer) clearTimeout(timer);
+                fallback().then((cached) => {
+                    if (!settled) {
+                        settled = true;
+                        resolve(cached || new Response('Offline', { status: 503, statusText: 'Offline' }));
+                    }
+                });
+            });
+    });
+}
+
+self.addEventListener('fetch', (event) => {
+    const req = event.request;
+    if (req.method !== 'GET') return;
+    const url = new URL(req.url);
+    if (isBypassed(url)) return;
+
+    if (req.mode === 'navigate') {
+        event.respondWith(networkFirst(req, './index.html', NAV_TIMEOUT_MS));
+        return;
+    }
+    event.respondWith(networkFirst(req, null, 0));
 });
