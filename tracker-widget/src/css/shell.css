@@ -453,3 +453,9 @@ body.mobile-view-mode .today-link { grid-template-columns: 1fr; gap: var(--space
 body.mobile-view-mode .review-wrap { padding: var(--space-4); }
 body.mobile-view-mode .review-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 body.mobile-view-mode .review-cols { grid-template-columns: 1fr; gap: 0; }
+
+/* Desktop HUD pod (H): hide the new shell pieces too */
+body.hud-mode:not(.hud-temp-expanded) .app-rail,
+body.hud-mode:not(.hud-temp-expanded) .section-tabs,
+body.hud-mode:not(.hud-temp-expanded) .mobile-bottom-nav,
+body.hud-mode:not(.hud-temp-expanded) .mobile-top-nav-strip { display: none !important; }

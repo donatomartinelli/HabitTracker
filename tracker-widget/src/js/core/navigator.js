@@ -304,6 +304,8 @@ function closeMoreSheet() {
 function applyResponsiveMode(initial = false) {
     const wantMobile = window.innerWidth <= NAV_MOBILE_BREAKPOINT;
     if (typeof isMobileViewMode === 'undefined') return;
+    // Desktop HUD pod shrinks the window on purpose: that's not a phone, leave the layout alone
+    if (typeof isHudMode !== 'undefined' && isHudMode) return;
     if (!initial && wantMobile === isMobileViewMode) return;
     isMobileViewMode = wantMobile;
     document.body.classList.toggle('mobile-view-mode', wantMobile);
