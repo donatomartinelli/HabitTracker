@@ -152,6 +152,9 @@
         if (typeof NAV_SECTIONS === 'undefined') return [];
         const all = NAV_ORDER.map((k, i) => ({ key: k, label: NAV_SECTIONS[k].label, hint: `Alt ${i + 1}` }))
             .concat([{ key: 'tiles', label: 'Tiles', hint: 'Alt 0' }]);
+        if (/^(rev|revi|review|revisione|weekly|settiman)/.test(q.toLowerCase())) {
+            return [{ label: 'Open weekly review', hint: 'Today › Weekly review', run: () => { closeTerminal(); navigateToSection('today', 'review'); } }];
+        }
         const f = q.toLowerCase();
         return all.filter(s => s.label.toLowerCase().startsWith(f) || (f.length >= 3 && s.label.toLowerCase().includes(f)))
             .map(s => ({ label: `Go to ${s.label}`, hint: s.hint, run: () => runCommand(`@nav ${s.key}`) }));

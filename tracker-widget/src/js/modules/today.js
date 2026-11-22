@@ -24,6 +24,8 @@
     function getTodayTasks() {
         const list = (typeof templates !== 'undefined' ? templates : []).filter(t =>
             t && t.type !== 'medicine' && typeof isTaskActiveOnDate === 'function' && isTaskActiveOnDate(t, todayStr)
+            // the gym routine has its own card in COMING UP
+            && !(typeof isGymRoutineTask === 'function' && isGymRoutineTask(t))
         );
         const dayIdx = (typeof getNow === 'function' ? getNow() : new Date()).getDay();
         return list.map(t => {
@@ -234,7 +236,10 @@
             <div class="today-wrap">
                 <section class="today-main">
                     <div class="today-date">${esc(dateLabel)}</div>
+                    ${renderReviewInvite()}
+                    ${renderWeekPriorities()}
                     ${renderNowCard()}
+                    ${renderComingUp()}
                     <div class="today-section-head">
                         <span>TODAY</span>
                         <span class="dim">${doneCount} / ${items.length}</span>
@@ -298,9 +303,112 @@
         root.querySelectorAll('[data-nav]').forEach(el => {
             el.addEventListener('click', (e) => {
                 e.preventDefault();
-                if (typeof navigateToSection === 'function') navigateToSection(el.dataset.nav);
+                if (typeof navigateToSection === 'function') navigateToSection(el.dataset.nav, el.dataset.tab || null);
             });
         });
+        root.querySelectorAll('[data-study]').forEach(el => {
+            el.addEventListener('click', () => {
+                if (typeof CortexLinks !== 'undefined') CortexLinks.startStudyFocus(el.dataset.study, 50, el.dataset.color || '#b08d43');
+            });
+        });
+        root.querySelectorAll('[data-week-prio]').forEach(el => {
+            el.addEventListener('click', () => {
+                CortexLinks.toggleWeekPriority(CortexLinks.mondayOf(todayStr), parseInt(el.dataset.weekPrio, 10));
+                renderTodayModule();
+            });
+        });
+        root.querySelector('[data-gym-done]')?.addEventListener('click', () => {
+            if (typeof openGymWorkoutReviewModal === 'function') openGymWorkoutReviewModal(todayStr, nextWorkoutDay);
+        });
+    }
+
+    // ------------------------------------------------------------------
+    // Connections (js/modules/links.js)
+    // ------------------------------------------------------------------
+    function fmtH(mins) {
+        if (mins < 60) return `${mins}m`;
+        const h = mins / 60;
+        return `${h % 1 ? h.toFixed(1) : h}h`;
+    }
+
+    function renderReviewInvite() {
+        if (typeof CortexLinks === 'undefined' || !CortexLinks.isReviewDue()) return '';
+        return `
+            <div class="today-invite">
+                <span>It's Sunday evening — your weekly review is ready.</span>
+                <button type="button" class="btn btn-primary btn-sm" data-nav="today" data-tab="review">[REVIEW WEEK]</button>
+            </div>`;
+    }
+
+    function renderWeekPriorities() {
+        if (typeof CortexLinks === 'undefined') return '';
+        const plan = CortexLinks.getWeekPlan();
+        const items = plan && Array.isArray(plan.items) ? plan.items.filter(i => i && i.text) : [];
+        if (!items.length) return '';
+        return `
+            <div class="today-week">
+                <div class="today-week-head">THIS WEEK</div>
+                ${items.map((it, i) => `
+                    <button type="button" class="today-week-item ${it.done ? 'is-done' : ''}" data-week-prio="${i}">
+                        <span class="today-week-num">${i + 1}</span><span>${esc(it.text)}</span>
+                    </button>`).join('')}
+            </div>`;
+    }
+
+    function renderComingUp() {
+        if (typeof CortexLinks === 'undefined') return '';
+        const rows = [];
+
+        // Gym
+        const gym = CortexLinks.getTodayGym();
+        if (gym) {
+            rows.push(`
+                <div class="today-link ${gym.done ? 'is-done' : ''}">
+                    <span class="today-link-kind">GYM</span>
+                    <span class="today-link-main">${esc(gym.label)}<span class="dim"> · ${gym.exercises} exercises</span></span>
+                    <span class="today-link-actions">
+                        ${gym.done ? '<span class="dim">done ✓</span>' : `
+                            <button type="button" class="ghost-btn" data-nav="health" data-tab="gym">Open</button>
+                            <button type="button" class="btn btn-sm" data-gym-done>[DONE]</button>`}
+                    </span>
+                </div>`);
+        }
+
+        // Study (nearest appeals)
+        CortexLinks.getStudyPlan().slice(0, 3).forEach(p => {
+            const pct = p.targetMin ? Math.min(100, Math.round((p.studiedMin / p.targetMin) * 100)) : 0;
+            const when = p.daysLeft === 0 ? 'today' : p.daysLeft === 1 ? 'tomorrow' : `in ${p.daysLeft}d`;
+            const todayLine = p.daysLeft === 0 ? 'Exam today — good luck'
+                : p.todayLeftMin > 0 ? `~${fmtH(p.todayLeftMin)} left today` : 'on track today ✓';
+            rows.push(`
+                <div class="today-link" style="--link-color:${esc(p.color)}">
+                    <span class="today-link-kind">EXAM ${esc(when)}</span>
+                    <span class="today-link-main">${esc(p.name)}
+                        <span class="dim"> · ${fmtH(p.studiedMin)} / ${fmtH(p.targetMin)} studied · ${esc(todayLine)}</span>
+                        <span class="today-link-bar"><span style="width:${pct}%"></span></span>
+                    </span>
+                    <span class="today-link-actions">
+                        ${p.daysLeft > 0 ? `<button type="button" class="btn btn-sm" data-study="${esc(p.name)}" data-color="${esc(p.color)}">[▶ STUDY 50m]</button>` : ''}
+                    </span>
+                </div>`);
+        });
+
+        // Bills
+        CortexLinks.getUpcomingBills().forEach(b => {
+            const days = CortexLinks.daysBetween(todayStr, b.due);
+            const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`;
+            rows.push(`
+                <div class="today-link">
+                    <span class="today-link-kind">BILL ${esc(when)}</span>
+                    <span class="today-link-main">${esc(b.title)} · €${b.amount.toFixed(2)}<span class="dim"> · auto-deducted</span></span>
+                    <span class="today-link-actions"><button type="button" class="ghost-btn" data-nav="money">Money</button></span>
+                </div>`);
+        });
+
+        if (!rows.length) return '';
+        return `
+            <div class="today-section-head"><span>COMING UP</span></div>
+            <div class="today-links">${rows.join('')}</div>`;
     }
 
     window.renderTodayModule = renderTodayModule;
