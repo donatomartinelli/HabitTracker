@@ -4,7 +4,7 @@
 
 let cachedGeminiModel = 'models/gemini-2.5-flash';
 let isSonySyncInProgress = false;
-let sonyArchiveDir = localStorage.getItem('tracker_sony_archive_dir') || 'C:\\Users\\donat\\Desktop\\Progetti\\Cortex\\SonyArchive';
+let sonyArchiveDir = localStorage.getItem('tracker_sony_archive_dir') || 'C:\\Users\\donat\\Desktop\\Progetti\\SonyArchive';
 
 const ACTIVE_GEMINI_MODELS = [
     'models/gemini-2.5-flash',

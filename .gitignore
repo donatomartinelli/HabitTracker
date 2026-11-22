@@ -1,0 +1,21 @@
+# Registrazioni audio personali: MAI nella repo
+SonyArchive/
+*.mp3
+*.MP3
+*.wav
+*.m4a
+
+# Dipendenze e build
+node_modules/
+tracker-widget/src-tauri/target/
+dist/
+
+# Segreti e file locali
+.env
+.env.*
+*.local
+
+# Sistema / editor
+.DS_Store
+Thumbs.db
+.idea/
