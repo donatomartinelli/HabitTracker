@@ -360,3 +360,47 @@ body.mobile-view-mode .mobile-bottom-nav { order: 4; }
 
 /* Phone: the command bar opens from the ⌘ key in the bottom bar (no duplicate in the header) */
 body.mobile-view-mode .mobile-cmd-trigger-btn { display: none !important; }
+
+/* ---------- Command palette ---------- */
+.palette-list { flex-direction: column; max-height: min(60vh, 520px); overflow-y: auto; }
+.palette-group {
+    font-size: var(--font-2xs);
+    letter-spacing: var(--tracking-label);
+    color: var(--text-dim);
+    padding: var(--space-3) var(--space-3) var(--space-1);
+    font-weight: bold;
+}
+.palette-item { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-3); cursor: pointer; }
+.palette-item .suggestion-cmd { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.palette-item .suggestion-desc { flex-shrink: 0; max-width: 45%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.palette-item.is-recent .suggestion-cmd { color: var(--text-muted); }
+.palette-item.active { background: var(--text-main); color: #000; }
+.palette-item.active .suggestion-desc, .palette-item.active .suggestion-cmd { color: #000; }
+.palette-foot { font-size: var(--font-2xs); color: var(--text-dim); padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border-color); margin-top: var(--space-2); }
+body.mobile-view-mode .palette-foot { display: none; }
+body.mobile-view-mode .palette-item { padding: var(--space-3); }
+
+.action-toast {
+    position: fixed;
+    left: 50%;
+    bottom: calc(var(--space-5) + env(safe-area-inset-bottom, 0px));
+    transform: translate(-50%, 20px);
+    opacity: 0;
+    pointer-events: none;
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    background: var(--bg-sec);
+    border: 1px solid var(--border-bright);
+    padding: var(--space-2) var(--space-3);
+    font-size: var(--font-xs);
+    z-index: var(--z-toast);
+    max-width: min(560px, calc(100vw - 32px));
+    transition: opacity var(--dur-base) var(--ease), transform var(--dur-base) var(--ease);
+}
+.action-toast.show { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+.action-toast span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+body.mobile-view-mode .action-toast { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
+
+/* Phone palette: tap a result to run it; keep only [RUN] next to the field */
+body.mobile-view-mode .ask-mob-btn:not(.btn-primary) { display: none !important; }

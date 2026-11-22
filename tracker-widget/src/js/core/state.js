@@ -707,7 +707,11 @@ function captureCurrentStateSnapshotString() {
         dietData,
         dietRules,
         gymPlan,
-        uniData
+        uniData,
+        bodyLogs,
+        focusLogs,
+        journals,
+        dailyPriorities
     });
 }
 
@@ -782,6 +786,11 @@ function applyStateSnapshotString(snapStr) {
         dietRules = s.dietRules || '';
         gymPlan = s.gymPlan || {};
         uniData = s.uniData || {};
+        // Added later: older snapshots may not have them → keep current values
+        if (Array.isArray(s.bodyLogs)) bodyLogs = s.bodyLogs;
+        if (Array.isArray(s.focusLogs)) focusLogs = s.focusLogs;
+        if (s.journals && typeof s.journals === 'object') journals = s.journals;
+        if (s.dailyPriorities && typeof s.dailyPriorities === 'object') dailyPriorities = s.dailyPriorities;
 
         lastCapturedSnapshotStr = snapStr;
         saveData();

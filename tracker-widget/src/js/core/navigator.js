@@ -11,7 +11,7 @@
 // so every module keeps working unchanged.
 
 const NAV_SECTIONS = {
-    today:  { label: 'Today',  tabs: [{ key: 'today', label: 'Today' }] },
+    today:  { label: 'Today',  tabs: [{ key: 'today', label: 'Overview' }, { key: 'tasks', label: 'Tasks' }] },
     plan:   { label: 'Plan',   tabs: [{ key: 'plan', label: 'Day' }, { key: 'planner', label: 'Week' }, { key: 'calendar', label: 'Calendar' }] },
     notes:  { label: 'Notes',  tabs: [{ key: 'notes', label: 'Notes' }] },
     study:  { label: 'Study',  tabs: [{ key: 'uni', label: 'University' }, { key: 'math', label: 'Math' }] },

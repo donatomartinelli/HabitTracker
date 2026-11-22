@@ -1192,7 +1192,16 @@ function executeTerminalCommand(raw) {
 
     if (cmd === 'todo') {
         if (!rest) return false;
-        const dayIdx = parseLocalDate(selectedDateStr).getDay();
+        // Optional date: "todo @domani call mum" / "todo @2026-11-27 pay rent"
+        let todoDate = selectedDateStr;
+        const todoWords = [];
+        rest.split(/\s+/).forEach(tok => {
+            const d = tok.startsWith('@') ? resolveDateToken(tok) : null;
+            if (d) todoDate = d; else todoWords.push(tok);
+        });
+        const todoTitle = todoWords.join(' ').trim();
+        if (!todoTitle) return false;
+        const dayIdx = parseLocalDate(todoDate).getDay();
         const catName = 'General To-Do';
         if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
 
@@ -1200,14 +1209,14 @@ function executeTerminalCommand(raw) {
             id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
             isTodo: true,
             category: catName,
-            title: rest,
+            title: todoTitle,
             instances: 1,
             timerMinutes: 15,
             noTimer: true,
             frequency: 'specific',
             daysOfWeek: [dayIdx],
-            startDate: selectedDateStr,
-            endDate: selectedDateStr,
+            startDate: todoDate,
+            endDate: todoDate,
             color: '#ffffff',
             type: 'untimed',
             timeWindows: []
@@ -1216,7 +1225,7 @@ function executeTerminalCommand(raw) {
         if (typeof renderTasks === 'function') renderTasks();
         if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
         if (typeof renderHudPod === 'function') renderHudPod();
-        if (typeof showToast === 'function') showToast(`[TO-DO] Added "${rest}"`);
+        if (typeof showToast === 'function') showToast(`[TO-DO] Added "${todoTitle}"${todoDate !== todayStr ? ' on ' + todoDate : ''}`);
         return true;
     }
 
