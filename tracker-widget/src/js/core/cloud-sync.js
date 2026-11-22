@@ -426,52 +426,72 @@ function showSyncConflictsModal() {
 // COMUNICAZIONE CON GITHUB GIST
 // ============================================================================
 
-async function fetchRemoteGistPayload() {
-    const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}?t=${Date.now()}`, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': `Bearer ${cloudGithubToken}`
-        },
-        cache: 'no-store'
-    });
+function gistHeaders(extra = {}) {
+    return Object.assign({
+        'Accept': 'application/vnd.github+json',
+        'Authorization': `Bearer ${cloudGithubToken}`
+    }, extra);
+}
 
-    if (!res.ok) {
-        const errJson = await res.json().catch(() => ({}));
-        throw new Error(errJson.message || `HTTP ${res.status}`);
-    }
-
-    const gistData = await res.json();
+async function parseGistPayload(gistData) {
     const fileObj = gistData.files && (gistData.files[GIST_FILENAME] || Object.values(gistData.files)[0]);
     if (!fileObj) throw new Error(`File "${GIST_FILENAME}" non trovato nel Gist`);
-
     let rawContent = fileObj.content;
     if (fileObj.truncated && fileObj.raw_url) {
-        const rawRes = await fetch(fileObj.raw_url, {
-            headers: { 'Authorization': `Bearer ${cloudGithubToken}` },
-            cache: 'no-store'
-        });
+        const rawRes = await fetch(fileObj.raw_url, { headers: { 'Authorization': `Bearer ${cloudGithubToken}` }, cache: 'no-store' });
         rawContent = await rawRes.text();
     }
     if (!rawContent || !rawContent.trim()) return { version: SYNC_PAYLOAD_VERSION, updatedAt: 0, data: {} };
     return JSON.parse(rawContent);
 }
 
-async function uploadPayloadToGist(payload) {
-    const res = await fetch(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}`, {
-        method: 'PATCH',
-        headers: {
-            'Accept': 'application/vnd.github+json',
-            'Authorization': `Bearer ${cloudGithubToken}`,
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(payload) } } }),
-        keepalive: JSON.stringify(payload).length < 60000 // permette l'invio anche se l'app si sta chiudendo
-    });
+async function gistRequest(url, opts = {}) {
+    const res = await fetch(url, opts);
     if (!res.ok) {
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.message || `HTTP ${res.status}`);
     }
+    return res.json();
+}
+
+// Restituisce il contenuto del cloud + l'identificativo della versione (per accorgersi di scritture concorrenti)
+async function fetchRemoteGistPayload() {
+    const gistData = await gistRequest(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}?t=${Date.now()}`, {
+        method: 'GET', headers: gistHeaders(), cache: 'no-store'
+    });
+    const payload = await parseGistPayload(gistData);
+    Object.defineProperty(payload, '__gistVersion', {
+        value: (gistData.history && gistData.history[0] && gistData.history[0].version) || null,
+        enumerable: false
+    });
+    return payload;
+}
+
+async function fetchGistPayloadAtVersion(versionSha) {
+    const gistData = await gistRequest(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}/${encodeURIComponent(versionSha)}`, {
+        method: 'GET', headers: gistHeaders(), cache: 'no-store'
+    });
+    return parseGistPayload(gistData);
+}
+
+// Carica nel cloud. Restituisce le versioni scritte da ALTRI dispositivi tra la nostra lettura
+// e la nostra scrittura (normalmente nessuna).
+async function uploadPayloadToGist(payload, versionWeRead = null) {
+    const body = JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(payload) } } });
+    const gistData = await gistRequest(`https://api.github.com/gists/${encodeURIComponent(cloudGistId)}`, {
+        method: 'PATCH',
+        headers: gistHeaders({ 'Content-Type': 'application/json' }),
+        body,
+        keepalive: body.length < 60000 // permette l'invio anche se l'app si sta chiudendo
+    });
+    const history = (gistData && gistData.history) || [];
+    if (!versionWeRead || history.length < 2) return [];
+    const missed = [];
+    for (let i = 1; i < history.length; i++) {
+        if (history[i].version === versionWeRead) return missed;
+        missed.push(history[i].version);
+    }
+    return []; // versione letta non trovata nella cronologia recente: non possiamo dire nulla
 }
 
 async function createNewSecretGistForCortex() {
@@ -588,16 +608,37 @@ async function syncNow(isManual = false) {
         }
 
         let newTs = remoteTs;
+        let finalState = merged;
         if (changedRemote) {
-            newTs = Math.max(Date.now(), remoteTs + 1);
-            await uploadPayloadToGist({
-                version: SYNC_PAYLOAD_VERSION,
-                updatedAt: newTs,
-                data: merged
-            });
+            let versionRead = remotePayload.__gistVersion;
+            // Al massimo 3 tentativi se un altro dispositivo scrive nello stesso istante
+            for (let attempt = 0; attempt < 3; attempt++) {
+                newTs = Math.max(Date.now(), remoteTs + 1);
+                const missed = await uploadPayloadToGist({ version: SYNC_PAYLOAD_VERSION, updatedAt: newTs, data: finalState }, versionRead);
+                if (!missed.length) break;
+                // Un altro dispositivo ha scritto tra la nostra lettura e la nostra scrittura:
+                // recupero la sua versione e la unisco, così nessuna modifica va persa.
+                console.warn('[SYNC] scrittura concorrente rilevata, recupero', missed);
+                const before = finalState;
+                const mergeIn = (otherData) => {
+                    const again = CortexMerge.mergeStates(base, finalState, otherData || {}, { localWins });
+                    conflicts.push(...again.conflicts);
+                    finalState = again.merged;
+                };
+                for (const sha of missed.slice().reverse()) {          // dal più vecchio al più recente
+                    const intruder = await fetchGistPayloadAtVersion(sha);
+                    mergeIn(intruder && intruder.data);
+                }
+                // Riparto dalla versione attuale del cloud (di solito la nostra; se nel frattempo
+                // ha scritto qualcun altro, unisco anche quella)
+                const fresh = await fetchRemoteGistPayload();
+                mergeIn(fresh.data);
+                versionRead = fresh.__gistVersion;
+                if (!CortexMerge.same(before, finalState)) applyFullCortexCloudPayload({ data: finalState });
+            }
         }
 
-        saveSyncBase(merged);
+        saveSyncBase(finalState);
         lastCloudSyncedUpdatedAt = newTs;
         cortexStore.setItem('cortex_last_cloud_ts', String(newTs));
         localSyncedSeq = seqAtMerge;              // le modifiche fatte durante l'upload restano "in attesa"
