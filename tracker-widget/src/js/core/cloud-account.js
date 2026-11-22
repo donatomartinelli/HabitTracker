@@ -261,9 +261,9 @@
         } else if (panelStep === 'check-inbox') {
             const email = cortexStore.getItem(PENDING_KEY) || '';
             body = `
-                <p class="modules-intro">We sent a sign-in email to <strong>${esc(email)}</strong>. Open the link on this device and you're in. On another device or in the desktop app, copy the link (or the code, if the email has one) and paste it here.</p>
-                <label class="account-field" for="account-link">Link or code
-                    <input type="text" id="account-link" class="form-control" autocomplete="one-time-code" placeholder="https://… or 123456">
+                <p class="modules-intro">We sent a 6-digit code to <strong>${esc(email)}</strong>. Type it here. It can take a minute to arrive; check the spam folder too.</p>
+                <label class="account-field" for="account-link">Code
+                    <input type="text" id="account-link" class="form-control" inputmode="numeric" autocomplete="one-time-code" placeholder="123456">
                 </label>
                 <div class="account-error" aria-live="polite">${esc(panelError)}</div>
                 <div class="account-actions">
