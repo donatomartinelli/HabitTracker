@@ -197,7 +197,8 @@ function syncMobileModeUI() {
         }
     }
 
-    bottomBar.querySelectorAll('.mob-nav-tab').forEach(btn => {
+    // La barra in basso è gestita da navigator.js (sezioni); qui solo per eventuali tab legacy
+    bottomBar.querySelectorAll('.mob-nav-tab[data-macro]').forEach(btn => {
         const tabMacro = btn.dataset.macro;
         btn.classList.toggle('active', tabMacro === parentMacro);
     });

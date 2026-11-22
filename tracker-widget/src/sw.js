@@ -7,7 +7,7 @@
 // IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
 // e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v6';
+const CACHE_NAME = 'cortex-os-cache-v7';
 const NAV_TIMEOUT_MS = 3000;
 
 const CORE_ASSETS = [
@@ -40,6 +40,9 @@ const CORE_ASSETS = [
     './js/modules/money.js',
     './js/modules/uni.js',
     './js/modules/math.js',
+    './js/modules/today.js',
+    './js/core/navigator.js',
+    './css/shell.css',
     './js/ai/gemini-agent.js',
     './js/ai/terminal-ui.js',
     // Libreria formule (Math-Hub)

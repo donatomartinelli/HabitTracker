@@ -44,9 +44,11 @@
         'js/modules/money.js',
         'js/modules/uni.js',
         'js/modules/math.js',
+        'js/modules/today.js',
         'js/ai/gemini-agent.js',
         'js/ai/terminal-ui.js',
-        'js/core/mobile-touch.js'
+        'js/core/mobile-touch.js',
+        'js/core/navigator.js'
     ];
     window.CORTEX_APP_SCRIPTS = APP_SCRIPTS;
 

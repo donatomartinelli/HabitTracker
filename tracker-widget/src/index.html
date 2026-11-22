@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="css/features.css">
     <link rel="stylesheet" href="css/money.css">
     <link rel="stylesheet" href="css/health.css">
+    <link rel="stylesheet" href="css/shell.css">
 
     <!-- KaTeX: rendering formule per Math-Hub (se offline, le formule restano in testo semplice) -->
     <!-- Caricati senza bloccare l'avvio: con rete lenta l'app parte subito comunque -->
@@ -96,11 +97,12 @@
         </div>
 
         <div class="header-right">
-            <button id="btn-toggle-mobile-mode" class="icon-btn win-ctrl-btn" onclick="toggleMobileViewMode()">[DESK]</button>
-            <button id="btn-cloud-sync-hdr" class="icon-btn win-ctrl-btn" onclick="triggerManualCloudSync()">[☁]</button>
-            <button id="btn-settings-app" class="icon-btn win-ctrl-btn" onclick="openSettingsModal()">[⚙]</button>
-            <button id="btn-minimize-app" class="icon-btn win-ctrl-btn">[-]</button>
-            <button id="btn-close-app" class="icon-btn delete win-ctrl-btn">[X]</button>
+            <button id="btn-cloud-sync-hdr" class="hdr-icon" onclick="triggerManualCloudSync()" aria-label="Sync now">☁</button>
+            <button id="btn-settings-app" class="hdr-icon" onclick="openSettingsModal()" aria-label="Settings" title="Settings">⚙</button>
+            <span class="hdr-win-controls">
+                <button id="btn-minimize-app" class="hdr-icon" aria-label="Minimize" title="Minimize">–</button>
+                <button id="btn-close-app" class="hdr-icon delete" aria-label="Close" title="Close">×</button>
+            </span>
         </div>
 
         <!-- LINEA PROGRESSO FOCUS SOTTO L'HEADER -->
@@ -157,38 +159,37 @@
     <div id="mobile-top-nav-strip" class="mobile-top-nav-strip" style="display: none;">
         <div class="mobile-date-quick-row">
             <div style="display: flex; gap: 4px; align-items: center;">
-                <button type="button" class="btn btn-sm" onclick="shiftSelectedDate(-1)">[&lt;]</button>
+                <button type="button" class="hdr-icon" onclick="shiftSelectedDate(-1)" aria-label="Previous day">‹</button>
                 <button type="button" id="mob-date-Display-btn" class="btn btn-sm btn-primary" onclick="jumpToDate(todayStr)">TODAY</button>
-                <button type="button" class="btn btn-sm" onclick="shiftSelectedDate(1)">[&gt;]</button>
+                <button type="button" class="hdr-icon" onclick="shiftSelectedDate(1)" aria-label="Next day">›</button>
             </div>
             <div style="display: flex; gap: 4px; align-items: center;">
-                <button type="button" id="mob-undo-btn" class="btn btn-sm" onclick="performGlobalUndo()" title="Undo (Ctrl+Z)">[↶]</button>
-                <button type="button" id="mob-redo-btn" class="btn btn-sm" onclick="performGlobalRedo()" title="Redo (Ctrl+Y)">[↷]</button>
-                <button type="button" class="btn btn-sm btn-notes-mic-rec" onclick="toggleLiveMicRecording()">[● REC]</button>
-                <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">[+NOTE]</button>
+                <button type="button" id="mob-undo-btn" class="hdr-icon" onclick="performGlobalUndo()" aria-label="Undo" title="Undo (Ctrl+Z)">↶</button>
+                <button type="button" id="mob-redo-btn" class="hdr-icon" onclick="performGlobalRedo()" aria-label="Redo" title="Redo (Ctrl+Y)">↷</button>
             </div>
         </div>
         <div id="mobile-submod-pills" class="mobile-submod-pills" style="display: none;"></div>
     </div>
 
+    <!-- NAVIGAZIONE: menu laterale (desktop) e schede della sezione — gestiti da js/core/navigator.js -->
+    <nav id="app-rail" class="app-rail" aria-label="Sections"></nav>
+    <div id="section-tabs" class="section-tabs" hidden></div>
+
     <!-- CONTENITORE TILING DINAMICO -->
     <div id="app-content-wrapper" class="layout"></div>
 
-    <!-- BOTTOM NAVIGATION BAR FISSA PER TELEFONO (5 MODULI + QUICK SWITCHER [V]) -->
-    <nav id="mobile-bottom-nav" class="mobile-bottom-nav" style="display: none;">
-        <button type="button" class="mob-nav-tab active" data-macro="tasks" onclick="mountMobileSingleModule('tasks')">TASKS</button>
-        <button type="button" class="mob-nav-tab" data-macro="plan" onclick="mountMobileSingleModule('plan')">PLAN</button>
-        <button type="button" class="mob-nav-tab" data-macro="gym" onclick="mountMobileSingleModule('gym_today')">GYM</button>
-        <button type="button" class="mob-nav-tab" data-macro="notes" onclick="mountMobileSingleModule('notes_browse')">NOTES</button>
-        <button type="button" class="mob-nav-tab" data-macro="money" onclick="mountMobileSingleModule('m_summary')">MONEY</button>
-        <button type="button" class="mob-nav-tab mob-nav-views" onclick="openQuickSwitcherModal()">[V]</button>
-    </nav>
+    <!-- BARRA IN BASSO PER TELEFONO (riempita da navigator.js) + foglio "More" -->
+    <nav id="mobile-bottom-nav" class="mobile-bottom-nav" style="display: none;" aria-label="Sections"></nav>
+    <div id="more-sheet" class="more-sheet" hidden></div>
 
     <!-- ========================================================== -->
     <!-- MAGAZZINO UNIVERSALE MODULI & SOTTO-MODULI ATOMICI         -->
     <!-- ========================================================== -->
     <div id="module-registry" style="display: none;">
         
+        <!-- 0. TODAY (schermata principale, js/modules/today.js) -->
+        <div id="module-today" class="module-container"></div>
+
         <!-- 1. CALENDAR & SOTTO-MODULI (cal_grid, cal_agenda) -->
         <div id="module-calendar" class="module-container">
             <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; gap: 14px; overflow-y: auto;">
