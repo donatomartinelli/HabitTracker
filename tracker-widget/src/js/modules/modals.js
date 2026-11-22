@@ -86,6 +86,17 @@ function initModalsHtml() {
                     <input type="text" id="h-title" class="form-control" placeholder="e.g. Duolingo, Analisi II" required>
                 </div>
                 <div class="form-group">
+                    <label>Priority Level</label>
+                    <div class="task-type-toggle">
+                        <label class="type-radio">
+                            <input type="radio" name="h-priority" value="high" checked> HIGH (Mandatory)
+                        </label>
+                        <label class="type-radio">
+                            <input type="radio" name="h-priority" value="optional"> OPTIONAL (Locked until High are done)
+                        </label>
+                    </div>
+                </div>
+                <div class="form-group">
                     <label>Color</label>
                     <div class="color-palette" id="habit-color-palette">
                         <div class="color-circle active" style="background: #ffffff;" data-color="#ffffff" onclick="selectColor(this, 'h-color')"></div>
@@ -174,7 +185,7 @@ function initModalsHtml() {
                 </div>
             </form>
 
-            <!-- FORM 2: ROUTINE (UNIFORMATO ALLE TASK + SOTTO-SEZIONI 1A & 2A) -->
+            <!-- FORM 2: ROUTINE -->
             <form id="routineForm" style="display: none;">
                 <input type="hidden" id="rtn-id">
                 <div class="form-group">
@@ -257,7 +268,6 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <!-- COSTRUTTORE SOTTO-SEZIONI E VOCI DELLA ROUTINE (2A) -->
                 <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 14px;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                         <label style="margin-bottom: 0;">Sub-Sections &amp; Checklist Steps</label>
@@ -309,7 +319,7 @@ function initModalsHtml() {
                 </div>
             </form>
 
-            <!-- FORM 4: MEDICINE (CON SCORTE, ALERT CALENDARIO, INTERVALLO GIORNI E INIEZIONE ROUTINE) -->
+            <!-- FORM 4: MEDICINE -->
             <form id="medicineForm" style="display: none;">
                 <input type="hidden" id="med-id">
                 <div class="form-group">
@@ -389,7 +399,7 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 6B. DEDICATED TASKS SETTINGS MODAL ([TASKS ⚙] - Scelta 3B) -->
+    <!-- 6B. DEDICATED TASKS SETTINGS MODAL -->
     <div id="tasksSettingsModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content settings-modal-box">
             <div class="settings-top-bar">
@@ -411,12 +421,9 @@ function initModalsHtml() {
                         <button type="button" class="settings-nav-btn tasks-cfg-nav" data-tab="tcfg-meds" onclick="switchTasksConfigTab('tcfg-meds')">3. Medicines &amp; Stock</button>
                         <button type="button" class="settings-nav-btn tasks-cfg-nav" data-tab="tcfg-ghosts" onclick="switchTasksConfigTab('tcfg-ghosts')">4. Ghost Layers</button>
                     </div>
-                    <div style="padding: 0 16px; font-size: 0.65rem; color: var(--text-dim);">
-                        MAIN VIEW IS PURE CHECKBOXES. EDIT &amp; SNAP PHASES HERE.
-                    </div>
                 </div>
 
-                <!-- TAB 1: HABITS & CATEGORIES (Con modalità [EDIT] a monte - Scelta 3A) -->
+                <!-- TAB 1: HABITS & CATEGORIES -->
                 <div id="tcfg-tasks" class="settings-tab-panel tasks-cfg-panel active">
                     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
                         <span class="section-label">Categories &amp; Tasks</span>
@@ -452,7 +459,7 @@ function initModalsHtml() {
                     <div id="meds-manager-list" class="manager-list"></div>
                 </div>
 
-                <!-- TAB 4: GHOST LAYERS (CREAZIONE, MODIFICA & ELIMINAZIONE) -->
+                <!-- TAB 4: GHOST LAYERS -->
                 <div id="tcfg-ghosts" class="settings-tab-panel tasks-cfg-panel">
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <span class="section-label">Ghost Layers (Trains, Transports &amp; Reference Schedules)</span>
@@ -464,7 +471,7 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 7. Global System Settings & Workspace Modal (Senza Habits & Cats) -->
+    <!-- 7. Global System Settings Modal -->
     <div id="managerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content settings-modal-box">
             <div class="settings-top-bar">
@@ -482,12 +489,8 @@ function initModalsHtml() {
                         <button type="button" class="settings-nav-btn sys-cfg-nav" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. Sony Audio Pipeline</button>
                         <button type="button" class="settings-nav-btn sys-cfg-nav" data-tab="tab-system" onclick="switchSettingsTab('tab-system')">3. Data &amp; Manual</button>
                     </div>
-                    <div style="padding: 0 16px; font-size: 0.65rem; color: var(--text-dim);">
-                        SHORTCUTS: [E] EDIT · [0] ZERO · [P] PLAN · [R] RED · [?] HELP
-                    </div>
                 </div>
 
-                <!-- TAB 1: APPEARANCE, QUICK ACTIONS & WORKSPACE VIEWS -->
                 <div id="tab-workspace" class="settings-tab-panel sys-cfg-panel active">
                     <div class="cfg-box">
                         <div class="sub-column-header">Quick System Actions &amp; Builders</div>
@@ -498,7 +501,6 @@ function initModalsHtml() {
                             <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()">[TASKS &amp; ROUTINES ⚙]</button>
                         </div>
                     </div>
-
                     <div class="cfg-box" style="display: flex; flex-direction: column; gap: 14px;">
                         <div class="sub-column-header" style="margin-bottom: 0;">Appearance &amp; Optical Filter</div>
                         <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -513,21 +515,17 @@ function initModalsHtml() {
                             <input type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="width: 100%; accent-color: var(--text-main);" oninput="updateOpacity(this.value)">
                         </div>
                     </div>
-
                     <div class="cfg-box" style="padding: 0;">
                         <div id="settings-workspace-container"></div>
                     </div>
-
                     <div class="cfg-box">
                         <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
-                            <span>3. Custom Command Aliases (1-Word Macros)</span>
-                            <span style="font-size:0.65rem; color:var(--text-dim);">TYPE ALIAS IN COMMAND BAR + [ENTER] TO RUN ALL</span>
+                            <span>Custom Command Aliases (1-Word Macros)</span>
                         </div>
                         <div id="settings-aliases-container"></div>
                     </div>
                 </div>
 
-                <!-- TAB 2: SONY RECORDER PIPELINE -->
                 <div id="tab-ai" class="settings-tab-panel sys-cfg-panel">
                     <div class="cfg-box">
                         <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
@@ -539,7 +537,6 @@ function initModalsHtml() {
                             <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-api-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
                         </div>
                     </div>
-
                     <div class="cfg-box">
                         <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
                             <span>Sony Recorder Pipeline // Dedicated Gemini Key</span>
@@ -556,24 +553,20 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <!-- TAB 3: CLOUD SYNC, DATA & MANUAL -->
                 <div id="tab-system" class="settings-tab-panel sys-cfg-panel">
                     <div class="cfg-box" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--border-bright);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">GitHub Gist Cloud Sync (PC ↔ Tablet ↔ Phone)</span>
                             <span id="cloud-sync-settings-status" style="font-size: var(--font-xs); color: var(--text-dim);">[NOT CONFIGURED]</span>
                         </div>
-
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <input type="password" id="cloud-gist-token-inp" class="form-control form-control-sm" style="flex: 2; min-width: 180px;" placeholder="GitHub Token (ghp_... with 'gist' scope)" onchange="saveCloudSyncCredentialsFromUI()">
                             <button type="button" class="btn btn-sm" onclick="const i=document.getElementById('cloud-gist-token-inp'); i.type=i.type==='password'?'text':'password';">[SHOW]</button>
                         </div>
-
                         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                             <input type="text" id="cloud-gist-id-inp" class="form-control form-control-sm" style="flex: 2; min-width: 180px;" placeholder="Secret Gist ID (or click Create New)" onchange="saveCloudSyncCredentialsFromUI()">
                             <button type="button" class="btn btn-primary btn-sm" onclick="createNewSecretGistForCortex()">[+ CREATE NEW SECRET GIST]</button>
                         </div>
-
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
                             <div style="display: flex; gap: 6px;">
                                 <button type="button" class="btn btn-sm" onclick="pushStateToCloudGist(true)">[↑ PUSH NOW]</button>
@@ -582,25 +575,19 @@ function initModalsHtml() {
                             <button type="button" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="copyMagicMobileSetupUrl()">[🔗 COPY MAGIC SETUP URL]</button>
                         </div>
                     </div>
-
                     <div class="cfg-box" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--accent-gold);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Google/Apple Calendar &amp; Gmail Bank Bridge</span>
                             <span id="bridge-settings-status" style="font-size: var(--font-xs); color: var(--text-dim);">[NOT CONFIGURED]</span>
                         </div>
-
-                        <input type="text" id="bridge-webapp-url-inp" class="form-control form-control-sm" placeholder="Google Apps Script Web App URL (https://script.google.com/macros/s/.../exec)" onchange="saveExternalBridgeConfigFromUI()">
-
+                        <input type="text" id="bridge-webapp-url-inp" class="form-control form-control-sm" placeholder="Google Apps Script Web App URL" onchange="saveExternalBridgeConfigFromUI()">
                         <input type="text" id="bridge-icloud-ics-inp" class="form-control form-control-sm" placeholder="Optional Apple iCloud Calendar URL (webcal://...)" onchange="saveExternalBridgeConfigFromUI()">
-
-                        <input type="text" id="bridge-bank-query-inp" class="form-control form-control-sm" placeholder="Gmail Bank Query (e.g. newer_than:14d (isybank OR pagamento OR bonifico))" onchange="saveExternalBridgeConfigFromUI()">
-
+                        <input type="text" id="bridge-bank-query-inp" class="form-control form-control-sm" placeholder="Gmail Bank Query" onchange="saveExternalBridgeConfigFromUI()">
                         <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
                             <button type="button" class="btn btn-sm" onclick="syncExternalCalendarsNow(true)">[📅 SYNC CALENDARS NOW]</button>
                             <button type="button" class="btn btn-primary btn-sm" onclick="scanBankEmailsNow(true)">[🏦 SCAN BANK EMAILS]</button>
                         </div>
                     </div>
-
                     <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Database JSON Backup</div>
                         <div style="display: flex; gap: 10px;">
@@ -611,7 +598,6 @@ function initModalsHtml() {
                             </label>
                         </div>
                     </div>
-
                     <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">DSL &amp; Shortcuts Manual</div>
                         <button type="button" class="btn btn-sm" onclick="openShortcutsHelp()">[MANUAL // ?]</button>
@@ -624,11 +610,11 @@ function initModalsHtml() {
     <!-- 8. Manage Note Categories Modal -->
     <div id="manageNotesModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 420px;">
-            <h2>Note Categories</h2>
+            <h2>Manage Folders</h2>
             <div id="notes-manager-list" class="manager-list"></div>
             <div class="quick-add-task new-calendar-add">
                 <span>+</span>
-                <input type="text" placeholder="Add new category and press Enter..." onkeypress="quickAddNoteCategory(event)">
+                <input type="text" placeholder="Add new root folder and press Enter..." onkeypress="quickAddNoteCategory(event)">
             </div>
             <div class="modal-actions">
                 <button class="btn btn-primary" onclick="closeModals(); renderNoteCategories();">Close</button>
@@ -902,7 +888,7 @@ function initModalsHtml() {
         </div>
     </div>
 
-    <!-- 19. Cortex DSL & System Manual Modal (?) -->
+    <!-- 19. Cortex DSL & System Manual Modal -->
     <div id="shortcutsHelpModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width: 960px; max-width: 96%; max-height: 90vh;">
             <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 14px;">
@@ -919,22 +905,22 @@ function initModalsHtml() {
                     <div class="help-section-title">1. Task, Focus, Calendario &amp; Note</div>
                     <div class="help-grid">
                         <div class="help-key"><code>done [task]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>done Duolingo</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Spunta la prima casella libera della task attiva oggi (autocompleta con <code>[TAB]</code>). Se è un medicinale, scala <code>-1</code> dallo stock.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Spunta la prima casella libera della task attiva oggi.</div>
 
                         <div class="help-key"><code>focus [task/cat]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>focus Analisi</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Avvia il timer Pomodoro con la durata esatta configurata nella task (o <code>focus 45 Analisi</code> per forzare i minuti) e spunta la task al termine.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Avvia il timer Pomodoro con la durata configurata. Inietta un blocco nel Day Planner.</div>
 
                         <div class="help-key"><code>task [titolo] [@day]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>task Studio @domani</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Crea una task flessibile da 25m nella categoria <code>General To-Do</code> per <code>@oggi</code>, <code>@domani</code> o <code>@YYYY-MM-DD</code>.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Crea una task flessibile.</div>
 
                         <div class="help-key"><code>todo [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>todo Bolletta</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge una voce non schedulata nella lista <code>General To-Do Inbox</code>.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge una voce non schedulata in Inbox.</div>
 
                         <div class="help-key"><code>event [@day] [titolo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>event @domani Esame</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Inserisce un evento singolo sul Calendario e nel Weekly Planner.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Inserisce un evento singolo sul Calendario e Planner.</div>
 
                         <div class="help-key"><code>note [Cat]: [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>note Math: Teorema</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Accoda la nota nella categoria indicata (premi <code>[TAB]</code> dopo <code>note </code> per scegliere la categoria; se nuova, la crea).</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Accoda la nota nella categoria (Crea la cartella se non esiste).</div>
                     </div>
                 </div>
 
@@ -943,37 +929,37 @@ function initModalsHtml() {
                     <div class="help-section-title">2. Money, Salvadanai, Dieta &amp; Palestra</div>
                     <div class="help-grid">
                         <div class="help-key"><code>out [€] #[Cat/Vault] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>out 20 #Amazon Cavo</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Sottrae l'importo dal saldo totale. Se <code>#Nome</code> corrisponde a un <strong>Vault</strong>, scala direttamente dal Vault (anche andando in negativo per il rollover); altrimenti riduce lo Spendable Balance.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Sottrae l'importo dal saldo. Se <code>#Nome</code> corrisponde a un <strong>Vault</strong>, scala da lì.</div>
 
                         <div class="help-key"><code>in [€] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>in 500 Borsa</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge <code>+€</code> al saldo totale e accantona automaticamente le percentuali nei Vault con regola <code>% of Income</code>.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge <code>+€</code> al saldo totale.</div>
 
                         <div class="help-key"><code>wish [item] [€ opz.]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>wish Libro 18</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Inserisce l'idea d'acquisto nel <code>Purchase Ideas Incubator</code> senza toccare il saldo.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Inserisce idea d'acquisto in Incubator.</div>
 
                         <div class="help-key"><code>weight [kg] [nota]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>weight 74.5 digiuno</code></span></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Registra il peso corporeo odierno e aggiorna il delta <code>+/- kg</code> nel modulo Diet.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Registra il peso corporeo.</div>
 
                         <div class="help-key"><code>gym done</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Salva tutti i carichi inseriti nella scheda attiva e avanza al giorno successivo dello split (<code>Day 1 ↔ Day 2</code>).</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Salva la scheda attiva e avanza allo split successivo.</div>
                     </div>
                 </div>
 
                 <!-- 3. ISPEZIONE ISTANTANEA IN SOLA LETTURA (0ms) -->
                 <div class="help-section-card">
-                    <div class="help-section-title">3. Ispezione Rapida in Sola Lettura (0ms nella Barra)</div>
+                    <div class="help-section-title">3. Ispezione Rapida in Sola Lettura</div>
                     <div class="help-grid">
                         <div class="help-key"><code>diet</code> / <code>diet @domani</code></div>
-                        <div class="help-desc">Mostra subito nella barra tutti i pasti del giorno, le regole fisse e i macro calcolati (Kcal, P, C, F).</div>
+                        <div class="help-desc">Mostra pasti, regole fisse e macro calcolati.</div>
 
                         <div class="help-key"><code>gym</code></div>
-                        <div class="help-desc">Mostra gli esercizi del <code>Day</code> attivo in palestra con le ripetizioni e gli ultimi pesi salvati.</div>
+                        <div class="help-desc">Mostra gli esercizi del <code>Day</code> attivo in palestra.</div>
 
                         <div class="help-key"><code>today</code> / <code>tomorrow</code></div>
-                        <div class="help-desc">Mostra il riepilogo di priorità #1, eventi, task orarie/flessibili e stato di completamento per oggi o domani.</div>
+                        <div class="help-desc">Mostra il riepilogo di task orarie/flessibili.</div>
 
                         <div class="help-key"><code>bal</code> / <code>money</code></div>
-                        <div class="help-desc">Mostra Spendable Balance, saldo totale, saldo di ogni Vault e cashflow netto del mese.</div>
+                        <div class="help-desc">Mostra Spendable Balance e stato dei Vault.</div>
                     </div>
                 </div>
 
@@ -982,16 +968,16 @@ function initModalsHtml() {
                     <div class="help-section-title">4. Workspace, Staging &amp; Scorciatoie da Tastiera</div>
                     <div class="help-grid">
                         <div class="help-key"><code>summon [modulo]</code> · <code>swap</code> · <code>zero</code></div>
-                        <div class="help-desc">Monta un modulo nel layout tiling (<code>calendar</code>, <code>tasks</code>, <code>notes</code>, <code>planner</code>, <code>diet</code>, <code>gym</code>, <code>money</code>, <code>streak</code>), scambia i quadranti o attiva Zero-UI.</div>
+                        <div class="help-desc">Monta un modulo nel layout tiling (incluso <code>math</code>).</div>
 
                         <div class="help-key"><code>plan</code> · <code>ledger</code> · <code>food</code> · <code>vault</code></div>
-                        <div class="help-desc">Apre rispettivamente l'Evening Builder (Timeline Domani), il Focus Ledger, il Food DB o il modale nuovo Salvadanaio.</div>
+                        <div class="help-desc">Apre rispettivamente Planner, Ledger, Food DB, Vault.</div>
 
                         <div class="help-key">[SHIFT + ENTER] / <code>;</code></div>
-                        <div class="help-desc">Mette il comando nella <strong>Staging Area</strong> per accumularne altri prima di premere <code>[ENTER]</code>.</div>
+                        <div class="help-desc">Mette il comando nella <strong>Staging Area</strong>.</div>
 
                         <div class="help-key">[CTRL+SPACE] · [?] · [,] · [E]</div>
-                        <div class="help-desc"><code>[CTRL+SPACE]</code> apre la barra · <code>[?]</code> Manuale · <code>[,]</code> Settings · <code>[E]</code> Edit Layout · <code>[P]</code> Plan Tomorrow · <code>[J]</code> Journal · <code>[R]</code> Red Mode.</div>
+                        <div class="help-desc">Barra comandi / Manuale / Settings / Edit Layout.</div>
                     </div>
                 </div>
 
@@ -999,16 +985,16 @@ function initModalsHtml() {
                     <div class="help-section-title">5. University Bridge (180 CFU, Appelli &amp; Tasse)</div>
                     <div class="help-grid">
                         <div class="help-key"><code>uni</code> · <code>uni info</code></div>
-                        <div class="help-desc">Monta il modulo <code>University</code> (con i suoi 4 sotto-moduli componibili) o mostra le medie nella barra.</div>
+                        <div class="help-desc">Monta il modulo <code>University</code> o mostra le medie.</div>
 
                         <div class="help-key"><code>esame [Nome] [Voto] [CFU]</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Registra il voto nel Libretto (es. <code>esame Algebra 28 9</code>), ricalcola le medie su 180 CFU e archivia le task di studio del corso.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Registra il voto nel Libretto e muove le note in <strong>Archive</strong>.</div>
 
                         <div class="help-key"><code>tassa [€] [Data] [Nome]</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Crea un evento in rosso sul Calendario il giorno della scadenza e collega il pagamento alla categoria <code>Tasse Uni</code>.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Crea un evento in rosso sul Calendario.</div>
 
                         <div class="help-key"><code>appello [Nome] [Data] [Ora]</code></div>
-                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge l'appello con countdown e crea il blocco su Calendar e Weekly Planner.</div>
+                        <div class="help-desc"><strong>Modifica:</strong> Aggiunge l'appello con countdown.</div>
                     </div>
                 </div>
             </div>
@@ -1090,7 +1076,7 @@ function closeModals() {
 }
 
 // ============================================================================
-// EDITOR CUSTOM ALIASES CON SUGGERIMENTI ISPIRAZIONALI (SENZA PRESET FORZATI)
+// EDITOR CUSTOM ALIASES
 // ============================================================================
 
 const ALIAS_INSPIRATION_TEMPLATES = [
@@ -1110,7 +1096,7 @@ function renderCustomAliasesSettingsUI() {
     let html = `
         <div style="margin-bottom: 12px;">
             <div style="font-size: 0.65rem; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">
-                Idee &amp; Template (Clicca un suggerimento per pre-compilare i campi qui sotto):
+                Idee &amp; Template:
             </div>
             <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="alias-inspiration-chips"></div>
         </div>
@@ -1149,7 +1135,7 @@ function renderCustomAliasesSettingsUI() {
 
     const listEl = cont.querySelector('#custom-aliases-list');
     if (entries.length === 0) {
-        listEl.innerHTML = `<div class="empty-state" style="padding: 6px 0;">[ NESSUN ALIAS CREATO — CLICCA UN SUGGERIMENTO SOPRA O SCRIVI IL TUO ]</div>`;
+        listEl.innerHTML = `<div class="empty-state" style="padding: 6px 0;">[ NESSUN ALIAS CREATO ]</div>`;
     } else {
         entries.forEach(([aliasKey, macroCmds]) => {
             const row = document.createElement('div');
@@ -1199,16 +1185,14 @@ function saveCustomAliasFromUI() {
     nInp.value = '';
     cInp.value = '';
     renderCustomAliasesSettingsUI();
-    if (typeof showToast === 'function') {
-        showToast(`[ALIAS SAVED] Type "${cleanName}" in the command bar!`);
-    }
 }
 
 // ============================================================================
-// QUICK-SWITCHER MODAL (SCORCIATOIA: V) CON COMBINAZIONE MULTI-MODULO
+// QUICK-SWITCHER MODAL E HELPERS CATEGORIE 
 // ============================================================================
 
 let qsStagedModules = [];
+let qsExpandedMacroKey = null;
 
 function openQuickSwitcherModal() {
     if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
@@ -1216,7 +1200,7 @@ function openQuickSwitcherModal() {
     if (typeof setHudTemporaryExpansion === 'function') setHudTemporaryExpansion(true);
 
     qsStagedModules = [];
-    qsExpandedMacroKey = null; // Chiude qualsiasi tendina rimasta aperta in precedenza
+    qsExpandedMacroKey = null; 
     const modal = document.getElementById('quickSwitcherModal');
     const inp = document.getElementById('qs-filter-input');
     if (!modal) return;
@@ -1274,10 +1258,8 @@ function commitQuickSwitcherStaged() {
     const toMount = [...qsStagedModules];
     qsStagedModules = [];
     closeModals();
-    setModulesView(toMount);
+    if (typeof setModulesView === 'function') setModulesView(toMount);
 }
-
-let qsExpandedMacroKey = null;
 
 function renderQuickSwitcherContent(filterStr = '') {
     const body = document.getElementById('qs-body-content');
@@ -1297,8 +1279,7 @@ function renderQuickSwitcherContent(filterStr = '') {
     const q = (filterStr || '').trim().toLowerCase();
     body.innerHTML = '';
 
-    // 1. SAVED VIEWS (Solo il titolo nel bottone + Pop-up in hover con i moduli che la compongono)
-    const matchingPresets = (workspacePresets || []).filter(p => !q || p.name.toLowerCase().includes(q));
+    const matchingPresets = (typeof workspacePresets !== 'undefined' ? workspacePresets : []).filter(p => !q || p.name.toLowerCase().includes(q));
     const presetsSection = document.createElement('div');
     presetsSection.innerHTML = `<div class="sub-column-header">Saved Views</div>`;
 
@@ -1308,36 +1289,14 @@ function renderQuickSwitcherContent(filterStr = '') {
         const grid = document.createElement('div');
         grid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
         matchingPresets.forEach(p => {
-            const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => dashboardModules[l.module]?.name || l.module.toUpperCase()) : [];
-            const modulesText = pLeaves.join(' + ') || 'ZERO-UI';
-
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn';
             btn.style.cssText = 'text-align:left; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;';
             btn.innerHTML = `<strong style="color:var(--text-main); font-size:var(--font-sm); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.name)}</strong>`;
-
-            btn.onmouseenter = (e) => {
-                if (typeof showPresetModulesHoverPopup === 'function') {
-                    showPresetModulesHoverPopup(e, p.name, modulesText);
-                }
-            };
-            btn.onmousemove = (e) => {
-                if (typeof movePresetModulesHoverPopup === 'function') {
-                    movePresetModulesHoverPopup(e);
-                }
-            };
-            btn.onmouseleave = () => {
-                if (typeof hidePresetModulesHoverPopup === 'function') {
-                    hidePresetModulesHoverPopup();
-                }
-            };
-
             btn.onclick = () => {
-                if (typeof hidePresetModulesHoverPopup === 'function') hidePresetModulesHoverPopup();
                 closeModals();
-                if (typeof isHudMode !== 'undefined' && isHudMode) toggleHudMode(false);
-                applyWorkspacePreset(p.id);
+                if (typeof applyWorkspacePreset === 'function') applyWorkspacePreset(p.id);
             };
             grid.appendChild(btn);
         });
@@ -1345,129 +1304,155 @@ function renderQuickSwitcherContent(filterStr = '') {
     }
     body.appendChild(presetsSection);
 
-    // 2. MODULES (Tutti dotati di tendina ▾ grazie a MACRO_SUBMODULES_MAP, zero scritte cmd:...)
     const modSection = document.createElement('div');
     modSection.innerHTML = `<div class="sub-column-header">Modules</div>`;
     const modGrid = document.createElement('div');
     modGrid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
 
-    const primaryList = typeof PRIMARY_MODULE_KEYS !== 'undefined' ? PRIMARY_MODULE_KEYS : ALL_MODULE_KEYS;
+    const primaryList = typeof PRIMARY_MODULE_KEYS !== 'undefined' ? PRIMARY_MODULE_KEYS : [];
 
-    primaryList
-        .filter(k => {
-            if (!q) return true;
-            const subKeys = (typeof MACRO_SUBMODULES_MAP !== 'undefined' && MACRO_SUBMODULES_MAP[k]) ? MACRO_SUBMODULES_MAP[k] : [k];
-            const subMatches = subKeys.some(sk => dashboardModules[sk] && (sk.includes(q) || dashboardModules[sk].name.toLowerCase().includes(q)));
-            return k.includes(q) || dashboardModules[k].name.toLowerCase().includes(q) || subMatches;
-        })
-        .forEach(k => {
-            const subKeys = (typeof MACRO_SUBMODULES_MAP !== 'undefined' && MACRO_SUBMODULES_MAP[k]) ? MACRO_SUBMODULES_MAP[k] : [k];
-            const isStaged = qsStagedModules.includes(k);
-            const isCurrentlyMounted = activeSlots.includes(k) || subKeys.some(sk => activeSlots.includes(sk));
-            const cleanMacroName = dashboardModules[k].name;
+    primaryList.filter(k => {
+        if (!q) return true;
+        const subKeys = (typeof MACRO_SUBMODULES_MAP !== 'undefined' && MACRO_SUBMODULES_MAP[k]) ? MACRO_SUBMODULES_MAP[k] : [k];
+        const subMatches = subKeys.some(sk => typeof dashboardModules !== 'undefined' && dashboardModules[sk] && (sk.includes(q) || dashboardModules[sk].name.toLowerCase().includes(q)));
+        return k.includes(q) || (dashboardModules[k] && dashboardModules[k].name.toLowerCase().includes(q)) || subMatches;
+    }).forEach(k => {
+        const subKeys = (typeof MACRO_SUBMODULES_MAP !== 'undefined' && MACRO_SUBMODULES_MAP[k]) ? MACRO_SUBMODULES_MAP[k] : [k];
+        const isStaged = qsStagedModules.includes(k);
+        const isCurrentlyMounted = typeof activeSlots !== 'undefined' && (activeSlots.includes(k) || subKeys.some(sk => activeSlots.includes(sk)));
+        const cleanMacroName = dashboardModules[k] ? dashboardModules[k].name : k;
 
-            const cardWrap = document.createElement('div');
-            cardWrap.style.cssText = 'display:flex; flex-direction:column; position:relative;';
+        const cardWrap = document.createElement('div');
+        cardWrap.style.cssText = 'display:flex; flex-direction:column; position:relative;';
 
-            const topRow = document.createElement('div');
-            topRow.style.cssText = 'display:flex; width:100%;';
+        const topRow = document.createElement('div');
+        topRow.style.cssText = 'display:flex; width:100%;';
 
-            const mainBtn = document.createElement('button');
-            mainBtn.type = 'button';
-            mainBtn.className = `btn ${isStaged ? 'btn-primary' : ''}`;
-            mainBtn.style.cssText = 'flex:1; text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; min-width:0;';
-            mainBtn.innerHTML = `
-                <div style="font-weight:bold; font-size:var(--font-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(cleanMacroName)}</div>
-                <span style="font-size:0.62rem; margin-left:4px;">${isStaged ? '[+]' : (isCurrentlyMounted ? '●' : '')}</span>
-            `;
+        const mainBtn = document.createElement('button');
+        mainBtn.type = 'button';
+        mainBtn.className = `btn ${isStaged ? 'btn-primary' : ''}`;
+        mainBtn.style.cssText = 'flex:1; text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; min-width:0;';
+        mainBtn.innerHTML = `
+            <div style="font-weight:bold; font-size:var(--font-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(cleanMacroName)}</div>
+            <span style="font-size:0.62rem; margin-left:4px;">${isStaged ? '[+]' : (isCurrentlyMounted ? '●' : '')}</span>
+        `;
 
-            mainBtn.onclick = (e) => {
-                if (e.shiftKey || e.altKey) {
-                    const idx = qsStagedModules.indexOf(k);
-                    if (idx !== -1) qsStagedModules.splice(idx, 1);
-                    else qsStagedModules.push(k);
-                    renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
-                } else if (qsStagedModules.length > 0) {
-                    if (!qsStagedModules.includes(k)) qsStagedModules.push(k);
-                    commitQuickSwitcherStaged();
-                } else {
-                    closeModals();
-                    setModulesView([k]);
-                }
-            };
-            topRow.appendChild(mainBtn);
-
-            const isExpanded = (qsExpandedMacroKey === k) || (q && subKeys.length > 1 && subKeys.some(sk => dashboardModules[sk]?.name.toLowerCase().includes(q)));
-            const dropBtn = document.createElement('button');
-            dropBtn.type = 'button';
-            dropBtn.className = `btn ${isExpanded ? 'btn-primary' : ''}`;
-            dropBtn.style.cssText = 'padding: 0 10px; margin-left: -1px; font-size: 0.72rem;';
-            dropBtn.textContent = isExpanded ? '▴' : '▾';
-            dropBtn.onclick = (e) => {
-                e.stopPropagation();
-                qsExpandedMacroKey = (qsExpandedMacroKey === k) ? null : k;
+        mainBtn.onclick = (e) => {
+            if (e.shiftKey || e.altKey) {
+                const idx = qsStagedModules.indexOf(k);
+                if (idx !== -1) qsStagedModules.splice(idx, 1);
+                else qsStagedModules.push(k);
                 renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
-            };
-            topRow.appendChild(dropBtn);
-            cardWrap.appendChild(topRow);
+            } else if (qsStagedModules.length > 0) {
+                if (!qsStagedModules.includes(k)) qsStagedModules.push(k);
+                commitQuickSwitcherStaged();
+            } else {
+                closeModals();
+                if (typeof setModulesView === 'function') setModulesView([k]);
+            }
+        };
+        topRow.appendChild(mainBtn);
 
-            if (isExpanded) {
-                const subTray = document.createElement('div');
-                subTray.style.cssText = 'border: 1px solid var(--text-main); border-top: none; background: #070707; padding: 6px; display: flex; flex-direction: column; gap: 4px;';
+        const isExpanded = (qsExpandedMacroKey === k) || (q && subKeys.length > 1 && subKeys.some(sk => dashboardModules[sk]?.name.toLowerCase().includes(q)));
+        const dropBtn = document.createElement('button');
+        dropBtn.type = 'button';
+        dropBtn.className = `btn ${isExpanded ? 'btn-primary' : ''}`;
+        dropBtn.style.cssText = 'padding: 0 10px; margin-left: -1px; font-size: 0.72rem;';
+        dropBtn.textContent = isExpanded ? '▴' : '▾';
+        dropBtn.onclick = (e) => {
+            e.stopPropagation();
+            qsExpandedMacroKey = (qsExpandedMacroKey === k) ? null : k;
+            renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
+        };
+        topRow.appendChild(dropBtn);
+        cardWrap.appendChild(topRow);
 
-                subKeys.forEach(sk => {
-                    if (!dashboardModules[sk]) return;
-                    const subStaged = qsStagedModules.includes(sk);
-                    const subMounted = activeSlots.includes(sk);
-                    const shortSubName = dashboardModules[sk].name.replace(/^.*?:\s*/, '');
+        if (isExpanded) {
+            const subTray = document.createElement('div');
+            subTray.style.cssText = 'border: 1px solid var(--text-main); border-top: none; background: #070707; padding: 6px; display: flex; flex-direction: column; gap: 4px;';
 
-                    const subBtn = document.createElement('button');
-                    subBtn.type = 'button';
-                    subBtn.className = `btn btn-sm ${subStaged ? 'btn-primary' : ''}`;
-                    subBtn.style.cssText = 'text-align:left; display:flex; justify-content:space-between; align-items:center; padding: 5px 8px;';
-                    subBtn.innerHTML = `
-                        <span>↳ ${escapeHtml(shortSubName)}</span>
-                        <span style="font-size:0.6rem; opacity:0.75;">${subStaged ? '[+]' : (subMounted ? '●' : '')}</span>
-                    `;
-                    subBtn.onclick = (ev) => {
-                        ev.stopPropagation();
-                        if (ev.shiftKey || ev.altKey) {
-                            const idx = qsStagedModules.indexOf(sk);
-                            if (idx !== -1) qsStagedModules.splice(idx, 1);
-                            else qsStagedModules.push(sk);
-                            renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
-                        } else if (qsStagedModules.length > 0) {
-                            if (!qsStagedModules.includes(sk)) qsStagedModules.push(sk);
-                            commitQuickSwitcherStaged();
-                        } else {
-                            closeModals();
-                            setModulesView([sk]);
-                        }
-                    };
-                    subTray.appendChild(subBtn);
-                });
+            subKeys.forEach(sk => {
+                if (!dashboardModules[sk]) return;
+                const subStaged = qsStagedModules.includes(sk);
+                const subMounted = typeof activeSlots !== 'undefined' && activeSlots.includes(sk);
+                const shortSubName = dashboardModules[sk].name.replace(/^.*?:\s*/, '');
 
-                const saveDefBtn = document.createElement('button');
-                saveDefBtn.type = 'button';
-                saveDefBtn.className = 'btn btn-sm';
-                saveDefBtn.style.cssText = 'margin-top:4px; border-style:dashed; font-size:0.6rem; color:var(--accent-gold); border-color:var(--accent-gold);';
-                saveDefBtn.textContent = `[★ SET AS DEFAULT]`;
-                saveDefBtn.onclick = (ev) => {
+                const subBtn = document.createElement('button');
+                subBtn.type = 'button';
+                subBtn.className = `btn btn-sm ${subStaged ? 'btn-primary' : ''}`;
+                subBtn.style.cssText = 'text-align:left; display:flex; justify-content:space-between; align-items:center; padding: 5px 8px;';
+                subBtn.innerHTML = `
+                    <span>↳ ${escapeHtml(shortSubName)}</span>
+                    <span style="font-size:0.6rem; opacity:0.75;">${subStaged ? '[+]' : (subMounted ? '●' : '')}</span>
+                `;
+                subBtn.onclick = (ev) => {
                     ev.stopPropagation();
-                    if (typeof saveCurrentAsMacroDefault === 'function') {
-                        saveCurrentAsMacroDefault(k);
+                    if (ev.shiftKey || ev.altKey) {
+                        const idx = qsStagedModules.indexOf(sk);
+                        if (idx !== -1) qsStagedModules.splice(idx, 1);
+                        else qsStagedModules.push(sk);
+                        renderQuickSwitcherContent(document.getElementById('qs-filter-input')?.value || '');
+                    } else if (qsStagedModules.length > 0) {
+                        if (!qsStagedModules.includes(sk)) qsStagedModules.push(sk);
+                        commitQuickSwitcherStaged();
+                    } else {
+                        closeModals();
+                        if (typeof setModulesView === 'function') setModulesView([sk]);
                     }
                 };
-                subTray.appendChild(saveDefBtn);
-
-                cardWrap.appendChild(subTray);
-            }
-
-            modGrid.appendChild(cardWrap);
-        });
+                subTray.appendChild(subBtn);
+            });
+            cardWrap.appendChild(subTray);
+        }
+        modGrid.appendChild(cardWrap);
+    });
 
     modSection.appendChild(modGrid);
     body.appendChild(modSection);
+}
+
+function populateCentralModalCategorySelects(initialFullCat) {
+    const parentSel = document.getElementById('ncm-parent-cat');
+    if (!parentSel) return;
+
+    parentSel.innerHTML = '';
+    
+    if (typeof noteCategories !== 'undefined') {
+        noteCategories.sort().forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat;
+            const depth = (cat.match(/\//g) || []).length;
+            const indent = ' '.repeat(depth * 3); // Spazi non-breaking nel DOM textContent
+            opt.textContent = `${indent}${cat.split(' / ').pop()}`;
+            if (cat === initialFullCat) opt.selected = true;
+            parentSel.appendChild(opt);
+        });
+    }
+
+    const newOpt = document.createElement('option');
+    newOpt.value = '__NEW__';
+    newOpt.textContent = '+ New Folder...';
+    parentSel.appendChild(newOpt);
+
+    parentSel.onchange = () => {
+        if (parentSel.value === '__NEW__') {
+            const entered = prompt('Create new folder path (e.g. Work / Meetings):');
+            if (entered && entered.trim()) {
+                let clean = entered.trim();
+                clean = clean.split('/').map(x => x.trim()).filter(Boolean).join(' / ');
+                if (typeof noteCategories !== 'undefined' && !noteCategories.includes(clean)) {
+                    noteCategories.push(clean);
+                }
+                populateCentralModalCategorySelects(clean);
+            } else {
+                populateCentralModalCategorySelects(initialFullCat);
+            }
+        }
+    };
+}
+
+function getCentralModalSelectedFullCategory() {
+    return document.getElementById('ncm-parent-cat')?.value || 'General';
 }
 
 function selectColor(element, inputId) {
@@ -1504,7 +1489,7 @@ function updateCustomColor(input, inputId) {
 }
 
 function updateOpacity(val) {
-    savedOpacity = val;
+    if (typeof savedOpacity !== 'undefined') window.savedOpacity = val;
     document.documentElement.style.setProperty('--bg-opacity', val);
     const label = document.getElementById('opacity-val');
     if (label) label.innerText = val;
@@ -1514,12 +1499,6 @@ function updateOpacity(val) {
         localStorage.setItem('tracker_opacity', val);
     }
 }
-
-document.documentElement.style.setProperty('--bg-opacity', savedOpacity);
-const sliderEl = document.getElementById('bg-opacity-slider');
-if (sliderEl) sliderEl.value = savedOpacity;
-const labelEl = document.getElementById('opacity-val');
-if (labelEl) labelEl.innerText = savedOpacity;
 
 function switchSettingsTab(tabId) {
     document.querySelectorAll('.sys-cfg-nav').forEach(btn => {
@@ -1550,9 +1529,9 @@ function openSettingsModal(defaultTab = 'tab-workspace') {
     if (typeof updateCloudSyncSettingsUI === 'function') updateCloudSyncSettingsUI();
 
     const sEl = document.getElementById('bg-opacity-slider');
-    if (sEl) sEl.value = savedOpacity;
+    if (sEl && typeof savedOpacity !== 'undefined') sEl.value = savedOpacity;
     const lEl = document.getElementById('opacity-val');
-    if (lEl) lEl.innerText = savedOpacity;
+    if (lEl && typeof savedOpacity !== 'undefined') lEl.innerText = savedOpacity;
 
     closeModals();
     switchSettingsTab(defaultTab);
@@ -1560,22 +1539,253 @@ function openSettingsModal(defaultTab = 'tab-workspace') {
     if (modal) modal.style.display = 'flex';
 }
 
-const btnMinimize = document.getElementById('btn-minimize-app');
-if (btnMinimize) {
-    btnMinimize.addEventListener('click', () => {
-        if (window.__TAURI__ && window.__TAURI__.window) {
-            window.__TAURI__.window.getCurrentWindow().minimize();
-        }
-    });
-}
+// ============================================================================
+// FORM SUBMIT HANDLERS
+// ============================================================================
 
-const btnClose = document.getElementById('btn-close-app');
-if (btnClose) {
-    btnClose.addEventListener('click', () => {
-        if (window.__TAURI__ && window.__TAURI__.window) {
-            window.__TAURI__.window.getCurrentWindow().close();
-        } else {
-            window.close();
+document.getElementById('habitForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('h-id').value;
+    const category = document.getElementById('h-category').value.trim();
+    const title = document.getElementById('h-title').value.trim();
+    const startDate = document.getElementById('h-startdate').value;
+    const endDate = document.getElementById('h-enddate').value || null;
+    const color = document.getElementById('h-color').value || '#ffffff';
+    const type = document.querySelector('input[name="h-type"]:checked').value;
+    const priorityNode = document.querySelector('input[name="h-priority"]:checked');
+    const priority = priorityNode ? priorityNode.value : 'high';
+
+    let instances = 1, timerMins = 25, noTimer = false, frequency = 'specific', daysOfWeek = [], timeWindows = [];
+
+    if (type === 'timed') {
+        document.querySelectorAll('.habit-time-window-row').forEach(row => {
+            const start = row.querySelector('.h-start').value;
+            const end = row.querySelector('.h-end').value;
+            let days = [];
+            row.querySelectorAll('.tw-day-check:checked').forEach(cb => {
+                const dVal = parseInt(cb.value, 10);
+                days.push(dVal);
+                if (!daysOfWeek.includes(dVal)) daysOfWeek.push(dVal);
+            });
+            if (start && end && days.length > 0) timeWindows.push({ start, end, days });
+        });
+        if (timeWindows.length === 0) {
+            alert("Please complete at least one time window with selected days!");
+            return;
+        }
+        const [sh, sm] = timeWindows[0].start.split(':').map(Number);
+        const [eh, em] = timeWindows[0].end.split(':').map(Number);
+        timerMins = Math.max(5, (eh * 60 + em) - (sh * 60 + sm));
+    } else {
+        const modeRadio = document.querySelector('input[name="h-timer-mode"]:checked');
+        noTimer = (modeRadio && modeRadio.value === 'checkonly');
+        instances = parseInt(document.getElementById('h-instances').value, 10) || 1;
+        timerMins = noTimer ? 0 : (parseInt(document.getElementById('h-timer').value, 10) || 25);
+        frequency = document.getElementById('h-frequency').value;
+        if (frequency === 'specific') {
+            document.querySelectorAll('#h-days-container input:checked').forEach(cb => {
+                daysOfWeek.push(parseInt(cb.value, 10));
+            });
+            if (daysOfWeek.length === 0) {
+                alert("Please select at least one day!");
+                return;
+            }
+        }
+    }
+
+    if (id) {
+        const t = templates.find(x => x.id === id);
+        if (t) {
+            Object.assign(t, { category, title, instances, timerMinutes: timerMins, noTimer, frequency, daysOfWeek, startDate, endDate, color, timeWindows, type, priority });
+        }
+    } else {
+        templates.push({
+            id: 't_' + Date.now(),
+            category, title, instances, timerMinutes: timerMins, noTimer, frequency, daysOfWeek, startDate, endDate, color, timeWindows, type, exceptions: [], priority
+        });
+    }
+
+    saveData();
+    closeModals();
+    renderTasks();
+    if (typeof renderTracker === 'function') renderTracker();
+    if (typeof renderCalendar === 'function') renderCalendar();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    if (typeof renderAvailableTasksForFocus === 'function') renderAvailableTasksForFocus();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+});
+
+document.getElementById('routineForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('rtn-id').value;
+    const title = document.getElementById('rtn-title').value.trim();
+    const startDate = document.getElementById('rtn-startdate').value || todayStr;
+    const endDate = document.getElementById('rtn-enddate').value || null;
+    const color = document.getElementById('rtn-color').value || '#b08d43';
+    const type = document.querySelector('input[name="rtn-type"]:checked').value;
+
+    let timerMinutes = 20, noTimer = true, frequency = 'all', daysOfWeek = [], timeWindows = [];
+
+    if (type === 'timed') {
+        document.querySelectorAll('.rtn-time-window-row').forEach(row => {
+            const start = row.querySelector('.rtn-start').value;
+            const end = row.querySelector('.rtn-end').value;
+            let days = [];
+            row.querySelectorAll('.tw-day-check:checked').forEach(cb => {
+                const dVal = parseInt(cb.value, 10);
+                days.push(dVal);
+                if (!daysOfWeek.includes(dVal)) daysOfWeek.push(dVal);
+            });
+            if (start && end && days.length > 0) timeWindows.push({ start, end, days });
+        });
+        if (timeWindows.length === 0) {
+            alert("Please complete at least one time window with selected days!");
+            return;
+        }
+        frequency = 'specific';
+        noTimer = false;
+        const [sh, sm] = timeWindows[0].start.split(':').map(Number);
+        const [eh, em] = timeWindows[0].end.split(':').map(Number);
+        timerMinutes = Math.max(5, (eh * 60 + em) - (sh * 60 + sm));
+    } else {
+        const modeRadio = document.querySelector('input[name="rtn-timer-mode"]:checked');
+        noTimer = (modeRadio && modeRadio.value === 'checkonly');
+        timerMinutes = noTimer ? 0 : (parseInt(document.getElementById('rtn-timer').value, 10) || 20);
+        frequency = document.getElementById('rtn-frequency').value;
+        if (frequency === 'specific') {
+            document.querySelectorAll('#rtn-days-container input:checked').forEach(cb => {
+                daysOfWeek.push(parseInt(cb.value, 10));
+            });
+            if (daysOfWeek.length === 0) {
+                alert("Please select at least one day!");
+                return;
+            }
+        }
+    }
+
+    const sections = [];
+    document.querySelectorAll('#rtn-subsections-builder .rtn-form-sec-box').forEach((box, idx) => {
+        const secName = box.querySelector('.rtn-sec-name-inp').value.trim() || `Section ${idx + 1}`;
+        const pendingInp = box.querySelector('.rtn-new-step-inp');
+        const items = [];
+        box.querySelectorAll('.rtn-step-val-inp').forEach((sInp, sIdx) => {
+            const val = sInp.value.trim();
+            if (val) {
+                items.push({
+                    id: `ri_${Date.now()}_${idx}_${sIdx}`,
+                    title: val
+                });
+            }
+        });
+        if (pendingInp && pendingInp.value.trim()) {
+            items.push({
+                id: `ri_${Date.now()}_${idx}_p`,
+                title: pendingInp.value.trim()
+            });
+        }
+        if (items.length > 0 || secName) {
+            sections.push({
+                id: box.dataset.secId || `sec_${Date.now()}_${idx}`,
+                title: secName,
+                items: items
+            });
         }
     });
-}
+
+    if (id) {
+        const existing = routinesData.find(x => x.id === id);
+        if (existing) {
+            Object.assign(existing, { title, color, startDate, endDate, type, noTimer, timerMinutes, frequency, daysOfWeek, timeWindows, sections });
+        }
+    } else {
+        routinesData.push({
+            id: 'rtn_' + Date.now(),
+            title, color, startDate, endDate, type, noTimer, timerMinutes, frequency, daysOfWeek, timeWindows, sections
+        });
+    }
+
+    saveData();
+    closeModals();
+    renderTasks();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+});
+
+document.getElementById('eventForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const startVal = document.getElementById('e-start') ? document.getElementById('e-start').value : '';
+    const endVal = document.getElementById('e-end') ? document.getElementById('e-end').value : '';
+
+    specificEvents.push({
+        id: 'e_' + Date.now(),
+        title: document.getElementById('e-title').value.trim(),
+        date: document.getElementById('e-date').value,
+        start: startVal || null,
+        end: endVal || null,
+        color: document.getElementById('e-color').value
+    });
+
+    saveData();
+    closeModals();
+    renderTasks();
+    if (typeof renderCalendar === 'function') renderCalendar();
+    if (typeof renderWeeklyPlanner === 'function') renderWeeklyPlanner();
+    if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+});
+
+document.getElementById('medicineForm')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const id = document.getElementById('med-id') ? document.getElementById('med-id').value : '';
+    const catName = 'Medicine';
+    if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+
+    const frequency = document.getElementById('med-frequency') ? document.getElementById('med-frequency').value : 'all';
+    const intervalDays = document.getElementById('med-interval-days')
+        ? Math.max(1, parseInt(document.getElementById('med-interval-days').value, 10) || 14)
+        : 14;
+    const routineId = document.getElementById('med-routine-select')
+        ? document.getElementById('med-routine-select').value
+        : 'rtn_evening';
+
+    const daysOfWeek = [];
+    if (frequency === 'specific') {
+        document.querySelectorAll('#med-days-container input:checked').forEach(cb => {
+            daysOfWeek.push(parseInt(cb.value, 10));
+        });
+    }
+
+    const medPayload = {
+        category: catName,
+        title: document.getElementById('med-title').value.trim(),
+        routineId: routineId,
+        instances: parseInt(document.getElementById('med-instances').value, 10) || 1,
+        stock: parseInt(document.getElementById('med-stock').value, 10) || 0,
+        alertDays: parseInt(document.getElementById('med-alert').value, 10) || 7,
+        startDate: document.getElementById('med-startdate').value || todayStr,
+        endDate: null,
+        color: '#4c5b73',
+        type: 'medicine',
+        noTimer: true,
+        timerMinutes: 0,
+        frequency: frequency,
+        intervalDays: intervalDays,
+        timeWindows: [],
+        daysOfWeek: daysOfWeek
+    };
+
+    let targetMed = null;
+    if (id) {
+        targetMed = templates.find(x => x.id === id);
+        if (targetMed) Object.assign(targetMed, medPayload);
+    } else {
+        targetMed = Object.assign({ id: 'm_' + Date.now() }, medPayload);
+        templates.push(targetMed);
+    }
+
+    if (targetMed && typeof recalculateMedicineAlerts === 'function') recalculateMedicineAlerts(targetMed);
+    saveData();
+    document.getElementById('medicineForm').reset();
+    closeModals();
+    renderTasks();
+    if (typeof renderCalendar === 'function') renderCalendar();
+});

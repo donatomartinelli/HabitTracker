@@ -1111,3 +1111,52 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     gap: 8px;
     z-index: 50;
 }
+
+/* --- ZENITH MODE (DEEP FOCUS) --- */
+body.zenith-mode .layout {
+    background: #000000;
+}
+
+body.zenith-mode .quadrant-cell {
+    opacity: 0.15;
+    filter: grayscale(100%);
+    pointer-events: none;
+    transition: opacity 0.5s ease, filter 0.5s ease;
+}
+
+/* Tiene illuminato solo il modulo bersaglio */
+body.zenith-mode .quadrant-cell.zenith-focus-target {
+    opacity: 1 !important;
+    filter: none !important;
+    pointer-events: auto !important;
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--text-main);
+}
+
+body.zenith-mode .app-header {
+    opacity: 1 !important;
+}
+
+/* --- PRIORITY LOCK --- */
+.priority-locked {
+    opacity: 0.25 !important;
+    pointer-events: none !important;
+    filter: grayscale(100%);
+    position: relative;
+}
+
+.priority-locked::after {
+    content: '[LOCKED: FINISH HIGH PRIORITY TASKS FIRST]';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 0.65rem;
+    font-weight: bold;
+    color: var(--accent-red);
+    background: #000;
+    padding: 2px 6px;
+    border: 1px solid var(--accent-red);
+    white-space: nowrap;
+    z-index: 10;
+}

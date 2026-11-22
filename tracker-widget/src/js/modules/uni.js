@@ -21,6 +21,14 @@ function getYesterdayDateStr() {
     return formatDate(d);
 }
 
+let roadmapViewMode = localStorage.getItem('cortex_roadmap_view') || 'grid';
+
+function toggleRoadmapView() {
+    roadmapViewMode = roadmapViewMode === 'list' ? 'grid' : 'list';
+    localStorage.setItem('cortex_roadmap_view', roadmapViewMode);
+    renderUniAtomRoadmap();
+}
+
 // ============================================================================
 // 1. CALCOLO STATISTICHE CARRIERA (180 CFU, 18-30L CON 30L = 30, BASE /110)
 // ============================================================================
@@ -181,62 +189,39 @@ function setExamPrepPhase(examId, newPhase) {
     }
 }
 
-function syncCourseLecturesToTimedTask(exam) {
-    const existingLectureTasks = templates.filter(t => t.uniExamId === exam.id && t.uniRole === 'lecture');
-    const validWindows = (exam.lectures || []).filter(w => w.start && w.end && Array.isArray(w.days) && w.days.length > 0);
-
-    if (validWindows.length === 0) {
-        existingLectureTasks.forEach(t => archiveTemplateSafely(t));
-        syncCategoryOrder();
+function syncCourseLecturesToEvents(exam) {
+    // Rimuovi in modo sicuro tutti i vecchi eventi lezione associati a questo corso
+    specificEvents = specificEvents.filter(e => !(e.uniExamId === exam.id && e.uniRole === 'lecture'));
+    
+    if (!exam.lectures || exam.lectures.length === 0 || !exam.lectureStart || !exam.lectureEnd) {
         saveData();
         return;
     }
-
-    const catName = exam.name.trim();
-    if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
-
-    const allDays = [];
-    validWindows.forEach(w => {
-        w.days.forEach(d => { if (!allDays.includes(d)) allDays.push(d); });
-    });
-
-    const [sh, sm] = validWindows[0].start.split(':').map(Number);
-    const [eh, em] = validWindows[0].end.split(':').map(Number);
-    const durMins = Math.max(15, (eh * 60 + em) - (sh * 60 + sm));
-
-    let activeLectureTask = existingLectureTasks.find(t => !t.endDate || t.endDate >= todayStr);
-
-    if (activeLectureTask) {
-        activeLectureTask.category = catName;
-        activeLectureTask.title = `Lezione ${catName}`;
-        activeLectureTask.startDate = exam.lectureStart || todayStr;
-        activeLectureTask.endDate = exam.lectureEnd || null;
-        activeLectureTask.color = exam.color || '#4c5b73';
-        activeLectureTask.timeWindows = validWindows;
-        activeLectureTask.daysOfWeek = allDays;
-        activeLectureTask.timerMinutes = durMins;
-    } else {
-        templates.push({
-            id: `t_uni_lec_${exam.id}_${Date.now()}`,
-            uniExamId: exam.id,
-            uniRole: 'lecture',
-            category: catName,
-            title: `Lezione ${catName}`,
-            instances: 1,
-            timerMinutes: durMins,
-            noTimer: false,
-            frequency: 'specific',
-            daysOfWeek: allDays,
-            startDate: exam.lectureStart || todayStr,
-            endDate: exam.lectureEnd || null,
-            color: exam.color || '#4c5b73',
-            type: 'timed',
-            timeWindows: validWindows,
-            exceptions: []
+    
+    const startD = parseLocalDate(exam.lectureStart);
+    const endD = parseLocalDate(exam.lectureEnd);
+    let curr = new Date(startD);
+    
+    while (curr <= endD) {
+        const dayIdx = curr.getDay(); // 0 (Sun) to 6 (Sat)
+        const dateStr = formatDate(curr);
+        
+        exam.lectures.forEach(slot => {
+            if (slot.days && slot.days.includes(dayIdx)) {
+                specificEvents.push({
+                    id: `e_lec_${exam.id}_${dateStr}_${slot.start.replace(':','')}`,
+                    uniExamId: exam.id,
+                    uniRole: 'lecture',
+                    title: `[LEZ] ${exam.name}`,
+                    date: dateStr,
+                    start: slot.start,
+                    end: slot.end,
+                    color: exam.color || '#4c5b73'
+                });
+            }
         });
+        curr.setDate(curr.getDate() + 1);
     }
-
-    syncCategoryOrder();
     saveData();
 }
 
@@ -296,15 +281,31 @@ function recordPassedExam(examNameOrId, rawGrade, rawCfu = null, dateStr = today
         finalName = matchedCourse.name;
         if (!rawCfu) finalCfu = matchedCourse.cfu || 6;
 
+        // COLD STORAGE: Task e Routine
         templates
             .filter(t => t.uniExamId === matchedCourse.id || t.category.toLowerCase() === finalName.toLowerCase())
             .forEach(t => archiveTemplateSafely(t));
 
+        // Pulisci Appelli e Lezioni
         const appealsToRemove = (uniData.appeals || []).filter(a => a.examName.toLowerCase() === finalName.toLowerCase());
-        appealsToRemove.forEach(a => {
-            specificEvents = specificEvents.filter(e => e.id !== a.eventId);
-        });
+        appealsToRemove.forEach(a => { specificEvents = specificEvents.filter(e => e.id !== a.eventId); });
         uniData.appeals = (uniData.appeals || []).filter(a => a.examName.toLowerCase() !== finalName.toLowerCase());
+        specificEvents = specificEvents.filter(e => e.uniExamId !== matchedCourse.id);
+
+        // COLD STORAGE: Note -> "Archive / Nome Corso"
+        const archiveRoot = `Archive / ${finalName}`;
+        if (!noteCategories.includes(archiveRoot)) noteCategories.push(archiveRoot);
+
+        Object.keys(notesContent).forEach(cat => {
+            if (cat === finalName || cat.startsWith(`${finalName} /`)) {
+                const subName = cat === finalName ? 'Generale' : cat.replace(`${finalName} /`, '').trim();
+                const destCat = `${archiveRoot} / ${subName}`;
+                if (!noteCategories.includes(destCat)) noteCategories.push(destCat);
+                notesContent[destCat] = notesContent[cat];
+                delete notesContent[cat];
+                noteCategories = noteCategories.filter(c => c !== cat);
+            }
+        });
 
         uniData.remainingExams.splice(remIdx, 1);
     }
@@ -325,7 +326,7 @@ function recordPassedExam(examNameOrId, rawGrade, rawCfu = null, dateStr = today
     refreshAllConnectedViews();
 
     if (typeof showToast === 'function') {
-        showToast(`[LIBRETTO] ${finalName}: ${numericGrade}${isLaude && numericGrade === 30 ? 'L' : ''} (${finalCfu} CFU)`);
+        showToast(`[COLD STORAGE] ${finalName} verbalizzato. Dati archiviati.`);
     }
     return true;
 }
@@ -491,7 +492,10 @@ function renderUniAtomRoadmap(customContainer = null) {
                 <span class="section-label">Uni Roadmap</span>
                 <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${courses.length} COURSES</span>
             </div>
-            <button type="button" class="btn btn-sm ${showRoadmapAddForm ? 'btn-primary' : ''}" id="btn-toggle-roadmap-add">[+]</button>
+            <div style="display:flex; gap:6px;">
+                <button type="button" class="btn btn-sm" onclick="toggleRoadmapView()">[VIEW: ${roadmapViewMode.toUpperCase()}]</button>
+                <button type="button" class="btn btn-sm ${showRoadmapAddForm ? 'btn-primary' : ''}" id="btn-toggle-roadmap-add">[+]</button>
+            </div>
         </div>
 
         <div id="uni-roadmap-add-row" style="display:${showRoadmapAddForm ? 'flex' : 'none'}; gap:6px; flex-wrap:wrap; padding:8px; border:1px solid var(--border-bright); background:#060606;">
@@ -525,93 +529,129 @@ function renderUniAtomRoadmap(customContainer = null) {
 
     const listEl = wrap.querySelector('#uni-remaining-list');
     if (courses.length === 0) {
-        listEl.innerHTML = '<div class="empty-state">[ NONE ]</div>';
+        listEl.innerHTML = '<div class="empty-state">[ NO COURSES IN ROADMAP ]</div>';
     } else {
-        courses.forEach(course => {
-            const hoursStudied = getExamStudiedHours(course.id, course.name);
-            const phase = course.prepPhase || 'none';
+        const groupedByYear = {};
+        courses.forEach(c => {
+            const y = c.year || 1;
+            if (!groupedByYear[y]) groupedByYear[y] = [];
+            groupedByYear[y].push(c);
+        });
 
-            const card = document.createElement('div');
-            card.style.cssText = `border:1px solid ${phase !== 'none' ? 'var(--border-bright)' : 'var(--border-color)'}; border-left:3px solid ${course.color || '#ffffff'}; padding:10px 12px; background:rgba(255,255,255,0.02); display:flex; flex-direction:column; gap:8px;`;
+        Object.keys(groupedByYear).sort((a, b) => parseInt(a) - parseInt(b)).forEach(year => {
+            const yearHeader = document.createElement('div');
+            yearHeader.className = 'sub-column-header';
+            yearHeader.style.marginTop = '10px';
+            yearHeader.textContent = `ANNO ACCADEMICO ${year}`;
+            listEl.appendChild(yearHeader);
 
-            let phaseBadge = '<span style="color:var(--text-dim);">[IDLE]</span>';
-            if (phase === 'study') {
-                phaseBadge = '<span style="color:var(--accent-green); font-weight:bold;">[PHASE 1: 4x30m STUDIO + 2x30m ANKI]</span>';
-            } else if (phase === 'proofs') {
-                phaseBadge = '<span style="color:var(--accent-gold); font-weight:bold;">[PHASE 2: 4x30m DIMOSTR. + 2x30m ANKI]</span>';
-            }
+            const yearGrid = document.createElement('div');
+            yearGrid.style.cssText = roadmapViewMode === 'grid' 
+                ? 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;' 
+                : 'display: flex; flex-direction: column; gap: 8px;';
 
-            card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
-                    <div>
-                        <strong style="font-size:var(--font-md); color:var(--text-main); text-transform:uppercase;">${escapeHtml(course.name)}</strong>
-                        <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:8px;">${course.cfu} CFU · Y${course.year || 1}</span>
-                    </div>
-                    <span style="font-size:var(--font-xs); padding:2px 7px; border:1px solid var(--border-color); background:#050505; font-variant-numeric:tabular-nums;">
-                        <strong style="color:var(--text-main);">${hoursStudied.toFixed(1)}H</strong>
-                    </span>
-                </div>
+            groupedByYear[year].forEach(course => {
+                const hoursStudied = getExamStudiedHours(course.id, course.name);
+                const phase = course.prepPhase || 'none';
 
-                <div style="font-size:var(--font-xs); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                    <div>${phaseBadge}</div>
-                    <div class="uni-course-actions" style="display:flex; gap:5px; flex-wrap:wrap;"></div>
-                </div>
-            `;
+                const card = document.createElement('div');
+                card.style.cssText = `border:1px solid ${phase !== 'none' ? 'var(--border-bright)' : 'var(--border-color)'}; border-left:3px solid ${course.color || '#ffffff'}; padding:10px 12px; background:rgba(255,255,255,0.02); display:flex; flex-direction:column; justify-content:space-between; gap:8px; position:relative; min-height:115px;`;
 
-            const actBox = card.querySelector('.uni-course-actions');
+                let phaseBadge = '<span style="color:var(--text-dim);">[IDLE]</span>';
+                if (phase === 'study') phaseBadge = '<span style="color:var(--accent-green); font-weight:bold;">[1: STUDIO + ANKI]</span>';
+                else if (phase === 'proofs') phaseBadge = '<span style="color:var(--accent-gold); font-weight:bold;">[2: DIMOSTR. + ANKI]</span>';
 
-            const btnPhase1 = document.createElement('button');
-            btnPhase1.className = `btn btn-sm ${phase === 'study' ? 'btn-primary' : ''}`;
-            btnPhase1.textContent = '[1: STUDIO]';
-            btnPhase1.onclick = () => setExamPrepPhase(course.id, phase === 'study' ? 'none' : 'study');
+                const renderNormalMode = () => {
+                    card.innerHTML = `
+                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-size:var(--font-md); color:var(--text-main); font-weight:bold; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(course.name)}</div>
+                                <div style="font-size:var(--font-xs); color:var(--text-dim); margin-top:2px;">${course.cfu} CFU · YEAR ${course.year || 1}</div>
+                            </div>
+                            <span style="font-size:var(--font-xs); padding:2px 7px; border:1px solid var(--border-color); background:#050505; font-variant-numeric:tabular-nums; flex-shrink:0;">
+                                <strong style="color:var(--text-main);">${hoursStudied.toFixed(1)}H</strong>
+                            </span>
+                        </div>
+                        <div style="font-size:var(--font-xs); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px; margin-top:auto;">
+                            <div>${phaseBadge}</div>
+                            <div class="uni-course-actions" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+                        </div>
+                    `;
 
-            const btnPhase2 = document.createElement('button');
-            btnPhase2.className = `btn btn-sm ${phase === 'proofs' ? 'btn-primary' : ''}`;
-            btnPhase2.textContent = '[2: DIMOSTR.]';
-            btnPhase2.onclick = () => setExamPrepPhase(course.id, phase === 'proofs' ? 'none' : 'proofs');
+                    const actBox = card.querySelector('.uni-course-actions');
 
-            const btnFocus = document.createElement('button');
-            btnFocus.className = 'btn btn-sm';
-            btnFocus.textContent = '[▶]';
-            btnFocus.onclick = () => {
-                if (typeof startTaskFocusByQuery === 'function') {
-                    if (!startTaskFocusByQuery(course.name)) {
-                        showToast(`Activate Phase 1 or 2 for "${course.name}" first`);
-                    }
-                }
-            };
+                    const btnPhase1 = document.createElement('button');
+                    btnPhase1.className = `btn btn-sm ${phase === 'study' ? 'btn-primary' : ''}`;
+                    btnPhase1.textContent = '[1]';
+                    btnPhase1.title = 'Fase 1: Studio e Anki';
+                    btnPhase1.onclick = () => setExamPrepPhase(course.id, phase === 'study' ? 'none' : 'study');
 
-            const btnPass = document.createElement('button');
-            btnPass.className = 'btn btn-sm';
-            btnPass.style.borderColor = 'var(--accent-green)';
-            btnPass.style.color = 'var(--accent-green)';
-            btnPass.textContent = '[PASS ✓]';
-            btnPass.onclick = () => {
-                const g = prompt(`Grade (18-30 or 30L) for "${course.name}" (${course.cfu} CFU):`, '30');
-                if (g !== null && g.trim() !== '') {
-                    recordPassedExam(course.id, g.trim(), course.cfu, todayStr);
-                }
-            };
+                    const btnPhase2 = document.createElement('button');
+                    btnPhase2.className = `btn btn-sm ${phase === 'proofs' ? 'btn-primary' : ''}`;
+                    btnPhase2.textContent = '[2]';
+                    btnPhase2.title = 'Fase 2: Dimostrazioni e Anki';
+                    btnPhase2.onclick = () => setExamPrepPhase(course.id, phase === 'proofs' ? 'none' : 'proofs');
 
-            const btnDel = document.createElement('button');
-            btnDel.className = 'icon-btn delete';
-            btnDel.textContent = '[X]';
-            btnDel.onclick = () => {
-                templates.filter(t => t.uniExamId === course.id).forEach(t => archiveTemplateSafely(t));
-                uniData.remainingExams = uniData.remainingExams.filter(x => x.id !== course.id);
-                syncCategoryOrder();
-                saveData();
-                saveUniData();
-                refreshAllConnectedViews();
-            };
+                    const btnPass = document.createElement('button');
+                    btnPass.className = 'icon-btn';
+                    btnPass.style.cssText = 'color:var(--accent-green); border:1px solid var(--accent-green); margin-left:4px;';
+                    btnPass.textContent = '[✓]';
+                    btnPass.onclick = () => {
+                        const g = prompt(`Grade (18-30 or 30L) for "${course.name}" (${course.cfu} CFU):`, '30');
+                        if (g !== null && g.trim() !== '') recordPassedExam(course.id, g.trim(), course.cfu, todayStr);
+                    };
 
-            actBox.appendChild(btnPhase1);
-            actBox.appendChild(btnPhase2);
-            actBox.appendChild(btnFocus);
-            actBox.appendChild(btnPass);
-            actBox.appendChild(btnDel);
+                    const btnEdit = document.createElement('button');
+                    btnEdit.className = 'icon-btn';
+                    btnEdit.textContent = '[✎]';
+                    btnEdit.onclick = renderEditMode;
 
-            listEl.appendChild(card);
+                    const btnDel = document.createElement('button');
+                    btnDel.className = 'icon-btn delete';
+                    btnDel.textContent = '[X]';
+                    btnDel.onclick = () => {
+                        templates.filter(t => t.uniExamId === course.id).forEach(t => archiveTemplateSafely(t));
+                        uniData.remainingExams = uniData.remainingExams.filter(x => x.id !== course.id);
+                        syncCategoryOrder();
+                        saveData();
+                        saveUniData();
+                        refreshAllConnectedViews();
+                    };
+
+                    actBox.append(btnPhase1, btnPhase2, btnPass, btnEdit, btnDel);
+                };
+
+                const renderEditMode = () => {
+                    card.innerHTML = `
+                        <div style="display:flex; flex-direction:column; gap:6px; height:100%;">
+                            <input type="text" class="form-control form-control-sm edit-name" value="${escapeHtml(course.name)}">
+                            <div style="display:flex; gap:6px;">
+                                <input type="number" class="form-control form-control-sm no-spinners edit-cfu" value="${course.cfu}" style="flex:1;" placeholder="CFU">
+                                <input type="number" class="form-control form-control-sm no-spinners edit-year" value="${course.year || 1}" style="flex:1;" placeholder="Year">
+                                <input type="color" class="edit-color" value="${course.color || '#ffffff'}" style="width:30px; height:27px; background:transparent; border:1px solid var(--border-color); cursor:pointer;">
+                            </div>
+                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:auto;">
+                                <button type="button" class="btn btn-sm btn-cancel-edit">[ESC]</button>
+                                <button type="button" class="btn btn-primary btn-sm btn-save-edit">[SAVE]</button>
+                            </div>
+                        </div>
+                    `;
+
+                    card.querySelector('.btn-cancel-edit').onclick = renderNormalMode;
+                    card.querySelector('.btn-save-edit').onclick = () => {
+                        course.name = card.querySelector('.edit-name').value.trim() || course.name;
+                        course.cfu = parseInt(card.querySelector('.edit-cfu').value, 10) || 6;
+                        course.year = parseInt(card.querySelector('.edit-year').value, 10) || 1;
+                        course.color = card.querySelector('.edit-color').value;
+                        saveUniData();
+                        renderUniAtomRoadmap();
+                    };
+                };
+
+                renderNormalMode();
+                yearGrid.appendChild(card);
+            });
+            listEl.appendChild(yearGrid);
         });
     }
 
@@ -634,7 +674,7 @@ function renderUniAtomLectures() {
             <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
                 <div>
                     <span class="section-label">Uni Lectures</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// SCHEDULE</span>
+                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// CALENDAR EVENTS</span>
                 </div>
             </div>
             <div id="uni-lectures-body" style="display:flex; flex-direction:column; gap:12px;"></div>
@@ -679,15 +719,16 @@ function renderUniAtomLectures() {
 
         const startInp = box.querySelector('.lec-start-inp');
         const endInp = box.querySelector('.lec-end-inp');
+        
         startInp.onchange = () => {
             course.lectureStart = startInp.value || todayStr;
-            syncCourseLecturesToTimedTask(course);
+            syncCourseLecturesToEvents(course);
             saveUniData();
             refreshAllConnectedViews();
         };
         endInp.onchange = () => {
             course.lectureEnd = endInp.value || '';
-            syncCourseLecturesToTimedTask(course);
+            syncCourseLecturesToEvents(course);
             saveUniData();
             refreshAllConnectedViews();
         };
@@ -706,7 +747,7 @@ function renderUniAtomLectures() {
                 delBtn.textContent = '[X]';
                 delBtn.onclick = () => {
                     course.lectures.splice(sIdx, 1);
-                    syncCourseLecturesToTimedTask(course);
+                    syncCourseLecturesToEvents(course);
                     saveUniData();
                     refreshAllConnectedViews();
                 };
@@ -722,7 +763,7 @@ function renderUniAtomLectures() {
             box.querySelectorAll('.new-lec-days input:checked').forEach(cb => days.push(parseInt(cb.value, 10)));
             if (!st || !en || days.length === 0) return;
             course.lectures.push({ start: st, end: en, days });
-            syncCourseLecturesToTimedTask(course);
+            syncCourseLecturesToEvents(course);
             saveUniData();
             refreshAllConnectedViews();
         };

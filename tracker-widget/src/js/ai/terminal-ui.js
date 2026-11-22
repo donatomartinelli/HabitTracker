@@ -1,5 +1,5 @@
 // --- js/ai/terminal-ui.js ---
-// Controller Command Palette DSL + Automatic AI Natural Language Fallback + Pulsanti Touch Rapidi Mobile ([TAB], [+STAGE], [RUN ↵])
+// Controller Command Palette DSL + Automatic AI Natural Language Fallback + Pulsanti Touch Rapidi Mobile
 
 let toastTimeout;
 let commandHistory = [];
@@ -74,7 +74,6 @@ function closeTerminal() {
     }
 }
 
-// Helper dedicati per i pulsanti rapidi Mobile ([TAB], [+STAGE], [RUN ↵])
 function triggerMobileTerminalTab() {
     if (activeSuggestions.length > 0) {
         applySuggestionAtIndex(selectedSuggestionIdx);
@@ -144,7 +143,7 @@ function updateLivePreviewAndSuggestions() {
     }
 
     const isDsl = typeof isValidDslCommand === 'function' && isValidDslCommand(trimmed);
-    const previewStr = getCommandPreview(trimmed);
+    const previewStr = typeof getCommandPreview === 'function' ? getCommandPreview(trimmed) : trimmed;
 
     prevEl.style.display = 'flex';
     prevEl.innerHTML = `
@@ -197,10 +196,6 @@ function applySuggestionAtIndex(idx) {
     updateLivePreviewAndSuggestions();
 }
 
-// ============================================================================
-// STAGING AREA CODA COMANDI
-// ============================================================================
-
 function pushCommandsToStaging(cmdsArray) {
     const stagingBox = document.getElementById('terminal-staging');
     if (!stagingBox) return;
@@ -243,11 +238,13 @@ function renderStagingCommandList() {
 
         const previewDiv = document.createElement('div');
         previewDiv.className = 'staging-cmd-preview';
-        previewDiv.textContent = getCommandPreview(cmdStr);
+        previewDiv.textContent = typeof getCommandPreview === 'function' ? getCommandPreview(cmdStr) : cmdStr;
 
         inp.oninput = () => {
             stagedCommands[idx] = inp.value.trim();
-            previewDiv.textContent = getCommandPreview(stagedCommands[idx]);
+            if (typeof getCommandPreview === 'function') {
+                previewDiv.textContent = getCommandPreview(stagedCommands[idx]);
+            }
         };
 
         inp.onkeydown = (e) => {
@@ -307,7 +304,7 @@ function confirmStagingCommands() {
         if (typeof isInspectionOnlyCommand === 'function' && isInspectionOnlyCommand(cmd)) {
             shouldKeepBarOpen = true;
         }
-        if (executeTerminalCommand(cmd)) executedCount++;
+        if (typeof executeTerminalCommand === 'function' && executeTerminalCommand(cmd)) executedCount++;
     });
 
     const answerBox = document.getElementById('terminal-ai-answer');
@@ -456,7 +453,20 @@ window.addEventListener('DOMContentLoaded', () => {
 
             if (e.key === 'Enter') {
                 e.preventDefault();
-                const rawVal = termInput.value.trim();
+                let rawVal = termInput.value.trim();
+
+                // INTEGRAZIONE DIRETTA AUTOCOMPLETAMENTO E ESECUZIONE
+                // Se c'è un suggerimento valido e l'utente preme invio, lo accetta e lo esegue immediatamente.
+                if (activeSuggestions && activeSuggestions.length > 0 && selectedSuggestionIdx >= 0) {
+                    const item = activeSuggestions[selectedSuggestionIdx];
+                    if (item && item.fillValue) {
+                        const fill = item.fillValue.trim();
+                        if (rawVal.toLowerCase() !== fill.toLowerCase()) {
+                            rawVal = fill; 
+                            termInput.value = rawVal; // Aggiorna visivamente il campo un istante prima dell'esecuzione
+                        }
+                    }
+                }
 
                 if (!rawVal) {
                     if (isStagingActive) confirmStagingCommands();
@@ -505,7 +515,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 const firstWord = rawVal.split(/\s+/)[0].toLowerCase();
                 const modalCommands = ['?', 'help', 'ledger', 'stats', 'food', 'macros', 'vault', 'settings', 'cfg'];
 
-                const ok = executeTerminalCommand(rawVal);
+                const ok = typeof executeTerminalCommand === 'function' ? executeTerminalCommand(rawVal) : false;
+                
                 const answerBox = document.getElementById('terminal-ai-answer');
                 const hasInspectionCardOpen = isInspection || (answerBox && answerBox.style.display === 'block');
                 const anyModalNowOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
@@ -531,83 +542,135 @@ window.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    document.addEventListener('keydown', (e) => {
-        if (isStagingActive && document.activeElement && !document.activeElement.classList.contains('staging-cmd-input') && document.activeElement !== termInput) {
+    // --- FIX DEFINITIVO CONTROLLI FINESTRA TAURI (Supporto universale V1 e V2) ---
+    const btnMinimize = document.getElementById('btn-minimize-app');
+    if (btnMinimize) {
+        btnMinimize.onclick = () => {
+            try {
+                if (window.__TAURI__) {
+                    if (window.__TAURI__.window && window.__TAURI__.window.getCurrentWindow) {
+                        window.__TAURI__.window.getCurrentWindow().minimize();
+                    } else if (window.__TAURI__.window && window.__TAURI__.window.appWindow) {
+                        window.__TAURI__.window.appWindow.minimize();
+                    }
+                }
+            } catch(e) {}
+        };
+    }
+
+    const btnClose = document.getElementById('btn-close-app');
+    if (btnClose) {
+        btnClose.onclick = () => {
+            try {
+                if (window.__TAURI__) {
+                    if (window.__TAURI__.window && window.__TAURI__.window.getCurrentWindow) {
+                        window.__TAURI__.window.getCurrentWindow().close();
+                    } else if (window.__TAURI__.window && window.__TAURI__.window.appWindow) {
+                        window.__TAURI__.window.appWindow.close();
+                    }
+                } else {
+                    window.close();
+                }
+            } catch(e) {}
+        };
+    }
+});
+
+document.addEventListener('keydown', (e) => {
+    if (isStagingActive && document.activeElement && !document.activeElement.classList.contains('staging-cmd-input')) {
+        const termInput = document.getElementById('terminal-input');
+        if (document.activeElement !== termInput) {
             if (e.key === 'Enter') { e.preventDefault(); confirmStagingCommands(); return; }
         }
+    }
 
-        if ((e.ctrlKey && e.code === 'Space') || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
-            e.preventDefault();
-            if (isAskBarExpanded) closeTerminal();
-            else openTerminal();
+    if ((e.ctrlKey && e.code === 'Space') || (e.ctrlKey && e.key.toLowerCase() === 'k')) {
+        e.preventDefault();
+        if (isAskBarExpanded) closeTerminal();
+        else openTerminal();
+        return;
+    }
+
+    if (e.ctrlKey && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        if (typeof saveData === 'function') saveData(); 
+        if (typeof saveMoneyData === 'function') saveMoneyData(); 
+        if (typeof saveHealthData === 'function') saveHealthData(); 
+        if (typeof saveWorkspaceState === 'function') saveWorkspaceState();
+        showToast('[SYSTEM] All data saved');
+        return;
+    }
+
+    if (e.key === 'Escape') {
+        if (isAskBarExpanded) {
+            if (isStagingActive) cancelStaging();
+            closeTerminal();
             return;
         }
+        if (typeof closeModals === 'function') closeModals();
+        document.querySelectorAll('.dropdown-content.show').forEach(d => d.classList.remove('show'));
+        return;
+    }
 
-        if (e.ctrlKey && e.key.toLowerCase() === 's') {
+    const activeTag = document.activeElement ? document.activeElement.tagName : '';
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || (document.activeElement && document.activeElement.isContentEditable)) {
+        return;
+    }
+
+    const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
+    const pomoOverlay = document.getElementById('pomodoroOverlay');
+    const fullPomoOpen = pomoOverlay && pomoOverlay.style.display === 'flex' && !pomoOverlay.classList.contains('widget-mode');
+    if (anyModalOpen || fullPomoOpen || e.ctrlKey || e.altKey || e.metaKey) return;
+
+    switch (e.key) {
+        case ',':
             e.preventDefault();
-            saveData(); saveMoneyData(); saveHealthData(); saveWorkspaceState();
-            showToast('[SYSTEM] All data saved');
-            return;
-        }
-
-        if (e.key === 'Escape') {
-            if (isAskBarExpanded) {
-                if (isStagingActive) cancelStaging();
-                closeTerminal();
-                return;
+            if (typeof openSettingsModal === 'function') openSettingsModal();
+            break;
+        case 'r':
+        case 'R':
+            e.preventDefault();
+            if (typeof toggleRedMode === 'function') toggleRedMode();
+            break;
+        case '0':
+            e.preventDefault();
+            if (typeof setQuadrantCount === 'function') setQuadrantCount(0);
+            break;
+        case 'ArrowLeft':
+            e.preventDefault(); 
+            if (typeof shiftSelectedDate === 'function') shiftSelectedDate(-1); 
+            if (typeof selectedDateStr !== 'undefined') showToast(`Date: ${selectedDateStr}`); 
+            break;
+        case 'ArrowRight':
+            e.preventDefault(); 
+            if (typeof shiftSelectedDate === 'function') shiftSelectedDate(1); 
+            if (typeof selectedDateStr !== 'undefined') showToast(`Date: ${selectedDateStr}`); 
+            break;
+        case 't':
+        case 'T':
+            e.preventDefault(); 
+            if (typeof jumpToDate === 'function' && typeof todayStr !== 'undefined') jumpToDate(todayStr); 
+            if (typeof todayStr !== 'undefined') showToast(`Today: ${todayStr}`); 
+            break;
+        case 'p':
+        case 'P':
+            e.preventDefault(); 
+            if (typeof openPlanTomorrowModal === 'function') openPlanTomorrowModal(); 
+            break;
+        case 's':
+        case 'S':
+            e.preventDefault();
+            if (typeof activeSlots !== 'undefined' && activeSlots.length >= 2) {
+                const temp = activeSlots[0];
+                activeSlots[0] = activeSlots[1];
+                activeSlots[1] = temp;
+                if (typeof renderQuadrantLayout === 'function') renderQuadrantLayout();
+                showToast('Swapped quadrants');
             }
-            closeModals();
-            document.querySelectorAll('.dropdown-content.show').forEach(d => d.classList.remove('show'));
-            return;
-        }
-
-        const activeTag = document.activeElement ? document.activeElement.tagName : '';
-        if (['INPUT', 'TEXTAREA', 'SELECT'].includes(activeTag) || (document.activeElement && document.activeElement.isContentEditable)) {
-            return;
-        }
-
-        const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
-        const pomoOverlay = document.getElementById('pomodoroOverlay');
-        const fullPomoOpen = pomoOverlay && pomoOverlay.style.display === 'flex' && !pomoOverlay.classList.contains('widget-mode');
-        if (anyModalOpen || fullPomoOpen || e.ctrlKey || e.altKey || e.metaKey) return;
-
-        switch (e.key) {
-            case ',':
-                e.preventDefault();
-                openSettingsModal();
-                break;
-            case 'r':
-            case 'R':
-                e.preventDefault();
-                toggleRedMode();
-                break;
-            case '0':
-                e.preventDefault();
-                setQuadrantCount(0);
-                break;
-            case 'ArrowLeft':
-                e.preventDefault(); shiftSelectedDate(-1); showToast(`Date: ${selectedDateStr}`); break;
-            case 'ArrowRight':
-                e.preventDefault(); shiftSelectedDate(1); showToast(`Date: ${selectedDateStr}`); break;
-            case 't':
-            case 'T':
-                e.preventDefault(); jumpToDate(todayStr); showToast(`Today: ${todayStr}`); break;
-            case 'p':
-            case 'P':
-                e.preventDefault(); openPlanTomorrowModal(); break;
-            case 's':
-            case 'S':
-                e.preventDefault();
-                if (activeSlots.length >= 2) {
-                    const temp = activeSlots[0];
-                    activeSlots[0] = activeSlots[1];
-                    activeSlots[1] = temp;
-                    renderQuadrantLayout();
-                    showToast('Swapped quadrants');
-                }
-                break;
-            case '?':
-                e.preventDefault(); openShortcutsHelp(); break;
-        }
-    });
+            break;
+        case '?':
+            e.preventDefault(); 
+            if (typeof openShortcutsHelp === 'function') openShortcutsHelp(); 
+            break;
+    }
 });

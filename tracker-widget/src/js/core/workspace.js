@@ -283,13 +283,22 @@ const dashboardModules = {
             if (typeof renderUniAtomLibretto === 'function') renderUniAtomLibretto();
             else if (typeof renderUniDashboard === 'function') renderUniDashboard();
         }
-    }
+    },
+    // 11. MATH-HUB & SUB-MODULES
+    'math': {
+        name: 'Math-Hub',
+        id: 'module-math',
+        minW: () => 280,
+        minH: () => 220,
+        render: () => { if (typeof renderMathModule === 'function') renderMathModule(); }
+    },
 };
 
-const PRIMARY_MODULE_KEYS = ['calendar', 'tasks', 'notes', 'planner', 'plan', 'diet', 'gym', 'money', 'streak', 'uni'];
-const ALL_MODULE_KEYS = Object.keys(dashboardModules);
+// Aggiungi 'math' in queste due liste
+const PRIMARY_MODULE_KEYS = ['calendar', 'tasks', 'notes', 'planner', 'plan', 'diet', 'gym', 'money', 'streak', 'uni', 'math'];
+const ALL_MODULE_KEYS = Object.keys(dashboardModules); // Se math è in dashboardModules, viene pescato da qui.
 
-// Mappa universale: TUTTI i 10 Macro-Moduli sono definiti come liste di Sotto-Moduli (1 o N)
+// Assicurati che math sia nel dizionario dei sotto-moduli
 const MACRO_SUBMODULES_MAP = {
     'calendar': ['cal_grid', 'cal_agenda'],
     'tasks':    ['tasks'],
@@ -300,7 +309,8 @@ const MACRO_SUBMODULES_MAP = {
     'gym':      ['gym_today', 'gym_split'],
     'money':    ['m_summary', 'm_vaults', 'm_chart', 'm_tx', 'm_bills', 'm_analytics', 'm_incubator'],
     'streak':   ['streak_grid', 'streak_ledger'],
-    'uni':      ['uni_roadmap', 'uni_lectures', 'uni_appeals', 'uni_libretto']
+    'uni':      ['uni_roadmap', 'uni_lectures', 'uni_appeals', 'uni_libretto'],
+    'math':     ['math'] // <-- AGGIUNGI QUESTO
 };
 
 let macroDefaultTrees = safeJsonParse(localStorage.getItem('tracker_macro_default_trees'), {});
@@ -1648,7 +1658,10 @@ function resolveModuleKeyFromText(rawText) {
         'notes browse': 'notes_browse',
         'browse': 'notes_browse',
         'notes graph': 'notes_graph',
-        'graph': 'notes_graph'
+        'graph': 'notes_graph',
+        'math': 'math', // <-- Aggiungi
+        'drill': 'math', // <-- Aggiungi
+        'problems': 'math' // <-- Aggiungi
     };
     if (aliasesMap[q]) return aliasesMap[q];
 

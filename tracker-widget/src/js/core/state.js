@@ -502,6 +502,15 @@ let activeSlots = ['tasks', 'planner'];
 let activeLeft = 'tasks';
 let activeRight = 'planner';
 
+// Math-Hub & Mental Math Native State
+let mathHubState = safeJsonParse(localStorage.getItem('tracker_math_state'), {
+    topicRecords: {}, dailyHistory: {}, activeProblemId: null, activeMode: 'NUOVO', activeCourse: null, globalEmaMastery: 0.5
+});
+let mentalMathWeights = safeJsonParse(localStorage.getItem('tracker_math_weights'), {});
+let mentalMathHistory = safeJsonParse(localStorage.getItem('tracker_math_history'), {});
+let mentalMathConfig = safeJsonParse(localStorage.getItem('tracker_math_config'), { digits: '2', mult: '11', multType: 'literal' });
+let cachedMathProblems = []; // Popolato al volo via fetch
+
 // ============================================================================
 // FUNZIONI DI SALVATAGGIO VERSO IL MOTORE SCALABILE
 // ============================================================================
@@ -524,7 +533,11 @@ function saveData() {
         'tracker_daily_priorities': dailyPriorities,
         'tracker_processed_audio': processedAudioFiles,
         'tracker_routines': routinesData,
-        'tracker_routine_logs': routineLogs
+        'tracker_routine_logs': routineLogs,
+        'tracker_math_state': mathHubState,
+        'tracker_math_weights': mentalMathWeights,
+        'tracker_math_history': mentalMathHistory,
+        'tracker_math_config': mentalMathConfig
     });
 }
 
@@ -1096,3 +1109,17 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     });
 });
+
+// Controlla se tutte le task marchiate come 'high' priority per oggi sono state spuntate
+function areAllHighPriorityTasksDone() {
+    let allDone = true;
+    (templates || []).forEach(t => {
+        if (t.priority === 'high' && isTaskActiveOnDate(t, todayStr)) {
+            const logsToday = (logs[todayStr] && logs[todayStr][t.id]) || Array(t.instances || 1).fill(false);
+            if (logsToday.some(x => !x)) {
+                allDone = false;
+            }
+        }
+    });
+    return allDone;
+}

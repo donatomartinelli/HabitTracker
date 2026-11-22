@@ -1475,6 +1475,12 @@ function renderTasks() {
                 tasks.forEach(t => {
                     const taskItem = document.createElement('div');
                     taskItem.className = 'task-item';
+                    
+                    // PRIORITY LOCK LOGIC
+                    const isHighDone = areAllHighPriorityTasksDone();
+                    if (t.priority === 'optional' && !isHighDone) {
+                        taskItem.classList.add('priority-locked');
+                    }
                     const instancesCount = t.instances || 1;
                     const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(instancesCount).fill(false);
 

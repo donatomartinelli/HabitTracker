@@ -515,6 +515,9 @@ function startCurrentPlaylistPhase() {
     timeRemaining = totalPhaseTime;
     phaseEndTimeMs = Date.now() + (totalPhaseTime * 1000);
 
+    // ATTIVA LA ZENITH MODE
+    toggleZenithMode(true, phase.category);
+
     syncFocusViewState();
     renderLiveFocusQueue();
     updatePomodoroDisplay();
@@ -560,12 +563,13 @@ function runPomodoroTick() {
     timeRemaining = Math.ceil((phaseEndTimeMs - nowMs) / 1000);
     updatePomodoroDisplay();
 
+    // Modifica la fine di runPomodoroTick()
     if (timeRemaining <= 0) {
         clearInterval(pomodoroInterval);
         const phase = focusPlaylist[currentPlaylistIndex];
 
         if (phase.type === 'task') {
-            playBeep(400, 0.5);
+            if (window.sysAudio) window.sysAudio.playSweep(); // <-- SUONO SWEEP
             if (typeof logFocusSession === 'function') {
                 logFocusSession(phase.duration, phase.category, phase.title, todayStr);
             }
@@ -598,10 +602,38 @@ function togglePomodoroPause() {
     if (hdrIcon) hdrIcon.textContent = isPomodoroPaused ? '⏸' : '▶';
 }
 
+// Modifica stopPomodoro()
 function stopPomodoro() {
     clearInterval(pomodoroInterval);
     focusPlaylist = [];
     isFullscreenFocusOpen = false;
     resetWidgetMode();
     syncFocusViewState();
+    
+    // DISATTIVA LA ZENITH MODE
+    toggleZenithMode(false);
+}
+
+function toggleZenithMode(isActive, categoryName) {
+    if (!isActive) {
+        document.body.classList.remove('zenith-mode');
+        document.querySelectorAll('.quadrant-cell').forEach(el => el.classList.remove('zenith-focus-target'));
+        return;
+    }
+    
+    document.body.classList.add('zenith-mode');
+    document.querySelectorAll('.quadrant-cell').forEach(el => el.classList.remove('zenith-focus-target'));
+
+    // Heuristica per trovare il modulo da tenere illuminato
+    let targetModKey = 'notes'; // Default a Notes
+    const q = (categoryName || '').toLowerCase();
+    
+    if (q === 'palestra' || q.includes('gym')) targetModKey = 'gym';
+    else if (q === 'diet' || q === 'health') targetModKey = 'diet';
+    else if (q === 'math' || q.includes('trachtenberg')) targetModKey = 'math';
+    else if (typeof uniData !== 'undefined' && uniData.remainingExams && uniData.remainingExams.some(e => e.name.toLowerCase() === q)) targetModKey = 'uni';
+
+    // Cerca il nodo DOM con quel modulo e illuminàlo
+    const cell = document.querySelector(`.quadrant-cell[data-module="${targetModKey}"]`);
+    if (cell) cell.classList.add('zenith-focus-target');
 }
