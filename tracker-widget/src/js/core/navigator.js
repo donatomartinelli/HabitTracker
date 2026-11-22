@@ -42,6 +42,110 @@ function shortModuleName(key) {
     return n.replace(/^.*?:\s*/, '');
 }
 
+// ------------------------------------------------------------------
+// Optional modules: each tab except Today's can be switched off.
+// Switching off only hides it; the data stays and comes back when switched on.
+// ------------------------------------------------------------------
+const MODULES_KEY = 'cortex_modules';
+const OPTIONAL_MODULES = [
+    { key: 'plan', section: 'plan', label: 'Day plan', desc: 'Timeline of your day with fixed blocks and routines' },
+    { key: 'planner', section: 'plan', label: 'Week planner', desc: 'Seven days side by side, with ghost layers' },
+    { key: 'calendar', section: 'plan', label: 'Calendar', desc: 'Month grid and events' },
+    { key: 'notes', section: 'notes', label: 'Notes', desc: 'Folders, quick capture, voice notes' },
+    { key: 'uni', section: 'study', label: 'University', desc: 'Exams, credits, exam dates, study pace' },
+    { key: 'math', section: 'study', label: 'Math practice', desc: 'Problem sets and mental math drills' },
+    { key: 'money', section: 'money', label: 'Money', desc: 'Balance, envelopes, bills, wishlist' },
+    { key: 'gym', section: 'health', label: 'Gym', desc: 'Workout splits and progressive weights' },
+    { key: 'diet', section: 'health', label: 'Diet', desc: 'Meals, macros and body weight' },
+    { key: 'streak', section: 'health', label: 'Streak', desc: 'Consistency grid and focus hours' }
+];
+let enabledModules = (function () {
+    try {
+        const v = JSON.parse(cortexStore.getItem(MODULES_KEY) || 'null');
+        return v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    } catch (e) { return {}; }
+})();
+
+function isModuleEnabled(key) {
+    return !OPTIONAL_MODULES.some(m => m.key === key) || enabledModules[key] !== false;
+}
+function visibleTabs(secKey) {
+    const s = NAV_SECTIONS[secKey];
+    return s ? s.tabs.filter(t => isModuleEnabled(t.key)) : [];
+}
+function isSectionEnabled(secKey) { return visibleTabs(secKey).length > 0; }
+function visibleSections() { return NAV_ORDER.filter(isSectionEnabled); }
+
+function setModuleEnabled(key, on) {
+    enabledModules[key] = Boolean(on);
+    cortexStore.setItem(MODULES_KEY, JSON.stringify(enabledModules));
+    if (typeof markLocalChangeForCloud === 'function') markLocalChangeForCloud();
+    afterModulesChanged();
+}
+// Called by cloud-sync when another device changed the selection
+function applyEnabledModules(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return;
+    enabledModules = Object.assign({}, obj);
+    cortexStore.setItem(MODULES_KEY, JSON.stringify(enabledModules));
+    afterModulesChanged();
+}
+function afterModulesChanged() {
+    if (navState.mode === 'section') {
+        const tab = navState.lastTab[navState.section];
+        if (!isSectionEnabled(navState.section) || (tab && !isModuleEnabled(tab))) navigateToSection(navState.section);
+        else renderNavChrome();
+    } else {
+        renderNavChrome();
+    }
+    if (typeof renderTodayModule === 'function') renderTodayModule();
+}
+window.isModuleEnabled = isModuleEnabled;
+window.isSectionEnabled = isSectionEnabled;
+
+function openModulesPanel() {
+    closeMoreSheet();
+    const root = document.getElementById('modals-root');
+    if (!root) return;
+    document.getElementById('modules-panel')?.remove();
+    const wrap = document.createElement('div');
+    wrap.id = 'modules-panel';
+    wrap.className = 'modules-overlay';
+    const groups = NAV_ORDER.filter(k => k !== 'today').map(sec => {
+        const mods = OPTIONAL_MODULES.filter(m => m.section === sec);
+        return `
+            <div class="modules-group">
+                <div class="modules-group-title">${NAV_SECTIONS[sec].label}</div>
+                ${mods.map(m => `
+                    <label class="modules-row" for="mod-${m.key}">
+                        <input type="checkbox" id="mod-${m.key}" data-mod="${m.key}" ${isModuleEnabled(m.key) ? 'checked' : ''}>
+                        <span class="modules-name">${m.label}</span>
+                        <span class="modules-desc">${m.desc}</span>
+                    </label>`).join('')}
+            </div>`;
+    }).join('');
+    wrap.innerHTML = `
+        <div class="modules-panel" role="dialog" aria-modal="true" aria-labelledby="modules-title">
+            <div class="modules-head">
+                <span id="modules-title" class="section-label">Modules</span>
+                <button type="button" class="hdr-icon" data-close aria-label="Close">×</button>
+            </div>
+            <p class="modules-intro">Turn on only what you use. Today is always on. Switching a module off hides it everywhere; your data stays and comes back when you switch it on again.</p>
+            ${groups}
+            <div class="modules-foot"><button type="button" class="btn btn-primary btn-sm" data-close>[DONE]</button></div>
+        </div>`;
+    wrap.addEventListener('click', (e) => {
+        if (e.target === wrap || e.target.closest('[data-close]')) wrap.remove();
+    });
+    wrap.addEventListener('change', (e) => {
+        const cb = e.target.closest('[data-mod]');
+        if (cb) setModuleEnabled(cb.dataset.mod, cb.checked);
+    });
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') wrap.remove(); });
+    root.appendChild(wrap);
+    wrap.querySelector('input')?.focus();
+}
+window.openModulesPanel = openModulesPanel;
+
 function saveNavState() {
     cortexStore.setItem(NAV_STATE_KEY, JSON.stringify(navState));
 }
@@ -96,10 +200,13 @@ function rememberTilesLayout() {
 }
 
 function navigateToSection(secKey, tabKey = null) {
-    const sec = NAV_SECTIONS[secKey];
-    if (!sec) return;
+    if (!NAV_SECTIONS[secKey]) return;
+    // A switched-off section falls back to Today; a switched-off tab to the first one still on
+    if (!isSectionEnabled(secKey)) { secKey = 'today'; tabKey = null; }
+    const vis = visibleTabs(secKey);
     rememberTilesLayout();
-    const tab = tabKey || navState.lastTab[secKey] || sec.tabs[0].key;
+    let tab = tabKey || navState.lastTab[secKey] || vis[0].key;
+    if (!vis.some(t => t.key === tab)) tab = vis[0].key;
     navState.mode = 'section';
     navState.section = secKey;
     navState.lastTab[secKey] = tab;
@@ -178,7 +285,7 @@ function renderNavChrome() {
 function renderRail() {
     const rail = document.getElementById('app-rail');
     if (!rail) return;
-    const items = NAV_ORDER.map(k => {
+    const items = visibleSections().map(k => {
         const active = navState.mode === 'section' && navState.section === k;
         return `<button type="button" class="rail-item ${active ? 'active' : ''}" data-sec="${k}" ${active ? 'aria-current="page"' : ''}>${NAV_SECTIONS[k].label}</button>`;
     }).join('');
@@ -186,9 +293,11 @@ function renderRail() {
         <div class="rail-group">${items}</div>
         <div class="rail-group rail-bottom">
             <button type="button" class="rail-item ${navState.mode === 'tiles' ? 'active' : ''}" data-tiles title="Free-form tiling dashboard">▦ Tiles</button>
+            <button type="button" class="rail-item rail-quiet" data-modules title="Choose which modules you use">Modules</button>
         </div>`;
     rail.querySelectorAll('[data-sec]').forEach(b => b.addEventListener('click', () => navigateToSection(b.dataset.sec)));
     rail.querySelector('[data-tiles]')?.addEventListener('click', navigateToTiles);
+    rail.querySelector('[data-modules]')?.addEventListener('click', openModulesPanel);
 }
 
 function renderSectionTabs() {
@@ -215,10 +324,11 @@ function renderSectionTabs() {
     }
 
     const sec = NAV_SECTIONS[navState.section];
-    const activeTab = sec ? (navState.lastTab[navState.section] || sec.tabs[0].key) : null;
+    const secTabs = visibleTabs(navState.section);
+    const activeTab = sec && secTabs.length ? (navState.lastTab[navState.section] || secTabs[0].key) : null;
     // On a phone the module's own sub-tab strip already lists sub-modules
     const subs = (activeTab && !(typeof isMobileViewMode !== 'undefined' && isMobileViewMode)) ? getSubmodulesOf(activeTab) : [];
-    if (!sec || (sec.tabs.length < 2 && subs.length < 2)) {
+    if (!sec || (secTabs.length < 2 && subs.length < 2)) {
         bar.hidden = true;
         bar.innerHTML = '';
         return;
@@ -241,7 +351,7 @@ function renderSectionTabs() {
     bar.innerHTML = `
         <span class="section-tabs-title">${sec.label}</span>
         <div class="section-tabs-list" role="tablist">
-            ${sec.tabs.length > 1 ? sec.tabs.map(t => `<button type="button" role="tab" class="section-tab ${t.key === activeTab ? 'active' : ''}" aria-selected="${t.key === activeTab}" data-tab="${t.key}">${t.label}</button>`).join('') : ''}
+            ${secTabs.length > 1 ? secTabs.map(t => `<button type="button" role="tab" class="section-tab ${t.key === activeTab ? 'active' : ''}" aria-selected="${t.key === activeTab}" data-tab="${t.key}">${t.label}</button>`).join('') : ''}
         </div>
         ${subChips}`;
     bar.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => navigateToSection(navState.section, b.dataset.tab)));
@@ -252,12 +362,16 @@ function renderBottomBar() {
     const nav = document.getElementById('mobile-bottom-nav');
     if (!nav) return;
     const isActive = (k) => navState.mode === 'section' && navState.section === k;
-    const moreActive = navState.mode === 'tiles' || ['study', 'money', 'health'].includes(navState.section);
+    const others = visibleSections().filter(k => k !== 'today');
+    const slots = others.slice(0, 2);
+    const inMore = others.slice(2);
+    const moreActive = navState.mode === 'tiles' || inMore.includes(navState.section);
+    const tab = (k) => k ? `<button type="button" class="mob-nav-tab ${isActive(k) ? 'active' : ''}" data-sec="${k}">${NAV_SECTIONS[k].label}</button>` : '';
     nav.innerHTML = `
-        <button type="button" class="mob-nav-tab ${isActive('today') ? 'active' : ''}" data-sec="today">Today</button>
-        <button type="button" class="mob-nav-tab ${isActive('plan') ? 'active' : ''}" data-sec="plan">Plan</button>
+        ${tab('today')}
+        ${tab(slots[0])}
         <button type="button" class="mob-nav-tab mob-nav-cmd" data-cmd aria-label="Open command bar">⌘</button>
-        <button type="button" class="mob-nav-tab ${isActive('notes') ? 'active' : ''}" data-sec="notes">Notes</button>
+        ${tab(slots[1])}
         <button type="button" class="mob-nav-tab ${moreActive ? 'active' : ''}" data-more>More</button>`;
     nav.querySelectorAll('[data-sec]').forEach(b => b.addEventListener('click', () => navigateToSection(b.dataset.sec)));
     nav.querySelector('[data-cmd]')?.addEventListener('click', () => { if (typeof openTerminal === 'function') openTerminal(); });
@@ -270,12 +384,13 @@ function toggleMoreSheet() {
     if (!sheet.hidden) { closeMoreSheet(); return; }
     const item = (attrs, label, hint = '') =>
         `<button type="button" class="more-item" ${attrs}><span>${label}</span>${hint ? `<span class="dim">${hint}</span>` : ''}</button>`;
+    const hints = { plan: 'Day · week · calendar', notes: 'Folders · voice notes', study: 'University · math', money: 'Balance · bills', health: 'Gym · diet · streak' };
+    const inMore = visibleSections().filter(k => k !== 'today').slice(2);
     sheet.innerHTML = `
         <div class="more-panel" role="dialog" aria-label="More">
-            ${item('data-sec="study"', 'Study', 'University · Math')}
-            ${item('data-sec="money"', 'Money', 'Balance · bills')}
-            ${item('data-sec="health"', 'Health', 'Gym · diet · streak')}
-            <div class="more-sep"></div>
+            ${inMore.map(k => item(`data-sec="${k}"`, NAV_SECTIONS[k].label, hints[k] || '')).join('')}
+            ${inMore.length ? '<div class="more-sep"></div>' : ''}
+            ${item('data-act="modules"', 'Modules', 'Choose what you use')}
             ${item('data-act="views"', 'Saved views', 'Your tile layouts')}
             ${item('data-act="note"', 'Quick note')}
             ${item('data-act="rec"', 'Record voice note')}
@@ -287,7 +402,8 @@ function toggleMoreSheet() {
         views: () => navigateToTiles(),
         note: () => { closeMoreSheet(); if (typeof openQuickNoteModal === 'function') openQuickNoteModal(); },
         rec: () => { closeMoreSheet(); if (typeof toggleLiveMicRecording === 'function') toggleLiveMicRecording(); },
-        settings: () => { closeMoreSheet(); if (typeof openSettingsModal === 'function') openSettingsModal(); }
+        settings: () => { closeMoreSheet(); if (typeof openSettingsModal === 'function') openSettingsModal(); },
+        modules: () => openModulesPanel()
     };
     sheet.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => acts[b.dataset.act]()));
 }
@@ -340,7 +456,8 @@ window.addEventListener('DOMContentLoaded', () => {
         // Alt+1..6 → sections, Alt+0 → tiles
         if (e.altKey && !e.ctrlKey && !e.metaKey) {
             const n = parseInt(e.key, 10);
-            if (n >= 1 && n <= NAV_ORDER.length) { e.preventDefault(); navigateToSection(NAV_ORDER[n - 1]); }
+            const vis = visibleSections();
+            if (n >= 1 && n <= vis.length) { e.preventDefault(); navigateToSection(vis[n - 1]); }
             if (e.key === '0') { e.preventDefault(); navigateToTiles(); }
         }
     });

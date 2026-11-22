@@ -214,7 +214,8 @@ function buildFullCortexCloudPayload(timestampMs) {
             bridgeWebAppUrl: typeof bridgeWebAppUrl !== 'undefined' ? bridgeWebAppUrl : '',
             icloudIcsUrl: typeof icloudIcsUrl !== 'undefined' ? icloudIcsUrl : '',
             bankGmailQuery: typeof bankGmailQuery !== 'undefined' ? bankGmailQuery : '',
-            processedBankEmails: typeof processedBankEmails !== 'undefined' ? processedBankEmails : []
+            processedBankEmails: typeof processedBankEmails !== 'undefined' ? processedBankEmails : [],
+            enabledModules: typeof enabledModules !== 'undefined' ? enabledModules : {}
         }
     };
 }
@@ -293,6 +294,8 @@ function applyFullCortexCloudPayload(payloadObj) {
             processedBankEmails = d.processedBankEmails;
             cortexStore.setItem('cortex_processed_bank_emails', JSON.stringify(processedBankEmails));
         }
+
+        if (d.enabledModules && typeof applyEnabledModules === 'function') applyEnabledModules(d.enabledModules);
 
         saveData();
         saveMoneyData();

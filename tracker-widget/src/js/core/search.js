@@ -141,6 +141,12 @@
             });
         });
 
+        // Results that would lead to a switched-off module are hidden
+        const kindModule = { Note: 'notes', Notes: 'notes', Event: 'calendar', Income: 'money', Expense: 'money', Wishlist: 'money', Exam: 'uni' };
+        for (let i = results.length - 1; i >= 0; i--) {
+            const m = kindModule[results[i].kind];
+            if (m && typeof isModuleEnabled === 'function' && !isModuleEnabled(m)) results.splice(i, 1);
+        }
         results.sort((a, b) => b.score - a.score || String(b.date || '').localeCompare(String(a.date || '')));
         return results.slice(0, limit);
     }

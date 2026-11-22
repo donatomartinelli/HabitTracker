@@ -250,7 +250,7 @@
                     <div class="today-stats">
                         <div class="today-stat"><span class="dim">STREAK</span><strong>${st.streak}d</strong></div>
                         <div class="today-stat"><span class="dim">FOCUS</span><strong>${focusH}h</strong></div>
-                        <div class="today-stat" data-nav="money"><span class="dim">FREE</span><strong class="${st.spendable !== null && st.spendable < 0 ? 'neg' : ''}">${money}</strong></div>
+                        ${(typeof isModuleEnabled !== 'function' || isModuleEnabled('money')) ? `<div class="today-stat" data-nav="money"><span class="dim">FREE</span><strong class="${st.spendable !== null && st.spendable < 0 ? 'neg' : ''}">${money}</strong></div>` : ''}
                     </div>
                 </section>
                 <section class="today-side">
@@ -359,8 +359,9 @@
         if (typeof CortexLinks === 'undefined') return '';
         const rows = [];
 
+        const on = (k) => typeof isModuleEnabled !== 'function' || isModuleEnabled(k);
         // Gym
-        const gym = CortexLinks.getTodayGym();
+        const gym = on('gym') ? CortexLinks.getTodayGym() : null;
         if (gym) {
             rows.push(`
                 <div class="today-link ${gym.done ? 'is-done' : ''}">
@@ -375,7 +376,7 @@
         }
 
         // Study (nearest appeals)
-        CortexLinks.getStudyPlan().slice(0, 3).forEach(p => {
+        (on('uni') ? CortexLinks.getStudyPlan() : []).slice(0, 3).forEach(p => {
             const pct = p.targetMin ? Math.min(100, Math.round((p.studiedMin / p.targetMin) * 100)) : 0;
             const when = p.daysLeft === 0 ? 'today' : p.daysLeft === 1 ? 'tomorrow' : `in ${p.daysLeft}d`;
             const todayLine = p.daysLeft === 0 ? 'Exam today — good luck'
@@ -394,7 +395,7 @@
         });
 
         // Bills
-        CortexLinks.getUpcomingBills().forEach(b => {
+        (on('money') ? CortexLinks.getUpcomingBills() : []).forEach(b => {
             const days = CortexLinks.daysBetween(todayStr, b.due);
             const when = days === 0 ? 'today' : days === 1 ? 'tomorrow' : `in ${days}d`;
             rows.push(`

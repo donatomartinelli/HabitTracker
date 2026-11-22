@@ -459,3 +459,31 @@ body.hud-mode:not(.hud-temp-expanded) .app-rail,
 body.hud-mode:not(.hud-temp-expanded) .section-tabs,
 body.hud-mode:not(.hud-temp-expanded) .mobile-bottom-nav,
 body.hud-mode:not(.hud-temp-expanded) .mobile-top-nav-strip { display: none !important; }
+
+/* ---------- Modules panel ---------- */
+.rail-item.rail-quiet { font-weight: normal; color: var(--text-dim); }
+.modules-overlay {
+    position: fixed; inset: 0; z-index: var(--z-modal);
+    background: rgba(0, 0, 0, 0.75);
+    display: flex; align-items: center; justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+}
+.modules-panel {
+    width: min(560px, 100%); max-height: 88vh; overflow-y: auto;
+    background: var(--bg-sec); border: 1px solid var(--border-bright);
+    padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);
+}
+.modules-head { display: flex; justify-content: space-between; align-items: center; }
+.modules-intro { margin: 0; font-size: var(--font-xs); color: var(--text-muted); line-height: var(--line-normal); }
+.modules-group { display: flex; flex-direction: column; }
+.modules-group-title { font-size: var(--font-2xs); letter-spacing: var(--tracking-label); color: var(--text-dim); text-transform: uppercase; padding: var(--space-2) 0 var(--space-1); border-bottom: 1px solid var(--border-color); }
+.modules-row {
+    display: grid; grid-template-columns: 18px minmax(0, 140px) minmax(0, 1fr); gap: var(--space-3); align-items: center;
+    padding: var(--space-2) 0; border-bottom: 1px solid #111; cursor: pointer; font-size: var(--font-sm);
+}
+.modules-row input { width: 16px; height: 16px; accent-color: var(--text-main); margin: 0; }
+.modules-desc { font-size: var(--font-2xs); color: var(--text-dim); }
+.modules-row:hover .modules-name { text-decoration: underline; }
+.modules-foot { display: flex; justify-content: flex-end; }
+body.mobile-view-mode .modules-row { grid-template-columns: 22px minmax(0, 1fr); }
+body.mobile-view-mode .modules-desc { grid-column: 2; }

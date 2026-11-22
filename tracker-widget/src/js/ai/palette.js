@@ -136,22 +136,27 @@
         } catch (e) { /* optional */ }
 
         if (h >= 17) out.push({
-            label: 'Plan tomorrow', hint: 'evening',
+            label: 'Plan tomorrow', hint: 'evening', module: 'plan',
             run: () => { closeTerminal(); if (typeof tomorrowStr !== 'undefined' && typeof jumpToDate === 'function') jumpToDate(tomorrowStr); navigateToSection('plan', 'plan'); }
         });
         if (h < 11) {
             const loggedToday = (typeof bodyLogs !== 'undefined' ? bodyLogs : []).some(b => b && b.date === todayStr);
-            if (!loggedToday) out.push({ label: 'Log weight', hint: 'morning', fill: 'peso ' });
+            if (!loggedToday) out.push({ label: 'Log weight', hint: 'morning', fill: 'peso ', module: 'diet' });
         }
-        out.push({ label: 'Add expense', hint: 'e.g. 12€ lunch', fill: '' , placeholder: '12€ lunch' });
+        out.push({ label: 'Add expense', hint: 'e.g. 12€ lunch', fill: '' , placeholder: '12€ lunch', module: 'money' });
         out.push({ label: 'Add to-do', hint: 'e.g. call mum friday', fill: '', placeholder: 'call mum friday' });
-        return out.slice(0, 4);
+        // Hide suggestions that belong to switched-off modules
+        return out.filter(o => !o.module || typeof isModuleEnabled !== 'function' || isModuleEnabled(o.module)).slice(0, 4);
     }
 
     function sectionItems(q) {
         if (typeof NAV_SECTIONS === 'undefined') return [];
-        const all = NAV_ORDER.map((k, i) => ({ key: k, label: NAV_SECTIONS[k].label, hint: `Alt ${i + 1}` }))
+        const order = typeof visibleSections === 'function' ? visibleSections() : NAV_ORDER;
+        const all = order.map((k, i) => ({ key: k, label: NAV_SECTIONS[k].label, hint: `Alt ${i + 1}` }))
             .concat([{ key: 'tiles', label: 'Tiles', hint: 'Alt 0' }]);
+        if (/^(modul|module)/.test(q.toLowerCase())) {
+            return [{ label: 'Choose your modules', hint: 'turn sections on or off', run: () => { closeTerminal(); openModulesPanel(); } }];
+        }
         if (/^(rev|revi|review|revisione|weekly|settiman)/.test(q.toLowerCase())) {
             return [{ label: 'Open weekly review', hint: 'Today › Weekly review', run: () => { closeTerminal(); navigateToSection('today', 'review'); } }];
         }
@@ -178,14 +183,33 @@
             const preview = typeof getCommandPreview === 'function' ? getCommandPreview(q) : q;
             doThis.push({ label: preview || q, hint: 'Enter', primary: true, run: () => runCommand(q), stage: q });
         } else if (typeof CortexNL !== 'undefined') {
-            const parsed = CortexNL.interpret(q, {
+            let parsed = CortexNL.interpret(q, {
                 today: todayStr,
                 noteCategories: typeof noteCategories !== 'undefined' ? noteCategories : []
             });
+            const off = (k) => typeof isModuleEnabled === 'function' && !isModuleEnabled(k);
+            const kindModule = { expense: 'money', income: 'money', wish: 'money', weight: 'diet', note: 'notes' };
+            const navTarget = (p) => p.kind === 'nav' ? p.cmd.slice(5).trim() : null;
+            const blockedBy = (p) => {
+                if (kindModule[p.kind] && off(kindModule[p.kind])) return kindModule[p.kind];
+                const t = navTarget(p);
+                if (t && t !== 'tiles' && typeof isSectionEnabled === 'function' && !isSectionEnabled(t)) return t;
+                return null;
+            };
+            const blocked = parsed.map(blockedBy).filter(Boolean);
+            parsed = parsed.filter(p => !blockedBy(p));
             parsed.forEach((p, i) => doThis.push({
                 label: p.label, hint: i === 0 ? 'Enter' : 'alternative', primary: i === 0,
                 run: () => runCommand(p.cmd), stage: p.cmd, cmd: p.cmd
             }));
+            // Understood, but it belongs to a module that's switched off: say so instead of "nothing matched"
+            if (!doThis.length && blocked.length) {
+                const name = blocked[0].charAt(0).toUpperCase() + blocked[0].slice(1);
+                groups.push({ title: 'SWITCHED OFF', items: [{
+                    label: `${name} is switched off. Turn it on in Modules`, hint: 'Enter',
+                    run: () => { closeTerminal(); if (typeof openModulesPanel === 'function') openModulesPanel(); }
+                }] });
+            }
         }
         if (doThis.length) groups.push({ title: "I'LL DO THIS", items: doThis });
 
