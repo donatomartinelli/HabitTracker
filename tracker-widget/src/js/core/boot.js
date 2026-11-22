@@ -30,6 +30,7 @@
         'js/core/state.js',
         'js/core/sync-merge.js',
         'js/core/cloud-sync.js',
+        'js/core/cloud-account.js',
         'js/core/workspace.js',
         'js/core/dsl.js',
         'js/core/nl-parser.js',

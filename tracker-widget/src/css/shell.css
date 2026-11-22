@@ -487,3 +487,12 @@ body.hud-mode:not(.hud-temp-expanded) .mobile-top-nav-strip { display: none !imp
 .modules-foot { display: flex; justify-content: flex-end; }
 body.mobile-view-mode .modules-row { grid-template-columns: 22px minmax(0, 1fr); }
 body.mobile-view-mode .modules-desc { grid-column: 2; }
+
+/* ---------- Account panel ---------- */
+.account-field { display: grid; gap: var(--space-1); font-size: var(--font-xs); color: var(--text-muted); }
+.account-field input { font-size: var(--font-md); padding: var(--space-2) var(--space-3); }
+.account-error { color: var(--accent-red); font-size: var(--font-xs); min-height: 1em; }
+.account-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.account-note { margin: 0; font-size: var(--font-2xs); color: var(--text-dim); line-height: var(--line-normal); }
+.account-status { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); font-size: var(--font-xs); border: 1px solid var(--border-color); padding: var(--space-2) var(--space-3); }
+.account-status .dim { font-size: var(--font-2xs); letter-spacing: var(--tracking-label); }

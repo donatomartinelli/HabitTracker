@@ -294,10 +294,12 @@ function renderRail() {
         <div class="rail-group rail-bottom">
             <button type="button" class="rail-item ${navState.mode === 'tiles' ? 'active' : ''}" data-tiles title="Free-form tiling dashboard">▦ Tiles</button>
             <button type="button" class="rail-item rail-quiet" data-modules title="Choose which modules you use">Modules</button>
+            <button type="button" class="rail-item rail-quiet" data-account title="Sign in and sync your devices">Account</button>
         </div>`;
     rail.querySelectorAll('[data-sec]').forEach(b => b.addEventListener('click', () => navigateToSection(b.dataset.sec)));
     rail.querySelector('[data-tiles]')?.addEventListener('click', navigateToTiles);
     rail.querySelector('[data-modules]')?.addEventListener('click', openModulesPanel);
+    rail.querySelector('[data-account]')?.addEventListener('click', () => { if (typeof openAccountPanel === 'function') openAccountPanel(); });
 }
 
 function renderSectionTabs() {
@@ -390,6 +392,7 @@ function toggleMoreSheet() {
         <div class="more-panel" role="dialog" aria-label="More">
             ${inMore.map(k => item(`data-sec="${k}"`, NAV_SECTIONS[k].label, hints[k] || '')).join('')}
             ${inMore.length ? '<div class="more-sep"></div>' : ''}
+            ${item('data-act="account"', 'Account and sync', 'Sign in on your devices')}
             ${item('data-act="modules"', 'Modules', 'Choose what you use')}
             ${item('data-act="views"', 'Saved views', 'Your tile layouts')}
             ${item('data-act="note"', 'Quick note')}
@@ -403,7 +406,8 @@ function toggleMoreSheet() {
         note: () => { closeMoreSheet(); if (typeof openQuickNoteModal === 'function') openQuickNoteModal(); },
         rec: () => { closeMoreSheet(); if (typeof toggleLiveMicRecording === 'function') toggleLiveMicRecording(); },
         settings: () => { closeMoreSheet(); if (typeof openSettingsModal === 'function') openSettingsModal(); },
-        modules: () => openModulesPanel()
+        modules: () => openModulesPanel(),
+        account: () => { closeMoreSheet(); if (typeof openAccountPanel === 'function') openAccountPanel(); }
     };
     sheet.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => acts[b.dataset.act]()));
 }

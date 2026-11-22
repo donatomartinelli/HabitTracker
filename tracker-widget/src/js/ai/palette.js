@@ -154,6 +154,9 @@
         const order = typeof visibleSections === 'function' ? visibleSections() : NAV_ORDER;
         const all = order.map((k, i) => ({ key: k, label: NAV_SECTIONS[k].label, hint: `Alt ${i + 1}` }))
             .concat([{ key: 'tiles', label: 'Tiles', hint: 'Alt 0' }]);
+        if (/^(sign|login|log in|accedi|account|sync|sincron)/.test(q.toLowerCase())) {
+            return [{ label: 'Account and sync', hint: 'sign in on your devices', run: () => { closeTerminal(); openAccountPanel(); } }];
+        }
         if (/^(modul|module)/.test(q.toLowerCase())) {
             return [{ label: 'Choose your modules', hint: 'turn sections on or off', run: () => { closeTerminal(); openModulesPanel(); } }];
         }

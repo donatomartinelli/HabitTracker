@@ -9,7 +9,7 @@
 // IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
 // e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v11';
+const CACHE_NAME = 'cortex-os-cache-v12';
 
 const CORE_ASSETS = [
     './',
@@ -26,6 +26,7 @@ const CORE_ASSETS = [
     './js/core/state.js',
     './js/core/sync-merge.js',
     './js/core/cloud-sync.js',
+    './js/core/cloud-account.js',
     './js/core/workspace.js',
     './js/core/dsl.js',
     './js/core/nl-parser.js',
@@ -82,6 +83,7 @@ function isBypassed(url) {
         !url.protocol.startsWith('http') ||
         url.hostname.includes('tauri.localhost') ||
         url.hostname.includes('api.github.com') ||
+        url.hostname.endsWith('supabase.co') ||
         url.hostname.includes('githubusercontent.com') ||
         url.hostname.includes('googleapis.com') ||
         url.hostname.includes('script.google.com')

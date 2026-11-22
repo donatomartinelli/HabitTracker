@@ -105,8 +105,43 @@ function checkUrlHashForMagicSyncSetup() {
     return false;
 }
 
+function isAccountSignedIn() {
+    return typeof CortexAccount !== 'undefined' && CortexAccount.isSignedIn();
+}
+
 function isCloudSyncConfigured() {
-    return Boolean(cloudGithubToken && cloudGistId);
+    return isAccountSignedIn() || Boolean(cloudGithubToken && cloudGistId);
+}
+
+// Which cloud this device syncs with. The account wins over the legacy Gist.
+function syncBackendId() {
+    if (isAccountSignedIn()) return 'account:' + CortexAccount.userId();
+    if (cloudGithubToken && cloudGistId) return 'gist:' + cloudGistId;
+    return null;
+}
+
+// Read the cloud copy: payload { version, updatedAt, data } with a hidden __version
+async function fetchRemote() {
+    if (isAccountSignedIn()) return CortexAccount.fetchState();
+    const p = await fetchRemoteGistPayload();
+    Object.defineProperty(p, '__version', { value: p.__gistVersion, enumerable: false });
+    return p;
+}
+
+// Write the merged state. Returns the data written by other devices in the meantime
+// (empty array = our write went through cleanly).
+async function uploadRemote(payload, versionRead) {
+    if (isAccountSignedIn()) {
+        const r = await CortexAccount.saveState(payload, versionRead);
+        return r.ok ? [] : [(r.latest && r.latest.data) || {}];
+    }
+    const missed = await uploadPayloadToGist(payload, versionRead);
+    const others = [];
+    for (const sha of missed.slice().reverse()) {          // oldest first
+        const intruder = await fetchGistPayloadAtVersion(sha);
+        others.push((intruder && intruder.data) || {});
+    }
+    return others;
 }
 
 // ============================================================================
@@ -131,7 +166,7 @@ function setCloudSyncHeaderIndicator(state, tooltipMsg = '') {
     if (!isCloudSyncConfigured()) {
         btn.textContent = '☁';
         btn.style.color = 'var(--text-dim)';
-        btn.title = 'Sync not set up — click to set it up';
+        btn.title = 'Sign in to sync your devices';
         btn.dataset.syncState = 'off';
         return;
     }
@@ -335,7 +370,17 @@ function rerenderAllAfterSync() {
 // BASE E CONFLITTI
 // ============================================================================
 
+const SYNC_BASE_OWNER_KEY = 'cortex_sync_base_owner';
+
 function loadSyncBase() {
+    const owner = cortexStore.getItem(SYNC_BASE_OWNER_KEY);
+    const current = syncBackendId();
+    // Legacy bases (before accounts) belong to the Gist they were made with
+    if (!owner && current && current.startsWith('gist:')) {
+        // keep using it
+    } else if (owner !== current) {
+        return null;
+    }
     const raw = cortexStore.getItem(SYNC_BASE_KEY);
     if (!raw) return null;
     try { return JSON.parse(raw); } catch (e) { return null; }
@@ -343,6 +388,7 @@ function loadSyncBase() {
 
 function saveSyncBase(stateObj) {
     cortexStore.setItem(SYNC_BASE_KEY, JSON.stringify(stateObj));
+    cortexStore.setItem(SYNC_BASE_OWNER_KEY, syncBackendId() || '');
 }
 
 function recordSyncConflicts(conflicts, keptSide) {
@@ -563,7 +609,7 @@ async function createNewSecretGistForCortex() {
 
 async function syncNow(isManual = false) {
     if (!isCloudSyncConfigured()) {
-        if (isManual && typeof openSettingsModal === 'function') openSettingsModal('tab-system');
+        if (isManual && typeof openAccountPanel === 'function') openAccountPanel();
         return false;
     }
     if (!navigator.onLine) {
@@ -588,7 +634,7 @@ async function syncNow(isManual = false) {
     updateCloudSyncSettingsUI();
 
     try {
-        const remotePayload = await fetchRemoteGistPayload();
+        const remotePayload = await fetchRemote();
         const remoteData = (remotePayload && remotePayload.data) || {};
         const remoteTs = parseInt(remotePayload && remotePayload.updatedAt, 10) || 0;
 
@@ -613,32 +659,30 @@ async function syncNow(isManual = false) {
         let newTs = remoteTs;
         let finalState = merged;
         if (changedRemote) {
-            let versionRead = remotePayload.__gistVersion;
-            // Al massimo 3 tentativi se un altro dispositivo scrive nello stesso istante
-            for (let attempt = 0; attempt < 3; attempt++) {
+            let versionRead = remotePayload.__version;
+            let written = false;
+            // Al massimo 4 tentativi se un altro dispositivo scrive nello stesso istante
+            for (let attempt = 0; attempt < 4; attempt++) {
                 newTs = Math.max(Date.now(), remoteTs + 1);
-                const missed = await uploadPayloadToGist({ version: SYNC_PAYLOAD_VERSION, updatedAt: newTs, data: finalState }, versionRead);
-                if (!missed.length) break;
+                const others = await uploadRemote({ version: SYNC_PAYLOAD_VERSION, updatedAt: newTs, data: finalState }, versionRead);
+                if (!others.length) { written = true; break; }
                 // Un altro dispositivo ha scritto tra la nostra lettura e la nostra scrittura:
-                // recupero la sua versione e la unisco, così nessuna modifica va persa.
-                console.warn('[SYNC] scrittura concorrente rilevata, recupero', missed);
+                // unisco quello che ha scritto, così nessuna modifica va persa, e riprovo.
+                console.warn('[SYNC] scrittura concorrente rilevata, unisco e riprovo');
                 const before = finalState;
                 const mergeIn = (otherData) => {
                     const again = CortexMerge.mergeStates(base, finalState, otherData || {}, { localWins });
                     conflicts.push(...again.conflicts);
                     finalState = again.merged;
                 };
-                for (const sha of missed.slice().reverse()) {          // dal più vecchio al più recente
-                    const intruder = await fetchGistPayloadAtVersion(sha);
-                    mergeIn(intruder && intruder.data);
-                }
-                // Riparto dalla versione attuale del cloud (di solito la nostra; se nel frattempo
-                // ha scritto qualcun altro, unisco anche quella)
-                const fresh = await fetchRemoteGistPayload();
+                others.forEach(mergeIn);
+                // Riparto dalla versione attuale del cloud
+                const fresh = await fetchRemote();
                 mergeIn(fresh.data);
-                versionRead = fresh.__gistVersion;
+                versionRead = fresh.__version;
                 if (!CortexMerge.same(before, finalState)) applyFullCortexCloudPayload({ data: finalState });
             }
+            if (!written) throw new Error('Another device keeps writing at the same time. Will retry shortly.');
         }
 
         saveSyncBase(finalState);
@@ -702,7 +746,10 @@ function checkAndQueueLocalChangeForCloud() { markLocalChangeForCloud(); }
 function scheduleDebouncedCloudPush() { markLocalChangeForCloud(); }
 function pushStateToCloudGist(isManual = false) { return syncNow(isManual); }
 function pullStateFromCloudGist(_force = false, isManual = false) { return syncNow(isManual); }
-function triggerManualCloudSync() { return syncNow(true); }
+function triggerManualCloudSync() {
+    if (typeof openAccountPanel === 'function') return openAccountPanel();
+    return syncNow(true);
+}
 
 // ============================================================================
 // IMPOSTAZIONI
