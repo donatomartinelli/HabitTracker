@@ -285,17 +285,30 @@
     window.addEventListener('pagehide', () => flush());
 
     // ------------------------------------------------------------------
-    // Caricamento sequenziale degli script dell'app
+    // Caricamento degli script dell'app
+    // Scaricati TUTTI IN PARALLELO, eseguiti NELL'ORDINE della lista:
+    // gli script inseriti da JS con async=false mantengono l'ordine di esecuzione.
     // ------------------------------------------------------------------
+    function preloadScripts(list) {
+        // Avvia i download subito, mentre i dati vengono letti da IndexedDB
+        list.forEach(src => {
+            const l = document.createElement('link');
+            l.rel = 'preload';
+            l.as = 'script';
+            l.href = src;
+            document.head.appendChild(l);
+        });
+    }
+
     function loadScriptsInOrder(list) {
-        return list.reduce((p, src) => p.then(() => new Promise((resolve) => {
+        return Promise.all(list.map(src => new Promise((resolve) => {
             const s = document.createElement('script');
             s.src = src;
             s.async = false;
             s.onload = () => resolve();
             s.onerror = () => { notify("⚠ Couldn't load " + src); resolve(); };
             document.body.appendChild(s);
-        })), Promise.resolve());
+        })));
     }
 
     async function hydrate() {
@@ -335,6 +348,7 @@
     }
 
     async function start() {
+        preloadScripts(APP_SCRIPTS);
         await hydrate();
         await loadScriptsInOrder(APP_SCRIPTS);
 

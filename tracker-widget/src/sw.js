@@ -1,14 +1,15 @@
 // --- src/sw.js ---
-// Service Worker v5 (copia offline per telefono / PWA)
+// Service Worker v10 (copia offline per telefono / PWA)
 // - Disabilitato automaticamente su Desktop Tauri (vedi cloud-sync.js)
-// - Con rete: scarica SEMPRE la versione più recente e aggiorna la copia offline
-// - Senza rete (o rete lentissima): usa la copia offline
+// - APERTURA ISTANTANEA: risponde subito con la copia salvata sul dispositivo
+//   e intanto scarica la versione nuova in sottofondo (stale-while-revalidate).
+//   Le novita' pubblicate arrivano quindi all'apertura successiva.
+// - Prima visita / file non ancora salvati: rete, poi li salva.
 //
 // IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
 // e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v9';
-const NAV_TIMEOUT_MS = 3000;
+const CACHE_NAME = 'cortex-os-cache-v10';
 
 const CORE_ASSETS = [
     './',
@@ -87,36 +88,26 @@ function isBypassed(url) {
     );
 }
 
-// Rete prima (con timeout), poi copia offline. Aggiorna sempre la cache quando la rete risponde.
-function networkFirst(req, cacheKey, timeoutMs) {
-    return new Promise((resolve) => {
-        let settled = false;
-        const fallback = () =>
-            caches.match(cacheKey || req).then((cached) => {
-                if (!settled && cached) { settled = true; resolve(cached); }
-                return cached;
-            });
+// Scarica dalla rete e aggiorna la copia salvata
+function refresh(req, cacheKey) {
+    return fetch(req, { cache: 'no-cache' }).then((resp) => {
+        if (resp && resp.ok) {
+            const clone = resp.clone();
+            caches.open(CACHE_NAME).then((c) => c.put(cacheKey || req, clone));
+        }
+        return resp;
+    });
+}
 
-        const timer = timeoutMs ? setTimeout(fallback, timeoutMs) : null;
-
-        fetch(req, { cache: 'no-cache' })
-            .then((resp) => {
-                if (timer) clearTimeout(timer);
-                if (resp && resp.ok) {
-                    const clone = resp.clone();
-                    caches.open(CACHE_NAME).then((c) => c.put(cacheKey || req, clone));
-                }
-                if (!settled) { settled = true; resolve(resp); }
-            })
-            .catch(() => {
-                if (timer) clearTimeout(timer);
-                fallback().then((cached) => {
-                    if (!settled) {
-                        settled = true;
-                        resolve(cached || new Response('Offline', { status: 503, statusText: 'Offline' }));
-                    }
-                });
-            });
+// Copia salvata subito (aggiornata in sottofondo); rete solo se non c'e' ancora
+function staleWhileRevalidate(event, req, cacheKey) {
+    return caches.match(cacheKey || req).then((cached) => {
+        const network = refresh(req, cacheKey).catch(() => null);
+        if (cached) {
+            event.waitUntil(network);
+            return cached;
+        }
+        return network.then((resp) => resp || new Response('Offline', { status: 503, statusText: 'Offline' }));
     });
 }
 
@@ -127,8 +118,9 @@ self.addEventListener('fetch', (event) => {
     if (isBypassed(url)) return;
 
     if (req.mode === 'navigate') {
-        event.respondWith(networkFirst(req, './index.html', NAV_TIMEOUT_MS));
+        // La pagina principale e' sempre index.html (anche con ?v=... o #...)
+        event.respondWith(staleWhileRevalidate(event, req, './index.html'));
         return;
     }
-    event.respondWith(networkFirst(req, null, 0));
+    event.respondWith(staleWhileRevalidate(event, req, null));
 });
