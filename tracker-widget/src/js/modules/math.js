@@ -279,24 +279,24 @@ function renderMathModule() {
     fetchMathProblemsIfNeeded();
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto; height:100%; padding-bottom: 20px;">
-            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y" style="height:100%; padding-bottom:var(--space-5);">
+            <div class="section-header-row u-mb-0 u-noshrink">
                 <div>
                     <span class="section-label">Math-Hub</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// NATIVE ENGINE</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// NATIVE ENGINE</span>
                 </div>
-                <div style="display:flex; gap:6px;">
+                <div class="u-flex u-gap-2">
                     <button type="button" class="btn btn-sm ${activeMathTab==='drill'?'btn-primary':''}" onclick="switchMathTab('drill')">[DRILL]</button>
                     <button type="button" class="btn btn-sm ${activeMathTab==='problems'?'btn-primary':''}" onclick="switchMathTab('problems')">[PROBLEMS]</button>
                 </div>
             </div>
 
             <!-- DRILL TAB -->
-            <div id="math-tab-drill" style="display:${activeMathTab==='drill'?'flex':'none'}; flex-direction:column; gap:14px; flex:1;">
+            <div id="math-tab-drill" style="display:${activeMathTab==='drill'?'flex':'none'}; flex-direction:column; gap:var(--space-4); flex:1;">
                 
-                <div id="mh-drill-setup" class="cfg-box" style="margin-bottom:0; border-color:var(--text-main);">
+                <div id="mh-drill-setup" class="cfg-box u-mb-0" style="border-color:var(--text-main);">
                     <div class="sub-column-header">Trachtenberg Setup</div>
-                    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:10px;">
+                    <div class="u-flex u-gap-2 u-wrap u-mb-3">
                         <input type="text" id="mh-cfg-dig" class="form-control form-control-sm" value="${mEngine.config.digits}" style="width:80px;" placeholder="Digits">
                         <input type="text" id="mh-cfg-mul" class="form-control form-control-sm" value="${mEngine.config.mult}" style="width:80px;" placeholder="Mult">
                         <select id="mh-cfg-type" class="form-control form-control-sm" style="width:100px;">
@@ -308,42 +308,42 @@ function renderMathModule() {
                     </div>
                 </div>
 
-                <div id="mh-drill-game" class="cfg-box" style="display:none; text-align:center; flex:1; flex-direction:column; justify-content:center;">
-                    <div style="display:flex; justify-content:space-between; color:var(--text-dim); font-size:var(--font-xs); font-weight:bold;">
+                <div id="mh-drill-game" class="cfg-box u-tc u-grow u-col u-jc-center" style="display:none;">
+                    <div class="u-flex u-jc-between u-dim u-fs-xs u-bold">
                         <span id="mh-time-display">TIME: 60s</span>
                         <span id="mh-score-display">SCORE: 0</span>
                     </div>
-                    <div style="font-size:3.5rem; margin-top:15px; font-weight:bold; letter-spacing:4px; font-variant-numeric:tabular-nums;">
-                        <div id="mh-multiplicand" style="color:var(--text-main);">--</div>
-                        <div id="mh-multiplier" style="color:var(--text-dim);">* --</div>
-                        <input type="text" id="mh-answer" autocomplete="off" inputmode="numeric" style="font-size:3.5rem; width:100%; text-align:right; border:none; border-bottom:2px solid var(--text-main); background:transparent; color:var(--text-main); letter-spacing:4px;">
+                    <div class="u-mt-4 u-bold u-tnum" style="font-size:3.5rem; letter-spacing:4px;">
+                        <div class="u-main" id="mh-multiplicand">--</div>
+                        <div class="u-dim" id="mh-multiplier">* --</div>
+                        <input class="u-w-full u-tr u-border-0 u-main" type="text" id="mh-answer" autocomplete="off" inputmode="numeric" style="font-size:3.5rem; border-bottom:2px solid var(--text-main); background:transparent; letter-spacing:4px;">
                     </div>
-                    <div style="margin-top:20px;">
+                    <div style="margin-top:var(--space-5);">
                         <button class="btn btn-danger btn-sm" id="mh-btn-stop">[STOP / SAVE]</button>
                     </div>
                 </div>
             </div>
 
             <!-- PROBLEMS TAB (LaTeX) -->
-            <div id="math-tab-problems" style="display:${activeMathTab==='problems'?'flex':'none'}; flex-direction:column; gap:10px; flex:1;">
-                <div id="mh-prob-courses" style="display:flex; flex-direction:column; gap:8px;"></div>
-                <div id="mh-prob-solve" style="display:none; flex-direction:column; gap:10px; flex:1;">
-                    <div style="display:flex; justify-content:space-between; font-size:var(--font-xs); color:var(--text-dim); font-weight:bold; border-bottom:1px solid #333; padding-bottom:6px;">
+            <div id="math-tab-problems" style="display:${activeMathTab==='problems'?'flex':'none'}; flex-direction:column; gap:var(--space-3); flex:1;">
+                <div class="u-col u-gap-2" id="mh-prob-courses" style="display:flex;"></div>
+                <div class="u-col u-gap-3 u-grow" id="mh-prob-solve" style="display:none;">
+                    <div class="u-flex u-jc-between u-fs-xs u-dim u-bold" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-2);">
                         <span id="mh-prob-bread">COURSE > TOPIC</span>
                         <button class="icon-btn" id="mh-btn-back-courses">[× EXIT]</button>
                     </div>
-                    <div id="mh-prob-statement" style="font-size:var(--font-md); line-height:1.6; color:var(--text-main); flex:1; min-height:150px; overflow-y:auto;">
+                    <div class="u-fs-md u-main u-grow u-scroll-y" id="mh-prob-statement" style="line-height:1.6; min-height:150px;">
                         Statement...
                     </div>
                     
-                    <div id="mh-prob-actions" style="display:flex; justify-content:center; gap:8px; margin-top:10px;">
-                        <button class="btn btn-primary" id="mh-btn-show-rate" style="width:100%;">[ DONE / SHOW RATING ]</button>
+                    <div class="u-jc-center u-gap-2 u-mt-3" id="mh-prob-actions" style="display:flex;">
+                        <button class="btn btn-primary u-w-full" id="mh-btn-show-rate">[ DONE / SHOW RATING ]</button>
                     </div>
-                    <div id="mh-prob-rates" style="display:none; justify-content:space-between; gap:6px; margin-top:10px;">
-                        <button class="btn btn-danger" style="flex:1;" data-rate="1.0">[FAIL]</button>
-                        <button class="btn" style="flex:1;" data-rate="0.8">[HARD]</button>
-                        <button class="btn" style="flex:1;" data-rate="0.4">[GOOD]</button>
-                        <button class="btn" style="flex:1; border-color:var(--accent-green); color:var(--accent-green);" data-rate="0.1">[EASY]</button>
+                    <div class="u-jc-between u-gap-2 u-mt-3" id="mh-prob-rates" style="display:none;">
+                        <button class="btn btn-danger u-grow" data-rate="1.0">[FAIL]</button>
+                        <button class="btn u-grow" data-rate="0.8">[HARD]</button>
+                        <button class="btn u-grow" data-rate="0.4">[GOOD]</button>
+                        <button class="btn u-grow u-green" style="border-color:var(--accent-green);" data-rate="0.1">[EASY]</button>
                     </div>
                 </div>
             </div>
@@ -455,7 +455,7 @@ function renderMathModule() {
             btn.className = 'btn';
             btn.style.cssText = 'text-align:left; display:flex; justify-content:space-between;';
             const prog = pEngine.getCourseProgress(c);
-            btn.innerHTML = `<strong>${escapeHtml(c.toUpperCase())}</strong> <span style="font-size:var(--font-2xs); color:var(--text-dim);">${prog.passed}/${prog.total}</span>`;
+            btn.innerHTML = `<strong>${escapeHtml(c.toUpperCase())}</strong> <span class="u-fs-2xs u-dim">${prog.passed}/${prog.total}</span>`;
             btn.onclick = () => {
                 pEngine.setActiveCourse(c);
                 courseBox.style.display = 'none';

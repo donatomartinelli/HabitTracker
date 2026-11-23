@@ -426,42 +426,42 @@ function renderMoneyAtomSummary(precomputedMetrics = null) {
     const netColor = metrics.monthNet >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; justify-content:center; gap:10px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0; flex-wrap:wrap; gap:8px;">
+        <div class="module-body-padded u-grow u-flex u-col u-jc-center u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0 u-wrap u-gap-2">
                 <div>
                     <span class="section-label">Money Summary</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${todayStr.slice(0, 7)}</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${todayStr.slice(0, 7)}</span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
+                <div class="u-flex u-gap-2 u-ai-center">
                     <button type="button" class="btn btn-primary btn-sm" onclick="openTransactionModal('in')">[+ IN]</button>
                     <button type="button" class="btn btn-danger btn-sm" onclick="openTransactionModal('out')">[- OUT]</button>
                     <button type="button" class="btn btn-sm" onclick="openVaultModal()">[+ VAULT]</button>
                 </div>
             </div>
 
-            <div class="balance-cards-row" style="justify-content:space-between; border-top:1px solid var(--border-color); padding-top:10px;">
+            <div class="balance-cards-row u-jc-between" style="border-top:1px solid var(--border-color); padding-top:var(--space-3);">
                 <div>
-                    <div class="section-label" style="margin-bottom:2px; color:var(--accent-green);">Spendable Free</div>
+                    <div class="section-label u-green" style="margin-bottom:2px;">Spendable Free</div>
                     <div class="spendable-balance" style="color:${metrics.spendable < 0 ? 'var(--accent-red)' : 'var(--accent-green)'};">€${metrics.spendable.toFixed(2)}</div>
                 </div>
-                <div style="border-left:1px solid var(--border-color); padding-left:14px;">
+                <div style="border-left:1px solid var(--border-color); padding-left:var(--space-4);">
                     <div class="section-label" style="margin-bottom:2px;">Total Balance</div>
                     <div class="hero-balance">€${metrics.total.toFixed(2)}</div>
                 </div>
-                <div style="border-left:1px solid var(--border-color); padding-left:14px;">
-                    <div class="section-label" style="margin-bottom:2px; color:var(--accent-red);">Month Out</div>
-                    <div style="font-size:1.15rem; font-weight:bold; color:var(--accent-red); font-variant-numeric:tabular-nums;">-€${metrics.monthOut.toFixed(2)}</div>
+                <div style="border-left:1px solid var(--border-color); padding-left:var(--space-4);">
+                    <div class="section-label u-red" style="margin-bottom:2px;">Month Out</div>
+                    <div class="u-fs-lg u-bold u-red u-tnum">-€${metrics.monthOut.toFixed(2)}</div>
                 </div>
-                <div style="border-left:1px solid var(--border-color); padding-left:14px;">
+                <div style="border-left:1px solid var(--border-color); padding-left:var(--space-4);">
                     <div class="section-label" style="margin-bottom:2px;">Month Net</div>
-                    <div style="font-size:1.15rem; font-weight:bold; color:${netColor}; font-variant-numeric:tabular-nums;">${netSign}€${metrics.monthNet.toFixed(2)}</div>
+                    <div style="font-size:var(--font-lg); font-weight:bold; color:${netColor}; font-variant-numeric:tabular-nums;">${netSign}€${metrics.monthNet.toFixed(2)}</div>
                 </div>
             </div>
 
-            <div style="font-size:var(--font-2xs); color:var(--text-dim); font-variant-numeric:tabular-nums; border-top:1px dotted rgba(255,255,255,0.06); padding-top:6px;">
-                LOCKED IN VAULTS: <strong style="color:var(--text-muted);">€${metrics.vaulted.toFixed(2)}</strong> &nbsp;|&nbsp;
-                PENDING BILLS: <strong style="color:var(--text-muted);">€${metrics.pendingBills.toFixed(2)}</strong> &nbsp;|&nbsp;
-                MONTH IN: <strong style="color:var(--accent-green);">+€${metrics.monthIn.toFixed(2)}</strong>
+            <div class="u-fs-2xs u-dim u-tnum" style="border-top:1px dotted rgba(255,255,255,0.06); padding-top:var(--space-2);">
+                LOCKED IN VAULTS: <strong class="u-muted">€${metrics.vaulted.toFixed(2)}</strong> &nbsp;|&nbsp;
+                PENDING BILLS: <strong class="u-muted">€${metrics.pendingBills.toFixed(2)}</strong> &nbsp;|&nbsp;
+                MONTH IN: <strong class="u-green">+€${metrics.monthIn.toFixed(2)}</strong>
             </div>
         </div>
     `;
@@ -478,11 +478,11 @@ function renderMoneyAtomVaults() {
     const totalLocked = roundCurrency(mVaults.reduce((acc, v) => acc + Math.max(0, parseFloat(v.balance) || 0), 0));
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">Vaults &amp; Envelopes</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// €${totalLocked.toFixed(2)}</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// €${totalLocked.toFixed(2)}</span>
                 </div>
             </div>
             <div id="m-vaults-container" class="vaults-list-horizontal"></div>
@@ -501,20 +501,20 @@ function renderMoneyAtomChart() {
     if (!root) return;
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow:hidden;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-clip">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">Balance History</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// 30 TX</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// 30 TX</span>
                 </div>
-                <span id="m-chart-hover-info" style="font-size:var(--font-xs); color:var(--text-main); font-weight:bold;"></span>
+                <span class="u-fs-xs u-main u-bold" id="m-chart-hover-info"></span>
             </div>
-            <div class="money-chart-box" id="m-chart-box" style="flex:1; height:auto; min-height:75px;">
+            <div class="money-chart-box u-grow" id="m-chart-box" style="height:auto; min-height:75px;">
                 <div class="chart-meta-top">
                     <span id="m-chart-start">START: €0.00</span>
                     <span id="m-chart-max">MAX: €0.00</span>
                 </div>
-                <svg id="m-chart-svg" width="100%" height="100%" preserveAspectRatio="none" style="overflow: visible;">
+                <svg id="m-chart-svg" width="100%" height="100%" preserveAspectRatio="none" style="overflow:visible;">
                     <polyline id="m-chart-line" fill="none" stroke="var(--text-main)" stroke-width="2" vector-effect="non-scaling-stroke"></polyline>
                 </svg>
                 <div class="chart-meta-bottom">
@@ -560,27 +560,27 @@ function renderMoneyAtomTransactions() {
     const visibleList = filtered.slice(0, limitVal);
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0; flex-wrap:wrap; gap:6px;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0 u-wrap u-gap-2">
                 <div>
                     <span class="section-label">Transactions</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${filtered.length} TX</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${filtered.length} TX</span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm lab-bridge" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
-                    <select id="m-tx-cat-filter-sel" class="form-control form-control-sm" style="width:auto; max-width:130px; padding:2px 6px; font-size:var(--font-2xs);">
+                <div class="u-flex u-gap-2 u-ai-center u-wrap">
+                    <button type="button" class="btn btn-sm lab-bridge u-gold" style="border-color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
+                    <select id="m-tx-cat-filter-sel" class="form-control form-control-sm u-fs-2xs" style="width:auto; max-width:130px; padding:2px var(--space-2);">
                         ${allCats.map(c => `<option value="${escapeHtml(c)}" ${c.toLowerCase() === mTxCategoryFilter.toLowerCase() ? 'selected' : ''}>${escapeHtml(c.toUpperCase())}</option>`).join('')}
                     </select>
-                    <div style="display:flex; gap:2px;">
+                    <div class="u-flex u-gap-0">
                         ${[5, 10, 25, 0].map(lim => `
-                            <button type="button" class="btn btn-sm ${mTxLimit === lim ? 'btn-primary' : ''}" style="padding:2px 6px; font-size:var(--font-2xs);" data-lim="${lim}">
+                            <button type="button" class="btn btn-sm ${mTxLimit === lim ? 'btn-primary' : ''} u-fs-2xs" style="padding:2px var(--space-2);" data-lim="${lim}">
                                 ${lim === 0 ? 'ALL' : lim}
                             </button>
                         `).join('')}
                     </div>
                 </div>
             </div>
-            <div id="m-tx-list-container" style="display:flex; flex-direction:column; gap:6px;"></div>
+            <div class="u-col u-gap-2" id="m-tx-list-container" style="display:flex;"></div>
         </div>
     `;
 
@@ -621,15 +621,15 @@ function renderMoneyAtomBills() {
     const totalMonthlyFixed = roundCurrency(mRecurring.reduce((acc, r) => acc + (parseFloat(r.amount) || 0), 0));
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">Fixed Bills</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// €${totalMonthlyFixed.toFixed(2)}/MO</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// €${totalMonthlyFixed.toFixed(2)}/MO</span>
                 </div>
                 <button type="button" class="icon-btn" onclick="openRecurringModal()" title="Add recurring bill">+</button>
             </div>
-            <div id="m-recurring-container" style="display:flex; flex-direction:column; gap:6px;"></div>
+            <div class="u-col u-gap-2" id="m-recurring-container" style="display:flex;"></div>
         </div>
     `;
 
@@ -647,7 +647,7 @@ function renderMoneyAtomBills() {
                     <div class="m-title">${escapeHtml(r.title)}</div>
                     <div class="m-sub">DAY ${escapeHtml(r.dayOfMonth)} | END: ${escapeHtml(r.endDate || 'NEVER')}</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="u-flex u-ai-center u-gap-2">
                     <div class="m-amt neg">-€${absAmount}</div>
                     <div class="m-row-hover-tools">
                         <button type="button" class="icon-btn delete" title="Delete">×</button>
@@ -674,38 +674,38 @@ function renderMoneyAtomAnalytics(precomputedMetrics = null) {
     const deltaColor = deltaPrev > 0 ? 'var(--accent-red)' : 'var(--accent-green)';
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">Analytics &amp; Categories</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${mCategories.length} CATS</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${mCategories.length} CATS</span>
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:8px;">
-                <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">THIS MONTH OUT</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-red); margin-top:2px; font-variant-numeric:tabular-nums;">€${metrics.monthOut.toFixed(2)}</div>
+            <div class="u-grid u-gap-2" style="grid-template-columns:repeat(4, 1fr);">
+                <div class="cfg-box u-m-0" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">THIS MONTH OUT</div>
+                    <div class="u-fs-md u-bold u-red u-tnum" style="margin-top:2px;">€${metrics.monthOut.toFixed(2)}</div>
                 </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">VS LAST MO (€${metrics.prevMonthOut.toFixed(0)})</div>
+                <div class="cfg-box u-m-0" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">VS LAST MO (€${metrics.prevMonthOut.toFixed(0)})</div>
                     <div style="font-size:var(--font-md); font-weight:bold; color:${deltaColor}; margin-top:2px; font-variant-numeric:tabular-nums;">${deltaSign}€${deltaPrev.toFixed(2)}</div>
                 </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">DAILY AVG</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">€${metrics.avgDailySpend.toFixed(2)}/d</div>
+                <div class="cfg-box u-m-0" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">DAILY AVG</div>
+                    <div class="u-fs-md u-bold u-main u-tnum" style="margin-top:2px;">€${metrics.avgDailySpend.toFixed(2)}/d</div>
                 </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">ALL-TIME OUT</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-muted); margin-top:2px; font-variant-numeric:tabular-nums;">€${metrics.allTimeOut.toFixed(2)}</div>
+                <div class="cfg-box u-m-0" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">ALL-TIME OUT</div>
+                    <div class="u-fs-md u-bold u-muted u-tnum" style="margin-top:2px;">€${metrics.allTimeOut.toFixed(2)}</div>
                 </div>
             </div>
 
-            <div style="display:flex; gap:6px;">
-                <input type="text" id="m-new-cat-inp" class="form-control form-control-sm" style="flex:1;" placeholder="+ Create new expense category (Enter)...">
+            <div class="u-flex u-gap-2">
+                <input type="text" id="m-new-cat-inp" class="form-control form-control-sm u-grow" placeholder="+ Create new expense category (Enter)...">
             </div>
 
-            <div id="m-cat-breakdown-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+            <div class="u-col u-gap-2" id="m-cat-breakdown-list" style="display:flex;"></div>
         </div>
     `;
 
@@ -731,18 +731,18 @@ function renderMoneyAtomAnalytics(precomputedMetrics = null) {
         row.className = 'm-cat-stat-row';
 
         row.innerHTML = `
-            <div style="cursor:pointer; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" class="cat-jump-trigger" title="Click to filter Transactions by ${escapeHtml(catName)}">
-                <strong style="color:var(--text-main); text-transform:uppercase;">${escapeHtml(catName)}</strong>
-                <div style="font-size:var(--font-2xs); color:var(--text-dim);">${st.countMonth} tx (${pctOfMonth}%)</div>
+            <div style="text-overflow:ellipsis;" class="cat-jump-trigger u-pointer u-clip u-nowrap" title="Click to filter Transactions by ${escapeHtml(catName)}">
+                <strong class="u-main u-upper">${escapeHtml(catName)}</strong>
+                <div class="u-fs-2xs u-dim">${st.countMonth} tx (${pctOfMonth}%)</div>
             </div>
-            <div style="height:6px; background:#111; border:1px solid #2a2a2a; position:relative; overflow:hidden;">
+            <div class="u-clip" style="height:6px; background:var(--bg-elevated); border:1px solid var(--border-color); position:relative;">
                 <div style="height:100%; width:${barWidth}%; background:var(--text-main);"></div>
             </div>
-            <div style="text-align:right; font-variant-numeric:tabular-nums;">
+            <div class="u-tr u-tnum">
                 <strong style="color:${st.monthOut > 0 ? 'var(--text-main)' : 'var(--text-dim)'};">€${st.monthOut.toFixed(2)}</strong>
-                <span style="color:var(--text-dim); font-size:var(--font-2xs);"> / €${st.allTimeOut.toFixed(0)}</span>
+                <span class="u-dim u-fs-2xs"> / €${st.allTimeOut.toFixed(0)}</span>
             </div>
-            <div style="display:flex; gap:4px;">
+            <div class="u-flex u-gap-1">
                 <button type="button" class="icon-btn btn-ren-cat" title="Rename category">✎</button>
                 <button type="button" class="icon-btn delete btn-del-cat" title="Delete category">×</button>
             </div>
@@ -756,8 +756,8 @@ function renderMoneyAtomAnalytics(precomputedMetrics = null) {
 
         row.querySelector('.btn-ren-cat').onclick = () => {
             row.innerHTML = `
-                <input type="text" class="form-control form-control-sm ren-cat-inp" value="${escapeHtml(catName)}" style="grid-column: 1 / 3;">
-                <div style="grid-column: 3 / 5; display:flex; justify-content:flex-end; gap:6px;">
+                <input type="text" class="form-control form-control-sm ren-cat-inp" value="${escapeHtml(catName)}" style="grid-column:1 / 3;">
+                <div class="u-flex u-jc-end u-gap-2" style="grid-column:3 / 5;">
                     <button type="button" class="btn btn-primary btn-sm btn-save-ren">[SAVE]</button>
                     <button type="button" class="btn btn-sm btn-cancel-ren">[ESC]</button>
                 </div>
@@ -791,15 +791,15 @@ function renderMoneyAtomIncubator() {
     );
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0; flex-wrap:wrap; gap:8px;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0 u-wrap u-gap-2">
                 <div>
                     <span class="section-label">Purchase Incubator</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// EST €${totalEstimated.toFixed(2)}</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// EST €${totalEstimated.toFixed(2)}</span>
                 </div>
                 <input type="text" id="m-new-wish-cat-inp" class="form-control form-control-sm" style="width:170px;" placeholder="+ New category (Enter)...">
             </div>
-            <div id="m-incubator-masonry" class="daily-columns-wrap" style="align-items:flex-start;"></div>
+            <div id="m-incubator-masonry" class="daily-columns-wrap u-ai-start"></div>
         </div>
     `;
 
@@ -813,9 +813,9 @@ function renderMoneyAtomIncubator() {
 
     const masonryWrap = root.querySelector('#m-incubator-masonry');
     const colLeft = document.createElement('div');
-    colLeft.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:14px;';
+    colLeft.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:var(--space-4);';
     const colRight = document.createElement('div');
-    colRight.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:14px;';
+    colRight.style.cssText = 'flex:1; min-width:0; display:flex; flex-direction:column; gap:var(--space-4);';
 
     mWishCategories.forEach((catName, cIdx) => {
         const itemsInCat = mWishlist.filter(w => (w.category || 'General') === catName);
@@ -829,8 +829,8 @@ function renderMoneyAtomIncubator() {
         headerWrap.className = 'category-header-wrap';
         headerWrap.innerHTML = `
             <div class="category-title">${escapeHtml(catName)}</div>
-            <div style="display:flex; align-items:center; gap:8px;">
-                <span style="font-size:var(--font-2xs); color:var(--text-dim); font-variant-numeric:tabular-nums;">${catSum > 0 ? '€' + catSum.toFixed(2) : ''}</span>
+            <div class="u-flex u-ai-center u-gap-2">
+                <span class="u-fs-2xs u-dim u-tnum">${catSum > 0 ? '€' + catSum.toFixed(2) : ''}</span>
                 <div class="action-btns">
                     <button type="button" class="icon-btn delete btn-del-wcat" title="Delete category">×</button>
                 </div>
@@ -843,7 +843,7 @@ function renderMoneyAtomIncubator() {
         itemsList.style.cssText = 'display:flex; flex-direction:column;';
 
         if (itemsInCat.length === 0) {
-            itemsList.innerHTML = `<div class="empty-state" style="padding:4px 0;">[ EMPTY ]</div>`;
+            itemsList.innerHTML = `<div class="empty-state u-py-1">[ EMPTY ]</div>`;
         } else {
             itemsInCat.forEach(w => {
                 itemsList.appendChild(buildWishItemRowDom(w));
@@ -902,13 +902,13 @@ function buildTransactionRowDom(t) {
             catLabel
         ]));
 
-        row.style.cssText = 'flex-direction:column; align-items:stretch; gap:8px; padding:10px; border-color:var(--text-main); background:#080808;';
+        row.style.cssText = 'flex-direction:column; align-items:stretch; gap:var(--space-2); padding:var(--space-3); border-color:var(--text-main); background:var(--bg-sec);';
         row.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; font-size:var(--font-2xs); color:var(--text-dim);">
+            <div class="u-flex u-jc-between u-ai-center u-fs-2xs u-dim">
                 <strong>EDIT TRANSACTION (${isOut ? 'EXPENSE' : 'INCOME'})</strong>
                 <span>[ENTER] SAVE · [ESC] CANCEL</span>
             </div>
-            <div style="display:grid; grid-template-columns: 120px 140px 1fr 90px; gap:6px;">
+            <div class="u-grid u-gap-2" style="grid-template-columns:120px 140px 1fr 90px;">
                 <input type="date" class="form-control form-control-sm edit-tx-date" value="${escapeHtml(t.date || todayStr)}">
                 <select class="form-control form-control-sm edit-tx-cat">
                     ${allCatOpts.map(c => `<option value="${escapeHtml(c)}" ${c.toLowerCase() === catLabel.toLowerCase() ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
@@ -916,7 +916,7 @@ function buildTransactionRowDom(t) {
                 <input type="text" class="form-control form-control-sm edit-tx-desc" value="${escapeHtml(t.desc)}" placeholder="Description...">
                 <input type="number" step="0.01" class="form-control form-control-sm no-spinners edit-tx-amt" value="${absAmount}" placeholder="€">
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:6px;">
+            <div class="u-flex u-jc-end u-gap-2">
                 <button type="button" class="btn btn-sm btn-cancel-tx">[CANCEL]</button>
                 <button type="button" class="btn btn-primary btn-sm btn-save-tx">[SAVE CHANGES]</button>
             </div>
@@ -957,16 +957,16 @@ function buildTransactionRowDom(t) {
     };
 
     row.innerHTML = `
-        <div style="min-width:0; flex:1;">
-            <div class="m-title" style="display:flex; align-items:center; flex-wrap:wrap; gap:2px;">
+        <div class="u-minw0 u-grow">
+            <div class="m-title u-flex u-ai-center u-wrap u-gap-0">
                 <div class="m-cat-dropdown-wrap">
-                    <span class="${badgeClass}" style="cursor:pointer;" title="Click to change, add or remove categories">${escapeHtml(badgeText)}</span>
+                    <span class="${badgeClass} u-pointer" title="Click to change, add or remove categories">${escapeHtml(badgeText)}</span>
                 </div>
-                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(t.desc)}</span>
+                <span class="u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(t.desc)}</span>
             </div>
             <div class="m-sub">${escapeHtml(t.date)}</div>
         </div>
-        <div style="display:flex; align-items:center;">
+        <div class="u-flex u-ai-center">
             <div class="m-amt ${isOut ? 'neg' : 'pos'}">${isOut ? '-' : '+'}€${absAmount}</div>
             <div class="m-row-hover-tools">
                 <button type="button" class="icon-btn btn-edit-tx" title="Edit date or amount">✎</button>
@@ -1024,7 +1024,7 @@ function buildTransactionRowDom(t) {
                 const delCatBtn = document.createElement('button');
                 delCatBtn.type = 'button';
                 delCatBtn.className = 'icon-btn delete';
-                delCatBtn.style.cssText = 'font-size:var(--font-2xs); padding:0 4px;';
+                delCatBtn.style.cssText = 'font-size:var(--font-2xs); padding:0 var(--space-1);';
                 delCatBtn.textContent = '×';
                 delCatBtn.title = `Delete category "${cName}"`;
                 delCatBtn.onclick = (ev) => {
@@ -1047,8 +1047,8 @@ function buildTransactionRowDom(t) {
         const addBox = document.createElement('div');
         addBox.className = 'm-cat-popover-add';
         addBox.innerHTML = `
-            <input type="text" class="form-control form-control-sm new-pop-cat-inp" placeholder="+ New category..." style="padding:3px 6px; font-size:var(--font-2xs);">
-            <button type="button" class="btn btn-primary btn-sm btn-pop-cat-add" style="padding:2px 6px;">+</button>
+            <input type="text" class="form-control form-control-sm new-pop-cat-inp u-fs-2xs" placeholder="+ New category..." style="padding:var(--space-1) var(--space-2);">
+            <button type="button" class="btn btn-primary btn-sm btn-pop-cat-add" style="padding:2px var(--space-2);">+</button>
         `;
 
         const newInp = addBox.querySelector('.new-pop-cat-inp');
@@ -1188,15 +1188,15 @@ function buildWishItemRowDom(w) {
     const costVal = hasCost ? roundCurrency(w.cost) : '';
 
     if (editingWishId === w.id) {
-        row.style.cssText = 'flex-direction:column; align-items:stretch; gap:6px; padding:8px; background:#080808; border:1px solid var(--text-main);';
+        row.style.cssText = 'flex-direction:column; align-items:stretch; gap:var(--space-2); padding:var(--space-2); background:var(--bg-sec); border:1px solid var(--text-main);';
         const catOpts = mWishCategories.map(c => `<option value="${escapeHtml(c)}" ${w.category === c ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
         row.innerHTML = `
-            <div style="display:grid; grid-template-columns: 1fr 80px 110px; gap:6px;">
+            <div class="u-grid u-gap-2" style="grid-template-columns:1fr 80px 110px;">
                 <input type="text" class="form-control form-control-sm edit-w-title" value="${escapeHtml(w.title)}" placeholder="Item name...">
                 <input type="number" step="0.01" class="form-control form-control-sm no-spinners edit-w-cost" value="${costVal}" placeholder="€ Price">
                 <select class="form-control form-control-sm edit-w-cat">${catOpts}</select>
             </div>
-            <div style="display:flex; justify-content:flex-end; gap:6px;">
+            <div class="u-flex u-jc-end u-gap-2">
                 <button type="button" class="btn btn-sm btn-w-cancel">[ESC]</button>
                 <button type="button" class="btn btn-primary btn-sm btn-w-save">[SAVE]</button>
             </div>
@@ -1227,10 +1227,10 @@ function buildWishItemRowDom(w) {
     }
 
     if (buyingInlineWishId === w.id) {
-        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; gap:6px; padding:6px 8px; background:#080808; border:1px solid var(--accent-green);';
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); padding:var(--space-2) var(--space-2); background:var(--bg-sec); border:1px solid var(--accent-green);';
         row.innerHTML = `
-            <span style="font-size:var(--font-xs); color:var(--text-main); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">Buy <strong>${escapeHtml(w.title)}</strong>:</span>
-            <div style="display:flex; gap:4px; align-items:center;">
+            <span class="u-fs-xs u-main u-clip u-nowrap" style="text-overflow:ellipsis;">Buy <strong>${escapeHtml(w.title)}</strong>:</span>
+            <div class="u-flex u-gap-1 u-ai-center">
                 <input type="number" step="0.01" class="form-control form-control-sm no-spinners inline-buy-price" style="width:75px;" placeholder="€ Price" value="${costVal}">
                 <button type="button" class="btn btn-primary btn-sm btn-confirm-buy">✓</button>
                 <button type="button" class="btn btn-sm btn-cancel-buy">×</button>
@@ -1264,10 +1264,10 @@ function buildWishItemRowDom(w) {
         <div class="task-left">
             <div class="task-title">${escapeHtml(w.title)}</div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
+        <div class="u-flex u-ai-center u-gap-2">
             <span class="wish-price-badge" style="font-size:var(--font-xs); color:${hasCost ? 'var(--text-main)' : 'var(--text-dim)'}; font-weight:${hasCost ? 'bold' : 'normal'}; font-variant-numeric:tabular-nums; cursor:pointer;" title="Click to set or edit price">${costDisplay}</span>
             <div class="m-row-hover-tools">
-                <button type="button" class="icon-btn btn-wish-buy" style="color:var(--accent-green);" title="Mark as purchased & log expense">✓</button>
+                <button type="button" class="icon-btn btn-wish-buy u-green" title="Mark as purchased & log expense">✓</button>
                 <button type="button" class="icon-btn btn-wish-edit" title="Edit name, price or category">✎</button>
                 <button type="button" class="icon-btn delete btn-wish-del" title="Delete idea">×</button>
             </div>
@@ -1368,12 +1368,12 @@ function renderVaultsSection(targetContainer = null) {
                     <span class="vault-name">${escapeHtml(v.name)}</span>
                     <span class="vault-rule-badge">${escapeHtml(ruleText + nextRenewalPreview)}</span>
                 </div>
-                <div style="display:flex; align-items:center; gap:10px;">
+                <div class="u-flex u-ai-center u-gap-3">
                     <div class="vault-env-numbers">
                         <span class="vault-val ${isNegative ? 'neg' : ''}">${signStr}</span>
                         <span class="vault-target">${capStr}</span>
                     </div>
-                    <div class="vault-actions" style="display:flex; gap:4px;"></div>
+                    <div class="vault-actions u-flex u-gap-1"></div>
                 </div>
             </div>
             <div class="vault-progress-track">

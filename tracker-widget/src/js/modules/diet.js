@@ -101,7 +101,7 @@ function renderFoodDbList() {
     const frag = document.createDocumentFragment();
     foodDb.forEach((item, idx) => {
         const row = document.createElement('div');
-        row.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; gap: 6px; align-items: center; padding: 5px 8px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color); font-size: var(--font-xs);';
+        row.style.cssText = 'display:grid; grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr auto; gap:var(--space-2); align-items:center; padding:var(--space-1) var(--space-2); background:rgba(255,255,255,0.02); border:1px solid var(--border-color); font-size:var(--font-xs);';
 
         const makeInp = (val, key, isText = false) => {
             const inp = document.createElement('input');
@@ -215,22 +215,22 @@ function buildDietHeaderControlsDom(suffixId) {
     }
 
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'display:flex; gap:6px; align-items:center;';
+    wrap.style.cssText = 'display:flex; gap:var(--space-2); align-items:center;';
 
     const drop = document.createElement('div');
     drop.className = 'dropdown';
     drop.innerHTML = `
         <button type="button" class="btn btn-sm dropdown-btn">
-            <strong>${latestStr}</strong> <span style="color:var(--text-dim);">${deltaStr}</span>
+            <strong>${latestStr}</strong> <span class="u-dim">${deltaStr}</span>
         </button>
-        <div id="${popId}" class="dropdown-content" style="right:0; width:280px; padding:12px;">
+        <div id="${popId}" class="dropdown-content" style="right:0; width:280px; padding:var(--space-3);">
             <div class="sub-column-header">Body Weight</div>
-            <div style="display:flex; gap:6px; margin-bottom:10px;">
+            <div class="u-flex u-gap-2 u-mb-3">
                 <input type="number" id="${wInpId}" class="form-control form-control-sm no-spinners" step="0.1" placeholder="kg" style="width:80px;">
-                <input type="text" id="${nInpId}" class="form-control form-control-sm" placeholder="Note..." style="flex:1;">
+                <input type="text" id="${nInpId}" class="form-control form-control-sm u-grow" placeholder="Note...">
                 <button type="button" class="btn btn-primary btn-sm btn-log-w">+</button>
             </div>
-            <div class="bw-chips-list" style="display:flex; flex-direction:column; gap:4px; max-height:130px; overflow-y:auto;"></div>
+            <div class="bw-chips-list u-flex u-col u-gap-1 u-scroll-y" style="max-height:130px;"></div>
         </div>
     `;
 
@@ -251,14 +251,14 @@ function buildDietHeaderControlsDom(suffixId) {
 
     const chipsList = drop.querySelector('.bw-chips-list');
     if (bodyLogs.length === 0) {
-        chipsList.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NONE ]</div>';
+        chipsList.innerHTML = '<div class="empty-state u-py-1">[ NONE ]</div>';
     } else {
         [...bodyLogs].reverse().slice(0, 8).forEach(entry => {
             const chip = document.createElement('div');
             chip.className = 'body-chip';
             chip.style.justifyContent = 'space-between';
             const noteStr = entry.note ? ` · ${entry.note}` : '';
-            chip.innerHTML = `<span><strong style="color:var(--text-main);">${entry.weight.toFixed(1)}kg</strong> <span style="color:var(--text-dim);">${escapeHtml(entry.date)}${escapeHtml(noteStr)}</span></span>`;
+            chip.innerHTML = `<span><strong class="u-main">${entry.weight.toFixed(1)}kg</strong> <span class="u-dim">${escapeHtml(entry.date)}${escapeHtml(noteStr)}</span></span>`;
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
             delBtn.textContent = '×';
@@ -301,20 +301,20 @@ function renderDietAtomToday() {
     const totals = calculateDayMacros(dayKey);
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;" id="diet-today-hdr">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0" id="diet-today-hdr">
                 <div>
                     <span class="section-label">Diet</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${dayNames[dayKey]} ${selectedDateStr}</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${dayNames[dayKey]} ${selectedDateStr}</span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;" id="diet-today-right-controls">
+                <div class="u-gap-2 u-ai-center" style="display:flex;" id="diet-today-right-controls">
                     <button type="button" class="btn btn-sm" onclick="toggleBreakfastVisibility()">${hideBreakfast ? '[👁 SHOW BRKFST]' : '[Ø HIDE BRKFST]'}</button>
                 </div>
             </div>
 
-            <div id="diet-today-list-mount" class="diet-wrapper" style="width:100%;"></div>
+            <div id="diet-today-list-mount" class="diet-wrapper u-w-full"></div>
 
-            <div id="diet-today-rules" class="diet-rules-bar" style="margin-top:2px; cursor:pointer;"></div>
+            <div id="diet-today-rules" class="diet-rules-bar u-pointer" style="margin-top:2px;"></div>
         </div>
     `;
 
@@ -350,7 +350,7 @@ function renderDietAtomToday() {
 
         const valCell = document.createElement('div');
         valCell.className = 'diet-cell diet-col-active';
-        valCell.style.cssText = 'justify-content: flex-start; text-align: left; padding: 8px 12px;';
+        valCell.style.cssText = 'justify-content:flex-start; text-align:left; padding:var(--space-2) var(--space-3);';
         valCell.textContent = (rowObj[dayKey] || '').trim() || '—';
         valCell.ondblclick = () => startDietCellEdit(valCell, rowIdx, dayKey);
 
@@ -364,10 +364,10 @@ function renderDietAtomToday() {
     macroRow.className = 'diet-row';
     macroRow.style.gridTemplateColumns = '95px 1fr';
     macroRow.innerHTML = `
-        <div class="diet-cell diet-row-label" style="border-top:1px solid var(--border-color); color:var(--text-main);">MACROS</div>
-        <div class="diet-macro-cell diet-col-active" style="flex-direction:row; justify-content:space-between; align-items:center; padding:8px 12px;">
+        <div class="diet-cell diet-row-label u-main" style="border-top:1px solid var(--border-color);">MACROS</div>
+        <div class="diet-macro-cell diet-col-active u-jc-between u-ai-center" style="flex-direction:row; padding:var(--space-2) var(--space-3);">
             <span class="diet-macro-kcal">${totals.kcal} KCAL${totals.hasFreeMeal ? '*' : ''}</span>
-            <span class="diet-macro-sub" style="color:var(--text-muted); font-weight:bold;">P: ${totals.p}g &nbsp;·&nbsp; C: ${totals.c}g &nbsp;·&nbsp; F: ${totals.f}g</span>
+            <span class="diet-macro-sub u-muted u-bold">P: ${totals.p}g &nbsp;·&nbsp; C: ${totals.c}g &nbsp;·&nbsp; F: ${totals.f}g</span>
         </div>
     `;
     listMount.appendChild(macroRow);
@@ -389,15 +389,15 @@ function renderDietAtomWeek() {
     if (!root) return;
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;" id="diet-week-hdr">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0" id="diet-week-hdr">
                 <div>
                     <span class="section-label">Diet Matrix</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// WEEKLY</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// WEEKLY</span>
                 </div>
             </div>
-            <div id="diet-week-table-mount" style="width:100%;"></div>
-            <div id="diet-week-rules" class="diet-rules-bar" style="cursor:pointer;"></div>
+            <div class="u-w-full" id="diet-week-table-mount"></div>
+            <div id="diet-week-rules" class="diet-rules-bar u-pointer"></div>
         </div>
     `;
 

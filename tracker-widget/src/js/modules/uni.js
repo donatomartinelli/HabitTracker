@@ -484,29 +484,29 @@ function renderUniAtomRoadmap(customContainer = null) {
 
     const wrap = document.createElement('div');
     wrap.className = customContainer ? '' : 'module-body-padded';
-    wrap.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto; height:100%;';
+    wrap.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:var(--space-3); overflow-y:auto; height:100%;';
 
     wrap.innerHTML = `
-        <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+        <div class="section-header-row u-mb-0 u-noshrink">
             <div>
                 <span class="section-label">Uni Roadmap</span>
-                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${courses.length} COURSES</span>
+                <span class="u-fs-xs u-dim u-ml-2">// ${courses.length} COURSES</span>
             </div>
-            <div style="display:flex; gap:6px;">
+            <div class="u-flex u-gap-2">
                 <button type="button" class="btn btn-sm" onclick="toggleRoadmapView()">[VIEW: ${roadmapViewMode.toUpperCase()}]</button>
                 <button type="button" class="btn btn-sm ${showRoadmapAddForm ? 'btn-primary' : ''}" id="btn-toggle-roadmap-add">+</button>
             </div>
         </div>
 
-        <div id="uni-roadmap-add-row" style="display:${showRoadmapAddForm ? 'flex' : 'none'}; gap:6px; flex-wrap:wrap; padding:8px; border:1px solid var(--border-bright); background:#060606;">
+        <div id="uni-roadmap-add-row" style="display:${showRoadmapAddForm ? 'flex' : 'none'}; gap:var(--space-2); flex-wrap:wrap; padding:var(--space-2); border:1px solid var(--border-bright); background:#060606;">
             <input type="text" id="uni-new-course-name" class="form-control form-control-sm" style="flex:2; min-width:130px;" placeholder="Course name...">
-            <input type="number" id="uni-new-course-cfu" class="form-control form-control-sm no-spinners" style="width:60px; text-align:center;" placeholder="CFU" value="9" min="1" max="30">
-            <input type="number" id="uni-new-course-year" class="form-control form-control-sm no-spinners" style="width:55px; text-align:center;" placeholder="Yr" value="1" min="1" max="6">
-            <input type="color" id="uni-new-course-color" value="#ffffff" style="width:30px; height:27px; background:transparent; border:1px solid var(--border-color); cursor:pointer;">
+            <input type="number" id="uni-new-course-cfu" class="form-control form-control-sm no-spinners u-tc" style="width:60px;" placeholder="CFU" value="9" min="1" max="30">
+            <input type="number" id="uni-new-course-year" class="form-control form-control-sm no-spinners u-tc" style="width:55px;" placeholder="Yr" value="1" min="1" max="6">
+            <input class="u-pointer" type="color" id="uni-new-course-color" value="#ffffff" style="width:30px; height:27px; background:transparent; border:1px solid var(--border-color);">
             <button type="button" id="btn-add-uni-course" class="btn btn-primary btn-sm">[SAVE]</button>
         </div>
 
-        <div id="uni-remaining-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+        <div class="u-col u-gap-2" id="uni-remaining-list" style="display:flex;"></div>
     `;
 
     wrap.querySelector('#btn-toggle-roadmap-add').onclick = () => {
@@ -557,24 +557,24 @@ function renderUniAtomRoadmap(customContainer = null) {
                 const card = document.createElement('div');
                 card.style.cssText = `border:1px solid ${phase !== 'none' ? 'var(--border-bright)' : 'var(--border-color)'}; border-left:3px solid ${course.color || '#ffffff'}; padding:10px 12px; background:rgba(255,255,255,0.02); display:flex; flex-direction:column; justify-content:space-between; gap:8px; position:relative; min-height:115px;`;
 
-                let phaseBadge = '<span style="color:var(--text-dim);">[IDLE]</span>';
-                if (phase === 'study') phaseBadge = '<span style="color:var(--accent-green); font-weight:bold;">[1: STUDIO + ANKI]</span>';
-                else if (phase === 'proofs') phaseBadge = '<span style="color:var(--accent-gold); font-weight:bold;">[2: DIMOSTR. + ANKI]</span>';
+                let phaseBadge = '<span class="u-dim">[IDLE]</span>';
+                if (phase === 'study') phaseBadge = '<span class="u-green u-bold">[1: STUDIO + ANKI]</span>';
+                else if (phase === 'proofs') phaseBadge = '<span class="u-gold u-bold">[2: DIMOSTR. + ANKI]</span>';
 
                 const renderNormalMode = () => {
                     card.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
-                            <div style="flex:1; min-width:0;">
-                                <div style="font-size:var(--font-md); color:var(--text-main); font-weight:bold; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(course.name)}</div>
-                                <div style="font-size:var(--font-xs); color:var(--text-dim); margin-top:2px;">${course.cfu} CFU · YEAR ${course.year || 1}</div>
+                        <div class="u-flex u-jc-between u-ai-start u-gap-3">
+                            <div class="u-grow u-minw0">
+                                <div class="u-fs-md u-main u-bold u-upper u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(course.name)}</div>
+                                <div class="u-fs-xs u-dim" style="margin-top:2px;">${course.cfu} CFU · YEAR ${course.year || 1}</div>
                             </div>
-                            <span style="font-size:var(--font-xs); padding:2px 7px; border:1px solid var(--border-color); background:#050505; font-variant-numeric:tabular-nums; flex-shrink:0;">
-                                <strong style="color:var(--text-main);">${hoursStudied.toFixed(1)}H</strong>
+                            <span class="u-fs-xs u-tnum u-noshrink" style="padding:2px var(--space-2); border:1px solid var(--border-color); background:var(--bg-sec);">
+                                <strong class="u-main">${hoursStudied.toFixed(1)}H</strong>
                             </span>
                         </div>
-                        <div style="font-size:var(--font-xs); display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:8px; margin-top:auto;">
+                        <div class="u-fs-xs u-flex u-jc-between u-wrap u-gap-2" style="align-items:flex-end; margin-top:auto;">
                             <div>${phaseBadge}</div>
-                            <div class="uni-course-actions" style="display:flex; gap:4px; flex-wrap:wrap;"></div>
+                            <div class="uni-course-actions u-flex u-gap-1 u-wrap"></div>
                         </div>
                     `;
 
@@ -594,7 +594,7 @@ function renderUniAtomRoadmap(customContainer = null) {
 
                     const btnPass = document.createElement('button');
                     btnPass.className = 'icon-btn';
-                    btnPass.style.cssText = 'color:var(--accent-green); border:1px solid var(--accent-green); margin-left:4px;';
+                    btnPass.style.cssText = 'color:var(--accent-green); border:1px solid var(--accent-green); margin-left:var(--space-1);';
                     btnPass.textContent = '✓';
                     btnPass.onclick = () => {
                         const g = prompt(`Grade (18-30 or 30L) for "${course.name}" (${course.cfu} CFU):`, '30');
@@ -623,14 +623,14 @@ function renderUniAtomRoadmap(customContainer = null) {
 
                 const renderEditMode = () => {
                     card.innerHTML = `
-                        <div style="display:flex; flex-direction:column; gap:6px; height:100%;">
+                        <div class="u-flex u-col u-gap-2" style="height:100%;">
                             <input type="text" class="form-control form-control-sm edit-name" value="${escapeHtml(course.name)}">
-                            <div style="display:flex; gap:6px;">
-                                <input type="number" class="form-control form-control-sm no-spinners edit-cfu" value="${course.cfu}" style="flex:1;" placeholder="CFU">
-                                <input type="number" class="form-control form-control-sm no-spinners edit-year" value="${course.year || 1}" style="flex:1;" placeholder="Year">
-                                <input type="color" class="edit-color" value="${course.color || '#ffffff'}" style="width:30px; height:27px; background:transparent; border:1px solid var(--border-color); cursor:pointer;">
+                            <div class="u-flex u-gap-2">
+                                <input type="number" class="form-control form-control-sm no-spinners edit-cfu u-grow" value="${course.cfu}" placeholder="CFU">
+                                <input type="number" class="form-control form-control-sm no-spinners edit-year u-grow" value="${course.year || 1}" placeholder="Year">
+                                <input type="color" class="edit-color u-pointer" value="${course.color || '#ffffff'}" style="width:30px; height:27px; background:transparent; border:1px solid var(--border-color);">
                             </div>
-                            <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:auto;">
+                            <div class="u-flex u-jc-end u-gap-2" style="margin-top:auto;">
                                 <button type="button" class="btn btn-sm btn-cancel-edit">[ESC]</button>
                                 <button type="button" class="btn btn-primary btn-sm btn-save-edit">[SAVE]</button>
                             </div>
@@ -670,14 +670,14 @@ function renderUniAtomLectures() {
     const courses = uniData.remainingExams || [];
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0 u-noshrink">
                 <div>
                     <span class="section-label">Uni Lectures</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// CALENDAR EVENTS</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// CALENDAR EVENTS</span>
                 </div>
             </div>
-            <div id="uni-lectures-body" style="display:flex; flex-direction:column; gap:12px;"></div>
+            <div class="u-col u-gap-3" id="uni-lectures-body" style="display:flex;"></div>
         </div>
     `;
 
@@ -697,21 +697,21 @@ function renderUniAtomLectures() {
         box.style.cssText = `border:1px solid var(--border-color); border-left:3px solid ${course.color || '#ffffff'}; padding:10px; background:rgba(255,255,255,0.015); display:flex; flex-direction:column; gap:8px;`;
 
         box.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
-                <strong style="color:var(--text-main); text-transform:uppercase;">${escapeHtml(course.name)}</strong>
-                <div style="display:flex; gap:6px; align-items:center; font-size:var(--font-xs);">
-                    <input type="date" class="form-control form-control-sm lec-start-inp" style="width:118px; padding:2px 6px;" value="${course.lectureStart || todayStr}">
-                    <span style="color:var(--text-dim);">–</span>
-                    <input type="date" class="form-control form-control-sm lec-end-inp" style="width:118px; padding:2px 6px;" value="${course.lectureEnd || ''}">
+            <div class="u-flex u-jc-between u-ai-center u-wrap u-gap-2">
+                <strong class="u-main u-upper">${escapeHtml(course.name)}</strong>
+                <div class="u-flex u-gap-2 u-ai-center u-fs-xs">
+                    <input type="date" class="form-control form-control-sm lec-start-inp" style="width:118px; padding:2px var(--space-2);" value="${course.lectureStart || todayStr}">
+                    <span class="u-dim">–</span>
+                    <input type="date" class="form-control form-control-sm lec-end-inp" style="width:118px; padding:2px var(--space-2);" value="${course.lectureEnd || ''}">
                 </div>
             </div>
-            <div class="lec-slots-list" style="display:flex; flex-direction:column; gap:6px;"></div>
-            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap; padding-top:4px; border-top:1px dotted #222;">
+            <div class="lec-slots-list u-flex u-col u-gap-2"></div>
+            <div class="u-flex u-gap-2 u-ai-center u-wrap" style="padding-top:var(--space-1); border-top:1px dotted var(--border-color);">
                 <input type="time" class="form-control form-control-sm new-lec-start" style="width:84px;" value="09:00">
-                <span style="color:var(--text-dim);">-</span>
+                <span class="u-dim">-</span>
                 <input type="time" class="form-control form-control-sm new-lec-end" style="width:84px;" value="11:00">
-                <div class="new-lec-days" style="display:flex; gap:6px; font-size:var(--font-xs);">
-                    ${dayVals.map((v, i) => `<label style="cursor:pointer;"><input type="checkbox" value="${v}"> ${dayLabels[i]}</label>`).join('')}
+                <div class="new-lec-days u-flex u-gap-2 u-fs-xs">
+                    ${dayVals.map((v, i) => `<label class="u-pointer"><input type="checkbox" value="${v}"> ${dayLabels[i]}</label>`).join('')}
                 </div>
                 <button type="button" class="btn btn-sm btn-add-lec-slot" style="margin-left:auto;">[+ SLOT]</button>
             </div>
@@ -740,7 +740,7 @@ function renderUniAtomLectures() {
             course.lectures.forEach((slot, sIdx) => {
                 const dayNamesStr = (slot.days || []).map(d => ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d]).join(', ');
                 const sRow = document.createElement('div');
-                sRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; font-size:var(--font-xs); padding:4px 8px; background:rgba(255,255,255,0.03); border:1px solid var(--border-color);';
+                sRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; font-size:var(--font-xs); padding:var(--space-1) var(--space-2); background:rgba(255,255,255,0.03); border:1px solid var(--border-color);';
                 sRow.innerHTML = `<span><strong>${escapeHtml(dayNamesStr)}</strong> // ${escapeHtml(slot.start)} – ${escapeHtml(slot.end)}</span>`;
                 const delBtn = document.createElement('button');
                 delBtn.className = 'icon-btn delete';
@@ -784,37 +784,37 @@ function renderUniAtomAppeals() {
     const unpaidTaxes = (uniData.taxes || []).filter(t => !t.paid).length;
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-4 u-scroll-y">
+            <div class="section-header-row u-mb-0 u-noshrink">
                 <div>
                     <span class="section-label">Appeals &amp; Taxes</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${appealsCount} APPEALS · ${unpaidTaxes} UNPAID</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${appealsCount} APPEALS · ${unpaidTaxes} UNPAID</span>
                 </div>
             </div>
 
-            <div class="daily-columns-wrap" style="align-items:flex-start; gap:16px;">
+            <div class="daily-columns-wrap u-ai-start u-gap-4">
                 <!-- COLONNA SINISTRA: APPELLI -->
-                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;">
+                <div class="u-grow u-minw0 u-flex u-col u-gap-2">
                     <div class="sub-column-header">Exam Appeals</div>
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <input type="text" id="uni-app-name" class="form-control form-control-sm" style="flex:1; min-width:100px;" placeholder="Exam...">
+                    <div class="u-flex u-gap-2 u-wrap">
+                        <input type="text" id="uni-app-name" class="form-control form-control-sm u-grow" style="min-width:100px;" placeholder="Exam...">
                         <input type="date" id="uni-app-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
                         <input type="time" id="uni-app-time" class="form-control form-control-sm" style="width:80px;" value="09:00">
                         <button type="button" id="btn-add-uni-appeal" class="btn btn-primary btn-sm">+</button>
                     </div>
-                    <div id="uni-appeals-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                    <div class="u-col u-gap-2" id="uni-appeals-list" style="display:flex;"></div>
                 </div>
 
                 <!-- COLONNA DESTRA: TASSE UNIVERSITARIE -->
-                <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:8px;">
+                <div class="u-grow u-minw0 u-flex u-col u-gap-2">
                     <div class="sub-column-header">University Taxes</div>
-                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
-                        <input type="text" id="uni-tax-title" class="form-control form-control-sm" style="flex:1; min-width:95px;" placeholder="Tax name...">
+                    <div class="u-flex u-gap-2 u-wrap">
+                        <input type="text" id="uni-tax-title" class="form-control form-control-sm u-grow" style="min-width:95px;" placeholder="Tax name...">
                         <input type="number" id="uni-tax-amount" class="form-control form-control-sm no-spinners" style="width:75px;" step="0.01" placeholder="€">
                         <input type="date" id="uni-tax-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
                         <button type="button" id="btn-add-uni-tax" class="btn btn-danger btn-sm">+</button>
                     </div>
-                    <div id="uni-taxes-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+                    <div class="u-col u-gap-2" id="uni-taxes-list" style="display:flex;"></div>
                 </div>
             </div>
         </div>
@@ -838,7 +838,7 @@ function renderUniAtomAppeals() {
     const sortedAppeals = [...(uniData.appeals || [])].sort((a, b) => a.date.localeCompare(b.date));
 
     if (sortedAppeals.length === 0) {
-        appListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NONE ]</div>';
+        appListEl.innerHTML = '<div class="empty-state u-py-1">[ NONE ]</div>';
     } else {
         sortedAppeals.forEach(app => {
             const diffDays = Math.ceil((parseLocalDate(app.date) - parseLocalDate(todayStr)) / (1000 * 60 * 60 * 24));
@@ -855,7 +855,7 @@ function renderUniAtomAppeals() {
                     <div class="m-title">${escapeHtml(app.examName)}</div>
                     <div class="m-sub">${escapeHtml(app.date)} // ${escapeHtml(app.time || '09:00')}</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="u-flex u-ai-center u-gap-2">
                     <span style="font-size:var(--font-xs); font-weight:bold; color:${diffDays <= 7 && diffDays >= 0 ? 'var(--accent-red)' : 'var(--accent-gold)'};">[${cdLabel}]</span>
                 </div>
             `;
@@ -872,13 +872,13 @@ function renderUniAtomAppeals() {
     const sortedTaxes = [...(uniData.taxes || [])].sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
     if (sortedTaxes.length === 0) {
-        taxListEl.innerHTML = '<div class="empty-state" style="padding:4px 0;">[ NONE ]</div>';
+        taxListEl.innerHTML = '<div class="empty-state u-py-1">[ NONE ]</div>';
     } else {
         sortedTaxes.forEach(tax => {
             const diffDays = Math.ceil((parseLocalDate(tax.dueDate) - parseLocalDate(todayStr)) / (1000 * 60 * 60 * 24));
             const statusBadge = tax.paid
-                ? '<span style="color:var(--accent-green); font-weight:bold;">[PAID ✓]</span>'
-                : `<span style="color:var(--accent-red); font-weight:bold;">[${tax.dueDate} (${diffDays >= 0 ? diffDays + 'D' : 'OVERDUE'})]</span>`;
+                ? '<span class="u-green u-bold">[PAID ✓]</span>'
+                : `<span class="u-red u-bold">[${tax.dueDate} (${diffDays >= 0 ? diffDays + 'D' : 'OVERDUE'})]</span>`;
 
             const row = document.createElement('div');
             row.className = 'm-item-row';
@@ -886,11 +886,11 @@ function renderUniAtomAppeals() {
             row.style.opacity = tax.paid ? '0.6' : '1';
 
             row.innerHTML = `
-                <div style="cursor:pointer;" onclick="jumpToDate('${tax.dueDate}')">
+                <div class="u-pointer" onclick="jumpToDate('${tax.dueDate}')">
                     <div class="m-title">${escapeHtml(tax.title)}</div>
                     <div class="m-sub">${statusBadge}</div>
                 </div>
-                <div style="display:flex; align-items:center; gap:6px;">
+                <div class="u-flex u-ai-center u-gap-2">
                     <span class="m-amt neg">€${Number(tax.amount).toFixed(2)}</span>
                 </div>
             `;
@@ -926,48 +926,48 @@ function renderUniAtomLibretto() {
     const passed = [...(uniData.passedExams || [])].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0 u-noshrink">
                 <div>
                     <span class="section-label">Libretto</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px; font-variant-numeric:tabular-nums;">// ${stats.totalCfu}/${stats.targetCfu} CFU (${stats.cfuPct}%)</span>
+                    <span class="u-fs-xs u-dim u-ml-2 u-tnum">// ${stats.totalCfu}/${stats.targetCfu} CFU (${stats.cfuPct}%)</span>
                 </div>
                 <button type="button" class="btn btn-sm ${showLibrettoAddForm ? 'btn-primary' : ''}" id="btn-toggle-lib-add">+</button>
             </div>
 
             <!-- METRICHE CARRIERA COMPATTE -->
-            <div style="display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap:8px;">
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">WEIGHTED AVG</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-green); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.weightedMean.toFixed(2)}</div>
+            <div class="u-grid u-gap-2" style="grid-template-columns:repeat(4, minmax(0, 1fr));">
+                <div class="cfg-box u-m-0 u-tc" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">WEIGHTED AVG</div>
+                    <div class="u-fs-md u-bold u-green u-tnum" style="margin-top:2px;">${stats.weightedMean.toFixed(2)}</div>
                 </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">ARITHMETIC AVG</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.arithmeticMean.toFixed(2)}</div>
+                <div class="cfg-box u-m-0 u-tc" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">ARITHMETIC AVG</div>
+                    <div class="u-fs-md u-bold u-main u-tnum" style="margin-top:2px;">${stats.arithmeticMean.toFixed(2)}</div>
                 </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">BASE /110</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--accent-gold); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.base110.toFixed(1)}</div>
+                <div class="cfg-box u-m-0 u-tc" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">BASE /110</div>
+                    <div class="u-fs-md u-bold u-gold u-tnum" style="margin-top:2px;">${stats.base110.toFixed(1)}</div>
                 </div>
-                <div class="cfg-box" style="margin:0; padding:8px 10px; text-align:center;">
-                    <div style="font-size:var(--font-2xs); color:var(--text-dim);">EXAMS PASSED</div>
-                    <div style="font-size:var(--font-md); font-weight:bold; color:var(--text-main); margin-top:2px; font-variant-numeric:tabular-nums;">${stats.count}${stats.laudeCount > 0 ? ' (' + stats.laudeCount + 'L)' : ''}</div>
+                <div class="cfg-box u-m-0 u-tc" style="padding:var(--space-2) var(--space-3);">
+                    <div class="u-fs-2xs u-dim">EXAMS PASSED</div>
+                    <div class="u-fs-md u-bold u-main u-tnum" style="margin-top:2px;">${stats.count}${stats.laudeCount > 0 ? ' (' + stats.laudeCount + 'L)' : ''}</div>
                 </div>
             </div>
 
-            <div class="vault-progress-track" style="height:5px; flex-shrink:0;">
+            <div class="vault-progress-track u-noshrink" style="height:5px;">
                 <div class="vault-progress-fill" style="width:${stats.cfuPct}%;"></div>
             </div>
 
-            <div id="uni-lib-add-row" style="display:${showLibrettoAddForm ? 'flex' : 'none'}; gap:6px; flex-wrap:wrap; padding:8px; border:1px solid var(--border-bright); background:#060606;">
+            <div id="uni-lib-add-row" style="display:${showLibrettoAddForm ? 'flex' : 'none'}; gap:var(--space-2); flex-wrap:wrap; padding:var(--space-2); border:1px solid var(--border-bright); background:#060606;">
                 <input type="text" id="uni-lib-name" class="form-control form-control-sm" style="flex:2; min-width:120px;" placeholder="Exam name...">
-                <input type="text" id="uni-lib-grade" class="form-control form-control-sm" style="width:65px; text-align:center;" placeholder="30L">
-                <input type="number" id="uni-lib-cfu" class="form-control form-control-sm no-spinners" style="width:60px; text-align:center;" placeholder="CFU" value="9" min="1">
+                <input type="text" id="uni-lib-grade" class="form-control form-control-sm u-tc" style="width:65px;" placeholder="30L">
+                <input type="number" id="uni-lib-cfu" class="form-control form-control-sm no-spinners u-tc" style="width:60px;" placeholder="CFU" value="9" min="1">
                 <input type="date" id="uni-lib-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
                 <button type="button" id="btn-add-uni-libretto" class="btn btn-primary btn-sm">[SAVE]</button>
             </div>
 
-            <div id="uni-libretto-list" style="display:flex; flex-direction:column; gap:6px;"></div>
+            <div class="u-col u-gap-2" id="uni-libretto-list" style="display:flex;"></div>
         </div>
     `;
 
@@ -997,11 +997,11 @@ function renderUniAtomLibretto() {
 
         row.innerHTML = `
             <div>
-                <div class="m-title">${escapeHtml(ex.name)} <span style="color:var(--text-dim); font-size:var(--font-xs); margin-left:6px;">(${ex.cfu} CFU)</span></div>
+                <div class="m-title">${escapeHtml(ex.name)} <span class="u-dim u-fs-xs u-ml-2">(${ex.cfu} CFU)</span></div>
                 <div class="m-sub">${escapeHtml(ex.date || todayStr)}</div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <span style="font-size:var(--font-md); font-weight:bold; color:var(--accent-green); font-variant-numeric:tabular-nums;">${gradeBadge}</span>
+            <div class="u-flex u-ai-center u-gap-3">
+                <span class="u-fs-md u-bold u-green u-tnum">${gradeBadge}</span>
             </div>
         `;
 

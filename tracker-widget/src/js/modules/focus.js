@@ -266,7 +266,7 @@ function renderAvailableTasksForFocus() {
                 if (data.remaining > 0) {
                     const chip = document.createElement('div');
                     chip.className = 'playlist-task-chip';
-                    chip.innerHTML = `+ ${escapeHtml(data.task.title)} <span style="opacity:0.6; margin-left: 6px;">(${data.mins}m) [${data.remaining}]</span>`;
+                    chip.innerHTML = `+ ${escapeHtml(data.task.title)} <span class="u-ml-2" style="opacity:0.6;">(${data.mins}m) [${data.remaining}]</span>`;
                     chip.onclick = () => addTaskToPlaylist(data.task);
                     container.appendChild(chip);
                 }
@@ -315,7 +315,7 @@ function renderFocusPlaylist() {
     container.innerHTML = '';
 
     if (focusPlaylist.length === 0) {
-        container.innerHTML = '<div class="empty-state" style="text-align: center; margin-top: 25px;">[ SELECT A TASK ABOVE TO BUILD PLAYLIST ]</div>';
+        container.innerHTML = '<div class="empty-state u-tc" style="margin-top:var(--space-5);">[ SELECT A TASK ABOVE TO BUILD PLAYLIST ]</div>';
         document.getElementById('btn-start-playlist').disabled = true;
         return;
     }
@@ -328,11 +328,11 @@ function renderFocusPlaylist() {
                 <div class="playlist-item" style="border-left: 3px solid ${item.color};">
                     <div>
                         <strong>${escapeHtml(item.title)}</strong>
-                        <div style="font-size: var(--font-xs); color: var(--text-dim);">${escapeHtml(item.category || 'WORK SESSION')}</div>
+                        <div class="u-fs-xs u-dim">${escapeHtml(item.category || 'WORK SESSION')}</div>
                     </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <input type="number" class="form-control form-control-sm no-spinners" style="width: 48px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> 
-                        <span style="font-size:var(--font-xs); color:var(--text-dim);">MIN</span>
+                    <div class="u-flex u-gap-2 u-ai-center">
+                        <input type="number" class="form-control form-control-sm no-spinners u-tc" style="width:48px;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> 
+                        <span class="u-fs-xs u-dim">MIN</span>
                         <button type="button" class="btn btn-sm" onclick="splitPlaylistTask(${index})">SPLIT</button>
                         <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
                     </div>
@@ -341,9 +341,9 @@ function renderFocusPlaylist() {
         } else if (item.type === 'break') {
             container.innerHTML += `
                 <div class="playlist-break">
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">BREAK</span>
-                    <input type="number" class="form-control form-control-sm no-spinners" style="width: 48px; text-align: center;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)">
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">MIN</span>
+                    <span class="u-fs-xs u-dim">BREAK</span>
+                    <input type="number" class="form-control form-control-sm no-spinners u-tc" style="width:48px;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)">
+                    <span class="u-fs-xs u-dim">MIN</span>
                     <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
                 </div>
             `;
@@ -358,12 +358,12 @@ function renderLiveFocusQueue() {
     if (focusPlaylist.length <= 1) {
         const single = focusPlaylist[0];
         queueEl.innerHTML = single
-            ? `<div style="font-size:var(--font-xs); color:var(--text-dim); text-align:center;">ACTIVE TASK // <strong style="color:var(--text-main);">${escapeHtml(single.title)} (${single.duration}m)</strong> — Auto-checks on completion</div>`
+            ? `<div class="u-fs-xs u-dim u-tc">ACTIVE TASK // <strong class="u-main">${escapeHtml(single.title)} (${single.duration}m)</strong> — Auto-checks on completion</div>`
             : '';
         return;
     }
 
-    let html = `<div class="sub-column-header" style="margin-bottom:6px;">PLAYLIST QUEUE (${currentPlaylistIndex + 1}/${focusPlaylist.length})</div><div style="display:flex; flex-direction:column; gap:4px; max-height:140px; overflow-y:auto;">`;
+    let html = `<div class="sub-column-header u-mb-2">PLAYLIST QUEUE (${currentPlaylistIndex + 1}/${focusPlaylist.length})</div><div class="u-flex u-col u-gap-1 u-scroll-y" style="max-height:140px;">`;
 
     focusPlaylist.forEach((step, idx) => {
         const isCurrent = idx === currentPlaylistIndex;
@@ -372,9 +372,9 @@ function renderLiveFocusQueue() {
         const statusTag = isDone ? '[DONE]' : (isCurrent ? '[▶ NOW]' : `[#${idx + 1}]`);
 
         html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; padding:5px 10px; font-size:var(--font-xs); border:1px solid ${isCurrent ? 'var(--text-main)' : 'var(--border-color)'}; background:${isCurrent ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)'}; opacity:${isDone ? '0.4' : '1'};">
-                <div><strong style="margin-right:8px;">${statusTag}</strong><span>${escapeHtml(label)}</span></div>
-                <span style="color:var(--text-muted); font-variant-numeric:tabular-nums;">${step.duration}m</span>
+            <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-1) var(--space-3); font-size:var(--font-xs); border:1px solid ${isCurrent ? 'var(--text-main)' : 'var(--border-color)'}; background:${isCurrent ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.015)'}; opacity:${isDone ? '0.4' : '1'};">
+                <div><strong style="margin-right:var(--space-2);">${statusTag}</strong><span>${escapeHtml(label)}</span></div>
+                <span class="u-muted u-tnum">${step.duration}m</span>
             </div>
         `;
     });

@@ -1,0 +1,63 @@
+/* ==================================================================
+   UTILITIES - shared building blocks that replace one-off inline styles.
+   ":not(#_)" gives them the weight inline styles had, while scripts that
+   set element.style.* still win (as before).
+   ================================================================== */
+.u-ai-base:not(#_) { align-items:baseline; }
+.u-ai-center:not(#_) { align-items:center; }
+.u-ai-start:not(#_) { align-items:flex-start; }
+.u-block:not(#_) { display:block; }
+.u-bold:not(#_) { font-weight:bold; }
+.u-border-0:not(#_) { border:none; }
+.u-clip:not(#_) { overflow:hidden; }
+.u-col:not(#_) { flex-direction:column; }
+.u-dim:not(#_) { color:var(--text-dim); }
+.u-flex:not(#_) { display:flex; }
+.u-fs-2xs:not(#_) { font-size:var(--font-2xs); }
+.u-fs-lg:not(#_) { font-size:var(--font-lg); }
+.u-fs-md:not(#_) { font-size:var(--font-md); }
+.u-fs-sm:not(#_) { font-size:var(--font-sm); }
+.u-fs-xs:not(#_) { font-size:var(--font-xs); }
+.u-gap-0:not(#_) { gap:2px; }
+.u-gap-1:not(#_) { gap:var(--space-1); }
+.u-gap-2:not(#_) { gap:var(--space-2); }
+.u-gap-3:not(#_) { gap:var(--space-3); }
+.u-gap-4:not(#_) { gap:var(--space-4); }
+.u-gold:not(#_) { color:var(--accent-gold); }
+.u-green:not(#_) { color:var(--accent-green); }
+.u-grid:not(#_) { display:grid; }
+.u-grow:not(#_) { flex:1; }
+.u-jc-between:not(#_) { justify-content:space-between; }
+.u-jc-center:not(#_) { justify-content:center; }
+.u-jc-end:not(#_) { justify-content:flex-end; }
+.u-lh:not(#_) { line-height:1.5; }
+.u-m-0:not(#_) { margin:0; }
+.u-main:not(#_) { color:var(--text-main); }
+.u-mb-0:not(#_) { margin-bottom:0; }
+.u-mb-1:not(#_) { margin-bottom:var(--space-1); }
+.u-mb-2:not(#_) { margin-bottom:var(--space-2); }
+.u-mb-3:not(#_) { margin-bottom:var(--space-3); }
+.u-mb-4:not(#_) { margin-bottom:var(--space-4); }
+.u-minw0:not(#_) { min-width:0; }
+.u-ml-1:not(#_) { margin-left:var(--space-1); }
+.u-ml-2:not(#_) { margin-left:var(--space-2); }
+.u-mt-1:not(#_) { margin-top:var(--space-1); }
+.u-mt-2:not(#_) { margin-top:var(--space-2); }
+.u-mt-3:not(#_) { margin-top:var(--space-3); }
+.u-mt-4:not(#_) { margin-top:var(--space-4); }
+.u-muted:not(#_) { color:var(--text-muted); }
+.u-normal:not(#_) { font-weight:normal; }
+.u-noshrink:not(#_) { flex-shrink:0; }
+.u-nowrap:not(#_) { white-space:nowrap; }
+.u-p-0:not(#_) { padding:0; }
+.u-pointer:not(#_) { cursor:pointer; }
+.u-py-1:not(#_) { padding:var(--space-1) 0; }
+.u-py-2:not(#_) { padding:var(--space-2) 0; }
+.u-red:not(#_) { color:var(--accent-red); }
+.u-scroll-y:not(#_) { overflow-y:auto; }
+.u-tc:not(#_) { text-align:center; }
+.u-tnum:not(#_) { font-variant-numeric:tabular-nums; }
+.u-tr:not(#_) { text-align:right; }
+.u-upper:not(#_) { text-transform:uppercase; }
+.u-w-full:not(#_) { width:100%; }
+.u-wrap:not(#_) { flex-wrap:wrap; }

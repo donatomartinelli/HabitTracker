@@ -148,7 +148,7 @@ function updateLivePreviewAndSuggestions() {
     prevEl.style.display = 'flex';
     prevEl.innerHTML = `
         <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:${isDsl ? 'var(--text-muted)' : 'var(--accent-gold)'};">${escapeHtml(previewStr)}</span>
-        <span style="color:var(--text-dim); font-size:var(--font-2xs); flex-shrink:0;">${isDsl ? '[ENTER] RUN · [SHIFT+ENTER] STAGE' : '[ENTER] AI ➔ STAGING'}</span>
+        <span class="u-dim u-fs-2xs u-noshrink">${isDsl ? '[ENTER] RUN · [SHIFT+ENTER] STAGE' : '[ENTER] AI ➔ STAGING'}</span>
     `;
 
     activeSuggestions = typeof getContextualSuggestions === 'function' ? getContextualSuggestions(rawVal) : [];
@@ -327,7 +327,7 @@ async function handleNaturalLanguageAiFallback(rawText, termInput) {
     const prevEl = document.getElementById('terminal-live-preview');
     if (prevEl) {
         prevEl.style.display = 'flex';
-        prevEl.innerHTML = `<span style="color:var(--accent-gold); font-weight:bold;">[◈ AI TRANSLATING TO DSL...] "${escapeHtml(rawText)}"</span>`;
+        prevEl.innerHTML = `<span class="u-gold u-bold">[◈ AI TRANSLATING TO DSL...] "${escapeHtml(rawText)}"</span>`;
     }
     if (termInput) termInput.disabled = true;
 

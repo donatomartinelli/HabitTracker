@@ -140,7 +140,6 @@ function applyFontChoice(choice) {
     else document.documentElement.dataset.font = f;
     document.querySelectorAll('[data-font-choice]').forEach(b => {
         const on = b.dataset.fontChoice === f;
-        b.classList.toggle('btn-primary', on);
         b.setAttribute('aria-checked', on ? 'true' : 'false');
         b.setAttribute('role', 'radio');
     });
@@ -708,11 +707,11 @@ function showInstantInspectionCard(titleHtml, bodyHtml) {
     if (!answerBox) return;
     answerBox.style.display = 'block';
     answerBox.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:var(--font-xs); color:var(--text-dim); margin-bottom:8px; border-bottom:1px solid var(--border-color); padding-bottom:4px; text-transform:uppercase;">
+        <div class="u-flex u-jc-between u-ai-center u-fs-xs u-dim u-mb-2 u-upper" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-1);">
             <span>${titleHtml}</span>
             <span>[ESC]</span>
         </div>
-        <div style="display:flex; flex-direction:column; gap:6px;">${bodyHtml}</div>
+        <div class="u-flex u-col u-gap-2">${bodyHtml}</div>
     `;
 }
 
@@ -722,22 +721,22 @@ function renderInstantUniSummary() {
     const apps = (uniData && uniData.appeals) ? uniData.appeals : [];
 
     let html = `
-        <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; font-size:var(--font-xs); text-align:center;">
-            <div style="padding:6px; border:1px solid var(--border-bright);">
-                <div style="color:var(--text-dim);">WEIGHTED</div>
-                <strong style="font-size:var(--font-md); color:var(--accent-green);">${st.weightedMean.toFixed(2)}</strong>
+        <div class="u-grid u-gap-2 u-fs-xs u-tc" style="grid-template-columns:repeat(4, 1fr);">
+            <div style="padding:var(--space-2); border:1px solid var(--border-bright);">
+                <div class="u-dim">WEIGHTED</div>
+                <strong class="u-fs-md u-green">${st.weightedMean.toFixed(2)}</strong>
             </div>
-            <div style="padding:6px; border:1px solid var(--border-color);">
-                <div style="color:var(--text-dim);">ARITHMETIC</div>
-                <strong style="font-size:var(--font-md);">${st.arithmeticMean.toFixed(2)}</strong>
+            <div style="padding:var(--space-2); border:1px solid var(--border-color);">
+                <div class="u-dim">ARITHMETIC</div>
+                <strong class="u-fs-md">${st.arithmeticMean.toFixed(2)}</strong>
             </div>
-            <div style="padding:6px; border:1px solid var(--border-color);">
-                <div style="color:var(--text-dim);">BASE /110</div>
-                <strong style="font-size:var(--font-md); color:var(--accent-gold);">${st.base110.toFixed(1)}</strong>
+            <div style="padding:var(--space-2); border:1px solid var(--border-color);">
+                <div class="u-dim">BASE /110</div>
+                <strong class="u-fs-md u-gold">${st.base110.toFixed(1)}</strong>
             </div>
-            <div style="padding:6px; border:1px solid var(--border-color);">
-                <div style="color:var(--text-dim);">CFU</div>
-                <strong style="font-size:var(--font-md);">${st.totalCfu}/${st.targetCfu}</strong>
+            <div style="padding:var(--space-2); border:1px solid var(--border-color);">
+                <div class="u-dim">CFU</div>
+                <strong class="u-fs-md">${st.totalCfu}/${st.targetCfu}</strong>
             </div>
         </div>
     `;
@@ -745,7 +744,7 @@ function renderInstantUniSummary() {
     if (rem.length > 0) {
         rem.forEach(c => {
             const hrs = typeof getExamStudiedHours === 'function' ? getExamStudiedHours(c.id, c.name) : 0;
-            html += `<div style="display:flex; justify-content:space-between; font-size:var(--font-xs); padding:4px 8px; border:1px solid var(--border-color);">
+            html += `<div class="u-flex u-jc-between u-fs-xs" style="padding:var(--space-1) var(--space-2); border:1px solid var(--border-color);">
                 <span><strong>${escapeHtml(c.name)}</strong> (${c.cfu} CFU)</span>
                 <strong>${hrs.toFixed(1)}h</strong>
             </div>`;
@@ -754,7 +753,7 @@ function renderInstantUniSummary() {
 
     if (apps.length > 0) {
         apps.slice(0, 4).forEach(a => {
-            html += `<div style="display:flex; justify-content:space-between; font-size:var(--font-xs); padding:4px 8px; border-left:2px solid var(--accent-gold); background:rgba(255,255,255,0.02);">
+            html += `<div class="u-flex u-jc-between u-fs-xs" style="padding:var(--space-1) var(--space-2); border-left:2px solid var(--accent-gold); background:rgba(255,255,255,0.02);">
                 <strong>${escapeHtml(a.examName)}</strong>
                 <span>${escapeHtml(a.date)} (${escapeHtml(a.time)})</span>
             </div>`;
@@ -774,17 +773,17 @@ function renderInstantDietSummary(targetDateStr) {
     dietData.forEach(row => {
         const food = (row[dayIdx] || '—').replace(/\n/g, ' + ');
         rowsHtml += `
-            <div style="display:flex; justify-content:space-between; gap:12px; padding:4px 8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); font-size:var(--font-xs);">
-                <strong style="color:var(--text-dim); text-transform:uppercase; min-width:90px;">${escapeHtml(row.type)}</strong>
-                <span style="color:var(--text-main); text-align:right;">${escapeHtml(food)}</span>
+            <div class="u-flex u-jc-between u-gap-3 u-fs-xs" style="padding:var(--space-1) var(--space-2); background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
+                <strong class="u-dim u-upper" style="min-width:90px;">${escapeHtml(row.type)}</strong>
+                <span class="u-main u-tr">${escapeHtml(food)}</span>
             </div>
         `;
     });
 
     rowsHtml += `
-        <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 8px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.04); font-size:var(--font-xs); margin-top:2px;">
-            <strong style="color:var(--text-main);">MACROS</strong>
-            <span style="color:var(--text-main); font-weight:bold;">${totals.kcal} KCAL &nbsp;|&nbsp; P: ${totals.p}g · C: ${totals.c}g · F: ${totals.f}g</span>
+        <div class="u-flex u-jc-between u-ai-center u-fs-xs" style="padding:var(--space-2) var(--space-2); border:1px solid var(--border-bright); background:rgba(255,255,255,0.04); margin-top:2px;">
+            <strong class="u-main">MACROS</strong>
+            <span class="u-main u-bold">${totals.kcal} KCAL &nbsp;|&nbsp; P: ${totals.p}g · C: ${totals.c}g · F: ${totals.f}g</span>
         </div>
     `;
 
@@ -810,12 +809,12 @@ function renderInstantGymSummary() {
             const progTag = meta.isProg ? ` [${ex.sets}x${ex.currentReps || 5}]` : '';
 
             rowsHtml += `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); font-size:var(--font-xs);">
+                <div class="u-flex u-jc-between u-ai-center u-fs-xs" style="padding:var(--space-1) var(--space-2); background:rgba(255,255,255,0.02); border:1px solid var(--border-color);">
                     <div>
-                        <strong style="color:var(--text-main);">${escapeHtml(ex.name)}</strong>
-                        <span style="color:var(--text-dim); margin-left:6px;">(${escapeHtml(ex.repStr + progTag)})</span>
+                        <strong class="u-main">${escapeHtml(ex.name)}</strong>
+                        <span class="u-dim u-ml-2">(${escapeHtml(ex.repStr + progTag)})</span>
                     </div>
-                    <span style="color:var(--text-muted); font-variant-numeric:tabular-nums;">${escapeHtml(weightBadge)}</span>
+                    <span class="u-muted u-tnum">${escapeHtml(weightBadge)}</span>
                 </div>
             `;
         });
@@ -834,11 +833,11 @@ function renderInstantScheduleSummary(targetDateStr) {
 
     dayEvents.forEach(ev => {
         const tBadge = (ev.start && ev.end) ? `[${ev.start}-${ev.end}] ` : '[EVENT] ';
-        html += `<div style="padding:4px 8px; border-left:3px solid ${ev.color || 'var(--accent-red)'}; background:rgba(255,255,255,0.02); font-size:var(--font-xs); color:var(--text-main);"><strong>${escapeHtml(tBadge + ev.title)}</strong></div>`;
+        html += `<div style="padding:var(--space-1) var(--space-2); border-left:3px solid ${ev.color || 'var(--accent-red)'}; background:rgba(255,255,255,0.02); font-size:var(--font-xs); color:var(--text-main);"><strong>${escapeHtml(tBadge + ev.title)}</strong></div>`;
     });
 
     if (activeTasks.length === 0 && dayEvents.length === 0) {
-        html += `<div class="empty-state" style="padding:4px 0;">[ NO TASKS OR EVENTS FOR ${targetDateStr} ]</div>`;
+        html += `<div class="empty-state u-py-1">[ NO TASKS OR EVENTS FOR ${targetDateStr} ]</div>`;
     } else {
         activeTasks.forEach(t => {
             const curLog = (logs[targetDateStr] && logs[targetDateStr][t.id]) || Array(t.instances || 1).fill(false);
@@ -856,10 +855,10 @@ function renderInstantScheduleSummary(targetDateStr) {
             }
 
             html += `
-                <div style="display:flex; justify-content:space-between; align-items:center; padding:4px 8px; background:rgba(255,255,255,0.02); border:1px solid var(--border-color); font-size:var(--font-xs); opacity:${isAllDone ? '0.45' : '1'};">
+                <div style="display:flex; justify-content:space-between; align-items:center; padding:var(--space-1) var(--space-2); background:rgba(255,255,255,0.02); border:1px solid var(--border-color); font-size:var(--font-xs); opacity:${isAllDone ? '0.45' : '1'};">
                     <div>
-                        <span style="color:var(--text-dim); margin-right:6px;">[${escapeHtml(schedStr)}]</span>
-                        <strong style="color:var(--text-main);">${escapeHtml(t.title)}</strong>
+                        <span class="u-dim" style="margin-right:var(--space-2);">[${escapeHtml(schedStr)}]</span>
+                        <strong class="u-main">${escapeHtml(t.title)}</strong>
                     </div>
                     <span style="color:${isAllDone ? 'var(--accent-green)' : 'var(--text-muted)'}; font-weight:bold;">[${doneCount}/${totalCount}]</span>
                 </div>
@@ -876,17 +875,17 @@ function renderInstantMoneySummary() {
         : { total: mBalance, spendable: mBalance, vaulted: 0, pendingBills: 0, monthIn: 0, monthOut: 0, monthNet: 0 };
 
     let html = `
-        <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px; font-size:var(--font-xs);">
-            <div style="padding:8px 10px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.03);">
-                <div style="color:var(--text-dim);">SPENDABLE</div>
+        <div class="u-grid u-gap-2 u-fs-xs" style="grid-template-columns:1fr 1fr;">
+            <div style="padding:var(--space-2) var(--space-3); border:1px solid var(--border-bright); background:rgba(255,255,255,0.03);">
+                <div class="u-dim">SPENDABLE</div>
                 <div style="font-size:var(--font-lg); font-weight:bold; color:${metrics.spendable < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; margin-top:2px;">€${metrics.spendable.toFixed(2)}</div>
             </div>
-            <div style="padding:8px 10px; border:1px solid var(--border-color); background:rgba(255,255,255,0.02);">
-                <div style="color:var(--text-dim);">TOTAL BALANCE</div>
-                <div style="font-size:var(--font-lg); font-weight:bold; color:var(--text-main); margin-top:2px;">€${metrics.total.toFixed(2)}</div>
+            <div style="padding:var(--space-2) var(--space-3); border:1px solid var(--border-color); background:rgba(255,255,255,0.02);">
+                <div class="u-dim">TOTAL BALANCE</div>
+                <div class="u-fs-lg u-bold u-main" style="margin-top:2px;">€${metrics.total.toFixed(2)}</div>
             </div>
         </div>
-        <div style="display:flex; justify-content:space-between; padding:5px 8px; border:1px solid var(--border-color); font-size:var(--font-xs); color:var(--text-muted);">
+        <div class="u-flex u-jc-between u-fs-xs u-muted" style="padding:var(--space-1) var(--space-2); border:1px solid var(--border-color);">
             <span>VAULTS: <strong>€${metrics.vaulted.toFixed(2)}</strong></span>
             <span>BILLS: <strong>€${metrics.pendingBills.toFixed(2)}</strong></span>
             <span>NET: <strong>${metrics.monthNet >= 0 ? '+' : ''}€${metrics.monthNet.toFixed(2)}</strong></span>

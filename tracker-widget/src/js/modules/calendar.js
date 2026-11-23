@@ -53,18 +53,18 @@ function openEventQuickEditPopover(eventId, anchorEl) {
 
     pop.innerHTML = `
         <input type="text" class="form-control form-control-sm ev-pop-title" value="${escapeHtml(ev.title)}" placeholder="Event title...">
-        <div style="display:flex; gap:6px; align-items:center;">
-            <input type="time" class="form-control form-control-sm ev-pop-start" style="flex:1; padding:3px 6px;" value="${ev.start || ''}">
-            <span style="color:var(--text-dim);">-</span>
-            <input type="time" class="form-control form-control-sm ev-pop-end" style="flex:1; padding:3px 6px;" value="${ev.end || ''}">
+        <div class="u-flex u-gap-2 u-ai-center">
+            <input type="time" class="form-control form-control-sm ev-pop-start u-grow" style="padding:var(--space-1) var(--space-2);" value="${ev.start || ''}">
+            <span class="u-dim">-</span>
+            <input type="time" class="form-control form-control-sm ev-pop-end u-grow" style="padding:var(--space-1) var(--space-2);" value="${ev.end || ''}">
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-            <div style="display:flex; gap:5px;">${circlesHtml}</div>
-            <input type="color" class="ev-pop-custom-col" value="${ev.color || '#b84b4b'}" style="width:22px; height:20px; border:1px solid #444; background:transparent; cursor:pointer;">
+        <div class="u-flex u-jc-between u-ai-center">
+            <div class="u-flex u-gap-1">${circlesHtml}</div>
+            <input type="color" class="ev-pop-custom-col u-pointer" value="${ev.color || '#b84b4b'}" style="width:22px; height:20px; border:1px solid var(--border-bright); background:transparent;">
         </div>
-        <div style="display:flex; justify-content:space-between; align-items:center; padding-top:4px; border-top:1px dotted #222;">
-            <button type="button" class="btn btn-danger btn-sm ev-pop-del" style="padding:2px 6px;">[DELETE]</button>
-            <button type="button" class="btn btn-primary btn-sm ev-pop-save" style="padding:2px 8px;">[SAVE]</button>
+        <div class="u-flex u-jc-between u-ai-center" style="padding-top:var(--space-1); border-top:1px dotted var(--border-color);">
+            <button type="button" class="btn btn-danger btn-sm ev-pop-del" style="padding:2px var(--space-2);">[DELETE]</button>
+            <button type="button" class="btn btn-primary btn-sm ev-pop-save" style="padding:2px var(--space-2);">[SAVE]</button>
         </div>
     `;
 
@@ -212,7 +212,7 @@ function buildDayEventsListDom(targetListEl) {
     dayEvents.forEach(e => {
         const evRow = document.createElement('div');
         evRow.className = 'ev-edit-trigger';
-        evRow.style.cssText = `font-size: var(--font-xs); padding: 6px 8px; border: 1px solid var(--border-color); border-left: 3px solid ${e.color}; display: flex; justify-content: space-between; align-items: center; cursor: pointer;`;
+        evRow.style.cssText = `font-size:var(--font-xs); padding:var(--space-2) var(--space-2); border:1px solid var(--border-color); border-left: 3px solid ${e.color}; display:flex; justify-content:space-between; align-items:center; cursor:pointer;`;
         const timeBadge = (e.start && e.end) ? `[${e.start}–${e.end}] ` : (e.start ? `[${e.start}] ` : '');
         evRow.innerHTML = `<strong style="color:${e.color}; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(timeBadge + e.title)}</strong>`;
 
@@ -248,13 +248,13 @@ function renderCalendarAtomGrid() {
     const monthLabel = `${monthNames[currentCalendarDate.getMonth()]} ${currentCalendarDate.getFullYear()}`;
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">Calendar</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${monthLabel}</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${monthLabel}</span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
+                <div class="u-flex u-gap-2 u-ai-center">
                     <button type="button" class="btn btn-sm lab-bridge" onclick="syncExternalCalendarsNow(true)" title="Sync Google & Apple Calendar">[📅 SYNC]</button>
                     <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">‹</button>
                     <button type="button" class="btn btn-sm" onclick="changeMonth(1)">›</button>
@@ -282,15 +282,15 @@ function renderCalendarAtomAgenda() {
     if (!root) return;
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">${escapeHtml(prettyAgendaDate(selectedDateStr))}</span>
-                    ${selectedDateStr === todayStr ? '<span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// today</span>' : ''}
+                    ${selectedDateStr === todayStr ? '<span class="u-fs-xs u-dim u-ml-2">// today</span>' : ''}
                 </div>
                 <button type="button" class="btn btn-sm" onclick="openCreationModal('event')">[+ EVENT]</button>
             </div>
-            <div id="cal-atom-agenda-mount" style="display:flex; flex-direction:column; gap:6px;"></div>
+            <div class="u-col u-gap-2" id="cal-atom-agenda-mount" style="display:flex;"></div>
         </div>
     `;
 

@@ -83,7 +83,7 @@ function renderTreeSidebar(containerEl) {
         row.className = 'note-tree-row';
 
         const icon = document.createElement('span');
-        icon.style.cssText = 'width: 12px; text-align: center; color: var(--text-dim); font-weight: bold; cursor: pointer;';
+        icon.style.cssText = 'width:12px; text-align:center; color:var(--text-dim); font-weight:bold; cursor:pointer;';
         icon.textContent = hasChildren ? (isExpanded ? '–' : '+') : '·';
         
         if (hasChildren) {
@@ -101,11 +101,11 @@ function renderTreeSidebar(containerEl) {
 
         const count = parseCategoryIntoCards(notesContent[fullPath] || '').length;
         const countBadge = document.createElement('span');
-        countBadge.style.cssText = 'color: var(--text-dim); font-size: var(--font-2xs);';
+        countBadge.style.cssText = 'color:var(--text-dim); font-size:var(--font-2xs);';
         countBadge.textContent = count > 0 ? count : '';
 
         const addBtn = document.createElement('span');
-        addBtn.style.cssText = 'display:none; color: var(--text-dim); font-size: var(--font-2xs); font-weight: bold;';
+        addBtn.style.cssText = 'display:none; color:var(--text-dim); font-size:var(--font-2xs); font-weight:bold;';
         addBtn.textContent = '+';
         addBtn.onclick = (e) => {
             e.stopPropagation();
@@ -378,15 +378,15 @@ function renderNotesAtomWrite(customContainer = null) {
     const targetWriteCat = getTargetCategoryForWrite();
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:8px; overflow:hidden; height:100%;">
-            <div class="section-header-row" style="margin-bottom:0; flex-wrap:wrap; gap:8px; flex-shrink:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-2 u-clip" style="height:100%;">
+            <div class="section-header-row u-mb-0 u-wrap u-gap-2 u-noshrink">
                 <div>
                     <span class="section-label">Notes Write</span>
-                    <span class="sony-pipeline-status-lbl" style="font-size:var(--font-xs); color:var(--accent-gold); font-weight:bold; margin-left:6px;"></span>
+                    <span class="sony-pipeline-status-lbl u-fs-xs u-gold u-bold u-ml-2"></span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                <div class="u-flex u-gap-2 u-ai-center u-wrap">
                     <button type="button" class="btn btn-sm btn-notes-mic-rec ${isMicRecording ? 'btn-rec-active' : ''}" onclick="toggleLiveMicRecording()">${getMicRecButtonLabel()}</button>
-                    <select class="form-control form-control-sm nw-cat-select" style="width:160px; font-weight:bold; font-size:var(--font-2xs);">
+                    <select class="form-control form-control-sm nw-cat-select u-bold u-fs-2xs" style="width:160px;">
                         ${buildFlatTreeOptions()}
                     </select>
                     <button type="button" class="btn btn-sm" onclick="openQuickNoteModal()">+</button>
@@ -394,7 +394,7 @@ function renderNotesAtomWrite(customContainer = null) {
                 </div>
             </div>
 
-            <textarea id="note-write-atom-textarea" class="form-control" style="flex:1; height:100%; resize:none; line-height:1.55; padding:14px; margin-top: 4px;" placeholder="Write in [${escapeHtml(targetWriteCat)}] and press Enter (Shift+Enter for new line)... Use #tags or [[Links]] to connect nodes in Graph."></textarea>
+            <textarea id="note-write-atom-textarea" class="form-control u-grow u-mt-1" style="height:100%; resize:none; line-height:1.55; padding:var(--space-4);" placeholder="Write in [${escapeHtml(targetWriteCat)}] and press Enter (Shift+Enter for new line)... Use #tags or [[Links]] to connect nodes in Graph."></textarea>
         </div>
     `;
 
@@ -438,14 +438,14 @@ function renderNotesAtomBrowse(customContainer = null) {
     const selCount = selectedNoteCardKeys.size;
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:8px; overflow:hidden; height:100%; padding:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-2 u-clip u-p-0" style="height:100%;">
             
-            <div class="section-header-row" style="margin-bottom:0; flex-wrap:wrap; gap:8px; flex-shrink:0; padding: 12px 16px 0 16px;">
+            <div class="section-header-row u-mb-0 u-wrap u-gap-2 u-noshrink" style="padding:var(--space-3) var(--space-4) 0 var(--space-4);">
                 <div>
                     <span class="section-label">Notes Explorer</span>
-                    <span class="sony-pipeline-status-lbl" style="font-size:var(--font-xs); color:var(--accent-gold); font-weight:bold; margin-left:6px;"></span>
+                    <span class="sony-pipeline-status-lbl u-fs-xs u-gold u-bold u-ml-2"></span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                <div class="u-flex u-gap-2 u-ai-center u-wrap">
                     <input type="text" class="form-control form-control-sm nb-search-inp" style="width:110px;" placeholder="Filter..." value="${escapeHtml(currentBrowseFilterQuery)}">
                     <button type="button" class="btn btn-sm nb-sort-btn">${sortLabels[notesSortMode]}</button>
                     <button type="button" class="btn btn-sm btn-notes-mic-rec ${isMicRecording ? 'btn-rec-active' : ''}" onclick="toggleLiveMicRecording()">${getMicRecButtonLabel()}</button>
@@ -456,13 +456,13 @@ function renderNotesAtomBrowse(customContainer = null) {
 
             <!-- BARRA BATCH ACTIONS -->
             <div class="note-batch-bar nb-batch-bar" style="display:${selCount > 0 ? 'flex' : 'none'}; margin: 0 16px;">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <strong style="color:var(--text-main); font-size:var(--font-xs);">${selCount} SELECTED</strong>
+                <div class="u-flex u-ai-center u-gap-2">
+                    <strong class="u-main u-fs-xs">${selCount} SELECTED</strong>
                     <button type="button" class="btn btn-sm" onclick="selectAllVisibleNotes()">[ALL]</button>
                     <button type="button" class="btn btn-sm" onclick="clearNoteSelection()">[CLEAR]</button>
                 </div>
-                <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-                    <button type="button" id="btn-batch-summary" class="btn btn-sm" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="triggerBatchSummaryGeneration()">[✦ SUMMARY]</button>
+                <div class="u-flex u-ai-center u-gap-2 u-wrap">
+                    <button type="button" id="btn-batch-summary" class="btn btn-sm u-gold" style="border-color:var(--accent-gold);" onclick="triggerBatchSummaryGeneration()">[✦ SUMMARY]</button>
                     <button type="button" id="btn-batch-ai" class="btn btn-primary btn-sm" onclick="triggerBatchAiExtraction()">[✦ ACTIONS]</button>
                     <button type="button" class="btn btn-sm" onclick="sendSelectedNoteCardsToInbox()">[-> INBOX]</button>
                     <button type="button" class="btn btn-sm" onclick="mergeSelectedNoteCards()" ${selCount < 2 ? 'disabled' : ''}>[MERGE]</button>
@@ -470,12 +470,12 @@ function renderNotesAtomBrowse(customContainer = null) {
                 </div>
             </div>
 
-            <div id="notes-batch-ai-drawer" class="note-ai-drawer" style="display:none; flex-shrink:0; max-height:52%; overflow-y:auto; margin: 0 16px;"></div>
+            <div id="notes-batch-ai-drawer" class="note-ai-drawer u-noshrink u-scroll-y" style="display:none; max-height:52%; margin:0 var(--space-4);"></div>
 
             <!-- LAYOUT SPLIT A 2 COLONNE: TREE (SX) E MASONRY (DX) -->
-            <div style="display:flex; flex:1; min-height:0; overflow:hidden; border-top:1px solid var(--border-color); margin-top:4px;">
-                <div id="notes-tree-sidebar" style="width:200px; border-right:1px solid var(--border-color); overflow-y:auto; padding:8px 4px 8px 0; background:rgba(0,0,0,0.2);"></div>
-                <div class="notes-browse-container nb-cards-mount" style="flex:1; overflow-y:auto; padding:12px; display:flex;"></div>
+            <div class="u-flex u-grow u-clip u-mt-1" style="min-height:0; border-top:1px solid var(--border-color);">
+                <div class="u-scroll-y" id="notes-tree-sidebar" style="width:200px; border-right:1px solid var(--border-color); padding:var(--space-2) var(--space-1) var(--space-2) 0; background:rgba(0,0,0,0.2);"></div>
+                <div class="notes-browse-container nb-cards-mount u-grow u-scroll-y u-flex" style="padding:var(--space-3);"></div>
             </div>
         </div>
     `;
@@ -527,7 +527,7 @@ function populateBrowseMasonryDom(browseCont, filterQuery = '') {
 
     const visibleItems = collectVisibleCardsList(filterQuery);
     if (visibleItems.length === 0) {
-        browseCont.innerHTML = `<div class="empty-state" style="text-align:center; padding-top:30px; width:100%;">[ EMPTY FOLDER ]</div>`;
+        browseCont.innerHTML = `<div class="empty-state u-tc u-w-full" style="padding-top:var(--space-6);">[ EMPTY FOLDER ]</div>`;
         return;
     }
 
@@ -739,14 +739,14 @@ function renderNotesAtomGraph() {
     nodes.forEach((n, idx) => n.phase = idx * 1.37);
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:8px; overflow:hidden; height:100%;">
-            <div class="section-header-row" style="margin-bottom:0; flex-wrap:wrap; gap:8px; flex-shrink:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-2 u-clip" style="height:100%;">
+            <div class="section-header-row u-mb-0 u-wrap u-gap-2 u-noshrink">
                 <div>
                     <span class="section-label">Notes Graph</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${noteCount} NOTES · ${links.filter(l => l.kind === 'semantic').length} LINKS</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${noteCount} NOTES · ${links.filter(l => l.kind === 'semantic').length} LINKS</span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
-                    <select class="form-control form-control-sm ng-filter-sel" style="width:145px; font-weight:bold;">${filterOptsHtml}</select>
+                <div class="u-flex u-gap-2 u-ai-center">
+                    <select class="form-control form-control-sm ng-filter-sel u-bold" style="width:145px;">${filterOptsHtml}</select>
                     <button type="button" class="btn btn-sm ng-reset-cam">[CENTER]</button>
                 </div>
             </div>
@@ -876,14 +876,14 @@ function renderNotesAtomGraph() {
         const moveOpts = allOrderedMoveCats.map(c => `<option value="${escapeHtml(c)}" ${c === n.catKey ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('');
 
         previewCard.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                <select id="ng-prev-cat-sel" class="form-control form-control-sm" style="flex:1; padding:2px 6px; font-size:var(--font-2xs); font-weight:bold;">${moveOpts}</select>
+            <div class="u-flex u-jc-between u-ai-center u-gap-2">
+                <select id="ng-prev-cat-sel" class="form-control form-control-sm u-grow u-fs-2xs u-bold" style="padding:2px var(--space-2);">${moveOpts}</select>
                 <button type="button" class="icon-btn" id="ng-prev-close">×</button>
             </div>
-            <div style="font-size:var(--font-xs); color:var(--text-main); line-height:1.5; max-height:190px; overflow-y:auto; white-space:pre-wrap; word-break:break-word; padding:4px 0;">${escapeHtml(n.card.body)}</div>
-            <div style="display:flex; gap:6px; justify-content:flex-end; padding-top:4px; flex-wrap:wrap;">
+            <div class="u-fs-xs u-main u-lh u-scroll-y u-py-1" style="max-height:190px; white-space:pre-wrap; word-break:break-word;">${escapeHtml(n.card.body)}</div>
+            <div class="u-flex u-gap-2 u-jc-end u-wrap" style="padding-top:var(--space-1);">
                 <button type="button" class="btn btn-sm" id="ng-prev-edit">[✎ EDIT]</button>
-                <button type="button" class="btn btn-sm" style="border-color:var(--accent-gold); color:var(--accent-gold);" id="ng-prev-sum">[✦ SUMMARY]</button>
+                <button type="button" class="btn btn-sm u-gold" style="border-color:var(--accent-gold);" id="ng-prev-sum">[✦ SUMMARY]</button>
                 <button type="button" class="btn btn-primary btn-sm" id="ng-prev-act">[✦ ACTIONS]</button>
             </div>
         `;
@@ -1299,27 +1299,27 @@ function ensureCentralNoteModalExists() {
     modal.className = 'modal-overlay';
     modal.onclick = (e) => { if (e.target === modal) closeModals(); };
     modal.innerHTML = `
-        <div class="modal-content" style="width: 720px; max-width: 95%; display: flex; flex-direction: column; gap: 12px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">
-                <h2 id="ncm-title" style="margin: 0; border: none; padding: 0;">Note</h2>
-                <div style="display: flex; gap: 6px; align-items: center;">
-                    <select id="ncm-parent-cat" class="form-control form-control-sm" style="width: 180px; font-weight: bold;"></select>
+        <div class="modal-content u-flex u-col u-gap-3" style="width:720px; max-width:95%;">
+            <div class="u-flex u-jc-between u-ai-center" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-3);">
+                <h2 class="u-m-0 u-border-0 u-p-0" id="ncm-title">Note</h2>
+                <div class="u-flex u-gap-2 u-ai-center">
+                    <select id="ncm-parent-cat" class="form-control form-control-sm u-bold" style="width:180px;"></select>
                     <button type="button" class="btn btn-sm" onclick="closeModals()">[ESC]</button>
                 </div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 6px; flex-wrap: wrap;">
-                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+            <div class="u-flex u-jc-between u-ai-center u-gap-2 u-wrap">
+                <div class="u-flex u-gap-2 u-wrap">
                     <button type="button" class="btn btn-sm btn-notes-mic-rec" onclick="toggleLiveMicRecording()">[● REC]</button>
-                    <button type="button" id="ncm-btn-split" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);">[✂ SPLIT AT CURSOR]</button>
+                    <button type="button" id="ncm-btn-split" class="btn btn-sm u-gold" style="border-color:var(--accent-gold);">[✂ SPLIT AT CURSOR]</button>
                     <button type="button" id="ncm-btn-summary" class="btn btn-sm">[✦ GENERATE SUMMARY]</button>
                     <button type="button" id="ncm-btn-actions" class="btn btn-sm">[✦ GENERATE ACTIONS]</button>
                 </div>
-                <span id="ncm-status" style="font-size: var(--font-xs); color: var(--accent-gold);"></span>
+                <span class="u-fs-xs u-gold" id="ncm-status"></span>
             </div>
-            <textarea id="ncm-textarea" class="note-inline-editor" style="min-height: 260px; font-size: var(--font-sm); line-height: 1.55;" placeholder="Write note..."></textarea>
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 4px;">
-                <button type="button" id="ncm-btn-delete" class="btn btn-danger btn-sm" style="display: none;">[DELETE]</button>
-                <div style="display: flex; gap: 8px; margin-left: auto;">
+            <textarea id="ncm-textarea" class="note-inline-editor u-fs-sm" style="min-height:260px; line-height:1.55;" placeholder="Write note..."></textarea>
+            <div class="u-flex u-jc-between u-ai-center u-mt-1">
+                <button type="button" id="ncm-btn-delete" class="btn btn-danger btn-sm" style="display:none;">[DELETE]</button>
+                <div class="u-flex u-gap-2" style="margin-left:auto;">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
                     <button type="button" id="ncm-btn-save" class="btn btn-primary">[SAVE // CTRL+ENTER]</button>
                 </div>
@@ -1575,12 +1575,12 @@ async function triggerBatchSummaryGeneration() {
 
         drawer.style.display = 'flex';
         drawer.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-                <span style="font-size:var(--font-xs); color:var(--accent-gold); font-weight:bold; text-transform:uppercase;">✦ Structured Summary &amp; Prompt-Ready Rewrite</span>
+            <div class="u-flex u-jc-between u-ai-center">
+                <span class="u-fs-xs u-gold u-bold u-upper">✦ Structured Summary &amp; Prompt-Ready Rewrite</span>
                 <button type="button" class="icon-btn" id="btn-close-sum-drawer">×</button>
             </div>
-            <textarea id="sum-drawer-textarea" class="note-inline-editor" style="min-height: 140px;"></textarea>
-            <div style="display:flex; justify-content:flex-end; gap:8px; flex-wrap:wrap;">
+            <textarea id="sum-drawer-textarea" class="note-inline-editor" style="min-height:140px;"></textarea>
+            <div class="u-flex u-jc-end u-gap-2 u-wrap">
                 <button type="button" class="btn btn-sm" id="btn-sum-copy">[COPY FOR PROMPT]</button>
                 <button type="button" class="btn btn-sm" id="btn-sum-save-new">[SAVE AS NEW]</button>
                 <button type="button" class="btn btn-primary btn-sm" id="btn-sum-replace">[REPLACE ORIGINAL]</button>
@@ -1645,9 +1645,9 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, keysToRemoveOnSubm
     const drawList = () => {
         drawerEl.innerHTML = '';
         const topRow = document.createElement('div');
-        topRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;';
+        topRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-2);';
         topRow.innerHTML = `
-            <span style="font-size:var(--font-xs); color:var(--text-main); font-weight:bold; text-transform:uppercase;">Staging Actions (${localCmds.length})</span>
+            <span class="u-fs-xs u-main u-bold u-upper">Staging Actions (${localCmds.length})</span>
             <button type="button" class="btn btn-sm" id="add-staged-cmd-btn">[+ ADD ACTION]</button>
         `;
         drawerEl.appendChild(topRow);
@@ -1659,13 +1659,13 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, keysToRemoveOnSubm
         };
 
         if (localCmds.length === 0) {
-            drawerEl.innerHTML += '<div class="empty-state" style="padding: 4px 0;">[ NO ACTIONS DETECTED ]</div>';
+            drawerEl.innerHTML += '<div class="empty-state u-py-1">[ NO ACTIONS DETECTED ]</div>';
         } else {
             localCmds.forEach((cmdStr, idx) => {
                 const itemBox = document.createElement('div');
                 itemBox.className = 'note-ai-cmd-row';
                 const line = document.createElement('div');
-                line.style.cssText = 'display:flex; align-items:center; gap:8px;';
+                line.style.cssText = 'display:flex; align-items:center; gap:var(--space-2);';
                 const badge = document.createElement('span');
                 badge.style.cssText = 'font-size:var(--font-xs); color:var(--text-dim); font-weight:bold;';
                 badge.textContent = `[${idx + 1}]`;
@@ -1690,7 +1690,7 @@ function renderSharedAiStagingDrawer(drawerEl, commandsArray, keysToRemoveOnSubm
             });
         }
         const footer = document.createElement('div');
-        footer.style.cssText = 'display:flex; justify-content:flex-end; gap:8px; padding-top:6px; border-top:1px dotted #222;';
+        footer.style.cssText = 'display:flex; justify-content:flex-end; gap:var(--space-2); padding-top:var(--space-2); border-top:1px dotted var(--border-color);';
         const btnCancel = document.createElement('button');
         btnCancel.type = 'button';
         btnCancel.className = 'btn btn-sm';

@@ -263,7 +263,7 @@ function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleT
     card.className = `gym-day-card ${isSingleTodayView || isActive ? 'gym-day-active' : 'gym-day-inactive'}`;
 
     const header = document.createElement('div');
-    header.style.cssText = 'display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; gap: 8px; flex-wrap: wrap;';
+    header.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-3); border-bottom:1px solid var(--border-color); padding-bottom:var(--space-2); gap:var(--space-2); flex-wrap:wrap;';
 
     const titleWrap = document.createElement('div');
     titleWrap.style.cursor = 'pointer';
@@ -274,11 +274,11 @@ function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleT
     };
 
     titleWrap.innerHTML = `
-        <div style="display:flex; align-items:baseline; gap:8px;">
+        <div class="u-flex u-ai-base u-gap-2">
             <span style="font-size:var(--font-md); font-weight:bold; color:${(isSingleTodayView || isActive) ? 'var(--text-main)' : 'var(--text-dim)'}; letter-spacing:1px;">
                 ${escapeHtml(dayInfo.acronym)}
             </span>
-            <span style="font-size:var(--font-xs); color:var(--text-dim);">
+            <span class="u-fs-xs u-dim">
                 // ${escapeHtml(dayInfo.fullLabel)}
             </span>
         </div>
@@ -297,7 +297,7 @@ function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleT
 
     const list = document.createElement('div');
     list.className = 'gym-ex-list';
-    list.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
+    list.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
 
     const groupedMap = new Map();
     gymPlan[dayNum].forEach((ex, exIdx) => {
@@ -308,12 +308,12 @@ function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleT
 
     groupedMap.forEach((items, groupName) => {
         const macroCell = document.createElement('div');
-        macroCell.style.cssText = 'border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); padding: 8px 10px; display: flex; flex-direction: column; gap: 4px;';
+        macroCell.style.cssText = 'border:1px solid var(--border-color); background:rgba(255,255,255,0.02); padding:var(--space-2) var(--space-3); display:flex; flex-direction:column; gap:var(--space-1);';
 
         const groupHeader = document.createElement('div');
-        groupHeader.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:4px; margin-bottom:2px;';
+        groupHeader.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:var(--space-1); margin-bottom:2px;';
         groupHeader.innerHTML = `
-            <span style="font-size:var(--font-xs); font-weight:bold; color:var(--text-main); text-transform:uppercase; letter-spacing:1px;">
+            <span class="u-fs-xs u-bold u-main u-upper" style="letter-spacing:1px;">
                 // ${escapeHtml(groupName)}
             </span>
         `;
@@ -332,7 +332,7 @@ function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleT
             let progBadgeHtml = '';
             if (meta.isProg) {
                 const curR = ex.currentReps || meta.minR || 5;
-                progBadgeHtml = `<span class="gym-prog-badge" style="display:inline-block; margin-left:6px; padding:1px 5px; border:1px solid var(--text-main); color:var(--text-main); font-weight:bold; font-size:var(--font-2xs);">[${ex.sets}x${curR}]</span>`;
+                progBadgeHtml = `<span class="gym-prog-badge u-ml-2 u-main u-bold u-fs-2xs" style="display:inline-block; padding:1px var(--space-1); border:1px solid var(--text-main);">[${ex.sets}x${curR}]</span>`;
             }
 
             info.innerHTML = `
@@ -370,7 +370,7 @@ function buildGymSplitCardDom(dayNum, dateStrForCompletion = todayStr, isSingleT
                     setsCont.appendChild(wInp);
                 }
             } else {
-                setsCont.innerHTML = `<span style="font-size:var(--font-xs); color:var(--text-dim);">BW</span>`;
+                setsCont.innerHTML = `<span class="u-fs-xs u-dim">BW</span>`;
             }
 
             row.appendChild(info);
@@ -399,19 +399,19 @@ function renderGymAtomToday() {
     const isScheduled = isGymTrainingScheduledOnDate(selectedDateStr);
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow:hidden; min-height:0;">
-            <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-clip" style="min-height:0;">
+            <div class="section-header-row u-mb-0 u-noshrink">
                 <div>
                     <span class="section-label">Gym</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${selectedDateStr} (${escapeHtml(activeInfo.acronym)})</span>
+                    <span class="u-fs-xs u-dim u-ml-2">// ${selectedDateStr} (${escapeHtml(activeInfo.acronym)})</span>
                 </div>
-                <div style="display:flex; gap:6px; align-items:center;">
+                <div class="u-flex u-gap-2 u-ai-center">
                     <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="gt-sw-1">[${escapeHtml(info1.acronym)}]</button>
                     <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="gt-sw-2">[${escapeHtml(info2.acronym)}]</button>
                     <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">⚙</button>
                 </div>
             </div>
-            <div id="gym-today-body" style="flex:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;"></div>
+            <div class="u-grow u-col u-clip" id="gym-today-body" style="display:flex; min-height:0;"></div>
         </div>
     `;
 
@@ -429,8 +429,8 @@ function renderGymAtomToday() {
     const body = root.querySelector('#gym-today-body');
     if (!isScheduled) {
         body.innerHTML = `
-            <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; border:1px dashed var(--border-color); background:rgba(255,255,255,0.01);">
-                <div class="empty-state" style="padding:0;">[ NO TRAINING SCHEDULED FOR THIS DATE ]</div>
+            <div class="u-grow u-flex u-col u-ai-center u-jc-center u-gap-3" style="border:1px dashed var(--border-color); background:rgba(255,255,255,0.01);">
+                <div class="empty-state u-p-0">[ NO TRAINING SCHEDULED FOR THIS DATE ]</div>
                 <button type="button" class="btn btn-sm" id="btn-force-train-today">[TRAIN ANYWAY]</button>
             </div>
         `;
@@ -457,21 +457,21 @@ function renderGymAtomSplit(customContainer = null) {
 
     const innerWrap = document.createElement('div');
     innerWrap.className = customContainer ? '' : 'module-body-padded';
-    innerWrap.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:12px; overflow:hidden; min-height:0; height:100%;';
+    innerWrap.style.cssText = 'flex:1; display:flex; flex-direction:column; gap:var(--space-3); overflow:hidden; min-height:0; height:100%;';
 
     innerWrap.innerHTML = `
-        <div class="section-header-row" style="margin-bottom:0; flex-shrink:0;">
+        <div class="section-header-row u-mb-0 u-noshrink">
             <div>
                 <span class="section-label">Gym Split</span>
-                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ACTIVE: ${escapeHtml(activeInfo.acronym)}</span>
+                <span class="u-fs-xs u-dim u-ml-2">// ACTIVE: ${escapeHtml(activeInfo.acronym)}</span>
             </div>
-            <div style="display:flex; gap:6px; align-items:center;">
+            <div class="u-flex u-gap-2 u-ai-center">
                 <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="gs-sw-1">[${escapeHtml(info1.acronym)}]</button>
                 <button type="button" class="btn btn-sm ${nextWorkoutDay === 2 ? 'btn-primary' : ''}" id="gs-sw-2">[${escapeHtml(info2.acronym)}]</button>
                 <button type="button" class="btn btn-sm" onclick="openGymSettingsModal()">⚙</button>
             </div>
         </div>
-        <div id="gym-split-cards-row" style="flex:1; display:flex; flex-direction:row; gap:16px; overflow:hidden; min-height:0;"></div>
+        <div class="u-grow u-gap-4 u-clip" id="gym-split-cards-row" style="display:flex; flex-direction:row; min-height:0;"></div>
     `;
 
     innerWrap.querySelector('#gs-sw-1').onclick = () => {
@@ -509,7 +509,7 @@ function ensureGymModalsExist() {
         gsModal.innerHTML = `
             <div class="modal-content settings-modal-box">
                 <div class="settings-top-bar">
-                    <h2 style="margin:0; border:none; padding:0;">Gym Settings</h2>
+                    <h2 class="u-m-0 u-border-0 u-p-0">Gym Settings</h2>
                     <button type="button" class="btn btn-sm" onclick="closeModals(); renderGymDashboard();">[ESC]</button>
                 </div>
                 <div class="settings-body-split">
@@ -533,9 +533,9 @@ function ensureGymModalsExist() {
         exModal.className = 'modal-overlay';
         exModal.onclick = (e) => { if (e.target === exModal) closeModals(); };
         exModal.innerHTML = `
-            <div class="modal-content" style="width: 540px; max-width: 95%;">
+            <div class="modal-content" style="width:540px; max-width:95%;">
                 <h2 id="gym-ex-cfg-title">Exercise</h2>
-                <div id="gym-ex-cfg-body" style="display:flex; flex-direction:column; gap:14px;"></div>
+                <div class="u-col u-gap-4" id="gym-ex-cfg-body" style="display:flex;"></div>
             </div>
         `;
         root.appendChild(exModal);
@@ -547,12 +547,12 @@ function ensureGymModalsExist() {
         revModal.className = 'modal-overlay';
         revModal.onclick = (e) => { if (e.target === revModal) closeModals(); };
         revModal.innerHTML = `
-            <div class="modal-content" style="width: 700px; max-width: 96%; max-height: 88vh; display:flex; flex-direction:column;">
-                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:12px;">
-                    <h2 id="gym-rev-title" style="margin:0; border:none; padding:0;">Complete Workout</h2>
+            <div class="modal-content u-flex u-col" style="width:700px; max-width:96%; max-height:88vh;">
+                <div class="u-flex u-jc-between u-ai-center u-mb-3" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-3);">
+                    <h2 class="u-m-0 u-border-0 u-p-0" id="gym-rev-title">Complete Workout</h2>
                     <button type="button" class="btn btn-sm" onclick="closeModals()">[ESC]</button>
                 </div>
-                <div id="gym-rev-body" style="flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:12px; padding-right:4px;"></div>
+                <div class="u-grow u-scroll-y u-col u-gap-3" id="gym-rev-body" style="display:flex; padding-right:var(--space-1);"></div>
             </div>
         `;
         root.appendChild(revModal);
@@ -596,17 +596,17 @@ function renderGymSettingsSplitTab() {
     });
 
     container.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; flex-wrap:wrap; gap:8px;">
-            <div style="display:flex; gap:8px;">
+        <div class="u-flex u-jc-between u-ai-center u-wrap u-gap-2" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-3);">
+            <div class="u-flex u-gap-2">
                 <button type="button" class="btn btn-sm ${dayNum === 1 ? 'btn-primary' : ''}" id="gcfg-pick-1">[SPLIT 1 // ${escapeHtml(info1.acronym)}]</button>
                 <button type="button" class="btn btn-sm ${dayNum === 2 ? 'btn-primary' : ''}" id="gcfg-pick-2">[SPLIT 2 // ${escapeHtml(info2.acronym)}]</button>
             </div>
-            <div style="display:flex; gap:6px;">
+            <div class="u-flex u-gap-2">
                 <input type="text" id="gcfg-new-group-inp" class="form-control form-control-sm" style="width:165px;" placeholder="+ New Muscle Group...">
                 <button type="button" class="btn btn-sm" id="gcfg-add-group-btn">[+ GROUP]</button>
             </div>
         </div>
-        <div id="gcfg-groups-list" style="display:flex; flex-direction:column; gap:14px;"></div>
+        <div class="u-col u-gap-4" id="gcfg-groups-list" style="display:flex;"></div>
     `;
 
     container.querySelector('#gcfg-pick-1').onclick = () => {
@@ -644,9 +644,9 @@ function renderGymSettingsSplitTab() {
         groupBox.style.marginBottom = '0';
 
         const hdr = document.createElement('div');
-        hdr.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:6px; margin-bottom:8px; gap:8px;';
+        hdr.style.cssText = 'display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:var(--space-2); margin-bottom:var(--space-2); gap:var(--space-2);';
         hdr.innerHTML = `
-            <input type="text" class="form-control form-control-sm grp-rename-inp" style="width:180px; font-weight:bold; text-transform:uppercase;" value="${escapeHtml(groupName)}">
+            <input type="text" class="form-control form-control-sm grp-rename-inp u-bold u-upper" style="width:180px;" value="${escapeHtml(groupName)}">
             <button type="button" class="btn btn-sm btn-add-ex-in-grp">[+ EXERCISE IN ${escapeHtml(groupName.toUpperCase())}]</button>
         `;
 
@@ -676,13 +676,13 @@ function renderGymSettingsSplitTab() {
         groupBox.appendChild(hdr);
 
         const exRowsCont = document.createElement('div');
-        exRowsCont.style.cssText = 'display:flex; flex-direction:column; gap:6px;';
+        exRowsCont.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2);';
 
         curList.forEach((ex, exIdx) => {
             if ((ex.group || 'Generale').trim() !== groupName) return;
 
             const row = document.createElement('div');
-            row.style.cssText = 'display:grid; grid-template-columns: 1fr 140px 130px 65px auto; gap:6px; align-items:center;';
+            row.style.cssText = 'display:grid; grid-template-columns:1fr 140px 130px 65px auto; gap:var(--space-2); align-items:center;';
 
             const groupOptionsHtml = allGroups.map(g => `<option value="${escapeHtml(g)}" ${g === groupName ? 'selected' : ''}>${escapeHtml(g)}</option>`).join('') + `<option value="__NEW__">+ New Group...</option>`;
             const schemeOptionsHtml = GYM_REP_SCHEMES.map(sc => `<option value="${escapeHtml(sc.label)}" ${sc.label.toLowerCase() === (ex.repStr || '').toLowerCase() ? 'selected' : ''}>${escapeHtml(sc.label)}</option>`).join('');
@@ -757,12 +757,12 @@ function renderGymSettingsRoutineTab() {
     const info2 = getSplitDayMusclesInfo(2);
 
     container.innerHTML = `
-        <div class="cfg-box" style="margin-bottom:0; border-color:var(--border-bright);">
-            <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="cfg-box u-mb-0" style="border-color:var(--border-bright);">
+            <div class="sub-column-header u-flex u-jc-between u-ai-center">
                 <span>1. Starting Split &amp; Reset</span>
-                <span style="font-size:var(--font-2xs); color:var(--accent-green);">ACTIVE: ${escapeHtml(nextWorkoutDay === 1 ? info1.acronym : info2.acronym)}</span>
+                <span class="u-fs-2xs u-green">ACTIVE: ${escapeHtml(nextWorkoutDay === 1 ? info1.acronym : info2.acronym)}</span>
             </div>
-            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <div class="u-flex u-gap-2 u-wrap">
                 <button type="button" class="btn btn-sm ${nextWorkoutDay === 1 ? 'btn-primary' : ''}" id="btn-reset-start-1">
                     [START TODAY ON ${escapeHtml(info1.acronym)} &amp; CLEAR PAST]
                 </button>
@@ -772,27 +772,27 @@ function renderGymSettingsRoutineTab() {
             </div>
         </div>
 
-        <div class="cfg-box" style="margin-bottom:0;">
-            <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="cfg-box u-mb-0">
+            <div class="sub-column-header u-flex u-jc-between u-ai-center">
                 <span>2. Weekly Schedule Slots</span>
-                <label style="font-size:var(--font-xs); cursor:pointer; display:flex; align-items:center; gap:6px;">
+                <label class="u-fs-xs u-pointer u-flex u-ai-center u-gap-2">
                     <input type="checkbox" id="gym-routine-enabled" ${gymRoutine.enabled !== false ? 'checked' : ''}>
-                    <strong style="color:var(--text-main);">SYNC TO PLANNER &amp; TASKS</strong>
+                    <strong class="u-main">SYNC TO PLANNER &amp; TASKS</strong>
                 </label>
             </div>
 
-            <div id="gym-tw-list" style="display:flex; flex-direction:column; gap:10px; margin-bottom:12px;"></div>
+            <div class="u-col u-gap-3 u-mb-3" id="gym-tw-list" style="display:flex;"></div>
 
-            <button type="button" id="btn-add-gym-tw" class="btn btn-sm" style="width:100%; border-style:dashed; margin-bottom:14px;">
+            <button type="button" id="btn-add-gym-tw" class="btn btn-sm u-w-full u-mb-4" style="border-style:dashed;">
                 [+ ADD TIME WINDOW]
             </button>
 
-            <div style="display:flex; gap:14px; flex-wrap:wrap; align-items:flex-end; border-top:1px solid var(--border-color); padding-top:12px;">
-                <div class="form-group" style="margin-bottom:0; flex:1; min-width:140px;">
+            <div class="u-flex u-gap-4 u-wrap" style="align-items:flex-end; border-top:1px solid var(--border-color); padding-top:var(--space-3);">
+                <div class="form-group u-mb-0 u-grow" style="min-width:140px;">
                     <label>Start Date</label>
                     <input type="date" id="gym-start-date" class="form-control form-control-sm" value="${gymStartDate || todayStr}">
                 </div>
-                <div class="form-group" style="margin-bottom:0; flex:1; min-width:140px;">
+                <div class="form-group u-mb-0 u-grow" style="min-width:140px;">
                     <label>End Date</label>
                     <input type="date" id="gym-end-date" class="form-control form-control-sm" value="${gymEndDate}">
                 </div>
@@ -813,12 +813,12 @@ function renderGymSettingsRoutineTab() {
         gymRoutine.timeWindows.forEach((tw, idx) => {
             const row = document.createElement('div');
             row.className = 'gym-tw-row';
-            row.style.cssText = 'border:1px solid var(--border-color); background:rgba(255,255,255,0.015); padding:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;';
+            row.style.cssText = 'border:1px solid var(--border-color); background:rgba(255,255,255,0.015); padding:var(--space-3); display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:var(--space-3);';
 
             const daysHtml = dayValues.map((dVal, dIdx) => {
                 const checked = Array.isArray(tw.days) && tw.days.includes(dVal) ? 'checked' : '';
                 return `
-                    <label class="type-radio" style="padding:5px 10px; flex:0 0 auto;">
+                    <label class="type-radio" style="padding:var(--space-1) var(--space-3); flex:0 0 auto;">
                         <input type="checkbox" class="tw-day-cb" value="${dVal}" ${checked}>
                         ${dayLabels[dIdx]}
                     </label>
@@ -826,12 +826,12 @@ function renderGymSettingsRoutineTab() {
             }).join('');
 
             row.innerHTML = `
-                <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <div class="u-flex u-gap-2 u-wrap u-ai-center">
                     ${daysHtml}
                 </div>
-                <div style="display:flex; align-items:center; gap:8px;">
+                <div class="u-flex u-ai-center u-gap-2">
                     <input type="time" class="form-control form-control-sm tw-start-inp" style="width:92px;" value="${tw.start || '19:45'}">
-                    <span style="color:var(--text-dim);">-</span>
+                    <span class="u-dim">-</span>
                     <input type="time" class="form-control form-control-sm tw-end-inp" style="width:92px;" value="${tw.end || '21:15'}">
                     <button type="button" class="icon-btn delete btn-del-tw">×</button>
                 </div>
@@ -903,44 +903,44 @@ function openExerciseConfigModal(dayNum, exIdx) {
         const curMeta = resolveGymSchemeMeta(selectedRepStr);
 
         body.innerHTML = `
-            <div style="display:flex; gap:10px;">
-                <div class="form-group" style="flex:1; margin-bottom:0;">
+            <div class="u-flex u-gap-3">
+                <div class="form-group u-grow u-mb-0">
                     <label>Muscle Group</label>
                     <input type="text" id="cfg-ex-group" class="form-control form-control-sm" value="${escapeHtml(selectedGroup)}">
                 </div>
-                <div class="form-group" style="flex:2; margin-bottom:0;">
+                <div class="form-group u-mb-0" style="flex:2;">
                     <label>Exercise Name</label>
                     <input type="text" id="cfg-ex-name" class="form-control form-control-sm" value="${escapeHtml(ex.name)}">
                 </div>
             </div>
 
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px;" id="cfg-scheme-grid"></div>
+            <div class="u-gap-2" style="display:grid; grid-template-columns:1fr 1fr;" id="cfg-scheme-grid"></div>
 
-            <div style="display:flex; gap:10px; align-items:flex-end;">
-                <div class="form-group" style="flex:2; margin-bottom:0;">
+            <div class="u-flex u-gap-3" style="align-items:flex-end;">
+                <div class="form-group u-mb-0" style="flex:2;">
                     <label>Custom Rep Scheme</label>
                     <input type="text" id="cfg-ex-repstr" class="form-control form-control-sm" value="${escapeHtml(selectedRepStr)}">
                 </div>
-                <div class="form-group" style="flex:1; margin-bottom:0;">
+                <div class="form-group u-grow u-mb-0">
                     <label>Weight Boxes</label>
                     <input type="number" id="cfg-ex-sets" class="form-control form-control-sm no-spinners" min="0" max="10" value="${selectedSets}">
                 </div>
             </div>
 
-            <div id="cfg-prog-section" style="display:${curMeta.isProg ? 'block' : 'none'}; padding:10px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.03);">
-                <label style="font-size:var(--font-xs); color:var(--text-main); font-weight:bold; text-transform:uppercase; display:block; margin-bottom:8px;">
+            <div id="cfg-prog-section" style="display:${curMeta.isProg ? 'block' : 'none'}; padding:var(--space-3); border:1px solid var(--border-bright); background:rgba(255,255,255,0.03);">
+                <label class="u-fs-xs u-main u-bold u-upper u-block u-mb-2">
                     Current Target Reps:
                 </label>
-                <div style="display:flex; gap:8px;" id="cfg-prog-btns">
+                <div class="u-gap-2" style="display:flex;" id="cfg-prog-btns">
                     ${[5, 6, 7, 8].map(r => `
-                        <button type="button" class="btn btn-sm ${selectedCurReps === r ? 'btn-primary' : ''}" data-rep="${r}" style="flex:1;">
+                        <button type="button" class="btn btn-sm ${selectedCurReps === r ? 'btn-primary' : ''} u-grow" data-rep="${r}">
                             ${selectedSets}x${r}
                         </button>
                     `).join('')}
                 </div>
             </div>
 
-            <div class="modal-actions" style="margin-top:6px;">
+            <div class="modal-actions u-mt-2">
                 <button type="button" class="btn" onclick="closeModals()">Cancel</button>
                 <button type="button" class="btn btn-primary" id="btn-save-ex-cfg">[SAVE]</button>
             </div>
@@ -953,7 +953,7 @@ function openExerciseConfigModal(dayNum, exIdx) {
             b.type = 'button';
             b.className = `btn btn-sm ${isSel ? 'btn-primary' : ''}`;
             b.style.textAlign = 'left';
-            b.innerHTML = `<div style="font-weight:bold;">${escapeHtml(sc.label)}</div>`;
+            b.innerHTML = `<div class="u-bold">${escapeHtml(sc.label)}</div>`;
             b.onclick = () => {
                 selectedGroup = body.querySelector('#cfg-ex-group').value.trim() || selectedGroup;
                 ex.name = body.querySelector('#cfg-ex-name').value.trim() || ex.name;
@@ -1030,10 +1030,10 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
     body.innerHTML = '';
 
     const switchSplitBar = document.createElement('div');
-    switchSplitBar.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:#080808; border:1px solid var(--border-color); flex-wrap:wrap; gap:8px;';
+    switchSplitBar.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:var(--bg-sec); border:1px solid var(--border-color); flex-wrap:wrap; gap:var(--space-2);';
     switchSplitBar.innerHTML = `
-        <span style="font-size:var(--font-xs); color:var(--text-muted); font-weight:bold;">SPLIT COMPLETED:</span>
-        <div style="display:flex; gap:6px;">
+        <span class="u-fs-xs u-muted u-bold">SPLIT COMPLETED:</span>
+        <div class="u-flex u-gap-2">
             <button type="button" class="btn btn-sm ${dayNum === 1 ? 'btn-primary' : ''}" id="rev-pick-split-1">[${escapeHtml(info1.acronym)}]</button>
             <button type="button" class="btn btn-sm ${dayNum === 2 ? 'btn-primary' : ''}" id="rev-pick-split-2">[${escapeHtml(info2.acronym)}]</button>
         </div>
@@ -1051,9 +1051,9 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
     body.appendChild(switchSplitBar);
 
     const unchangedBox = document.createElement('div');
-    unchangedBox.style.cssText = 'padding:12px; border:1px solid var(--border-bright); background:rgba(255,255,255,0.03); display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;';
+    unchangedBox.style.cssText = 'padding:var(--space-3); border:1px solid var(--border-bright); background:rgba(255,255,255,0.03); display:flex; justify-content:space-between; align-items:center; gap:var(--space-3); flex-wrap:wrap;';
     unchangedBox.innerHTML = `
-        <strong style="font-size:var(--font-sm); color:var(--text-main);">Keep weights &amp; reps unchanged?</strong>
+        <strong class="u-fs-sm u-main">Keep weights &amp; reps unchanged?</strong>
         <button type="button" class="btn btn-primary" id="btn-gym-rev-unchanged">[CONFIRM ${escapeHtml(curInfo.acronym)}]</button>
     `;
     unchangedBox.querySelector('#btn-gym-rev-unchanged').onclick = () => {
@@ -1063,7 +1063,7 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
 
     const exercises = gymPlan[dayNum] || [];
     const exListWrap = document.createElement('div');
-    exListWrap.style.cssText = 'display:flex; flex-direction:column; gap:10px;';
+    exListWrap.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-3);';
 
     const groupedMap = new Map();
     exercises.forEach(ex => {
@@ -1074,28 +1074,28 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
 
     groupedMap.forEach((groupExercises, groupName) => {
         const groupBox = document.createElement('div');
-        groupBox.style.cssText = 'border:1px solid var(--border-color); padding:8px 10px; background:rgba(255,255,255,0.01); display:flex; flex-direction:column; gap:6px;';
-        groupBox.innerHTML = `<div style="font-size:var(--font-xs); font-weight:bold; color:var(--text-dim); text-transform:uppercase; border-bottom:1px solid var(--border-color); padding-bottom:4px;">// ${escapeHtml(groupName)}</div>`;
+        groupBox.style.cssText = 'border:1px solid var(--border-color); padding:var(--space-2) var(--space-3); background:rgba(255,255,255,0.01); display:flex; flex-direction:column; gap:var(--space-2);';
+        groupBox.innerHTML = `<div class="u-fs-xs u-bold u-dim u-upper" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-1);">// ${escapeHtml(groupName)}</div>`;
 
         groupExercises.forEach(ex => {
             const meta = resolveGymSchemeMeta(ex.repStr);
             const row = document.createElement('div');
-            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:6px 0; border-bottom:1px dotted rgba(255,255,255,0.06); gap:10px; flex-wrap:wrap;';
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) 0; border-bottom:1px dotted rgba(255,255,255,0.06); gap:var(--space-3); flex-wrap:wrap;';
 
             const leftCol = document.createElement('div');
             leftCol.style.cssText = 'flex:1; min-width:170px;';
             leftCol.innerHTML = `
-                <div style="font-size:var(--font-sm); font-weight:bold; color:var(--text-main);">${escapeHtml(ex.name)}</div>
-                <div style="font-size:var(--font-xs); color:var(--text-dim);">${escapeHtml(ex.repStr)}</div>
+                <div class="u-fs-sm u-bold u-main">${escapeHtml(ex.name)}</div>
+                <div class="u-fs-xs u-dim">${escapeHtml(ex.repStr)}</div>
             `;
 
             const rightCol = document.createElement('div');
-            rightCol.style.cssText = 'display:flex; align-items:center; gap:10px; flex-wrap:wrap;';
+            rightCol.style.cssText = 'display:flex; align-items:center; gap:var(--space-3); flex-wrap:wrap;';
 
             if (meta.isProg) {
                 if (!ex.currentReps) ex.currentReps = 5;
                 const progCtrl = document.createElement('div');
-                progCtrl.style.cssText = 'display:flex; align-items:center; gap:4px; padding:3px 6px; border:1px solid var(--border-bright); background:#050505;';
+                progCtrl.style.cssText = 'display:flex; align-items:center; gap:var(--space-1); padding:var(--space-1) var(--space-2); border:1px solid var(--border-bright); background:var(--bg-sec);';
 
                 const renderProgCtrl = (bumpedWeightNotice = false) => {
                     const cur = ex.currentReps || 5;
@@ -1104,7 +1104,7 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
                         <span style="font-size:var(--font-xs); font-weight:bold; color:${bumpedWeightNotice ? 'var(--accent-green)' : 'var(--text-main)'}; min-width:64px; text-align:center;">
                             ${ex.sets}x${cur} ${bumpedWeightNotice ? '[+KG]' : ''}
                         </span>
-                        <button type="button" class="btn btn-sm btn-rep-plus" style="padding:2px 6px;">[+1 REP]</button>
+                        <button type="button" class="btn btn-sm btn-rep-plus" style="padding:2px var(--space-2);">[+1 REP]</button>
                     `;
                     progCtrl.querySelector('.btn-rep-minus').onclick = () => {
                         ex.currentReps = Math.max(5, (ex.currentReps || 5) - 1);
@@ -1125,7 +1125,7 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
             }
 
             const wBox = document.createElement('div');
-            wBox.style.cssText = 'display:flex; gap:5px; align-items:center;';
+            wBox.style.cssText = 'display:flex; gap:var(--space-1); align-items:center;';
 
             if (ex.sets > 0) {
                 for (let i = 0; i < ex.sets; i++) {
@@ -1143,7 +1143,7 @@ function openGymWorkoutReviewModal(targetDateStr = selectedDateStr, dayNum = nex
                     wBox.appendChild(inp);
                 }
             } else {
-                wBox.innerHTML = '<span style="font-size:var(--font-xs); color:var(--text-dim);">BW</span>';
+                wBox.innerHTML = '<span class="u-fs-xs u-dim">BW</span>';
             }
 
             rightCol.appendChild(wBox);

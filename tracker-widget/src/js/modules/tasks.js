@@ -622,7 +622,7 @@ function addHabitTimeWindow(start = '', end = '', days = []) {
     if (!container) return;
     const div = document.createElement('div');
     div.className = 'habit-time-window-row';
-    div.style.cssText = 'border: 1px solid #333; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.02);';
+    div.style.cssText = 'border:1px solid var(--border-color); padding:var(--space-3); margin-bottom:var(--space-3); background:rgba(255,255,255,0.02);';
 
     const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
     const dayVals = [1, 2, 3, 4, 5, 6, 0];
@@ -634,18 +634,18 @@ function addHabitTimeWindow(start = '', end = '', days = []) {
     }
 
     div.innerHTML = `
-        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <div class="u-flex u-gap-4 u-mb-3">
+            <div class="form-group u-grow u-mb-0">
                 <label>Start</label>
                 <input type="time" class="form-control h-start" value="${start}">
             </div>
-            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <div class="form-group u-grow u-mb-0">
                 <label>End</label>
                 <input type="time" class="form-control h-end" value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top:var(--space-5);">×</button>
         </div>
-        <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
+        <div class="days-checkboxes u-flex u-gap-3">${checksHtml}</div>
     `;
     container.appendChild(div);
 }
@@ -655,7 +655,7 @@ function addRoutineTimeWindow(start = '', end = '', days = []) {
     if (!container) return;
     const div = document.createElement('div');
     div.className = 'rtn-time-window-row';
-    div.style.cssText = 'border: 1px solid #333; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.02);';
+    div.style.cssText = 'border:1px solid var(--border-color); padding:var(--space-3); margin-bottom:var(--space-3); background:rgba(255,255,255,0.02);';
 
     const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
     const dayVals = [1, 2, 3, 4, 5, 6, 0];
@@ -667,18 +667,18 @@ function addRoutineTimeWindow(start = '', end = '', days = []) {
     }
 
     div.innerHTML = `
-        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <div class="u-flex u-gap-4 u-mb-3">
+            <div class="form-group u-grow u-mb-0">
                 <label>Start</label>
                 <input type="time" class="form-control rtn-start" value="${start}">
             </div>
-            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <div class="form-group u-grow u-mb-0">
                 <label>End</label>
                 <input type="time" class="form-control rtn-end" value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top:var(--space-5);">×</button>
         </div>
-        <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
+        <div class="days-checkboxes u-flex u-gap-3">${checksHtml}</div>
     `;
     container.appendChild(div);
 }
@@ -690,15 +690,15 @@ function addRoutineFormSubsection(secTitle = '', stepTitlesArray = [], existingS
     const secBox = document.createElement('div');
     secBox.className = 'rtn-form-sec-box';
     if (existingSecId) secBox.dataset.secId = existingSecId;
-    secBox.style.cssText = 'border: 1px solid var(--border-color); background: rgba(255,255,255,0.02); padding: 10px; display: flex; flex-direction: column; gap: 8px;';
+    secBox.style.cssText = 'border:1px solid var(--border-color); background:rgba(255,255,255,0.02); padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-2);';
 
     secBox.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px;">
-            <input type="text" class="form-control form-control-sm rtn-sec-name-inp" placeholder="Sub-section Name (e.g. Grooming, Casa, Chiusura)..." value="${escapeHtml(secTitle)}" style="font-weight: bold;">
+        <div class="u-flex u-jc-between u-ai-center u-gap-2">
+            <input type="text" class="form-control form-control-sm rtn-sec-name-inp u-bold" placeholder="Sub-section Name (e.g. Grooming, Casa, Chiusura)..." value="${escapeHtml(secTitle)}">
             <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" title="Remove Sub-section">×</button>
         </div>
-        <div class="rtn-sec-steps-list" style="display: flex; flex-direction: column; gap: 4px;"></div>
-        <div style="display: flex; gap: 6px;">
+        <div class="rtn-sec-steps-list u-flex u-col u-gap-1"></div>
+        <div class="u-flex u-gap-2">
             <input type="text" class="form-control form-control-sm rtn-new-step-inp" placeholder="+ Add step (e.g. Doccia, Rasatura barba + crema) & press Enter...">
             <button type="button" class="btn btn-sm rtn-add-step-btn">[+ STEP]</button>
         </div>
@@ -710,9 +710,9 @@ function addRoutineFormSubsection(secTitle = '', stepTitlesArray = [], existingS
         const clean = (stepText || '').trim();
         if (!clean) return;
         const row = document.createElement('div');
-        row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 3px 6px; background: rgba(255,255,255,0.02); border: 1px solid #222;';
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); padding:var(--space-1) var(--space-2); background:rgba(255,255,255,0.02); border:1px solid var(--border-color);';
         row.innerHTML = `
-            <input type="text" class="form-control form-control-sm rtn-step-val-inp" value="${escapeHtml(clean)}" style="border: none; background: transparent; padding: 2px 4px;">
+            <input type="text" class="form-control form-control-sm rtn-step-val-inp u-border-0" value="${escapeHtml(clean)}" style="background:transparent; padding:2px var(--space-1);">
             <button type="button" class="icon-btn delete" onclick="this.parentElement.remove()">×</button>
         `;
         stepsList.appendChild(row);
@@ -1112,7 +1112,7 @@ function renderManager() {
         headerRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center;';
 
         const leftPart = document.createElement('div');
-        leftPart.style.cssText = 'display:flex; align-items:center; gap: 10px;';
+        leftPart.style.cssText = 'display:flex; align-items:center; gap:var(--space-3);';
 
         if (isTasksManagerEditMode) {
             const catCb = document.createElement('div');
@@ -1150,7 +1150,7 @@ function renderManager() {
         catDiv.appendChild(headerRow);
 
         const tasksWrap = document.createElement('div');
-        tasksWrap.style.cssText = 'border-top: 1px solid #333; margin-top: 5px; padding-top: 10px;';
+        tasksWrap.style.cssText = 'border-top:1px solid var(--border-color); margin-top:var(--space-1); padding-top:var(--space-3);';
 
         cats[cat].forEach(t => {
             const isSel = selectedManagerTasks.has(t.id);
@@ -1159,7 +1159,7 @@ function renderManager() {
             taskRow.style.cssText = `display:flex; justify-content:space-between; align-items:center; padding: 6px 8px; cursor:${isTasksManagerEditMode ? 'pointer' : 'default'}; background:${isSel ? 'rgba(255,255,255,0.06)' : 'transparent'};`;
 
             const leftTask = document.createElement('div');
-            leftTask.style.cssText = 'display:flex; align-items:center; gap:10px;';
+            leftTask.style.cssText = 'display:flex; align-items:center; gap:var(--space-3);';
 
             if (isTasksManagerEditMode) {
                 const tCb = document.createElement('div');
@@ -1217,13 +1217,13 @@ function renderRoutinesManagerList() {
             : `FREQ: ${(r.frequency || 'all').toUpperCase()}${!r.noTimer && r.timerMinutes ? ' · ' + r.timerMinutes + 'm' : ''}`;
 
         box.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div class="u-flex u-jc-between u-ai-center">
                 <div>
-                    <strong style="font-size:var(--font-sm); color:var(--text-main); text-transform:uppercase;">${escapeHtml(r.title)}</strong>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:8px;">[${escapeHtml(schedBadge)}]</span>
-                    <div style="font-size:var(--font-xs); color:var(--text-muted); margin-top:4px;">${escapeHtml(secSummary || 'No sub-sections')}</div>
+                    <strong class="u-fs-sm u-main u-upper">${escapeHtml(r.title)}</strong>
+                    <span class="u-fs-xs u-dim u-ml-2">[${escapeHtml(schedBadge)}]</span>
+                    <div class="u-fs-xs u-muted u-mt-1">${escapeHtml(secSummary || 'No sub-sections')}</div>
                 </div>
-                <div style="display:flex; gap:8px;">
+                <div class="u-flex u-gap-2">
                     <button type="button" class="btn btn-sm btn-edit-rtn">[EDIT]</button>
                     <button type="button" class="icon-btn delete btn-del-rtn">×</button>
                 </div>
@@ -1263,20 +1263,20 @@ function renderMedsManagerList() {
 
         const row = document.createElement('div');
         row.className = 'cfg-box';
-        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; border-left:3px solid #4c5b73;';
+        row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; margin-bottom:var(--space-2); border-left:3px solid #4c5b73;';
 
         row.innerHTML = `
             <div>
-                <strong style="color:var(--text-main); font-size:var(--font-sm);">${escapeHtml(m.title)}</strong>
-                <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:8px;">➔ Injected in: <strong>${escapeHtml(linkedRtn ? linkedRtn.title : 'Evening Routine')}</strong></span>
-                <div style="font-size:var(--font-xs); color:var(--text-muted); margin-top:3px;">
+                <strong class="u-main u-fs-sm">${escapeHtml(m.title)}</strong>
+                <span class="u-fs-xs u-dim u-ml-2">➔ Injected in: <strong>${escapeHtml(linkedRtn ? linkedRtn.title : 'Evening Routine')}</strong></span>
+                <div class="u-fs-xs u-muted u-mt-1">
                     ${escapeHtml(freqDesc)} · ${m.instances || 1} dose(s) · Alert ${m.alertDays || 7}d before runout
                 </div>
             </div>
-            <div style="display:flex; align-items:center; gap:10px;">
-                <div style="display:flex; align-items:center; gap:4px; font-size:var(--font-xs);">
-                    <span style="color:var(--text-dim);">STOCK:</span>
-                    <input type="number" class="form-control form-control-sm no-spinners med-stock-quick" style="width:65px; text-align:center;" value="${m.stock ?? 0}">
+            <div class="u-flex u-ai-center u-gap-3">
+                <div class="u-flex u-ai-center u-gap-1 u-fs-xs">
+                    <span class="u-dim">STOCK:</span>
+                    <input type="number" class="form-control form-control-sm no-spinners med-stock-quick u-tc" style="width:65px;" value="${m.stock ?? 0}">
                 </div>
                 <button type="button" class="btn btn-sm btn-edit-med">[EDIT]</button>
                 <button type="button" class="icon-btn delete btn-del-med">×</button>
@@ -1320,14 +1320,14 @@ function renderGhostLayersManagerList() {
         }).join('  ·  ');
 
         box.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
-                <div style="flex:1; min-width:0;">
-                    <strong style="font-size:var(--font-sm); color:var(--text-main); text-transform:uppercase;">${escapeHtml(ref.title)}</strong>
-                    <div style="font-size:var(--font-xs); color:var(--text-muted); margin-top:4px; word-break:break-word;">
+            <div class="u-flex u-jc-between u-ai-center u-gap-3">
+                <div class="u-grow u-minw0">
+                    <strong class="u-fs-sm u-main u-upper">${escapeHtml(ref.title)}</strong>
+                    <div class="u-fs-xs u-muted u-mt-1" style="word-break:break-word;">
                         ${escapeHtml(slotsSummary || 'No time windows')}
                     </div>
                 </div>
-                <div style="display:flex; gap:8px; flex-shrink:0;">
+                <div class="u-flex u-gap-2 u-noshrink">
                     <button type="button" class="btn btn-sm btn-edit-ghost">[EDIT]</button>
                     <button type="button" class="icon-btn delete btn-del-ghost">×</button>
                 </div>
@@ -1357,7 +1357,7 @@ function renderTasks() {
     if (headerRow && !document.getElementById('tasks-view-toggles')) {
         const viewToggles = document.createElement('div');
         viewToggles.id = 'tasks-view-toggles';
-        viewToggles.style.cssText = 'display:flex; gap:2px; margin-right:8px; border-right:1px dotted #333; padding-right:8px;';
+        viewToggles.style.cssText = 'display:flex; gap:2px; margin-right:var(--space-2); border-right:1px dotted var(--border-color); padding-right:var(--space-2);';
         headerRow.insertBefore(viewToggles, headerRow.firstChild);
     }
     const viewTogglesEl = document.getElementById('tasks-view-toggles');
@@ -1389,19 +1389,19 @@ function renderTasks() {
         hasSched = true;
         const eventGroup = document.createElement('div');
         eventGroup.className = 'category-group';
-        eventGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title" style="color: var(--text-dim);">Events</div></div>`;
+        eventGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title u-dim">Events</div></div>`;
 
         dayEvents.forEach(e => {
             const item = document.createElement('div');
             item.className = 'task-item';
-            item.style.cssText = `border-left: 3px solid ${e.color}; padding-left: 10px;`;
+            item.style.cssText = `border-left: 3px solid ${e.color}; padding-left:var(--space-3);`;
 
             const left = document.createElement('div');
             left.className = 'task-left';
 
             const title = document.createElement('div');
             title.className = 'task-title';
-            title.style.cssText = `color: ${e.color}; font-weight: bold;`;
+            title.style.cssText = `color: ${e.color}; font-weight:bold;`;
             const timeBadge = (e.start && e.end) ? `[${e.start}-${e.end}] ` : '';
             title.textContent = `${timeBadge}${e.title}`;
 
@@ -1420,7 +1420,7 @@ function renderTasks() {
         hasSched = true;
         const trGroup = document.createElement('div');
         trGroup.className = 'category-group';
-        trGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title" style="color: var(--text-dim);">Transports</div></div>`;
+        trGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title u-dim">Transports</div></div>`;
 
         confirmedTransportsToday.forEach(tr => {
             const item = document.createElement('div');
@@ -1854,7 +1854,7 @@ function renderGeneralTodos() {
     container.innerHTML = '';
 
     if (generalTodos.length === 0) {
-        container.innerHTML = '<span class="empty-state" style="padding: 4px 0;">[ QUEUE EMPTY ]</span>';
+        container.innerHTML = '<span class="empty-state u-py-1">[ QUEUE EMPTY ]</span>';
         return;
     }
 
@@ -2029,7 +2029,7 @@ function populateHabitGridCells(grid2DEl, strip1DEl, diffDays) {
 
             const cell = document.createElement('div');
             cell.className = 'cell';
-            cell.style.cssText = 'width: 11px; height: 11px;';
+            cell.style.cssText = 'width:11px; height:11px;';
             cell.title = `${dateStr} // ${stats.completed}/${stats.total}`;
 
             let lvlClass = 'lvl-none';
@@ -2054,16 +2054,16 @@ function renderStreakAtomGrid() {
     const { diffDays, todayStats, streak } = computeConsistencyMetrics();
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:14px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-4 u-scroll-y">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">Habit Grid</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px; font-variant-numeric:tabular-nums;">// TODAY ${todayStats.completed}/${todayStats.total} · STREAK ${streak}D</span>
+                    <span class="u-fs-xs u-dim u-ml-2 u-tnum">// TODAY ${todayStats.completed}/${todayStats.total} · STREAK ${streak}D</span>
                 </div>
                 <div id="streak-atom-strip-1d" class="tracker-strip-1d"></div>
             </div>
-            <div class="tracker-wrapper" style="padding-bottom:6px; text-align:left;">
-                <div class="tracker-grid" id="streak-atom-grid-2d" style="margin-top:4px;"></div>
+            <div class="tracker-wrapper" style="padding-bottom:var(--space-2); text-align:left;">
+                <div class="tracker-grid u-mt-1" id="streak-atom-grid-2d"></div>
             </div>
         </div>
     `;
@@ -2080,14 +2080,14 @@ function renderStreakAtomLedger() {
     if (!root) return;
 
     root.innerHTML = `
-        <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:12px; overflow-y:auto;">
-            <div class="section-header-row" style="margin-bottom:0;">
+        <div class="module-body-padded u-grow u-flex u-col u-gap-3 u-scroll-y">
+            <div class="section-header-row u-mb-0">
                 <div>
                     <span class="section-label">Focus Ledger</span>
-                    <span id="streak-atom-ledger-badge" style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px; font-variant-numeric:tabular-nums;"></span>
+                    <span class="u-fs-xs u-dim u-ml-2 u-tnum" id="streak-atom-ledger-badge"></span>
                 </div>
             </div>
-            <div id="streak-atom-ledger-body" style="flex:1; overflow-y:auto;"></div>
+            <div class="u-grow u-scroll-y" id="streak-atom-ledger-body"></div>
         </div>
     `;
 
@@ -2208,20 +2208,20 @@ function populateFocusLedgerDom(container, summaryEl) {
     const maxCatMins = Math.max(...catEntries.map(e => e[1].total), 1);
 
     const gridWrap = document.createElement('div');
-    gridWrap.style.cssText = 'display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;';
+    gridWrap.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-2); margin-bottom:var(--space-4);';
 
     catEntries.forEach(([catName, stats]) => {
         const pct = Math.round((stats.total / maxCatMins) * 100);
         const row = document.createElement('div');
-        row.style.cssText = 'display: grid; grid-template-columns: 130px 1fr 185px; align-items: center; gap: 12px; font-size: var(--font-xs); padding: 6px 10px; background: rgba(255,255,255,0.02); border: 1px solid var(--border-color);';
+        row.style.cssText = 'display:grid; grid-template-columns:130px 1fr 185px; align-items:center; gap:var(--space-3); font-size:var(--font-xs); padding:var(--space-2) var(--space-3); background:rgba(255,255,255,0.02); border:1px solid var(--border-color);';
         row.innerHTML = `
-            <strong style="color: var(--text-main); text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(catName)}</strong>
-            <div style="height: 6px; background: #111; border: 1px solid #333; position: relative;">
-                <div style="height: 100%; width: ${pct}%; background: var(--text-main);"></div>
+            <strong class="u-main u-upper u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(catName)}</strong>
+            <div style="height:6px; background:var(--bg-elevated); border:1px solid var(--border-color); position:relative;">
+                <div style="height:100%; width: ${pct}%; background:var(--text-main);"></div>
             </div>
-            <div style="text-align: right; color: var(--text-muted); font-variant-numeric: tabular-nums;">
-                <strong style="color: var(--text-main);">${fmtH(stats.total)}</strong> 
-                <span style="color: var(--text-dim);"> (WK:${fmtH(stats.week)})</span>
+            <div class="u-tr u-muted u-tnum">
+                <strong class="u-main">${fmtH(stats.total)}</strong> 
+                <span class="u-dim"> (WK:${fmtH(stats.week)})</span>
             </div>
         `;
         gridWrap.appendChild(row);
@@ -2234,16 +2234,16 @@ function populateFocusLedgerDom(container, summaryEl) {
     container.appendChild(recentHeader);
 
     const recentList = document.createElement('div');
-    recentList.style.cssText = 'display: flex; flex-direction: column; gap: 4px; max-height: 130px; overflow-y: auto;';
+    recentList.style.cssText = 'display:flex; flex-direction:column; gap:var(--space-1); max-height:130px; overflow-y:auto;';
 
     completedHistoryEntries.reverse().slice(0, 8).forEach(item => {
         const r = document.createElement('div');
-        r.style.cssText = 'display: flex; justify-content: space-between; align-items: center; font-size: var(--font-xs); padding: 4px 8px; border-bottom: 1px dotted #222;';
+        r.style.cssText = 'display:flex; justify-content:space-between; align-items:center; font-size:var(--font-xs); padding:var(--space-1) var(--space-2); border-bottom:1px dotted var(--border-color);';
         r.innerHTML = `
             <div>
-                <span style="color: var(--text-dim); margin-right: 8px;">${escapeHtml(item.date)}</span>
-                <strong style="color: var(--text-main);">[${escapeHtml(item.category)}]</strong> 
-                <span style="color: var(--text-muted);">${escapeHtml(item.title)}</span>
+                <span class="u-dim" style="margin-right:var(--space-2);">${escapeHtml(item.date)}</span>
+                <strong class="u-main">[${escapeHtml(item.category)}]</strong> 
+                <span class="u-muted">${escapeHtml(item.title)}</span>
             </div>
             <strong>${item.minutes}m</strong>
         `;
@@ -2475,15 +2475,15 @@ function ensureMobilePlanEditTabsExist(leftCol) {
     if (!tabBar) {
         tabBar = document.createElement('div');
         tabBar.id = 'plan-mob-edit-tabs';
-        tabBar.style.cssText = 'display:flex; gap:6px; margin-bottom:4px; flex-shrink:0;';
+        tabBar.style.cssText = 'display:flex; gap:var(--space-2); margin-bottom:var(--space-1); flex-shrink:0;';
         leftCol.insertBefore(tabBar, leftCol.firstChild);
     }
 
     tabBar.style.display = 'flex';
     tabBar.innerHTML = `
-        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'flex' ? 'btn-primary' : ''}" style="flex:1;" data-ptab="flex">FLEX TASKS</button>
-        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'todo' ? 'btn-primary' : ''}" style="flex:1;" data-ptab="todo">TO-DO</button>
-        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'ghosts' ? 'btn-primary' : ''}" style="flex:1;" data-ptab="ghosts">GHOSTS</button>
+        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'flex' ? 'btn-primary' : ''} u-grow" data-ptab="flex">FLEX TASKS</button>
+        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'todo' ? 'btn-primary' : ''} u-grow" data-ptab="todo">TO-DO</button>
+        <button type="button" class="btn btn-sm ${activeMobilePlanEditTab === 'ghosts' ? 'btn-primary' : ''} u-grow" data-ptab="ghosts">GHOSTS</button>
     `;
 
     tabBar.querySelectorAll('button[data-ptab]').forEach(btn => {
@@ -2539,22 +2539,22 @@ function renderDayPlannerModule() {
             refBox.style.cssText = `padding: 5px 8px; border: 1px solid ${isVisible ? 'var(--border-color)' : 'rgba(255,255,255,0.05)'}; border-left: 2px solid ${ref.color || '#4c5b73'}; background: rgba(255,255,255,${isVisible ? '0.02' : '0.005'}); opacity: ${isVisible || lockedSlotsCount > 0 ? '0.9' : '0.45'}; transition: opacity 0.15s, border-color 0.15s;`;
 
             const bannerRow = document.createElement('div');
-            bannerRow.style.cssText = 'display: flex; justify-content: space-between; align-items: center; cursor: pointer; user-select: none; gap: 6px;';
+            bannerRow.style.cssText = 'display:flex; justify-content:space-between; align-items:center; cursor:pointer; user-select:none; gap:var(--space-2);';
             bannerRow.onclick = () => togglePlanGhostLayer(ref.id);
 
             const lockedBadge = lockedSlotsCount > 0
-                ? `<span style="color: var(--accent-green); font-size: var(--font-2xs); margin-left: 6px;">[${lockedSlotsCount} LOCKED]</span>`
+                ? `<span class="u-green u-fs-2xs u-ml-2">[${lockedSlotsCount} LOCKED]</span>`
                 : '';
 
             bannerRow.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 6px; min-width: 0;">
-                    <div class="check-box ${isVisible ? 'checked' : ''}" style="width: 11px; height: 11px;"></div>
-                    <span style="font-size: var(--font-xs); color: ${isVisible ? 'var(--text-muted)' : 'var(--text-dim)'}; font-weight: bold; text-transform: uppercase; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                <div class="u-flex u-ai-center u-gap-2 u-minw0">
+                    <div class="check-box ${isVisible ? 'checked' : ''}" style="width:11px; height:11px;"></div>
+                    <span style="font-size:var(--font-xs); color: ${isVisible ? 'var(--text-muted)' : 'var(--text-dim)'}; font-weight:bold; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                         ${escapeHtml(ref.title)}
                     </span>
                     ${lockedBadge}
                 </div>
-                <span style="font-size: var(--font-2xs); color: var(--text-dim); flex-shrink: 0;">
+                <span class="u-fs-2xs u-dim u-noshrink">
                     ${isVisible ? '[HIDE ▲]' : `[SHOW ${slotsToday.length} ▼]`}
                 </span>
             `;
@@ -2562,7 +2562,7 @@ function renderDayPlannerModule() {
 
             if (isVisible) {
                 const chipsWrap = document.createElement('div');
-                chipsWrap.style.cssText = 'display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; padding-top: 5px; border-top: 1px dotted rgba(255,255,255,0.06);';
+                chipsWrap.style.cssText = 'display:flex; flex-wrap:wrap; gap:var(--space-1); margin-top:var(--space-2); padding-top:var(--space-1); border-top:1px dotted rgba(255,255,255,0.06);';
 
                 slotsToday.forEach(tw => {
                     const isConfirmed = customBlocks.some(b =>
@@ -2587,7 +2587,7 @@ function renderDayPlannerModule() {
         });
 
         if (!hasAnyGhost) {
-            trCont.innerHTML = `<div class="empty-state" style="padding: 4px 0;">[ NO GHOST LAYERS ON ${dayNamesFull[targetDayIdx]} ]</div>`;
+            trCont.innerHTML = `<div class="empty-state u-py-1">[ NO GHOST LAYERS ON ${dayNamesFull[targetDayIdx]} ]</div>`;
         }
     }
 
@@ -2605,7 +2605,7 @@ function renderDayPlannerModule() {
         let totalCommittedMins = 0;
 
         if (flexTasksForDay.length === 0) {
-            availCont.innerHTML = '<div class="empty-state" style="padding: 4px 0;">[ NO FLEXIBLE TASKS FOR THIS DAY ]</div>';
+            availCont.innerHTML = '<div class="empty-state u-py-1">[ NO FLEXIBLE TASKS FOR THIS DAY ]</div>';
         } else {
             flexTasksForDay.forEach(t => {
                 const rawMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, targetDate) : (t.timerMinutes || 0);
@@ -2630,15 +2630,15 @@ function renderDayPlannerModule() {
                     : (isTapSelected ? '[TAP TIME BELOW ↓]' : (isMob ? '[TAP TO SELECT]' : '[:: DRAG]'));
 
                 row.innerHTML = `
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-weight: bold; color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                            <span style="color: var(--text-dim);">[${escapeHtml(t.category)}]</span> ${escapeHtml(t.title)}
+                    <div class="u-grow u-minw0">
+                        <div class="u-bold u-main u-clip u-nowrap" style="text-overflow:ellipsis;">
+                            <span class="u-dim">[${escapeHtml(t.category)}]</span> ${escapeHtml(t.title)}
                         </div>
-                        <div style="font-size: var(--font-2xs); color: var(--text-dim); margin-top: 2px;">
+                        <div class="u-fs-2xs u-dim" style="margin-top:2px;">
                             ${unitMins}m/block · <strong>${remainingBlocks}/${totalInstances} remaining</strong>
                         </div>
                     </div>
-                    <span style="font-size: var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; font-weight: bold;">${rightHint}</span>
+                    <span style="font-size:var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; font-weight:bold;">${rightHint}</span>
                 `;
 
                 if (remainingBlocks > 0) {
@@ -2688,7 +2688,7 @@ function renderDayPlannerModule() {
         );
 
         if (assignedUnplacedTodos.length === 0 && generalTodos.length === 0) {
-            inboxCont.innerHTML = '<div class="empty-state" style="padding: 4px 0;">[ NO TO-DO IN QUEUE ]</div>';
+            inboxCont.innerHTML = '<div class="empty-state u-py-1">[ NO TO-DO IN QUEUE ]</div>';
         } else {
             assignedUnplacedTodos.forEach(t => {
                 const isTapSelected = mobileSelectedPlanItemToPlace && mobileSelectedPlanItemToPlace.templateId === t.id;
@@ -2696,8 +2696,8 @@ function renderDayPlannerModule() {
                 row.className = 'plan-draggable-card';
                 row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.03)'}; border: 1px solid ${isTapSelected ? 'var(--text-main)' : 'var(--border-bright)'}; border-left: 3px solid #ffffff; font-size: var(--font-xs); cursor: pointer; user-select: none;`;
                 row.innerHTML = `
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"><strong>[ASSIGNED]</strong> ${escapeHtml(t.title)}</span>
-                    <span style="font-size: var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: 15m]')}</span>
+                    <span class="u-clip u-nowrap" style="text-overflow:ellipsis;"><strong>[ASSIGNED]</strong> ${escapeHtml(t.title)}</span>
+                    <span style="font-size:var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink:0; margin-left:var(--space-2);">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: 15m]')}</span>
                 `;
                 const payload = {
                     kind: 'new_item',
@@ -2724,8 +2724,8 @@ function renderDayPlannerModule() {
                 row.className = 'plan-draggable-card';
                 row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.02)'}; border: 1px ${isTapSelected ? 'solid var(--text-main)' : 'dashed var(--border-color)'}; font-size: var(--font-xs); cursor: pointer; user-select: none;`;
                 row.innerHTML = `
-                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${escapeHtml(item.title)}</span>
-                    <span style="font-size: var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink: 0; margin-left: 6px;">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: DRAG 15m]')}</span>
+                    <span class="u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(item.title)}</span>
+                    <span style="font-size:var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; flex-shrink:0; margin-left:var(--space-2);">${isTapSelected ? '[TAP BELOW ↓]' : (isMob ? '[TAP 15m]' : '[:: DRAG 15m]')}</span>
                 `;
                 const payload = {
                     kind: 'new_item',
@@ -2852,10 +2852,10 @@ function renderDayPlannerTimelineCanvas(targetDate) {
 
     const dropIndicator = document.createElement('div');
     dropIndicator.id = 'plan-mod-drop-indicator';
-    dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border: 1px dashed var(--text-main); background: rgba(255,255,255,0.12); z-index: 80; pointer-events:none;';
+    dropIndicator.style.cssText = 'display:none; position:absolute; left:0; right:0; border:1px dashed var(--text-main); background:rgba(255,255,255,0.12); z-index:80; pointer-events:none;';
     const dropBadge = document.createElement('span');
     dropBadge.id = 'plan-mod-drop-badge';
-    dropBadge.style.cssText = 'position:absolute; right:6px; top:2px; background:#000; color:var(--text-main); border:1px solid var(--text-main); font-size:var(--font-2xs); padding:1px 6px; font-weight:bold;';
+    dropBadge.style.cssText = 'position:absolute; right:6px; top:2px; background:#000; color:var(--text-main); border:1px solid var(--text-main); font-size:var(--font-2xs); padding:1px var(--space-2); font-weight:bold;';
     dropIndicator.appendChild(dropBadge);
     canvasCol.appendChild(dropIndicator);
 
@@ -2879,8 +2879,8 @@ function renderDayPlannerTimelineCanvas(targetDate) {
                     block.className = 'block-absolute block-ref';
                     block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: pointer; display: flex; justify-content: space-between; align-items: center; z-index: 3;`;
                     block.innerHTML = `
-                        <span style="font-size:var(--font-2xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
-                        <span style="font-size:var(--font-2xs); color:var(--text-muted); flex-shrink:0; margin-left:6px;">[LOCK]</span>
+                        <span class="u-fs-2xs u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
+                        <span class="u-fs-2xs u-muted u-noshrink u-ml-2">[LOCK]</span>
                     `;
                     block.onclick = (e) => {
                         if (mobileSelectedPlanItemToPlace) return;
@@ -3034,7 +3034,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         if (isDraggableKind) {
             const delBtn = document.createElement('button');
             delBtn.className = 'icon-btn delete';
-            delBtn.style.cssText = 'font-size: var(--font-2xs); z-index: 15;';
+            delBtn.style.cssText = 'font-size:var(--font-2xs); z-index:15;';
             delBtn.textContent = '×';
             delBtn.onclick = removeBlockAction;
             block.appendChild(delBtn);

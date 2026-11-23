@@ -433,7 +433,7 @@ function saveCurrentAsMacroDefault(macroKey) {
 function showPresetModulesHoverPopup(e, presetName, modulesListStr) {
     const tooltip = document.getElementById('planner-tooltip');
     if (!tooltip) return;
-    tooltip.innerHTML = `<strong style="display:block; margin-bottom:2px; color:var(--text-main);">${escapeHtml(presetName)}</strong><span style="color:var(--text-muted);">${escapeHtml(modulesListStr)}</span>`;
+    tooltip.innerHTML = `<strong class="u-block u-main" style="margin-bottom:2px;">${escapeHtml(presetName)}</strong><span class="u-muted">${escapeHtml(modulesListStr)}</span>`;
     tooltip.style.display = 'block';
     tooltip.style.left = (e.clientX + 14) + 'px';
     tooltip.style.top = (e.clientY + 14) + 'px';
@@ -508,7 +508,7 @@ function openFloatingDockPopover(anchorBtn, modKey) {
     const setDefBtn = document.createElement('button');
     setDefBtn.type = 'button';
     setDefBtn.className = 'btn btn-primary btn-sm';
-    setDefBtn.style.cssText = 'width: 100%; margin-top: 2px; font-size: var(--font-2xs);';
+    setDefBtn.style.cssText = 'width:100%; margin-top:2px; font-size:var(--font-2xs);';
     setDefBtn.textContent = '[★ SET AS DEFAULT]';
     setDefBtn.onclick = (e) => {
         e.stopPropagation();
@@ -796,7 +796,7 @@ function renderEditDockChips() {
         const dropBtn = document.createElement('button');
         dropBtn.type = 'button';
         dropBtn.className = 'btn btn-sm dock-sub-drop-btn';
-        dropBtn.style.cssText = 'padding: 4px 6px; margin-left: -1px; font-size: var(--font-2xs); border-color: var(--border-bright);';
+        dropBtn.style.cssText = 'padding:var(--space-1) var(--space-2); margin-left:-1px; font-size:var(--font-2xs); border-color:var(--border-bright);';
         dropBtn.textContent = '▾';
         dropBtn.onclick = (e) => {
             e.stopPropagation();
@@ -927,7 +927,7 @@ function buildTilingDomNode(node, paneCounter, totalPanes) {
         leftPart.className = 'quadrant-bar-left';
 
         const dragHint = document.createElement('span');
-        dragHint.style.cssText = 'color: var(--text-dim); font-weight: bold;';
+        dragHint.style.cssText = 'color:var(--text-dim); font-weight:bold;';
         dragHint.textContent = '[::]';
 
         const select = document.createElement('select');
@@ -1454,7 +1454,7 @@ function updateWorkspaceDropdownUI() {
     });
 
     let html = `
-        <div style="padding: 7px 12px; font-size: var(--font-2xs); color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase;">
+        <div class="u-fs-2xs u-dim u-upper" style="padding:var(--space-2) var(--space-3); border-bottom:1px solid var(--border-color);">
             Startup Default
         </div>
         <div class="startup-option-row ${isLastStartup ? 'active' : ''}" onclick="setStartupViewPreference('last')">
@@ -1465,18 +1465,18 @@ function updateWorkspaceDropdownUI() {
             <span>0 // Zero-UI</span>
             <span>${isZeroStartup ? '★' : '[SET]'}</span>
         </div>
-        <div style="padding: 8px 12px; border-bottom: 1px solid var(--border-color); display:flex; align-items:center; justify-content:space-between; gap:8px;">
-            <span style="font-size:var(--font-xs); color:var(--text-muted);">Single Module:</span>
-            <select class="form-control form-control-sm" style="width:180px; padding:3px 6px;" onchange="if(this.value) setStartupViewPreference(this.value)">
+        <div class="u-flex u-ai-center u-jc-between u-gap-2" style="padding:var(--space-2) var(--space-3); border-bottom:1px solid var(--border-color);">
+            <span class="u-fs-xs u-muted">Single Module:</span>
+            <select class="form-control form-control-sm" style="width:180px; padding:var(--space-1) var(--space-2);" onchange="if(this.value) setStartupViewPreference(this.value)">
                 ${singleModOptionsHtml}
             </select>
         </div>
 
-        <div style="padding: 7px 12px; font-size: var(--font-2xs); color: var(--text-dim); border-bottom: 1px solid var(--border-color); text-transform: uppercase; margin-top: 6px;">
+        <div class="u-fs-2xs u-dim u-upper u-mt-2" style="padding:var(--space-2) var(--space-3); border-bottom:1px solid var(--border-color);">
             Saved Views
         </div>
         <div id="settings-saved-views-list"></div>
-        <div style="padding: 10px; background: #030303; display: flex; gap: 6px; border-top: 1px solid var(--border-color);">
+        <div class="u-flex u-gap-2" style="padding:var(--space-3); background:var(--bg-sec); border-top:1px solid var(--border-color);">
             <input type="text" id="new-preset-name-input" class="form-control form-control-sm" placeholder="View name..." onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCurrentWorkspacePreset('new-preset-name-input');}">
             <button class="btn btn-primary btn-sm" onclick="saveCurrentWorkspacePreset('new-preset-name-input')">[SAVE VIEW]</button>
         </div>
@@ -1486,7 +1486,7 @@ function updateWorkspaceDropdownUI() {
 
     const listContainer = dropEl.querySelector('#settings-saved-views-list');
     if (workspacePresets.length === 0) {
-        listContainer.innerHTML = `<div style="padding: 12px; font-size: var(--font-xs); color: var(--text-dim);">[ NONE ]</div>`;
+        listContainer.innerHTML = `<div class="u-fs-xs u-dim" style="padding:var(--space-3);">[ NONE ]</div>`;
     } else {
         workspacePresets.forEach(p => {
             const pLeaves = p.tree ? collectLeafPanes(p.tree).map(l => dashboardModules[l.module]?.name || l.module.toUpperCase()) : [];
@@ -1494,13 +1494,13 @@ function updateWorkspaceDropdownUI() {
             const isPresetStartup = (startupView === `preset:${p.id}`);
 
             const row = document.createElement('div');
-            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding: 8px 12px; border-bottom: 1px solid #1a1a1a; gap: 8px;';
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); border-bottom:1px solid #1a1a1a; gap:var(--space-2);';
             row.onmouseenter = (e) => showPresetModulesHoverPopup(e, p.name, desc);
             row.onmousemove = movePresetModulesHoverPopup;
             row.onmouseleave = hidePresetModulesHoverPopup;
 
             const nameDiv = document.createElement('div');
-            nameDiv.style.cssText = 'cursor:pointer; flex:1; min-width:0; font-size: var(--font-xs); font-weight: bold; color: var(--text-main); overflow:hidden; text-overflow:ellipsis;';
+            nameDiv.style.cssText = 'cursor:pointer; flex:1; min-width:0; font-size:var(--font-xs); font-weight:bold; color:var(--text-main); overflow:hidden; text-overflow:ellipsis;';
             nameDiv.textContent = p.name;
             nameDiv.onclick = () => {
                 hidePresetModulesHoverPopup();
@@ -1508,7 +1508,7 @@ function updateWorkspaceDropdownUI() {
             };
 
             const actionsDiv = document.createElement('div');
-            actionsDiv.style.cssText = 'display:flex; align-items:center; gap:4px; flex-shrink:0;';
+            actionsDiv.style.cssText = 'display:flex; align-items:center; gap:var(--space-1); flex-shrink:0;';
             actionsDiv.innerHTML = `
                 <button class="startup-star-btn ${isPresetStartup ? 'active' : ''}">${isPresetStartup ? '★' : '☆'}</button>
                 <button class="icon-btn delete">×</button>
@@ -1814,28 +1814,28 @@ function renderHudPod() {
             const activeColor = phase.type === 'task' ? (phase.color || '#ffffff') : '#888888';
 
             focusBox.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                <div class="u-flex u-jc-between u-ai-base">
                     <div style="font-size:1.35rem; font-weight:bold; color:${activeColor}; font-variant-numeric:tabular-nums;">
                         ${isPomodoroPaused ? '⏸' : '▶'} ${m}:${s}
                     </div>
-                    <div style="font-size:var(--font-xs); font-weight:bold; color:var(--text-main); max-width:175px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                    <div class="u-fs-xs u-bold u-main u-clip u-nowrap" style="max-width:175px; text-overflow:ellipsis;">
                         ${escapeHtml(phase.type === 'task' ? phase.title : 'BREAK')}
                     </div>
                 </div>
-                <div style="height:4px; width:100%; background:#141414; overflow:hidden;">
+                <div class="u-w-full u-clip" style="height:4px; background:var(--bg-elevated);">
                     <div style="height:100%; width:${pct.toFixed(1)}%; background:${activeColor};"></div>
                 </div>
-                <div style="display:flex; justify-content:flex-end; gap:6px; margin-top:2px;">
-                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="togglePomodoroPause(); renderHudPod();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
-                    <button type="button" class="btn btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="skipPomodoroPhase(); renderHudPod();">[SKIP ✓]</button>
-                    <button type="button" class="btn btn-danger btn-sm" style="padding:2px 6px; font-size:var(--font-2xs);" onclick="stopPomodoro(); renderHudPod();">×</button>
+                <div class="u-flex u-jc-end u-gap-2" style="margin-top:2px;">
+                    <button type="button" class="btn btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="togglePomodoroPause(); renderHudPod();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
+                    <button type="button" class="btn btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="skipPomodoroPhase(); renderHudPod();">[SKIP ✓]</button>
+                    <button type="button" class="btn btn-danger btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="stopPomodoro(); renderHudPod();">×</button>
                 </div>
             `;
         } else {
             focusBox.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); font-weight:bold;">FOCUS // IDLE</span>
-                    <button type="button" class="btn btn-sm" style="padding:2px 8px; font-size:var(--font-2xs);" onclick="openTimerModal()">▶</button>
+                <div class="u-flex u-jc-between u-ai-center">
+                    <span class="u-fs-xs u-dim u-bold">FOCUS // IDLE</span>
+                    <button type="button" class="btn btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="openTimerModal()">▶</button>
                 </div>
             `;
         }
@@ -1849,7 +1849,7 @@ function renderHudPod() {
             : (typeof mBalance !== 'undefined' ? mBalance : 0);
 
         radarEl.innerHTML = `
-            <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1;"><strong>${escapeHtml(nextStr)}</strong></span>
+            <span class="u-clip u-nowrap u-grow" style="text-overflow:ellipsis;"><strong>${escapeHtml(nextStr)}</strong></span>
             <span style="font-weight:bold; color:${spendableVal < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; flex-shrink:0;">€${Number(spendableVal || 0).toFixed(2)}</span>
         `;
     }
@@ -1877,7 +1877,7 @@ function renderHudPod() {
 
         const ordered = [...uncompleted, ...completed];
         if (ordered.length === 0) {
-            listEl.innerHTML = `<div class="empty-state" style="text-align:center;">[ NONE ]</div>`;
+            listEl.innerHTML = `<div class="empty-state u-tc">[ NONE ]</div>`;
         } else {
             ordered.forEach(({ t, curLog, inst }) => {
                 const isAllDone = curLog.every(Boolean);
@@ -1891,18 +1891,18 @@ function renderHudPod() {
                 const left = document.createElement('div');
                 left.style.cssText = 'flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
                 left.innerHTML = `
-                    <strong style="color:var(--text-main); ${isAllDone ? 'text-decoration:line-through;' : ''}">${escapeHtml(t.title)}</strong>
-                    <span style="font-size:var(--font-2xs); color:var(--text-dim); margin-left:4px;">${escapeHtml(t.category)}</span>
+                    <strong style="color:var(--text-main); ${isAllDone ? 'text-decoration:line-through; ':''}">${escapeHtml(t.title)}</strong>
+                    <span class="u-fs-2xs u-dim u-ml-1">${escapeHtml(t.category)}</span>
                 `;
 
                 const right = document.createElement('div');
-                right.style.cssText = 'display:flex; align-items:center; gap:4px; flex-shrink:0;';
+                right.style.cssText = 'display:flex; align-items:center; gap:var(--space-1); flex-shrink:0;';
 
                 if (!isAllDone && mins > 0) {
                     const playBtn = document.createElement('button');
                     playBtn.type = 'button';
                     playBtn.className = 'icon-btn';
-                    playBtn.style.cssText = 'font-size:var(--font-2xs); padding:1px 4px; color:var(--text-main);';
+                    playBtn.style.cssText = 'font-size:var(--font-2xs); padding:1px var(--space-1); color:var(--text-main);';
                     playBtn.textContent = '▶';
                     playBtn.onclick = () => {
                         if (typeof quickStartTaskFocus === 'function') {
@@ -1950,14 +1950,14 @@ function renderHudPodStaging() {
 
     box.style.display = 'flex';
     box.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center; font-size:var(--font-2xs); color:var(--accent-gold); font-weight:bold;">
+        <div class="u-flex u-jc-between u-ai-center u-fs-2xs u-gold u-bold">
             <span>STAGED (${hudPodStagedCommands.length})</span>
-            <div style="display:flex; gap:4px;">
-                <button type="button" class="btn btn-sm" style="padding:1px 5px; font-size:var(--font-2xs);" id="hud-stg-cancel">[ESC]</button>
-                <button type="button" class="btn btn-primary btn-sm" style="padding:1px 6px; font-size:var(--font-2xs);" id="hud-stg-run">[RUN]</button>
+            <div class="u-flex u-gap-1">
+                <button type="button" class="btn btn-sm u-fs-2xs" style="padding:1px var(--space-1);" id="hud-stg-cancel">[ESC]</button>
+                <button type="button" class="btn btn-primary btn-sm u-fs-2xs" style="padding:1px var(--space-2);" id="hud-stg-run">[RUN]</button>
             </div>
         </div>
-        <div id="hud-stg-list" style="display:flex; flex-direction:column; gap:4px;"></div>
+        <div class="u-col u-gap-1" id="hud-stg-list" style="display:flex;"></div>
     `;
 
     const listEl = box.querySelector('#hud-stg-list');
@@ -1965,7 +1965,7 @@ function renderHudPodStaging() {
         const inp = document.createElement('input');
         inp.type = 'text';
         inp.className = 'form-control form-control-sm';
-        inp.style.cssText = 'padding:3px 6px; font-size:var(--font-2xs);';
+        inp.style.cssText = 'padding:var(--space-1) var(--space-2); font-size:var(--font-2xs);';
         inp.value = cmd;
         inp.oninput = () => { hudPodStagedCommands[idx] = inp.value.trim(); };
         inp.onkeydown = (e) => {

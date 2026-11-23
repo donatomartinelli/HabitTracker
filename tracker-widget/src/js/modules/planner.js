@@ -16,7 +16,7 @@ function hexToRgba(hex, alpha) {
 function showTooltip(e, title, timeStr, category) {
     const tooltip = document.getElementById('planner-tooltip');
     if (!tooltip) return;
-    tooltip.innerHTML = `<strong style="display:block; margin-bottom:3px; color:#fff;">${escapeHtml(title)}</strong><span style="color:#aaa;">${escapeHtml(timeStr)}</span><br><span style="color:#666; margin-top:2px; display:inline-block; text-transform:uppercase;">${escapeHtml(category)}</span>`;
+    tooltip.innerHTML = `<strong class="u-block u-mb-1 u-main">${escapeHtml(title)}</strong><span class="u-muted">${escapeHtml(timeStr)}</span><br><span class="u-dim u-upper" style="margin-top:2px; display:inline-block;">${escapeHtml(category)}</span>`;
     tooltip.style.display = 'block';
     tooltip.style.left = (e.clientX + 15) + 'px';
     tooltip.style.top = (e.clientY + 15) + 'px';
@@ -175,10 +175,10 @@ function renderWeeklyPlanner() {
             if (!ref || !ref.id) return;
             const wrap = document.createElement('div');
             wrap.className = 'ref-toggle-wrap';
-            wrap.style.cssText = `border-left: 2px solid ${ref.color}; margin-bottom: 5px; justify-content: space-between;`;
+            wrap.style.cssText = `border-left: 2px solid ${ref.color}; margin-bottom:var(--space-1); justify-content:space-between;`;
 
             const lbl = document.createElement('label');
-            lbl.style.cssText = 'display:flex; align-items:center; color:#ccc; cursor:pointer; gap: 5px; flex: 1; min-width: 0;';
+            lbl.style.cssText = 'display:flex; align-items:center; color:#ccc; cursor:pointer; gap:var(--space-1); flex:1; min-width:0;';
 
             const cb = document.createElement('input');
             cb.type = 'checkbox';
@@ -193,7 +193,7 @@ function renderWeeklyPlanner() {
             lbl.appendChild(spanTxt);
 
             const actBox = document.createElement('div');
-            actBox.style.cssText = 'display:flex; gap:4px; align-items:center;';
+            actBox.style.cssText = 'display:flex; gap:var(--space-1); align-items:center;';
 
             const editBtn = document.createElement('button');
             editBtn.className = 'icon-btn';
@@ -466,7 +466,7 @@ function renderWeeklyPlanner() {
                 const hl = document.createElement('div');
                 hl.id = 'planner-hover-line';
                 hl.style.cssText = 'display:none; position:absolute; left:0; right:0; height:0; border-top:1px solid rgba(255,255,255,0.3); pointer-events:none; z-index:50;';
-                hl.innerHTML = '<div id="planner-hover-time" style="position:absolute; left:60px; top:-9px; width:40px; text-align:center; background:#050505; color:#fff; font-size:var(--font-xs); padding:1px 0; border: 1px solid #444; z-index:100;"></div>';
+                hl.innerHTML = '<div class="u-tc u-main u-fs-xs" id="planner-hover-time" style="position:absolute; left:60px; top:-9px; width:40px; background:var(--bg-sec); padding:1px 0; border:1px solid var(--border-bright); z-index:100;"></div>';
                 scrollArea.appendChild(hl);
 
                 scrollArea.addEventListener('mousemove', function(e) {
@@ -587,7 +587,7 @@ function addRefTimeWindow(start = '', end = '', days = []) {
     if (!container) return;
     const div = document.createElement('div');
     div.className = 'ref-time-window-row';
-    div.style.cssText = 'border: 1px solid #333; padding: 10px; margin-bottom: 10px; background: rgba(255,255,255,0.02);';
+    div.style.cssText = 'border:1px solid var(--border-color); padding:var(--space-3); margin-bottom:var(--space-3); background:rgba(255,255,255,0.02);';
 
     const dayLabels = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'];
     const dayVals = [1, 2, 3, 4, 5, 6, 0];
@@ -597,18 +597,18 @@ function addRefTimeWindow(start = '', end = '', days = []) {
     }
 
     div.innerHTML = `
-        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+        <div class="u-flex u-gap-4 u-mb-3">
+            <div class="form-group u-grow u-mb-0">
                 <label>Start</label>
                 <input type="time" class="form-control ref-start" required value="${start}">
             </div>
-            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+            <div class="form-group u-grow u-mb-0">
                 <label>End</label>
                 <input type="time" class="form-control ref-end" required value="${end}">
             </div>
-            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top: 20px;">×</button>
+            <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top:var(--space-5);">×</button>
         </div>
-        <div class="days-checkboxes" style="display: flex; gap: 10px;">${checksHtml}</div>
+        <div class="days-checkboxes u-flex u-gap-3">${checksHtml}</div>
     `;
     container.appendChild(div);
 }

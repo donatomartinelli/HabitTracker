@@ -161,13 +161,13 @@ function syncMobileModeUI() {
     if (subStrip) {
         if (Array.isArray(activeMobilePresetMods) && activeMobilePresetMods.length > 1) {
             subStrip.style.display = 'flex';
-            subStrip.innerHTML = `<span style="font-size:var(--font-2xs); color:var(--accent-gold); font-weight:bold; flex-shrink:0;">${escapeHtml(activeMobilePresetName)}:</span>`;
+            subStrip.innerHTML = `<span class="u-fs-2xs u-gold u-bold u-noshrink">${escapeHtml(activeMobilePresetName)}:</span>`;
             activeMobilePresetMods.forEach(mk => {
                 if (!dashboardModules[mk]) return;
                 const b = document.createElement('button');
                 b.type = 'button';
                 b.className = `note-subcat-pill ${mk === activeMobileModKey ? 'active' : ''}`;
-                b.style.cssText = 'padding: 5px 11px; font-size: 0.7rem; flex-shrink: 0;';
+                b.style.cssText = 'padding:var(--space-1) var(--space-3); font-size:var(--font-2xs); flex-shrink:0;';
                 b.textContent = dashboardModules[mk].name.toUpperCase();
                 b.onclick = () => mountMobileSingleModule(mk, true);
                 subStrip.appendChild(b);
@@ -185,7 +185,7 @@ function syncMobileModeUI() {
                     const b = document.createElement('button');
                     b.type = 'button';
                     b.className = `note-subcat-pill ${sk === activeMobileModKey ? 'active' : ''}`;
-                    b.style.cssText = 'padding: 5px 11px; font-size: 0.7rem; flex-shrink: 0;';
+                    b.style.cssText = 'padding:var(--space-1) var(--space-3); font-size:var(--font-2xs); flex-shrink:0;';
                     b.textContent = shortName.toUpperCase();
                     b.onclick = () => mountMobileSingleModule(sk, false);
                     subStrip.appendChild(b);

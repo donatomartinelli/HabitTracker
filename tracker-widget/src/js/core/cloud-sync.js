@@ -433,12 +433,12 @@ function showSyncConflictsModal() {
     const fmt = (v) => esc(typeof v === 'string' ? v : JSON.stringify(v, null, 2));
     const rows = list.length
         ? list.map((c) => `
-            <div class="cfg-box" style="display:flex; flex-direction:column; gap:6px;">
-                <div style="display:flex; justify-content:space-between; font-size:var(--font-2xs); color:var(--text-dim);">
+            <div class="cfg-box u-flex u-col u-gap-2">
+                <div class="u-flex u-jc-between u-fs-2xs u-dim">
                     <span>${esc(humanSyncPath(c.path))}</span><span>${esc(new Date(c.at).toLocaleString('en-GB'))}</span>
                 </div>
-                <div style="font-size:var(--font-2xs); color:var(--text-dim);">DISCARDED VERSION</div>
-                <pre style="white-space:pre-wrap; margin:0; font-size:var(--font-xs); max-height:160px; overflow:auto;">${fmt(c.discarded)}</pre>
+                <div class="u-fs-2xs u-dim">DISCARDED VERSION</div>
+                <pre class="u-m-0 u-fs-xs" style="white-space:pre-wrap; max-height:160px; overflow:auto;">${fmt(c.discarded)}</pre>
             </div>`).join('')
         : '<div class="empty-state">[ NO CONFLICTS ]</div>';
 
@@ -448,16 +448,16 @@ function showSyncConflictsModal() {
     wrap.className = 'modal-overlay';
     wrap.style.cssText = 'position:fixed; inset:0; background:rgba(0,0,0,0.8); display:flex; align-items:center; justify-content:center; z-index:var(--z-modal); padding:var(--space-4);';
     wrap.innerHTML = `
-        <div class="modal-content" style="background:var(--bg-sec); border:1px solid var(--border-bright); width:min(640px,100%); max-height:85vh; display:flex; flex-direction:column; gap:var(--space-3); padding:var(--space-4);">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
+        <div class="modal-content u-flex u-col u-gap-3" style="background:var(--bg-sec); border:1px solid var(--border-bright); width:min(640px,100%); max-height:85vh; padding:var(--space-4);">
+            <div class="u-flex u-jc-between u-ai-center">
                 <span class="section-label">Sync conflicts</span>
                 <button type="button" class="icon-btn" data-close>×</button>
             </div>
-            <div style="font-size:var(--font-xs); color:var(--text-dim); line-height:var(--line-normal);">
+            <div class="u-fs-xs u-dim" style="line-height:var(--line-normal);">
                 When the same thing was changed differently on two devices, Cortex keeps the newest version.
                 The discarded one is here in case you need it back.
             </div>
-            <div style="overflow:auto; display:flex; flex-direction:column; gap:var(--space-2);">${rows}</div>
+            <div class="u-flex u-col u-gap-2" style="overflow:auto;">${rows}</div>
             ${list.length ? '<button type="button" class="btn btn-sm" data-clear>[CLEAR LIST]</button>' : ''}
         </div>`;
     wrap.addEventListener('click', (e) => {

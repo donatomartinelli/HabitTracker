@@ -8,15 +8,15 @@ function initModalsHtml() {
     root.innerHTML = `
 
     <!-- 2. Pomodoro Timer Overlay -->
-    <div id="pomodoroOverlay" class="pomodoro-overlay" style="z-index: 2500;">
+    <div id="pomodoroOverlay" class="pomodoro-overlay" style="z-index:2500;">
         <div id="widget-drag-handle">
-            <span style="flex: 1; text-align: left;">:: FOCUS WIDGET</span>
-            <button id="btn-widget-mode-full" class="icon-btn" style="font-size: var(--font-xs); padding-right: 8px;" onclick="toggleWidgetMode()">[+ FULL]</button>
+            <span class="u-grow" style="text-align:left;">:: FOCUS WIDGET</span>
+            <button id="btn-widget-mode-full" class="icon-btn u-fs-xs" style="padding-right:var(--space-2);" onclick="toggleWidgetMode()">[+ FULL]</button>
         </div>
-        <div id="focus-split-container" style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; position: relative; padding: 24px;">
-            <button id="btn-widget-mode" class="btn btn-sm" style="position: absolute; top: 25px; left: 25px; z-index: 2510;" onclick="toggleWidgetMode()">[_ MINIMIZE TO HEADER]</button>
+        <div class="u-col u-ai-center u-jc-center u-w-full" id="focus-split-container" style="display:flex; height:100%; position:relative; padding:var(--space-5);">
+            <button id="btn-widget-mode" class="btn btn-sm" style="position:absolute; top:25px; left:25px; z-index:2510;" onclick="toggleWidgetMode()">[_ MINIMIZE TO HEADER]</button>
             
-            <h2 id="pomodoro-task-title" style="color: var(--text-main); margin-bottom: 20px; text-align: center; font-weight: bold; border: none; font-size: var(--font-lg);">Task Name</h2>
+            <h2 class="u-main u-tc u-bold u-border-0 u-fs-lg" id="pomodoro-task-title" style="margin-bottom:var(--space-5);">Task Name</h2>
             
             <div class="timer-circle-wrapper">
                 <svg class="progress-ring" width="320" height="320" id="pomodoro-svg">
@@ -26,7 +26,7 @@ function initModalsHtml() {
                 <div class="timer-text-hover" id="pomodoro-time-text">25:00</div>
             </div>
             
-            <div id="focus-controls" style="display: flex; gap: 12px; margin-top: 28px; z-index: 2510; flex-wrap: wrap; justify-content: center;">
+            <div class="u-gap-3 u-wrap u-jc-center" id="focus-controls" style="display:flex; margin-top:var(--space-6); z-index:2510;">
                 <button id="btn-pomodoro-pause" class="btn btn-primary" onclick="togglePomodoroPause()">Pause</button>
                 <button class="btn" onclick="skipPomodoroPhase()">Skip &amp; Check</button>
                 <button class="btn" onclick="resetPomodoroPhase()">Reset</button>
@@ -34,19 +34,19 @@ function initModalsHtml() {
                 <button class="btn btn-danger" onclick="stopPomodoro()">Abort</button>
             </div>
 
-            <div id="focus-live-queue" style="width: 100%; max-width: 460px; margin-top: 28px;"></div>
+            <div class="u-w-full" id="focus-live-queue" style="max-width:460px; margin-top:var(--space-6);"></div>
         </div>
     </div>
 
     <!-- 3. Timer Setup Modal -->
     <div id="timerSetupModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 460px;">
+        <div class="modal-content" style="width:460px;">
             <h2>Focus Session Builder</h2>
             <form id="timerSetupForm">
                 <p class="modal-subtitle">1. Select active timed tasks from selected date</p>
-                <div id="focus-available-tasks" style="display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px;"></div>
+                <div class="u-wrap u-gap-2" id="focus-available-tasks" style="display:flex; margin-bottom:var(--space-5);"></div>
                 <p class="modal-subtitle">2. Focus Playlist</p>
-                <div id="focus-playlist" style="display: flex; flex-direction: column; gap: 6px; background: rgba(255,255,255,0.02); padding: 10px; border: 1px solid var(--border-color); min-height: 100px; margin-bottom: 20px;"></div>
+                <div class="u-col u-gap-2" id="focus-playlist" style="display:flex; background:rgba(255,255,255,0.02); padding:var(--space-3); border:1px solid var(--border-color); min-height:100px; margin-bottom:var(--space-5);"></div>
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
                     <button type="submit" class="btn btn-primary" id="btn-start-playlist" disabled>Start Focus</button>
@@ -57,9 +57,9 @@ function initModalsHtml() {
 
     <!-- 5. Combined Creation Modal (Habits, Routines, Events, Medicines) -->
     <div id="creationModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 780px; max-width: 95%;">
+        <div class="modal-content" style="width:780px; max-width:95%;">
             <h2 id="creation-modal-title">Add to Planner &amp; Tasks</h2>
-            <div class="task-type-toggle" style="margin-bottom: 20px;">
+            <div class="task-type-toggle" style="margin-bottom:var(--space-5);">
                 <label class="type-radio">
                     <input type="radio" name="creation-type" value="habit" checked onchange="toggleCreationType()"> Habit / Task
                 </label>
@@ -99,23 +99,23 @@ function initModalsHtml() {
                 <div class="form-group">
                     <label>Color</label>
                     <div class="color-palette" id="habit-color-palette">
-                        <div class="color-circle active" style="background: #ffffff;" data-color="#ffffff" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #b08d43;" data-color="#b08d43" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #725b7a;" data-color="#725b7a" onclick="selectColor(this, 'h-color')"></div>
-                        <div class="color-circle" style="background: #6e7073;" data-color="#6e7073" onclick="selectColor(this, 'h-color')"></div>
+                        <div class="color-circle active" style="background:#ffffff;" data-color="#ffffff" onclick="selectColor(this, 'h-color')"></div>
+                        <div class="color-circle" style="background:#b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'h-color')"></div>
+                        <div class="color-circle" style="background:#5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'h-color')"></div>
+                        <div class="color-circle" style="background:#4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'h-color')"></div>
+                        <div class="color-circle" style="background:#b08d43;" data-color="#b08d43" onclick="selectColor(this, 'h-color')"></div>
+                        <div class="color-circle" style="background:#725b7a;" data-color="#725b7a" onclick="selectColor(this, 'h-color')"></div>
+                        <div class="color-circle" style="background:#6e7073;" data-color="#6e7073" onclick="selectColor(this, 'h-color')"></div>
                         <div class="color-circle custom-color-btn" onclick="document.getElementById('h-color').click()">+</div>
                     </div>
-                    <input type="color" id="h-color" style="display: none;" value="#ffffff" onchange="updateCustomColor(this, 'h-color')">
+                    <input type="color" id="h-color" style="display:none;" value="#ffffff" onchange="updateCustomColor(this, 'h-color')">
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Start Date</label>
                         <input type="date" id="h-startdate" class="form-control" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>End Date (optional)</label>
                         <input type="date" id="h-enddate" class="form-control">
                     </div>
@@ -131,11 +131,11 @@ function initModalsHtml() {
                         </label>
                     </div>
                 </div>
-                <div id="timed-section" style="display: none;">
+                <div id="timed-section" style="display:none;">
                     <div class="form-group">
                         <label>Time Windows &amp; Days</label>
                         <div id="h-time-windows-container"></div>
-                        <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addHabitTimeWindow()">+ Add Time Window</button>
+                        <button type="button" class="btn u-w-full u-mb-3" style="border-style:dashed;" onclick="addHabitTimeWindow()">+ Add Time Window</button>
                     </div>
                 </div>
                 <div id="untimed-section">
@@ -150,12 +150,12 @@ function initModalsHtml() {
                             </label>
                         </div>
                     </div>
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
+                    <div class="u-flex u-gap-4">
+                        <div class="form-group u-grow">
                             <label>Daily Repetitions (Blocks)</label>
                             <input type="number" id="h-instances" class="form-control" value="1" min="1" max="50">
                         </div>
-                        <div class="form-group" style="flex: 1;" id="h-timer-group">
+                        <div class="form-group u-grow" id="h-timer-group">
                             <label>Minutes per Block</label>
                             <input type="number" id="h-timer" class="form-control" value="25" min="1">
                         </div>
@@ -169,7 +169,7 @@ function initModalsHtml() {
                             <option value="specific">Specific days</option>
                         </select>
                     </div>
-                    <div class="form-group days-checkboxes" id="h-days-container" style="display: flex; gap: 10px;">
+                    <div class="form-group days-checkboxes u-gap-3" id="h-days-container" style="display:flex;">
                         <label class="day-check"><input type="checkbox" value="1"> Mon</label>
                         <label class="day-check"><input type="checkbox" value="2"> Tue</label>
                         <label class="day-check"><input type="checkbox" value="3"> Wed</label>
@@ -186,7 +186,7 @@ function initModalsHtml() {
             </form>
 
             <!-- FORM 2: ROUTINE -->
-            <form id="routineForm" style="display: none;">
+            <form id="routineForm" style="display:none;">
                 <input type="hidden" id="rtn-id">
                 <div class="form-group">
                     <label>Routine Name</label>
@@ -195,21 +195,21 @@ function initModalsHtml() {
                 <div class="form-group">
                     <label>Color</label>
                     <div class="color-palette" id="rtn-color-palette">
-                        <div class="color-circle active" style="background: #b08d43;" data-color="#b08d43" onclick="selectColor(this, 'rtn-color')"></div>
-                        <div class="color-circle" style="background: #4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'rtn-color')"></div>
-                        <div class="color-circle" style="background: #5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'rtn-color')"></div>
-                        <div class="color-circle" style="background: #ffffff;" data-color="#ffffff" onclick="selectColor(this, 'rtn-color')"></div>
-                        <div class="color-circle" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle active" style="background:#b08d43;" data-color="#b08d43" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background:#4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background:#5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background:#ffffff;" data-color="#ffffff" onclick="selectColor(this, 'rtn-color')"></div>
+                        <div class="color-circle" style="background:#b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'rtn-color')"></div>
                         <div class="color-circle custom-color-btn" onclick="document.getElementById('rtn-color').click()">+</div>
                     </div>
-                    <input type="color" id="rtn-color" style="display: none;" value="#b08d43" onchange="updateCustomColor(this, 'rtn-color')">
+                    <input type="color" id="rtn-color" style="display:none;" value="#b08d43" onchange="updateCustomColor(this, 'rtn-color')">
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Start Date</label>
                         <input type="date" id="rtn-startdate" class="form-control" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>End Date (optional)</label>
                         <input type="date" id="rtn-enddate" class="form-control">
                     </div>
@@ -225,11 +225,11 @@ function initModalsHtml() {
                         </label>
                     </div>
                 </div>
-                <div id="rtn-timed-section" style="display: none;">
+                <div id="rtn-timed-section" style="display:none;">
                     <div class="form-group">
                         <label>Time Windows &amp; Days (Shows Routine Block on Weekly Planner)</label>
                         <div id="rtn-time-windows-container"></div>
-                        <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addRoutineTimeWindow()">+ Add Time Window</button>
+                        <button type="button" class="btn u-w-full u-mb-3" style="border-style:dashed;" onclick="addRoutineTimeWindow()">+ Add Time Window</button>
                     </div>
                 </div>
                 <div id="rtn-untimed-section">
@@ -244,7 +244,7 @@ function initModalsHtml() {
                             </label>
                         </div>
                     </div>
-                    <div class="form-group" id="rtn-timer-group" style="display: none;">
+                    <div class="form-group" id="rtn-timer-group" style="display:none;">
                         <label>Total Routine Duration (Minutes)</label>
                         <input type="number" id="rtn-timer" class="form-control no-spinners" value="20" min="1">
                     </div>
@@ -257,7 +257,7 @@ function initModalsHtml() {
                             <option value="specific">Specific days</option>
                         </select>
                     </div>
-                    <div class="form-group days-checkboxes" id="rtn-days-container" style="display: none; gap: 10px;">
+                    <div class="form-group days-checkboxes u-gap-3" id="rtn-days-container" style="display:none;">
                         <label class="day-check"><input type="checkbox" value="1"> Mon</label>
                         <label class="day-check"><input type="checkbox" value="2"> Tue</label>
                         <label class="day-check"><input type="checkbox" value="3"> Wed</label>
@@ -268,12 +268,12 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <div class="form-group" style="border-top: 1px solid var(--border-color); padding-top: 14px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                        <label style="margin-bottom: 0;">Sub-Sections &amp; Checklist Steps</label>
+                <div class="form-group" style="border-top:1px solid var(--border-color); padding-top:var(--space-4);">
+                    <div class="u-flex u-jc-between u-ai-center u-mb-2">
+                        <label class="u-mb-0">Sub-Sections &amp; Checklist Steps</label>
                         <button type="button" class="btn btn-sm" onclick="addRoutineFormSubsection()">[+ ADD SUB-SECTION]</button>
                     </div>
-                    <div id="rtn-subsections-builder" style="display: flex; flex-direction: column; gap: 10px; max-height: 260px; overflow-y: auto; padding-right: 4px;"></div>
+                    <div class="u-col u-gap-3 u-scroll-y" id="rtn-subsections-builder" style="display:flex; max-height:260px; padding-right:var(--space-1);"></div>
                 </div>
 
                 <div class="modal-actions">
@@ -283,7 +283,7 @@ function initModalsHtml() {
             </form>
 
             <!-- FORM 3: SINGLE EVENT -->
-            <form id="eventForm" style="display: none;">
+            <form id="eventForm" style="display:none;">
                 <div class="form-group">
                     <label>Event Name</label>
                     <input type="text" id="e-title" class="form-control" required>
@@ -292,12 +292,12 @@ function initModalsHtml() {
                     <label>Date</label>
                     <input type="date" id="e-date" class="form-control" required>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Start Time (Optional)</label>
                         <input type="time" id="e-start" class="form-control">
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>End Time (Optional)</label>
                         <input type="time" id="e-end" class="form-control">
                     </div>
@@ -305,13 +305,13 @@ function initModalsHtml() {
                 <div class="form-group">
                     <label>Color</label>
                     <div class="color-palette" id="event-color-palette">
-                        <div class="color-circle active" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'e-color')"></div>
-                        <div class="color-circle" style="background: #5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'e-color')"></div>
-                        <div class="color-circle" style="background: #4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'e-color')"></div>
-                        <div class="color-circle" style="background: #b08d43;" data-color="#b08d43" onclick="selectColor(this, 'e-color')"></div>
+                        <div class="color-circle active" style="background:#b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'e-color')"></div>
+                        <div class="color-circle" style="background:#5f7a61;" data-color="#5f7a61" onclick="selectColor(this, 'e-color')"></div>
+                        <div class="color-circle" style="background:#4c5b73;" data-color="#4c5b73" onclick="selectColor(this, 'e-color')"></div>
+                        <div class="color-circle" style="background:#b08d43;" data-color="#b08d43" onclick="selectColor(this, 'e-color')"></div>
                         <div class="color-circle custom-color-btn" onclick="document.getElementById('e-color').click()">+</div>
                     </div>
-                    <input type="color" id="e-color" style="display: none;" value="#b84b4b" onchange="updateCustomColor(this, 'e-color')">
+                    <input type="color" id="e-color" style="display:none;" value="#b84b4b" onchange="updateCustomColor(this, 'e-color')">
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
@@ -320,7 +320,7 @@ function initModalsHtml() {
             </form>
 
             <!-- FORM 4: MEDICINE -->
-            <form id="medicineForm" style="display: none;">
+            <form id="medicineForm" style="display:none;">
                 <input type="hidden" id="med-id">
                 <div class="form-group">
                     <label>Medicine Name</label>
@@ -330,28 +330,28 @@ function initModalsHtml() {
                     <label>Inject into Routine (Appears under // MEDICINE)</label>
                     <select id="med-routine-select" class="form-control"></select>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Doses per intake</label>
                         <input type="number" id="med-instances" class="form-control no-spinners" value="1" min="1" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>Current Stock (Total doses)</label>
                         <input type="number" id="med-stock" class="form-control no-spinners" placeholder="e.g. 30" required>
                     </div>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Start Date</label>
                         <input type="date" id="med-startdate" class="form-control" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>Alert Days Before Runout</label>
                         <input type="number" id="med-alert" class="form-control no-spinners" value="7" min="1" required>
                     </div>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Frequency</label>
                         <select id="med-frequency" class="form-control" onchange="toggleMedFrequencyInputs()">
                             <option value="all">Every day</option>
@@ -359,12 +359,12 @@ function initModalsHtml() {
                             <option value="specific">Specific days of week</option>
                         </select>
                     </div>
-                    <div class="form-group" style="flex: 1; display: none;" id="med-interval-group">
+                    <div class="form-group u-grow" style="display:none;" id="med-interval-group">
                         <label>Interval (Every X Days)</label>
                         <input type="number" id="med-interval-days" class="form-control no-spinners" value="14" min="1">
                     </div>
                 </div>
-                <div class="form-group days-checkboxes" id="med-days-container" style="display: none; gap: 10px;">
+                <div class="form-group days-checkboxes u-gap-3" id="med-days-container" style="display:none;">
                     <label class="day-check"><input type="checkbox" value="1"> Mon</label>
                     <label class="day-check"><input type="checkbox" value="2"> Tue</label>
                     <label class="day-check"><input type="checkbox" value="3"> Wed</label>
@@ -383,7 +383,7 @@ function initModalsHtml() {
 
     <!-- 6. Rename Category Modal -->
     <div id="renameModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
+        <div class="modal-content" style="width:400px;">
             <h2>Rename Category</h2>
             <form id="renameForm">
                 <input type="hidden" id="r-old-name">
@@ -404,10 +404,10 @@ function initModalsHtml() {
         <div class="modal-content settings-modal-box">
             <div class="settings-top-bar">
                 <div>
-                    <h2 style="margin: 0; border: none; padding: 0;">Tasks, Routines &amp; Medicines Settings</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">MANAGE CATEGORIES, ASSIGN DAY PHASES, EDIT ROUTINES &amp; MEDICINE STOCK</span>
+                    <h2 class="u-m-0 u-border-0 u-p-0">Tasks, Routines &amp; Medicines Settings</h2>
+                    <span class="u-fs-xs u-dim">MANAGE CATEGORIES, ASSIGN DAY PHASES, EDIT ROUTINES &amp; MEDICINE STOCK</span>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center;">
+                <div class="u-flex u-gap-2 u-ai-center">
                     <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal()">[+ NEW TASK / ROUTINE / EVENT / MED]</button>
                     <button type="button" class="btn btn-sm" onclick="closeModals(); renderTasks();">[ESC // CLOSE]</button>
                 </div>
@@ -425,16 +425,16 @@ function initModalsHtml() {
 
                 <!-- TAB 1: HABITS & CATEGORIES -->
                 <div id="tcfg-tasks" class="settings-tab-panel tasks-cfg-panel active">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid var(--border-color);">
+                    <div class="u-flex u-jc-between u-ai-center u-wrap u-gap-2" style="padding-bottom:var(--space-3); border-bottom:1px solid var(--border-color);">
                         <span class="section-label">Categories &amp; Tasks</span>
-                        <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                        <div class="u-flex u-gap-2 u-ai-center u-wrap">
                             <button type="button" id="btn-tcfg-toggle-edit" class="btn btn-sm" onclick="toggleTasksManagerEditMode()">[EDIT]</button>
-                            <button type="button" id="btn-tcfg-edit-one" class="btn btn-sm" style="display: none;" onclick="editSelectedManagerItem()" disabled>[EDIT SELECTED]</button>
-                            <button type="button" id="btn-tcfg-delete-many" class="btn btn-danger btn-sm" style="display: none;" onclick="deleteSelectedManagerItems()" disabled>[X DELETE (0)]</button>
+                            <button type="button" id="btn-tcfg-edit-one" class="btn btn-sm" style="display:none;" onclick="editSelectedManagerItem()" disabled>[EDIT SELECTED]</button>
+                            <button type="button" id="btn-tcfg-delete-many" class="btn btn-danger btn-sm" style="display:none;" onclick="deleteSelectedManagerItems()" disabled>[X DELETE (0)]</button>
                             <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal('habit')">[+ NEW TASK]</button>
                         </div>
                     </div>
-                    <div id="manager-list" class="manager-list" style="margin-bottom: 8px;"></div>
+                    <div id="manager-list" class="manager-list u-mb-2"></div>
                     <div class="quick-add-task new-calendar-add">
                         <span>+</span>
                         <input type="text" placeholder="Create new category and press Enter..." onkeypress="quickAddCalendar(event)">
@@ -443,7 +443,7 @@ function initModalsHtml() {
 
                 <!-- TAB 2: ROUTINES -->
                 <div id="tcfg-routines" class="settings-tab-panel tasks-cfg-panel">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="u-flex u-jc-between u-ai-center">
                         <span class="section-label">Configured Routines &amp; Sub-Sections</span>
                         <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal('routine')">[+ NEW ROUTINE]</button>
                     </div>
@@ -452,7 +452,7 @@ function initModalsHtml() {
 
                 <!-- TAB 3: MEDICINES & STOCK -->
                 <div id="tcfg-meds" class="settings-tab-panel tasks-cfg-panel">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="u-flex u-jc-between u-ai-center">
                         <span class="section-label">Medicines (Injected into Routines + Calendar Alerts)</span>
                         <button type="button" class="btn btn-primary btn-sm" onclick="openCreationModal('medicine')">[+ NEW MEDICINE]</button>
                     </div>
@@ -461,7 +461,7 @@ function initModalsHtml() {
 
                 <!-- TAB 4: GHOST LAYERS -->
                 <div id="tcfg-ghosts" class="settings-tab-panel tasks-cfg-panel">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="u-flex u-jc-between u-ai-center">
                         <span class="section-label">Ghost Layers (Trains, Transports &amp; Reference Schedules)</span>
                         <button type="button" class="btn btn-primary btn-sm" onclick="openReferenceModal()">[+ NEW GHOST LAYER]</button>
                     </div>
@@ -476,8 +476,8 @@ function initModalsHtml() {
         <div class="modal-content settings-modal-box">
             <div class="settings-top-bar">
                 <div>
-                    <h2 style="margin: 0; border: none; padding: 0;">System Settings &amp; Workspace</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE LAYOUTS, ALIASES, SONY AUDIO KEYS &amp; BACKUPS</span>
+                    <h2 class="u-m-0 u-border-0 u-p-0">System Settings &amp; Workspace</h2>
+                    <span class="u-fs-xs u-dim">CONFIGURE LAYOUTS, ALIASES, SONY AUDIO KEYS &amp; BACKUPS</span>
                 </div>
                 <button class="btn btn-sm" onclick="closeModals(); renderTasks();">[ESC // CLOSE]</button>
             </div>
@@ -494,41 +494,41 @@ function initModalsHtml() {
                 <div id="tab-workspace" class="settings-tab-panel sys-cfg-panel active">
                     <div class="cfg-box">
                         <div class="sub-column-header">Quick System Actions &amp; Builders</div>
-                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                        <div class="u-flex u-wrap u-gap-2">
                             <button type="button" class="btn btn-sm" onclick="closeModals(); toggleLayoutEditMode();">[EDIT LAYOUT // E]</button>
                             <button type="button" class="btn btn-sm" onclick="closeModals(); setQuadrantCount(0);">[0 // ZERO-UI MODE]</button>
                             <button type="button" class="btn btn-sm" onclick="openPlanTomorrowModal()">[PLAN TOMORROW // P]</button>
                             <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()">[TASKS &amp; ROUTINES ⚙]</button>
                         </div>
                     </div>
-                    <div class="cfg-box" style="display: flex; flex-direction: column; gap: 14px;">
-                        <div class="sub-column-header" style="margin-bottom: 0;">Appearance &amp; Optical Filter</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: var(--text-muted); font-size: var(--font-xs); text-transform: uppercase;">Red Gelatin Optical Mode (Shortcut: R)</span>
+                    <div class="cfg-box u-flex u-col u-gap-4">
+                        <div class="sub-column-header u-mb-0">Appearance &amp; Optical Filter</div>
+                        <div class="u-flex u-jc-between u-ai-center">
+                            <span class="u-muted u-fs-xs u-upper">Red Gelatin Optical Mode (Shortcut: R)</span>
                             <button type="button" id="btn-red-mode" class="btn btn-sm" onclick="toggleRedMode()">[RED]</button>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
-                            <span style="color: var(--text-muted); font-size: var(--font-xs); text-transform: uppercase;">Font</span>
+                        <div class="u-flex u-jc-between u-ai-center u-gap-3 u-wrap">
+                            <span class="u-muted u-fs-xs u-upper">Font</span>
                             <div class="font-choice" role="radiogroup" aria-label="Font">
-                                <button type="button" class="btn btn-sm" data-font-choice="vt323" style="font-family:'VT323',monospace!important;font-size-adjust:.56">[TERMINAL]</button>
-                                <button type="button" class="btn btn-sm" data-font-choice="jetbrains" style="font-family:'JetBrains Mono',monospace!important">[JETBRAINS]</button>
-                                <button type="button" class="btn btn-sm" data-font-choice="space" style="font-family:'Space Mono',monospace!important">[SPACE]</button>
-                                <button type="button" class="btn btn-sm" data-font-choice="classic" style="font-family:var(--font-system)!important">[CLASSIC]</button>
+                                <button type="button" class="btn btn-sm" data-font-choice="vt323" style="font-family:'VT323',monospace!important; font-size-adjust:.56;">[TERMINAL]</button>
+                                <button type="button" class="btn btn-sm" data-font-choice="jetbrains" style="font-family:'JetBrains Mono',monospace!important;">[JETBRAINS]</button>
+                                <button type="button" class="btn btn-sm" data-font-choice="space" style="font-family:'Space Mono',monospace!important;">[SPACE]</button>
+                                <button type="button" class="btn btn-sm" data-font-choice="classic" style="font-family:var(--font-system)!important;">[CLASSIC]</button>
                             </div>
                         </div>
                         <div>
-                            <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
+                            <label class="u-flex u-jc-between u-dim u-fs-xs u-upper u-mb-2">
                                 <span>Window Background Opacity</span>
                                 <span id="opacity-val">0.92</span>
                             </label>
-                            <input type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="width: 100%; accent-color: var(--text-main);" oninput="updateOpacity(this.value)">
+                            <input class="u-w-full" type="range" id="bg-opacity-slider" min="0.1" max="1.0" step="0.01" value="0.92" style="accent-color:var(--text-main);" oninput="updateOpacity(this.value)">
                         </div>
                     </div>
-                    <div class="cfg-box" style="padding: 0;">
+                    <div class="cfg-box u-p-0">
                         <div id="settings-workspace-container"></div>
                     </div>
                     <div class="cfg-box">
-                        <div class="sub-column-header" style="display:flex; justify-content:space-between; align-items:center;">
+                        <div class="sub-column-header u-flex u-jc-between u-ai-center">
                             <span>Custom Command Aliases (1-Word Macros)</span>
                         </div>
                         <div id="settings-aliases-container"></div>
@@ -537,78 +537,78 @@ function initModalsHtml() {
 
                 <div id="tab-ai" class="settings-tab-panel sys-cfg-panel">
                     <div class="cfg-box">
-                        <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
+                        <label class="u-flex u-jc-between u-dim u-fs-xs u-upper u-mb-2">
                             <span>Primary Gemini API Key (Fallback for Audio Pipeline)</span>
-                            <span id="gemini-key-status" style="color: var(--accent-green);"></span>
+                            <span class="u-green" id="gemini-key-status"></span>
                         </label>
-                        <div style="display: flex; gap: 8px;">
+                        <div class="u-flex u-gap-2">
                             <input type="password" id="gemini-api-key-input" class="form-control form-control-sm" placeholder="Paste Gemini API Key (AIzaSy...)..." oninput="handleGeminiKeyInput(this.value)">
                             <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-api-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
                         </div>
                     </div>
                     <div class="cfg-box">
-                        <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
+                        <label class="u-flex u-jc-between u-dim u-fs-xs u-upper u-mb-2">
                             <span>Sony Recorder Pipeline // Dedicated Gemini Key</span>
-                            <span id="gemini-audio-key-status" style="color: var(--text-dim);"></span>
+                            <span class="u-dim" id="gemini-audio-key-status"></span>
                         </label>
-                        <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+                        <div class="u-flex u-gap-2 u-mb-2">
                             <input type="password" id="gemini-audio-key-input" class="form-control form-control-sm" placeholder="Optional Dedicated API Key for [SYNC SONY]..." oninput="handleGeminiAudioKeyInput(this.value)">
                             <button type="button" class="btn btn-sm" onclick="const inp=document.getElementById('gemini-audio-key-input'); inp.type = inp.type==='password' ? 'text' : 'password';">[SHOW]</button>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span id="processed-audio-count" style="font-size: var(--font-xs); color: var(--text-dim);">0 audio files in history</span>
+                        <div class="u-flex u-jc-between u-ai-center">
+                            <span class="u-fs-xs u-dim" id="processed-audio-count">0 audio files in history</span>
                             <button type="button" class="btn btn-sm" onclick="resetProcessedAudioHistory()">[RESET AUDIO MEMORY]</button>
                         </div>
                     </div>
                 </div>
 
                 <div id="tab-system" class="settings-tab-panel sys-cfg-panel">
-                    <div class="cfg-box" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--border-bright);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">GitHub Gist Cloud Sync (PC ↔ Tablet ↔ Phone)</span>
-                            <span id="cloud-sync-settings-status" style="font-size: var(--font-xs); color: var(--text-dim);">[NOT CONFIGURED]</span>
+                    <div class="cfg-box u-flex u-col u-gap-3" style="border-color:var(--border-bright);">
+                        <div class="u-flex u-jc-between u-ai-center">
+                            <span class="u-main u-fs-xs u-bold u-upper">GitHub Gist Cloud Sync (PC ↔ Tablet ↔ Phone)</span>
+                            <span class="u-fs-xs u-dim" id="cloud-sync-settings-status">[NOT CONFIGURED]</span>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <input type="password" id="cloud-gist-token-inp" class="form-control form-control-sm" style="flex: 2; min-width: 180px;" placeholder="GitHub Token (ghp_... with 'gist' scope)" onchange="saveCloudSyncCredentialsFromUI()">
+                        <div class="u-flex u-gap-2 u-wrap">
+                            <input type="password" id="cloud-gist-token-inp" class="form-control form-control-sm" style="flex:2; min-width:180px;" placeholder="GitHub Token (ghp_... with 'gist' scope)" onchange="saveCloudSyncCredentialsFromUI()">
                             <button type="button" class="btn btn-sm" onclick="const i=document.getElementById('cloud-gist-token-inp'); i.type=i.type==='password'?'text':'password';">[SHOW]</button>
                         </div>
-                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                            <input type="text" id="cloud-gist-id-inp" class="form-control form-control-sm" style="flex: 2; min-width: 180px;" placeholder="Secret Gist ID (or click Create New)" onchange="saveCloudSyncCredentialsFromUI()">
+                        <div class="u-flex u-gap-2 u-wrap">
+                            <input type="text" id="cloud-gist-id-inp" class="form-control form-control-sm" style="flex:2; min-width:180px;" placeholder="Secret Gist ID (or click Create New)" onchange="saveCloudSyncCredentialsFromUI()">
                             <button type="button" class="btn btn-primary btn-sm" onclick="createNewSecretGistForCortex()">[+ CREATE NEW SECRET GIST]</button>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
-                            <div style="display: flex; gap: 6px;">
+                        <div class="u-flex u-jc-between u-ai-center u-gap-2 u-wrap" style="padding-top:var(--space-2); border-top:1px dotted var(--border-color);">
+                            <div class="u-flex u-gap-2">
                                 <button type="button" class="btn btn-primary btn-sm" onclick="syncNow(true)">[⇅ SYNC NOW]</button>
                                 <button type="button" class="btn btn-sm" id="cloud-sync-conflicts-btn" onclick="showSyncConflictsModal()">[SAVED CONFLICTS: 0]</button>
                             </div>
-                            <button type="button" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="copyMagicMobileSetupUrl()">[🔗 COPY MAGIC SETUP URL]</button>
+                            <button type="button" class="btn btn-sm u-gold" style="border-color:var(--accent-gold);" onclick="copyMagicMobileSetupUrl()">[🔗 COPY MAGIC SETUP URL]</button>
                         </div>
                     </div>
-                    <div class="cfg-box lab-bridge" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--accent-gold);">
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <span style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Google/Apple Calendar &amp; Gmail Bank Bridge</span>
-                            <span id="bridge-settings-status" style="font-size: var(--font-xs); color: var(--text-dim);">[NOT CONFIGURED]</span>
+                    <div class="cfg-box lab-bridge u-flex u-col u-gap-3" style="border-color:var(--accent-gold);">
+                        <div class="u-flex u-jc-between u-ai-center">
+                            <span class="u-main u-fs-xs u-bold u-upper">Google/Apple Calendar &amp; Gmail Bank Bridge</span>
+                            <span class="u-fs-xs u-dim" id="bridge-settings-status">[NOT CONFIGURED]</span>
                         </div>
                         <input type="text" id="bridge-webapp-url-inp" class="form-control form-control-sm" placeholder="Google Apps Script Web App URL" onchange="saveExternalBridgeConfigFromUI()">
                         <input type="text" id="bridge-icloud-ics-inp" class="form-control form-control-sm" placeholder="Optional Apple iCloud Calendar URL (webcal://...)" onchange="saveExternalBridgeConfigFromUI()">
                         <input type="text" id="bridge-bank-query-inp" class="form-control form-control-sm" placeholder="Gmail Bank Query" onchange="saveExternalBridgeConfigFromUI()">
-                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 6px; border-top: 1px dotted var(--border-color);">
+                        <div class="u-flex u-jc-between u-ai-center u-gap-2 u-wrap" style="padding-top:var(--space-2); border-top:1px dotted var(--border-color);">
                             <button type="button" class="btn btn-sm" onclick="syncExternalCalendarsNow(true)">[📅 SYNC CALENDARS NOW]</button>
                             <button type="button" class="btn btn-primary btn-sm" onclick="scanBankEmailsNow(true)">[🏦 SCAN BANK EMAILS]</button>
                         </div>
                     </div>
-                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Database JSON Backup</div>
-                        <div style="display: flex; gap: 10px;">
+                    <div class="cfg-box u-flex u-jc-between u-ai-center">
+                        <div class="u-main u-fs-xs u-bold u-upper">Database JSON Backup</div>
+                        <div class="u-flex u-gap-3">
                             <button type="button" class="btn btn-sm" onclick="exportData()">[EXPORT JSON]</button>
-                            <label class="btn btn-sm" style="cursor: pointer; margin: 0;">
+                            <label class="btn btn-sm u-pointer u-m-0">
                                 [IMPORT JSON]
-                                <input type="file" accept=".json" style="display: none;" onchange="importData(event)">
+                                <input type="file" accept=".json" style="display:none;" onchange="importData(event)">
                             </label>
                         </div>
                     </div>
-                    <div class="cfg-box" style="display: flex; justify-content: space-between; align-items: center;">
-                        <div style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">DSL &amp; Shortcuts Manual</div>
+                    <div class="cfg-box u-flex u-jc-between u-ai-center">
+                        <div class="u-main u-fs-xs u-bold u-upper">DSL &amp; Shortcuts Manual</div>
                         <button type="button" class="btn btn-sm" onclick="openShortcutsHelp()">[MANUAL // ?]</button>
                     </div>
                 </div>
@@ -618,7 +618,7 @@ function initModalsHtml() {
 
     <!-- 8. Manage Note Categories Modal -->
     <div id="manageNotesModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 420px;">
+        <div class="modal-content" style="width:420px;">
             <h2>Manage Folders</h2>
             <div id="notes-manager-list" class="manager-list"></div>
             <div class="quick-add-task new-calendar-add">
@@ -641,17 +641,17 @@ function initModalsHtml() {
 
     <!-- 9. Delete Options Modal -->
     <div id="deleteModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
+        <div class="modal-content" style="width:450px;">
             <h2 id="delete-modal-title">Delete Options</h2>
-            <p class="modal-subtitle">Select action for <strong style="color: white;" id="delete-target-name"></strong>:</p>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <button id="btn-del-single" class="btn" style="text-align: left; padding: 12px;" onclick="confirmDelete('single')">
+            <p class="modal-subtitle">Select action for <strong style="color:white;" id="delete-target-name"></strong>:</p>
+            <div class="u-flex u-col u-gap-3">
+                <button id="btn-del-single" class="btn" style="text-align:left; padding:var(--space-3);" onclick="confirmDelete('single')">
                     <strong>Delete for selected date only</strong>
                 </button>
-                <button id="btn-del-future" class="btn" style="text-align: left; padding: 12px;" onclick="confirmDelete('future')">
+                <button id="btn-del-future" class="btn" style="text-align:left; padding:var(--space-3);" onclick="confirmDelete('future')">
                     <strong>Delete from selected date onwards</strong>
                 </button>
-                <button class="btn btn-danger" style="text-align: left; padding: 12px;" onclick="confirmDelete('all')">
+                <button class="btn btn-danger" style="text-align:left; padding:var(--space-3);" onclick="confirmDelete('all')">
                     <strong>Delete completely from database</strong>
                 </button>
             </div>
@@ -663,7 +663,7 @@ function initModalsHtml() {
 
     <!-- 10. Assign General To-Do Modal -->
     <div id="assignModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
+        <div class="modal-content" style="width:400px;">
             <h2>Assign Tasks</h2>
             <p class="modal-subtitle">Select target date for selected tasks:</p>
             <form id="assignForm">
@@ -681,16 +681,16 @@ function initModalsHtml() {
 
     <!-- 13. Money Transaction Modal -->
     <div id="mTransactionModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 420px;">
+        <div class="modal-content" style="width:420px;">
             <h2 id="m-trans-title">New Transaction</h2>
             <form id="mTransactionForm">
                 <input type="hidden" id="m-trans-type">
-                <div style="display: flex; gap: 12px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-3">
+                    <div class="form-group u-grow">
                         <label>Amount (€)</label>
                         <input type="number" id="m-trans-amount" class="form-control no-spinners" step="0.01" required>
                     </div>
-                    <div class="form-group" style="flex: 1;" id="m-trans-cat-group">
+                    <div class="form-group u-grow" id="m-trans-cat-group">
                         <label>Category</label>
                         <select id="m-trans-cat" class="form-control" onchange="handleModalCatSelectChange(this)"></select>
                     </div>
@@ -713,7 +713,7 @@ function initModalsHtml() {
 
     <!-- 13B. Create / Edit Vault Modal -->
     <div id="mVaultModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
+        <div class="modal-content" style="width:450px;">
             <h2>Create / Edit Vault</h2>
             <form id="mVaultForm">
                 <input type="hidden" id="m-vault-id">
@@ -721,12 +721,12 @@ function initModalsHtml() {
                     <label>Vault Name</label>
                     <input type="text" id="m-vault-name" class="form-control" placeholder="e.g. Amazon, Fondo Emergenza" required>
                 </div>
-                <div style="display: flex; gap: 12px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-3">
+                    <div class="form-group u-grow">
                         <label>Initial Deposit (€)</label>
                         <input type="number" id="m-vault-balance" class="form-control no-spinners" step="0.01" value="0" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>Target Goal (€, Optional)</label>
                         <input type="number" id="m-vault-target" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 500">
                     </div>
@@ -739,12 +739,12 @@ function initModalsHtml() {
                         <option value="monthly_fixed">Auto-save Fixed € on Renewal Day of Month</option>
                     </select>
                 </div>
-                <div style="display: none; gap: 12px;" id="m-vault-rule-val-group">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-gap-3" style="display:none;" id="m-vault-rule-val-group">
+                    <div class="form-group u-grow">
                         <label id="m-vault-rule-val-label">Rule Value</label>
                         <input type="number" id="m-vault-rule-val" class="form-control no-spinners" step="0.01" min="0" placeholder="e.g. 15">
                     </div>
-                    <div class="form-group" style="flex: 1;" id="m-vault-renewal-day-group">
+                    <div class="form-group u-grow" id="m-vault-renewal-day-group">
                         <label>Renewal Day (1-31)</label>
                         <input type="number" id="m-vault-renewal-day" class="form-control no-spinners" min="1" max="31" value="15">
                     </div>
@@ -759,7 +759,7 @@ function initModalsHtml() {
 
     <!-- 13C. Vault Transfer Modal -->
     <div id="mVaultTransferModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 380px;">
+        <div class="modal-content" style="width:380px;">
             <h2 id="m-vtrans-title">Vault Transfer</h2>
             <form id="mVaultTransferForm">
                 <input type="hidden" id="m-vtrans-id">
@@ -778,29 +778,29 @@ function initModalsHtml() {
 
     <!-- 14. Recurring Payment Modal -->
     <div id="mRecurringModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
+        <div class="modal-content" style="width:450px;">
             <h2>Add Recurring Payment</h2>
             <form id="mRecurringForm">
                 <div class="form-group">
                     <label>Name</label>
                     <input type="text" id="m-rec-title" class="form-control" required>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Amount (€)</label>
                         <input type="number" id="m-rec-amount" class="form-control no-spinners" step="0.01" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>Day of Month (1-31)</label>
                         <input type="number" id="m-rec-day" class="form-control no-spinners" min="1" max="31" required>
                     </div>
                 </div>
-                <div style="display: flex; gap: 15px;">
-                    <div class="form-group" style="flex: 1;">
+                <div class="u-flex u-gap-4">
+                    <div class="form-group u-grow">
                         <label>Start Date</label>
                         <input type="date" id="m-rec-start" class="form-control" required>
                     </div>
-                    <div class="form-group" style="flex: 1;">
+                    <div class="form-group u-grow">
                         <label>End Date (Optional)</label>
                         <input type="date" id="m-rec-end" class="form-control">
                     </div>
@@ -815,7 +815,7 @@ function initModalsHtml() {
 
     <!-- 15. Purchase Idea Modal -->
     <div id="mWishlistModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 400px;">
+        <div class="modal-content" style="width:400px;">
             <h2>Purchase Idea</h2>
             <form id="mWishlistForm">
                 <div class="form-group">
@@ -836,7 +836,7 @@ function initModalsHtml() {
 
     <!-- 16. Ghost Layer Modal -->
     <div id="referenceModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 450px;">
+        <div class="modal-content" style="width:450px;">
             <h2>Add Ghost Layer</h2>
             <form id="referenceForm">
                 <input type="hidden" id="ref-id">
@@ -847,16 +847,16 @@ function initModalsHtml() {
                 <div class="form-group">
                     <label>Time Windows &amp; Days</label>
                     <div id="ref-time-windows-container"></div>
-                    <button type="button" class="btn" style="width: 100%; border-style: dashed; margin-bottom: 10px;" onclick="addRefTimeWindow()">+ Add Time Window</button>
+                    <button type="button" class="btn u-w-full u-mb-3" style="border-style:dashed;" onclick="addRefTimeWindow()">+ Add Time Window</button>
                 </div>
                 <div class="form-group">
                     <label>Color</label>
                     <div class="color-palette" id="ref-color-palette">
-                        <div class="color-circle active" style="background: #444444;" data-color="#444444" onclick="selectColor(this, 'r-color')"></div>
-                        <div class="color-circle" style="background: #b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'r-color')"></div>
+                        <div class="color-circle active" style="background:#444444;" data-color="#444444" onclick="selectColor(this, 'r-color')"></div>
+                        <div class="color-circle" style="background:#b84b4b;" data-color="#b84b4b" onclick="selectColor(this, 'r-color')"></div>
                         <div class="color-circle custom-color-btn" onclick="document.getElementById('r-color').click()">+</div>
                     </div>
-                    <input type="color" id="r-color" style="display: none;" value="#444444" onchange="updateCustomColor(this, 'r-color')">
+                    <input type="color" id="r-color" style="display:none;" value="#444444" onchange="updateCustomColor(this, 'r-color')">
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn" onclick="closeModals()">Cancel</button>
@@ -868,37 +868,37 @@ function initModalsHtml() {
 
     <!-- 16B. Nutritional Database Modal -->
     <div id="foodDbModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 680px; max-width: 95%; max-height: 85vh; display: flex; flex-direction: column;">
+        <div class="modal-content u-flex u-col" style="width:680px; max-width:95%; max-height:85vh;">
             <h2>Nutritional Database (Values per 100g)</h2>
             <p class="modal-subtitle">Used to automatically estimate daily Kcal, Proteins (P), Carbs (C) and Fats (F) from your Diet table.</p>
-            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr 1fr auto; gap: 6px; margin-bottom: 14px; align-items: end; padding-bottom: 12px; border-bottom: 1px solid var(--border-color);">
+            <div class="u-grid u-gap-2 u-mb-4" style="grid-template-columns:2fr 1fr 1fr 1fr 1fr 1fr auto; align-items:end; padding-bottom:var(--space-3); border-bottom:1px solid var(--border-color);">
                 <div>
-                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">FOOD NAME</label>
+                    <label class="u-fs-2xs u-dim u-block u-mb-1">FOOD NAME</label>
                     <input type="text" id="fdb-name" class="form-control form-control-sm" placeholder="e.g. Avena">
                 </div>
                 <div>
-                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">KCAL/100G</label>
+                    <label class="u-fs-2xs u-dim u-block u-mb-1">KCAL/100G</label>
                     <input type="number" id="fdb-kcal" class="form-control form-control-sm no-spinners" placeholder="389">
                 </div>
                 <div>
-                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">PROT (G)</label>
+                    <label class="u-fs-2xs u-dim u-block u-mb-1">PROT (G)</label>
                     <input type="number" id="fdb-p" class="form-control form-control-sm no-spinners" step="0.1" placeholder="16.9">
                 </div>
                 <div>
-                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">CARB (G)</label>
+                    <label class="u-fs-2xs u-dim u-block u-mb-1">CARB (G)</label>
                     <input type="number" id="fdb-c" class="form-control form-control-sm no-spinners" step="0.1" placeholder="66.3">
                 </div>
                 <div>
-                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">FAT (G)</label>
+                    <label class="u-fs-2xs u-dim u-block u-mb-1">FAT (G)</label>
                     <input type="number" id="fdb-f" class="form-control form-control-sm no-spinners" step="0.1" placeholder="6.9">
                 </div>
                 <div>
-                    <label style="font-size: var(--font-2xs); color: var(--text-dim); display: block; margin-bottom: 4px;">STD GRAMS</label>
+                    <label class="u-fs-2xs u-dim u-block u-mb-1">STD GRAMS</label>
                     <input type="number" id="fdb-defg" class="form-control form-control-sm no-spinners" placeholder="100" value="100">
                 </div>
-                <button type="button" class="btn btn-primary btn-sm" style="height: 29px;" onclick="addFoodDbItem()">[+ ADD]</button>
+                <button type="button" class="btn btn-primary btn-sm" style="height:29px;" onclick="addFoodDbItem()">[+ ADD]</button>
             </div>
-            <div id="food-db-list" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 6px;"></div>
+            <div class="u-grow u-scroll-y u-col u-gap-2" id="food-db-list" style="display:flex; padding-right:var(--space-2);"></div>
             <div class="modal-actions">
                 <button type="button" class="btn btn-primary" onclick="closeModals(); renderDiet();">Save &amp; Recalculate</button>
             </div>
@@ -907,13 +907,13 @@ function initModalsHtml() {
 
     <!-- 19. Cortex DSL & System Manual Modal -->
     <div id="shortcutsHelpModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 960px; max-width: 96%; max-height: 90vh;">
-            <div style="display: flex; justify-content: space-between; align-items: baseline; border-bottom: 1px solid var(--border-color); padding-bottom: 8px; margin-bottom: 14px;">
+        <div class="modal-content" style="width:960px; max-width:96%; max-height:90vh;">
+            <div class="u-flex u-jc-between u-ai-base u-mb-4" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-2);">
                 <div>
-                    <h2 style="margin: 0; border: none; padding: 0;">Cortex DSL Manual // Sintassi, Autocompletamento &amp; Modifiche</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">Usa <code>[TAB]</code> per autocompletare · <code>[ENTER]</code> per eseguire all'istante · <code>[SHIFT + ENTER]</code> (o <code>;</code>) per impilare nella Staging Area.</span>
+                    <h2 class="u-m-0 u-border-0 u-p-0">Cortex DSL Manual // Sintassi, Autocompletamento &amp; Modifiche</h2>
+                    <span class="u-fs-xs u-dim">Usa <code>[TAB]</code> per autocompletare · <code>[ENTER]</code> per eseguire all'istante · <code>[SHIFT + ENTER]</code> (o <code>;</code>) per impilare nella Staging Area.</span>
                 </div>
-                <span style="font-size: var(--font-xs); color: var(--text-main); font-weight: bold;">SHORTCUT: [?]</span>
+                <span class="u-fs-xs u-main u-bold">SHORTCUT: [?]</span>
             </div>
 
             <div class="help-manual-columns">
@@ -921,22 +921,22 @@ function initModalsHtml() {
                 <div class="help-section-card">
                     <div class="help-section-title">1. Task, Focus, Calendario &amp; Note</div>
                     <div class="help-grid">
-                        <div class="help-key"><code>done [task]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>done Duolingo</code></span></div>
+                        <div class="help-key"><code>done [task]</code><br><span class="u-dim u-normal">es. <code>done Duolingo</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Checks the first open box of the matching task active today.</div>
 
-                        <div class="help-key"><code>focus [task/cat]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>focus Analisi</code></span></div>
+                        <div class="help-key"><code>focus [task/cat]</code><br><span class="u-dim u-normal">es. <code>focus Analisi</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Starts the Pomodoro timer with the configured length and adds a block to the Day Planner.</div>
 
-                        <div class="help-key"><code>task [titolo] [@day]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>task Studio @domani</code></span></div>
+                        <div class="help-key"><code>task [titolo] [@day]</code><br><span class="u-dim u-normal">es. <code>task Studio @domani</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Creates a flexible task.</div>
 
-                        <div class="help-key"><code>todo [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>todo Bolletta</code></span></div>
+                        <div class="help-key"><code>todo [testo]</code><br><span class="u-dim u-normal">es. <code>todo Bolletta</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Adds an unscheduled item to the Inbox.</div>
 
-                        <div class="help-key"><code>event [@day] [titolo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>event @domani Esame</code></span></div>
+                        <div class="help-key"><code>event [@day] [titolo]</code><br><span class="u-dim u-normal">es. <code>event @domani Esame</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Adds a one-off event to the Calendar and Planner.</div>
 
-                        <div class="help-key"><code>note [Cat]: [testo]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>note Math: Teorema</code></span></div>
+                        <div class="help-key"><code>note [Cat]: [testo]</code><br><span class="u-dim u-normal">es. <code>note Math: Teorema</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Appends the note to the category (creates the folder if it doesn't exist).</div>
                     </div>
                 </div>
@@ -945,16 +945,16 @@ function initModalsHtml() {
                 <div class="help-section-card">
                     <div class="help-section-title">2. Money, vaults, diet and gym</div>
                     <div class="help-grid">
-                        <div class="help-key"><code>out [€] #[Cat/Vault] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>out 20 #Amazon Cavo</code></span></div>
+                        <div class="help-key"><code>out [€] #[Cat/Vault] [desc]</code><br><span class="u-dim u-normal">es. <code>out 20 #Amazon Cavo</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Subtracts the amount from the balance. If <code>#Name</code> matches a <strong>Vault</strong>, it comes out of that vault.</div>
 
-                        <div class="help-key"><code>in [€] [desc]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>in 500 Borsa</code></span></div>
+                        <div class="help-key"><code>in [€] [desc]</code><br><span class="u-dim u-normal">es. <code>in 500 Borsa</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Adds <code>+€</code> to the total balance.</div>
 
-                        <div class="help-key"><code>wish [item] [€ opz.]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>wish Libro 18</code></span></div>
+                        <div class="help-key"><code>wish [item] [€ opz.]</code><br><span class="u-dim u-normal">es. <code>wish Libro 18</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Adds a purchase idea to the Incubator.</div>
 
-                        <div class="help-key"><code>weight [kg] [nota]</code><br><span style="color:var(--text-dim); font-weight:normal;">es. <code>weight 74.5 digiuno</code></span></div>
+                        <div class="help-key"><code>weight [kg] [nota]</code><br><span class="u-dim u-normal">es. <code>weight 74.5 digiuno</code></span></div>
                         <div class="help-desc"><strong>Effect:</strong> Logs your body weight.</div>
 
                         <div class="help-key"><code>gym done</code></div>
@@ -998,7 +998,7 @@ function initModalsHtml() {
                     </div>
                 </div>
 
-                <div class="help-section-card" style="grid-column: 1 / -1;">
+                <div class="help-section-card" style="grid-column:1 / -1;">
                     <div class="help-section-title">5. University Bridge (180 CFU, Appelli &amp; Tasse)</div>
                     <div class="help-grid">
                         <div class="help-key"><code>uni</code> · <code>uni info</code></div>
@@ -1016,7 +1016,7 @@ function initModalsHtml() {
                 </div>
             </div>
 
-            <div class="modal-actions" style="margin-top: 10px;">
+            <div class="modal-actions u-mt-3">
                 <button class="btn btn-primary" onclick="closeModals()">Close Manual [Esc]</button>
             </div>
         </div>
@@ -1024,42 +1024,42 @@ function initModalsHtml() {
 
     <!-- 20. Quick-Switcher Modal (Shortcut: V) -->
     <div id="quickSwitcherModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 620px; max-width: 95%; padding: 20px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-color); padding-bottom:10px; margin-bottom:12px;">
-                <h2 style="margin:0; border:none; padding:0;">Views &amp; Modules</h2>
+        <div class="modal-content" style="width:620px; max-width:95%; padding:var(--space-5);">
+            <div class="u-flex u-jc-between u-ai-center u-mb-3" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-3);">
+                <h2 class="u-m-0 u-border-0 u-p-0">Views &amp; Modules</h2>
                 <button class="btn btn-sm" onclick="closeModals()">[ESC]</button>
             </div>
 
-            <input type="text" id="qs-filter-input" class="form-control form-control-sm" style="margin-bottom:12px;" placeholder="Filter..." autocomplete="off">
+            <input type="text" id="qs-filter-input" class="form-control form-control-sm u-mb-3" placeholder="Filter..." autocomplete="off">
 
-            <div id="qs-staged-bar" style="display:none; align-items:center; justify-content:space-between; padding:8px 12px; margin-bottom:12px; border:1px solid var(--text-main); background:rgba(255,255,255,0.05);">
-                <div style="font-size:var(--font-xs);">
-                    <strong id="qs-staged-list" style="color:var(--text-main); text-transform:uppercase;"></strong>
+            <div class="u-ai-center u-jc-between u-mb-3" id="qs-staged-bar" style="display:none; padding:var(--space-2) var(--space-3); border:1px solid var(--text-main); background:rgba(255,255,255,0.05);">
+                <div class="u-fs-xs">
+                    <strong class="u-main u-upper" id="qs-staged-list"></strong>
                 </div>
-                <div style="display:flex; gap:6px;">
+                <div class="u-flex u-gap-2">
                     <button type="button" class="btn btn-sm" onclick="clearQuickSwitcherStaged()">[CLEAR]</button>
                     <button type="button" class="btn btn-primary btn-sm" onclick="commitQuickSwitcherStaged()">[OPEN]</button>
                 </div>
             </div>
 
-            <div id="qs-body-content" style="display:flex; flex-direction:column; gap:14px; max-height:62vh; overflow-y:auto;"></div>
+            <div class="u-col u-gap-4 u-scroll-y" id="qs-body-content" style="display:flex; max-height:62vh;"></div>
         </div>
     </div>
 
     <!-- 21. Routines Manager Modal -->
     <div id="routinesManagerModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
-        <div class="modal-content" style="width: 780px; max-width: 96%; max-height: 88vh; display: flex; flex-direction: column;">
-            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 12px;">
+        <div class="modal-content u-flex u-col" style="width:780px; max-width:96%; max-height:88vh;">
+            <div class="u-flex u-jc-between u-ai-center u-mb-3" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-3);">
                 <div>
-                    <h2 style="margin: 0; border: none; padding: 0;">Routines &amp; Sub-Sections Manager</h2>
-                    <span style="font-size: var(--font-xs); color: var(--text-dim);">CONFIGURE MORNING, EVENING, WEEKLY ROUTINES, MEDICINE STOCK &amp; ACTION TRIGGERS</span>
+                    <h2 class="u-m-0 u-border-0 u-p-0">Routines &amp; Sub-Sections Manager</h2>
+                    <span class="u-fs-xs u-dim">CONFIGURE MORNING, EVENING, WEEKLY ROUTINES, MEDICINE STOCK &amp; ACTION TRIGGERS</span>
                 </div>
                 <button type="button" class="btn btn-sm" onclick="closeModals()">[ESC]</button>
             </div>
 
-            <div style="display: flex; gap: 8px; margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border-color); align-items: center;">
-                <input type="text" id="new-routine-name-inp" class="form-control form-control-sm" style="flex: 1;" placeholder="New Routine Name (e.g. Pre-Exam Routine, Gym Prep)..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addNewRoutineFromModal();}">
-                <select id="new-routine-freq-sel" class="form-control form-control-sm" style="width: 170px;">
+            <div class="u-flex u-gap-2 u-mb-4 u-ai-center" style="padding-bottom:var(--space-3); border-bottom:1px solid var(--border-color);">
+                <input type="text" id="new-routine-name-inp" class="form-control form-control-sm u-grow" placeholder="New Routine Name (e.g. Pre-Exam Routine, Gym Prep)..." onkeydown="if(event.key==='Enter'){event.preventDefault(); addNewRoutineFromModal();}">
+                <select id="new-routine-freq-sel" class="form-control form-control-sm" style="width:170px;">
                     <option value="all">Every Day</option>
                     <option value="weekend">Weekend (Sat–Sun)</option>
                     <option value="sunday">Sunday Only</option>
@@ -1068,9 +1068,9 @@ function initModalsHtml() {
                 <button type="button" class="btn btn-primary btn-sm" onclick="addNewRoutineFromModal()">[+ CREATE ROUTINE]</button>
             </div>
 
-            <div id="routines-manager-body" style="flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 6px;"></div>
+            <div class="u-grow u-scroll-y u-col u-gap-4" id="routines-manager-body" style="display:flex; padding-right:var(--space-2);"></div>
 
-            <div class="modal-actions" style="margin-top: 12px;">
+            <div class="modal-actions u-mt-3">
                 <button type="button" class="btn btn-primary" onclick="closeModals(); renderTasks();">Done</button>
             </div>
         </div>
@@ -1111,21 +1111,21 @@ function renderCustomAliasesSettingsUI() {
     const entries = Object.entries(typeof customAliases !== 'undefined' ? customAliases : {});
 
     let html = `
-        <div style="margin-bottom: 12px;">
-            <div style="font-size: var(--font-2xs); color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px;">
+        <div class="u-mb-3">
+            <div class="u-fs-2xs u-dim u-upper u-mb-2">
                 Idee &amp; Template:
             </div>
-            <div style="display: flex; flex-wrap: wrap; gap: 6px;" id="alias-inspiration-chips"></div>
+            <div class="u-wrap u-gap-2" style="display:flex;" id="alias-inspiration-chips"></div>
         </div>
 
-        <div style="display: flex; gap: 6px; margin-bottom: 12px; align-items: center; flex-wrap: wrap;">
-            <input type="text" id="new-alias-name" class="form-control form-control-sm" style="width: 130px; font-weight: bold;" placeholder="Parola (es. sera)">
-            <span style="color: var(--text-dim); font-weight: bold;">=</span>
-            <input type="text" id="new-alias-cmds" class="form-control form-control-sm" style="flex: 1; min-width: 220px;" placeholder="Comandi separati da ; (es. red on; tasks; plan)" onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCustomAliasFromUI();}">
+        <div class="u-flex u-gap-2 u-mb-3 u-ai-center u-wrap">
+            <input type="text" id="new-alias-name" class="form-control form-control-sm u-bold" style="width:130px;" placeholder="Parola (es. sera)">
+            <span class="u-dim u-bold">=</span>
+            <input type="text" id="new-alias-cmds" class="form-control form-control-sm u-grow" style="min-width:220px;" placeholder="Comandi separati da ; (es. red on; tasks; plan)" onkeydown="if(event.key==='Enter'){event.preventDefault(); saveCustomAliasFromUI();}">
             <button type="button" class="btn btn-primary btn-sm" onclick="saveCustomAliasFromUI()">[+ SAVE ALIAS]</button>
         </div>
 
-        <div id="custom-aliases-list" style="display: flex; flex-direction: column; gap: 6px;"></div>
+        <div class="u-col u-gap-2" id="custom-aliases-list" style="display:flex;"></div>
     `;
 
     cont.innerHTML = html;
@@ -1135,9 +1135,9 @@ function renderCustomAliasesSettingsUI() {
         const chip = document.createElement('button');
         chip.type = 'button';
         chip.className = 'btn btn-sm';
-        chip.style.cssText = 'font-size: var(--font-2xs); padding: 3px 8px; border-style: dashed; text-transform: none;';
+        chip.style.cssText = 'font-size:var(--font-2xs); padding:var(--space-1) var(--space-2); border-style:dashed; text-transform:none;';
         chip.title = `${tpl.desc}\nComandi: ${tpl.cmds}`;
-        chip.innerHTML = `<strong>${escapeHtml(tpl.name)}</strong> <span style="color:var(--text-dim);">→ ${escapeHtml(tpl.cmds)}</span>`;
+        chip.innerHTML = `<strong>${escapeHtml(tpl.name)}</strong> <span class="u-dim">→ ${escapeHtml(tpl.cmds)}</span>`;
         chip.onclick = () => {
             const nInp = document.getElementById('new-alias-name');
             const cInp = document.getElementById('new-alias-cmds');
@@ -1152,18 +1152,18 @@ function renderCustomAliasesSettingsUI() {
 
     const listEl = cont.querySelector('#custom-aliases-list');
     if (entries.length === 0) {
-        listEl.innerHTML = `<div class="empty-state" style="padding: 6px 0;">[ NESSUN ALIAS CREATO ]</div>`;
+        listEl.innerHTML = `<div class="empty-state u-py-2">[ NESSUN ALIAS CREATO ]</div>`;
     } else {
         entries.forEach(([aliasKey, macroCmds]) => {
             const row = document.createElement('div');
-            row.style.cssText = 'display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; background: rgba(255,255,255,0.025); border: 1px solid var(--border-color); border-left: 3px solid var(--text-main); font-size: var(--font-xs); gap: 10px;';
+            row.style.cssText = 'display:flex; justify-content:space-between; align-items:center; padding:var(--space-2) var(--space-3); background:rgba(255,255,255,0.025); border:1px solid var(--border-color); border-left:3px solid var(--text-main); font-size:var(--font-xs); gap:var(--space-3);';
             row.innerHTML = `
-                <div style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                    <strong style="color:var(--text-main); text-transform:uppercase; margin-right:8px;">${escapeHtml(aliasKey)}</strong>
-                    <span style="color:var(--text-dim);">→</span>
-                    <code style="color:var(--text-muted); margin-left:6px;">${escapeHtml(macroCmds)}</code>
+                <div class="u-grow u-minw0 u-clip u-nowrap" style="text-overflow:ellipsis;">
+                    <strong class="u-main u-upper" style="margin-right:var(--space-2);">${escapeHtml(aliasKey)}</strong>
+                    <span class="u-dim">→</span>
+                    <code class="u-muted u-ml-2">${escapeHtml(macroCmds)}</code>
                 </div>
-                <div style="display:flex; gap:6px; flex-shrink:0;">
+                <div class="u-flex u-gap-2 u-noshrink">
                     <button type="button" class="btn btn-sm btn-run-alias" title="Esegui ora questo alias">[▶ RUN]</button>
                     <button type="button" class="icon-btn btn-edit-alias" title="Modifica">✎</button>
                     <button type="button" class="icon-btn delete btn-del-alias" title="Delete">×</button>
@@ -1301,16 +1301,16 @@ function renderQuickSwitcherContent(filterStr = '') {
     presetsSection.innerHTML = `<div class="sub-column-header">Saved Views</div>`;
 
     if (matchingPresets.length === 0) {
-        presetsSection.innerHTML += `<div class="empty-state" style="padding:4px 0;">[ NONE ]</div>`;
+        presetsSection.innerHTML += `<div class="empty-state u-py-1">[ NONE ]</div>`;
     } else {
         const grid = document.createElement('div');
-        grid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
+        grid.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-2);';
         matchingPresets.forEach(p => {
             const btn = document.createElement('button');
             btn.type = 'button';
             btn.className = 'btn';
-            btn.style.cssText = 'text-align:left; padding:10px 12px; display:flex; align-items:center; justify-content:space-between;';
-            btn.innerHTML = `<strong style="color:var(--text-main); font-size:var(--font-sm); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(p.name)}</strong>`;
+            btn.style.cssText = 'text-align:left; padding:var(--space-3) var(--space-3); display:flex; align-items:center; justify-content:space-between;';
+            btn.innerHTML = `<strong class="u-main u-fs-sm u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(p.name)}</strong>`;
             btn.onclick = () => {
                 closeModals();
                 if (typeof applyWorkspacePreset === 'function') applyWorkspacePreset(p.id);
@@ -1324,7 +1324,7 @@ function renderQuickSwitcherContent(filterStr = '') {
     const modSection = document.createElement('div');
     modSection.innerHTML = `<div class="sub-column-header">Modules</div>`;
     const modGrid = document.createElement('div');
-    modGrid.style.cssText = 'display:grid; grid-template-columns: repeat(3, 1fr); gap:8px;';
+    modGrid.style.cssText = 'display:grid; grid-template-columns:repeat(3, 1fr); gap:var(--space-2);';
 
     const primaryList = typeof PRIMARY_MODULE_KEYS !== 'undefined' ? PRIMARY_MODULE_KEYS : [];
 
@@ -1348,10 +1348,10 @@ function renderQuickSwitcherContent(filterStr = '') {
         const mainBtn = document.createElement('button');
         mainBtn.type = 'button';
         mainBtn.className = `btn ${isStaged ? 'btn-primary' : ''}`;
-        mainBtn.style.cssText = 'flex:1; text-align:left; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; min-width:0;';
+        mainBtn.style.cssText = 'flex:1; text-align:left; padding:var(--space-3) var(--space-3); display:flex; justify-content:space-between; align-items:center; min-width:0;';
         mainBtn.innerHTML = `
-            <div style="font-weight:bold; font-size:var(--font-xs); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escapeHtml(cleanMacroName)}</div>
-            <span style="font-size:var(--font-2xs); margin-left:4px;">${isStaged ? '+' : (isCurrentlyMounted ? '●' : '')}</span>
+            <div class="u-bold u-fs-xs u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(cleanMacroName)}</div>
+            <span class="u-fs-2xs u-ml-1">${isStaged ? '+' : (isCurrentlyMounted ? '●' : '')}</span>
         `;
 
         mainBtn.onclick = (e) => {
@@ -1374,7 +1374,7 @@ function renderQuickSwitcherContent(filterStr = '') {
         const dropBtn = document.createElement('button');
         dropBtn.type = 'button';
         dropBtn.className = `btn ${isExpanded ? 'btn-primary' : ''}`;
-        dropBtn.style.cssText = 'padding: 0 10px; margin-left: -1px; font-size: 0.72rem;';
+        dropBtn.style.cssText = 'padding:0 var(--space-3); margin-left:-1px; font-size:0.72rem;';
         dropBtn.textContent = isExpanded ? '▴' : '▾';
         dropBtn.onclick = (e) => {
             e.stopPropagation();
@@ -1386,7 +1386,7 @@ function renderQuickSwitcherContent(filterStr = '') {
 
         if (isExpanded) {
             const subTray = document.createElement('div');
-            subTray.style.cssText = 'border: 1px solid var(--text-main); border-top: none; background: #070707; padding: 6px; display: flex; flex-direction: column; gap: 4px;';
+            subTray.style.cssText = 'border:1px solid var(--text-main); border-top:none; background:#070707; padding:var(--space-2); display:flex; flex-direction:column; gap:var(--space-1);';
 
             subKeys.forEach(sk => {
                 if (!dashboardModules[sk]) return;
@@ -1397,10 +1397,10 @@ function renderQuickSwitcherContent(filterStr = '') {
                 const subBtn = document.createElement('button');
                 subBtn.type = 'button';
                 subBtn.className = `btn btn-sm ${subStaged ? 'btn-primary' : ''}`;
-                subBtn.style.cssText = 'text-align:left; display:flex; justify-content:space-between; align-items:center; padding: 5px 8px;';
+                subBtn.style.cssText = 'text-align:left; display:flex; justify-content:space-between; align-items:center; padding:var(--space-1) var(--space-2);';
                 subBtn.innerHTML = `
                     <span>↳ ${escapeHtml(shortSubName)}</span>
-                    <span style="font-size:var(--font-2xs); opacity:0.75;">${subStaged ? '+' : (subMounted ? '●' : '')}</span>
+                    <span class="u-fs-2xs" style="opacity:0.75;">${subStaged ? '+' : (subMounted ? '●' : '')}</span>
                 `;
                 subBtn.onclick = (ev) => {
                     ev.stopPropagation();
