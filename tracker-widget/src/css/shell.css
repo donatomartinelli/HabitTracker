@@ -655,3 +655,12 @@ body.mobile-view-mode .nb-toolbar .nb-search-inp { flex: 1; min-width: 0; width:
 .planner-symbol-legend b { color: var(--text-main); }
 .planner-symbol-legend[hidden] { display: none; }
 .today-section-head { gap: var(--space-3); flex-wrap: wrap; }
+
+/* Phone: Today and the weekly review scroll themselves (the generic mobile rule hides overflow) */
+body.mobile-view-mode #module-today,
+body.mobile-view-mode #module-review {
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+}
+#module-review { overflow-y: auto; }
