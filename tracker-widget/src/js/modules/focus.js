@@ -154,6 +154,15 @@ function startTaskFocusByQuery(queryStr, overrideMinutes = null) {
     return false;
 }
 
+// A focus session not tied to a task (from the command bar or the builder)
+function startFreeFocus(title, mins = 25) {
+    focusPlaylist = [{ type: 'task', id: null, category: 'Focus', title: title || 'Deep work', duration: mins, color: '#ffffff', isPartial: true }];
+    currentPlaylistIndex = 0;
+    isFullscreenFocusOpen = false;
+    startCurrentPlaylistPhase();
+    if (typeof showToast === 'function') showToast(`[FOCUS] ${focusPlaylist[0].title} — ${mins} min`);
+}
+
 function checkOffCompletedTaskInstance(templateId) {
     const t = templates.find(x => x.id === templateId);
     if (!t) return;
@@ -250,8 +259,27 @@ function renderAvailableTasksForFocus() {
         }
     });
     
+    // Free focus: always available, no task with a duration needed
+    const free = document.createElement('div');
+    free.className = 'focus-free-row';
+    free.innerHTML = `
+        <input type="text" class="form-control form-control-sm" id="focus-free-title" placeholder="What are you focusing on? (optional)" maxlength="60">
+        <button type="button" class="btn btn-sm" data-mins="25">[+ 25 MIN]</button>
+        <button type="button" class="btn btn-sm" data-mins="50">[+ 50 MIN]</button>`;
+    free.querySelectorAll('[data-mins]').forEach(b => b.addEventListener('click', () => {
+        const title = (free.querySelector('#focus-free-title').value || '').trim() || 'Deep work';
+        focusPlaylist.push({ type: 'task', id: null, category: 'Focus', title, duration: parseInt(b.dataset.mins, 10), color: '#ffffff', isPartial: true });
+        focusPlaylist.push({ type: 'break', duration: 5 });
+        renderFocusPlaylist();
+        renderAvailableTasksForFocus();
+    }));
+    container.appendChild(free);
+
     if (!hasTasks) {
-        container.innerHTML = '<span class="empty-state">[ NO TIMED TASKS PENDING FOR SELECTED DATE ]</span>';
+        const empty = document.createElement('span');
+        empty.className = 'empty-state';
+        empty.textContent = 'No tasks with a duration today: add a free session above.';
+        container.appendChild(empty);
         return;
     }
 
@@ -358,7 +386,7 @@ function renderLiveFocusQueue() {
     if (focusPlaylist.length <= 1) {
         const single = focusPlaylist[0];
         queueEl.innerHTML = single
-            ? `<div class="u-fs-xs u-dim u-tc">ACTIVE TASK // <strong class="u-main">${escapeHtml(single.title)} (${single.duration}m)</strong> — Auto-checks on completion</div>`
+            ? `<div class="u-fs-xs u-dim u-tc">ACTIVE TASK // <strong class="u-main">${escapeHtml(single.title)} (${single.duration}m)</strong>${single.id && !single.isPartial ? ' — checked off when the timer ends' : ''}</div>`
             : '';
         return;
     }
@@ -413,9 +441,10 @@ function syncFocusViewState() {
     const btnWidgetMode = document.getElementById('btn-widget-mode');
 
     if (btnWidgetMode) {
-        btnWidgetMode.textContent = '[_ MINIMIZE TO HEADER]';
+        btnWidgetMode.textContent = '[_ MINIMIZE]';
     }
 
+    document.body.classList.toggle('focus-active', isActive);
     if (!isActive) {
         if (inlineWrap) inlineWrap.style.display = 'none';
         if (progTrack) progTrack.style.display = 'none';
@@ -636,4 +665,10 @@ function toggleZenithMode(isActive, categoryName) {
     // Cerca il nodo DOM con quel modulo e illuminàlo
     const cell = document.querySelector(`.quadrant-cell[data-module="${targetModKey}"]`);
     if (cell) cell.classList.add('zenith-focus-target');
+    // Dimming only makes sense with several panels on screen (tiles) and a panel to keep lit:
+    // with a single section or on the phone it would just black out the whole app
+    const cells = document.querySelectorAll('.quadrant-cell').length;
+    if (!cell || cells < 2 || document.body.classList.contains('mobile-view-mode')) {
+        document.body.classList.remove('zenith-mode');
+    }
 }

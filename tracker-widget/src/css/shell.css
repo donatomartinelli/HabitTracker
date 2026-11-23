@@ -552,3 +552,63 @@ body.lab-sony-off .btn-notes-mic-rec.lab-sony { display: none !important; }
 .cal-link-row { display: flex; gap: var(--space-2); }
 .cal-link-row input { flex: 1; min-width: 0; font-size: var(--font-2xs); }
 .cal-connect-panel .modules-group { gap: var(--space-2); }
+
+/* ---------- Focus session strip (under the header, phone and PC) ---------- */
+:root { --focus-h: 36px; }
+.header-inline-focus.focus-strip {
+    align-items: stretch;
+    height: var(--focus-h);
+    background: var(--bg-main);
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 var(--space-3);
+    gap: 0;
+}
+body:not(.mobile-view-mode) .focus-strip {
+    position: absolute;
+    top: 56px;
+    left: 0;
+    right: 0;
+    z-index: 2090;
+}
+body.focus-active:not(.mobile-view-mode) { --header-h: calc(56px + var(--focus-h)); }
+body.focus-active:not(.mobile-view-mode) #app-content-wrapper.layout { padding-top: var(--header-h); }
+body.mobile-view-mode .focus-strip { order: 0; flex-shrink: 0; width: 100%; position: relative; z-index: 2000; }
+
+.focus-strip .header-focus-pill,
+body.mobile-view-mode .focus-strip .header-focus-pill {
+    flex: 1;
+    min-width: 0;
+    max-width: none !important;
+    background: transparent;
+    border: none;
+    border-left: 3px solid var(--text-main);
+    padding: 0 0 0 var(--space-2) !important;
+    gap: var(--space-2);
+    font-size: var(--font-xs) !important;
+}
+.focus-strip .header-focus-pill:hover { background: transparent; }
+.focus-strip-main {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    padding: 0;
+    text-align: left;
+}
+.focus-strip .header-focus-title,
+body.mobile-view-mode .focus-strip .header-focus-title { max-width: none !important; min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.focus-strip .header-focus-actions,
+.focus-strip .header-focus-pill:hover .header-focus-actions { display: flex; border-left: none; margin: 0; padding: 0; gap: 2px; flex-shrink: 0; }
+.focus-strip .header-focus-btn { padding: var(--space-1) var(--space-2); }
+body.mobile-view-mode .focus-strip .hide-narrow { display: none; }
+body.mobile-view-mode .focus-strip .header-focus-btn { min-height: 32px; }
+
+/* Phone: sheets cover the bottom bar so their buttons are never hidden behind it */
+body.mobile-view-mode .modal-overlay { z-index: 1300 !important; }
+.focus-free-row { width: 100%; display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; padding-bottom: var(--space-3); border-bottom: 1px dotted var(--border-color); margin-bottom: var(--space-2); }
+.focus-free-row input { flex: 1 1 180px; min-width: 0; }

@@ -50,21 +50,6 @@
         <div class="header-left">
             <h1 id="global-clock">00:00 // DAY 00</h1>
 
-            <!-- FOCUS TIMER INLINE -->
-            <div id="header-inline-focus" class="header-inline-focus" style="display: none;">
-                <div id="header-focus-pill" class="header-focus-pill" ondblclick="openFullscreenFocusOverlay()">
-                    <span id="header-focus-icon" class="header-focus-icon">▶</span>
-                    <span id="header-focus-time" class="header-focus-time">25:00</span>
-                    <span class="header-focus-sep">//</span>
-                    <span id="header-focus-title" class="header-focus-title">TASK</span>
-                    <div class="header-focus-actions">
-                        <button type="button" id="btn-header-focus-pause" class="header-focus-btn" onclick="togglePomodoroPause()">[PAUSE]</button>
-                        <button type="button" class="header-focus-btn" onclick="skipPomodoroPhase()">[SKIP]</button>
-                        <button type="button" class="header-focus-btn" onclick="openFullscreenFocusOverlay()">[FULL]</button>
-                        <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()">×</button>
-                    </div>
-                </div>
-            </div>
         </div>
 
         <!-- CONTENITORE BARRA DSL NELL'HEADER -->
@@ -116,6 +101,23 @@
             <div id="header-focus-progress-bar" class="header-focus-progress-bar"></div>
         </div>
     </header>
+    <!-- FOCUS SESSION STRIP: its own row under the header, controls always visible -->
+    <div id="header-inline-focus" class="header-inline-focus focus-strip" style="display: none;" role="timer" aria-live="off">
+        <div id="header-focus-pill" class="header-focus-pill" ondblclick="openFullscreenFocusOverlay()">
+            <button type="button" class="focus-strip-main" onclick="openFullscreenFocusOverlay()" title="Open full screen">
+                <span id="header-focus-icon" class="header-focus-icon">▶</span>
+                <span id="header-focus-time" class="header-focus-time">25:00</span>
+                <span class="header-focus-sep">//</span>
+                <span id="header-focus-title" class="header-focus-title">TASK</span>
+            </button>
+            <div class="header-focus-actions">
+                <button type="button" id="btn-header-focus-pause" class="header-focus-btn" onclick="togglePomodoroPause()">[PAUSE]</button>
+                <button type="button" class="header-focus-btn" onclick="skipPomodoroPhase()">[SKIP]</button>
+                <button type="button" class="header-focus-btn hide-narrow" onclick="openFullscreenFocusOverlay()">[FULL]</button>
+                <button type="button" class="header-focus-btn danger" onclick="stopPomodoro()" aria-label="Stop focus">×</button>
+            </div>
+        </div>
+    </div>
 
     <!-- TACTICAL VERTICAL POD (Attivo in modalità HUD [H]) -->
     <div id="hud-tactical-pod" class="hud-tactical-pod" style="display: none;">

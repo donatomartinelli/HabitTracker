@@ -14,7 +14,7 @@ function initModalsHtml() {
             <button id="btn-widget-mode-full" class="icon-btn u-fs-xs" style="padding-right:var(--space-2);" onclick="toggleWidgetMode()">[+ FULL]</button>
         </div>
         <div class="u-col u-ai-center u-jc-center u-w-full" id="focus-split-container" style="display:flex; height:100%; position:relative; padding:var(--space-5);">
-            <button id="btn-widget-mode" class="btn btn-sm" style="position:absolute; top:25px; left:25px; z-index:2510;" onclick="toggleWidgetMode()">[_ MINIMIZE TO HEADER]</button>
+            <button id="btn-widget-mode" class="btn btn-sm" style="position:absolute; top:25px; left:25px; z-index:2510;" onclick="toggleWidgetMode()">[_ MINIMIZE]</button>
             
             <h2 class="u-main u-tc u-bold u-border-0 u-fs-lg" id="pomodoro-task-title" style="margin-bottom:var(--space-5);">Task Name</h2>
             
@@ -28,9 +28,8 @@ function initModalsHtml() {
             
             <div class="u-gap-3 u-wrap u-jc-center" id="focus-controls" style="display:flex; margin-top:var(--space-6); z-index:2510;">
                 <button id="btn-pomodoro-pause" class="btn btn-primary" onclick="togglePomodoroPause()">Pause</button>
-                <button class="btn" onclick="skipPomodoroPhase()">Skip &amp; Check</button>
+                <button class="btn" onclick="skipPomodoroPhase()">Skip</button>
                 <button class="btn" onclick="resetPomodoroPhase()">Reset</button>
-                <button class="btn" onclick="toggleWidgetMode()">[_ Header Mode]</button>
                 <button class="btn btn-danger" onclick="stopPomodoro()">Abort</button>
             </div>
 
@@ -43,7 +42,7 @@ function initModalsHtml() {
         <div class="modal-content" style="width:460px;">
             <h2>Focus Session Builder</h2>
             <form id="timerSetupForm">
-                <p class="modal-subtitle">1. Select active timed tasks from selected date</p>
+                <p class="modal-subtitle">1. Pick a free session or one of today's tasks</p>
                 <div class="u-wrap u-gap-2" id="focus-available-tasks" style="display:flex; margin-bottom:var(--space-5);"></div>
                 <p class="modal-subtitle">2. Focus Playlist</p>
                 <div class="u-col u-gap-2" id="focus-playlist" style="display:flex; background:rgba(255,255,255,0.02); padding:var(--space-3); border:1px solid var(--border-color); min-height:100px; margin-bottom:var(--space-5);"></div>

@@ -296,9 +296,10 @@ function isValidDslCommand(raw) {
         case 'done':
         case 'check':
         case 'note':
+            return Boolean(rest);
         case 'focus':
         case 'pomo':
-            return Boolean(rest);
+            return true;
         case 'event': {
             const parsedEv = parseEventCommandArgs(rest);
             return Boolean(parsedEv.title);
@@ -672,7 +673,9 @@ function getCommandPreview(raw) {
                 const dur = (numMatch ? parseInt(numMatch[1], 10) : null) || getTaskDurationMinutes(matched, selectedDateStr);
                 return `[FOCUS] Start ${dur}m on "${matched.title}"`;
             }
-            return `[FOCUS] Start session on "${queryPart}"`;
+            const freeMins = numMatch ? parseInt(numMatch[1], 10) : (/^\d+$/.test(rest.trim()) ? parseInt(rest, 10) : 25);
+            const freeTitle = numMatch ? queryPart : (/^\d+$/.test(rest.trim()) ? '' : rest.trim());
+            return `[FOCUS] Start ${freeMins}m free session${freeTitle ? ` on "${freeTitle}"` : ''}`;
         }
         case 'workout':
             return `[GYM] Complete workout (Day ${nextWorkoutDay})`;
@@ -1363,17 +1366,12 @@ function executeTerminalCommand(raw) {
     }
 
     if (cmd === 'focus' || cmd === 'pomo') {
-        if (!rest) return false;
-        const numMatch = rest.match(/^(\d+)\s+(.+)$/);
-        if (numMatch) {
-            const overrideMins = parseInt(numMatch[1], 10);
-            const query = numMatch[2].trim();
-            if (typeof startTaskFocusByQuery === 'function' && startTaskFocusByQuery(query, overrideMins)) {
-                return true;
-            }
-        } else if (typeof startTaskFocusByQuery === 'function' && startTaskFocusByQuery(rest)) {
-            return true;
-        }
+        // "focus" · "focus 50" · "focus 50 report" · "focus report" (task if it matches, else a free session)
+        const m = (rest || '').trim().match(/^(\d{1,3})\s*(?:m|min|mins|minutes|minuti)?(?![a-z])\s*(.*)$/i);
+        const mins = m ? Math.min(Math.max(parseInt(m[1], 10), 1), 240) : null;
+        const query = (m ? m[2] : (rest || '')).trim();
+        if (query && typeof startTaskFocusByQuery === 'function' && startTaskFocusByQuery(query, mins)) return true;
+        if (typeof startFreeFocus === 'function') { startFreeFocus(query || 'Deep work', mins || 25); return true; }
         return false;
     }
 
