@@ -664,3 +664,20 @@ body.mobile-view-mode #module-review {
     -webkit-overflow-scrolling: touch;
 }
 #module-review { overflow-y: auto; }
+
+/* ---------- iPhone / Android installed app: keep clear of the status bar and notch ----------
+   (the app draws edge to edge: viewport-fit=cover + black-translucent status bar) */
+:root {
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-left: env(safe-area-inset-left, 0px);
+    --safe-right: env(safe-area-inset-right, 0px);
+}
+html body.mobile-view-mode {
+    padding-top: var(--safe-top) !important;
+    padding-left: var(--safe-left) !important;
+    padding-right: var(--safe-right) !important;
+    background-color: var(--bg-main);
+}
+html body.mobile-view-mode .ask-bar-container.expanded { top: calc(8px + var(--safe-top)) !important; }
+html body.mobile-view-mode .pomodoro-overlay { padding-top: var(--safe-top); padding-bottom: env(safe-area-inset-bottom, 0px); }
+html body.mobile-view-mode #btn-widget-mode { top: calc(16px + var(--safe-top)) !important; left: 16px !important; }
