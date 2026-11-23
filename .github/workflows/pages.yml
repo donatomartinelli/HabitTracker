@@ -35,13 +35,27 @@ jobs:
             echo "dir=." >> $GITHUB_OUTPUT
           fi
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Publish a compressed copy: no comments, no formatting, shorter names.
+      # The readable source stays in the repository (see LICENSE: all rights reserved).
+      - name: Build compressed site
+        run: |
+          rm -rf _site && cp -r "${{ steps.locate.outputs.dir }}" _site
+          rm -rf _site/.claude
+          find _site -type f \( -name "*.js" -o -name "*.css" \) > files.txt
+          npx --yes esbuild@0.24.0 $(cat files.txt) --minify --outdir=_site --outbase=_site --allow-overwrite --charset=utf8 --log-level=warning
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: ${{ steps.locate.outputs.dir }}
+          path: _site
 
       - name: Deploy to GitHub Pages
         id: deployment

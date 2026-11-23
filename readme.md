@@ -1,5 +1,8 @@
 # ⬛ Minimal Desktop Habit Tracker
 
+> **© 2026 — All rights reserved.** This code is public for viewing only: copying, reusing or redistributing it is not allowed. See [LICENSE](LICENSE).
+
+
 A brutalist, Notion-inspired, ultra-lightweight desktop habit tracker built with **Vanilla JS** and **Tauri v2**. 
 Designed to run perfectly as a borderless, floating desktop widget on Windows, consuming almost zero RAM.
 
