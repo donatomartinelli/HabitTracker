@@ -271,6 +271,12 @@ function renderCalendarAtomGrid() {
 // SOTTO-MODULO 2: CALENDAR: DAY EVENTS (#module-cal-agenda)
 // ============================================================================
 
+function prettyAgendaDate(dateStr) {
+    const d = new Date(dateStr + 'T12:00:00');
+    if (isNaN(d)) return dateStr;
+    return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 function renderCalendarAtomAgenda() {
     const root = document.getElementById('module-cal-agenda');
     if (!root) return;
@@ -279,10 +285,10 @@ function renderCalendarAtomAgenda() {
         <div class="module-body-padded" style="flex:1; display:flex; flex-direction:column; gap:10px; overflow-y:auto;">
             <div class="section-header-row" style="margin-bottom:0;">
                 <div>
-                    <span class="section-label">Day Events</span>
-                    <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${selectedDateStr}</span>
+                    <span class="section-label">${escapeHtml(prettyAgendaDate(selectedDateStr))}</span>
+                    ${selectedDateStr === todayStr ? '<span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// today</span>' : ''}
                 </div>
-                <button type="button" class="btn btn-sm" onclick="openCreationModal('event')">+</button>
+                <button type="button" class="btn btn-sm" onclick="openCreationModal('event')">[+ EVENT]</button>
             </div>
             <div id="cal-atom-agenda-mount" style="display:flex; flex-direction:column; gap:6px;"></div>
         </div>

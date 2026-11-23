@@ -346,7 +346,8 @@ function getMacroDefaultSubtree(macroKey) {
     }
     if (macroKey === 'calendar') {
         if (typeof renderCalendarAtomGrid === 'function') {
-            return makeSplitNode('col', 0.58, makePaneNode('cal_grid'), makePaneNode('cal_agenda'));
+            // Month grid on the left, the selected day's agenda on the right
+            return makeSplitNode('row', 0.6, makePaneNode('cal_grid'), makePaneNode('cal_agenda'));
         }
         return makePaneNode('calendar');
     }

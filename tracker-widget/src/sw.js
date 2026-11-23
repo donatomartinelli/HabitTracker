@@ -9,13 +9,22 @@
 // IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
 // e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v13';
+const CACHE_NAME = 'cortex-os-cache-v15';
 
 const CORE_ASSETS = [
     './',
     './index.html',
     './manifest.json',
     './problems.json',
+    './css/fonts.css',
+    './fonts/jetbrains-mono-latin-480c06.woff2',
+    './fonts/jetbrains-mono-latin-ext-ba1653.woff2',
+    './fonts/space-mono-latin-0319ea.woff2',
+    './fonts/space-mono-latin-e04b1d.woff2',
+    './fonts/space-mono-latin-ext-1badec.woff2',
+    './fonts/space-mono-latin-ext-3c18ea.woff2',
+    './fonts/vt323-latin-bf1924.woff2',
+    './fonts/vt323-latin-ext-d700ec.woff2',
     './css/base.css',
     './css/layout.css',
     './css/features.css',
@@ -37,6 +46,7 @@ const CORE_ASSETS = [
     './js/modules/calendar.js',
     './js/modules/tasks.js',
     './js/modules/notes.js',
+    './js/modules/notes-markdown.js',
     './js/modules/planner.js',
     './js/modules/focus.js',
     './js/modules/diet.js',

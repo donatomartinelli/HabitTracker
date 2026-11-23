@@ -9,6 +9,11 @@
     <link rel="manifest" href="manifest.json">
     <title>Cortex</title>
     
+    <script>
+        // Apply the chosen font before the first paint (VT323 is the default)
+        try { var f = localStorage.getItem('cortex_font'); if (f && f !== 'vt323') document.documentElement.dataset.font = f; } catch (e) {}
+    </script>
+    <link rel="stylesheet" href="css/fonts.css">
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/layout.css">
     <link rel="stylesheet" href="css/features.css">

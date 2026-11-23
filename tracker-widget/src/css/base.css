@@ -140,7 +140,36 @@ body.red-mode .m-item-row {
     margin: 0;
     padding: 0;
     border-radius: 0 !important;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+    font-family: var(--font-body) !important;
+}
+
+/* ------------------------------------------------------------------
+   FONTS — chosen in Settings → Appearance (stored per device).
+   --font-body: lists, notes, inputs. --font-display: titles, clock,
+   big numbers, buttons and navigation.
+   ------------------------------------------------------------------ */
+:root {
+    --font-system: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    --font-body: "JetBrains Mono", var(--font-system);
+    --font-display: "VT323", var(--font-system);
+}
+:root[data-font="classic"] { --font-body: var(--font-system); --font-display: var(--font-system); }
+:root[data-font="jetbrains"] { --font-body: "JetBrains Mono", var(--font-system); --font-display: var(--font-body); }
+:root[data-font="space"] { --font-body: "Space Mono", var(--font-system); --font-display: var(--font-body); }
+
+h1, h2, h3, #global-clock, .hud-pod-clock, .timer-text-hover, .today-now-time, .today-stat strong,
+.ledger-stat-val, .review-title, .rail-item, .mob-nav-tab, .btn, .sub-column-header, .ob-title {
+    font-family: var(--font-display) !important;
+}
+/* VT323 draws small letters: scale it so it matches the body text */
+:root:not([data-font]) h1, :root:not([data-font]) h2, :root:not([data-font]) h3,
+:root:not([data-font]) #global-clock, :root:not([data-font]) .hud-pod-clock, :root:not([data-font]) .timer-text-hover,
+:root:not([data-font]) .today-now-time, :root:not([data-font]) .today-stat strong, :root:not([data-font]) .ledger-stat-val,
+:root:not([data-font]) .review-title, :root:not([data-font]) .rail-item, :root:not([data-font]) .mob-nav-tab,
+:root:not([data-font]) .btn, :root:not([data-font]) .sub-column-header, :root:not([data-font]) .ob-title {
+    font-size-adjust: 0.56;
+    font-weight: 400 !important;
+    letter-spacing: 0.02em;
 }
 
 body {
@@ -339,4 +368,14 @@ option {
     text-transform: uppercase;
     letter-spacing: 1px;
     padding: 12px 0;
+}
+/* Font picker: the active choice is highlighted from the root attribute */
+.font-choice { display: flex; flex-wrap: wrap; gap: 6px; }
+:root:not([data-font]) [data-font-choice="vt323"],
+:root[data-font="jetbrains"] [data-font-choice="jetbrains"],
+:root[data-font="space"] [data-font-choice="space"],
+:root[data-font="classic"] [data-font-choice="classic"] {
+    background: var(--text-main);
+    color: var(--bg-main);
+    border-color: var(--text-main);
 }

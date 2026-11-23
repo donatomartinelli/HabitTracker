@@ -128,6 +128,29 @@ function toggleRedMode(forceState = null) {
 
 window.addEventListener('DOMContentLoaded', applyRedModeUI);
 
+// Font choice (per device): vt323 (default) | jetbrains | space | classic
+const FONT_CHOICES = ['vt323', 'jetbrains', 'space', 'classic'];
+function currentFontChoice() {
+    try { const f = localStorage.getItem('cortex_font'); return FONT_CHOICES.includes(f) ? f : 'vt323'; } catch (e) { return 'vt323'; }
+}
+function applyFontChoice(choice) {
+    const f = FONT_CHOICES.includes(choice) ? choice : 'vt323';
+    try { localStorage.setItem('cortex_font', f); } catch (e) { /* ignore */ }
+    if (f === 'vt323') delete document.documentElement.dataset.font;
+    else document.documentElement.dataset.font = f;
+    document.querySelectorAll('[data-font-choice]').forEach(b => {
+        const on = b.dataset.fontChoice === f;
+        b.classList.toggle('btn-primary', on);
+        b.setAttribute('aria-checked', on ? 'true' : 'false');
+        b.setAttribute('role', 'radio');
+    });
+}
+document.addEventListener('click', (e) => {
+    const b = e.target.closest && e.target.closest('[data-font-choice]');
+    if (b) applyFontChoice(b.dataset.fontChoice);
+});
+window.addEventListener('DOMContentLoaded', () => applyFontChoice(currentFontChoice()));
+
 function resolveDateToken(token) {
     if (!token) return null;
     const clean = token.replace(/^@/, '').toLowerCase();

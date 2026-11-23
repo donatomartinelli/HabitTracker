@@ -5,6 +5,9 @@
     gap: 3px;
     width: 100%;
 }
+/* In its own pane the month keeps near-square days instead of stretching */
+#module-cal-grid .month-grid { max-width: 640px; }
+#module-cal-grid .month-day.in-month { aspect-ratio: 5 / 4; min-height: 0; }
 
 .day-label {
     font-size: var(--font-xs);
@@ -1033,7 +1036,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 }
 
 .planner-phase-labels {
-    width: 58px;
+    width: 24px;
     flex-shrink: 0;
     position: relative;
     border-right: 1px solid var(--border-color);
@@ -1057,6 +1060,14 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     letter-spacing: 0.5px;
     line-height: 1.15;
     text-transform: uppercase;
+    overflow: hidden;
+}
+/* Labels run vertically, reading upwards, so the column stays narrow */
+.planner-phase-block-label span {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    white-space: nowrap;
+    letter-spacing: 0.12em;
 }
 
 .planner-phase-block-label.alt {

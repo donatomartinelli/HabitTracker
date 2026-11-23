@@ -507,6 +507,15 @@ function initModalsHtml() {
                             <span style="color: var(--text-muted); font-size: var(--font-xs); text-transform: uppercase;">Red Gelatin Optical Mode (Shortcut: R)</span>
                             <button type="button" id="btn-red-mode" class="btn btn-sm" onclick="toggleRedMode()">[RED]</button>
                         </div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;">
+                            <span style="color: var(--text-muted); font-size: var(--font-xs); text-transform: uppercase;">Font</span>
+                            <div class="font-choice" role="radiogroup" aria-label="Font">
+                                <button type="button" class="btn btn-sm" data-font-choice="vt323" style="font-family:'VT323',monospace!important;font-size-adjust:.56">[TERMINAL]</button>
+                                <button type="button" class="btn btn-sm" data-font-choice="jetbrains" style="font-family:'JetBrains Mono',monospace!important">[JETBRAINS]</button>
+                                <button type="button" class="btn btn-sm" data-font-choice="space" style="font-family:'Space Mono',monospace!important">[SPACE]</button>
+                                <button type="button" class="btn btn-sm" data-font-choice="classic" style="font-family:var(--font-system)!important">[CLASSIC]</button>
+                            </div>
+                        </div>
                         <div>
                             <label style="display: flex; justify-content: space-between; color: var(--text-dim); font-size: var(--font-xs); text-transform: uppercase; margin-bottom: 6px;">
                                 <span>Window Background Opacity</span>
@@ -615,6 +624,14 @@ function initModalsHtml() {
             <div class="quick-add-task new-calendar-add">
                 <span>+</span>
                 <input type="text" placeholder="Add new root folder and press Enter..." onkeypress="quickAddNoteCategory(event)">
+            </div>
+            <div class="notes-md-box">
+                <div class="sub-column-header">Markdown · Notion · Obsidian</div>
+                <p class="notes-md-hint">Export every folder as Markdown files, or bring notes in from Notion (Export → Markdown &amp; CSV), Obsidian or any .md / .txt file.</p>
+                <div class="notes-md-actions">
+                    <button type="button" class="btn btn-sm" onclick="exportNotesMarkdown()">[EXPORT .ZIP]</button>
+                    <button type="button" class="btn btn-sm" onclick="pickNotesToImport()">[IMPORT FILES]</button>
+                </div>
             </div>
             <div class="modal-actions">
                 <button class="btn btn-primary" onclick="closeModals(); renderNoteCategories();">Close</button>
