@@ -144,7 +144,7 @@
                 <div class="today-section-head"><span>EXAMS AHEAD</span></div>
                 <div class="review-list">${study.map(p => `<div>${esc(p.name)} <span class="dim">· ${p.date} · ${Math.round(p.studiedMin / 60)}h / ${Math.round(p.targetMin / 60)}h · ~${h(p.perDayMin)}h/day needed</span></div>`).join('')}</div>` : ''}
 
-                <div class="today-section-head"><span>3 PRIORITIES FOR NEXT WEEK</span><span class="dim">${esc(fmtRange(nextMonday))}</span></div>
+                <div class="today-section-head"><span>3 PRIORITIES FOR NEXT WEEK</span> <span class="dim">${esc(fmtRange(nextMonday))}</span></div>
                 <div class="review-prio">
                     ${[0, 1, 2].map(i => `<input type="text" class="today-add" data-prio="${i}" placeholder="${['The one thing that matters most', 'Second priority', 'Third priority'][i]}" value="${esc((prio[i] && prio[i].text) || '')}" autocomplete="off">`).join('')}
                 </div>
