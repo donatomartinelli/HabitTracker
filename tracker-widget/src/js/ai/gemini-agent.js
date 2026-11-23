@@ -586,6 +586,8 @@ window.addEventListener('DOMContentLoaded', () => {
     updateGeminiAudioKeyStatusUI();
 
     setInterval(() => {
+        // Personal integration: runs only when the "Voice recorder import" lab is on
+        if (typeof isLabEnabled === 'function' && !isLabEnabled('lab_sony')) return;
         checkAndSyncSonyUsbVoiceA(false);
     }, 4000);
 });

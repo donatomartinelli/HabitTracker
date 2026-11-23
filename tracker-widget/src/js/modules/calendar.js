@@ -255,7 +255,7 @@ function renderCalendarAtomGrid() {
                     <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${monthLabel}</span>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center;">
-                    <button type="button" class="btn btn-sm" onclick="syncExternalCalendarsNow(true)" title="Sync Google & Apple Calendar">[📅 SYNC]</button>
+                    <button type="button" class="btn btn-sm lab-bridge" onclick="syncExternalCalendarsNow(true)" title="Sync Google & Apple Calendar">[📅 SYNC]</button>
                     <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">‹</button>
                     <button type="button" class="btn btn-sm" onclick="changeMonth(1)">›</button>
                 </div>

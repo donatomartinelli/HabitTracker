@@ -567,7 +567,7 @@ function renderMoneyAtomTransactions() {
                     <span style="font-size:var(--font-xs); color:var(--text-dim); margin-left:6px;">// ${filtered.length} TX</span>
                 </div>
                 <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                    <button type="button" class="btn btn-sm" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
+                    <button type="button" class="btn btn-sm lab-bridge" style="border-color:var(--accent-gold); color:var(--accent-gold);" onclick="scanBankEmailsNow(true)">[🏦 SCAN MAIL]</button>
                     <select id="m-tx-cat-filter-sel" class="form-control form-control-sm" style="width:auto; max-width:130px; padding:2px 6px; font-size:var(--font-2xs);">
                         ${allCats.map(c => `<option value="${escapeHtml(c)}" ${c.toLowerCase() === mTxCategoryFilter.toLowerCase() ? 'selected' : ''}>${escapeHtml(c.toUpperCase())}</option>`).join('')}
                     </select>

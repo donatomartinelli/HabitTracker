@@ -486,7 +486,7 @@ function initModalsHtml() {
                 <div class="settings-sidebar">
                     <div>
                         <button type="button" class="settings-nav-btn sys-cfg-nav active" data-tab="tab-workspace" onclick="switchSettingsTab('tab-workspace')">1. Workspace &amp; UI</button>
-                        <button type="button" class="settings-nav-btn sys-cfg-nav" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. Sony Audio Pipeline</button>
+                        <button type="button" class="settings-nav-btn sys-cfg-nav lab-sony" data-tab="tab-ai" onclick="switchSettingsTab('tab-ai')">2. Sony Audio Pipeline</button>
                         <button type="button" class="settings-nav-btn sys-cfg-nav" data-tab="tab-system" onclick="switchSettingsTab('tab-system')">3. Data &amp; Manual</button>
                     </div>
                 </div>
@@ -575,7 +575,7 @@ function initModalsHtml() {
                             <button type="button" class="btn btn-sm" style="border-color: var(--accent-gold); color: var(--accent-gold);" onclick="copyMagicMobileSetupUrl()">[🔗 COPY MAGIC SETUP URL]</button>
                         </div>
                     </div>
-                    <div class="cfg-box" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--accent-gold);">
+                    <div class="cfg-box lab-bridge" style="display: flex; flex-direction: column; gap: 10px; border-color: var(--accent-gold);">
                         <div style="display: flex; justify-content: space-between; align-items: center;">
                             <span style="color: var(--text-main); font-size: var(--font-xs); font-weight: bold; text-transform: uppercase;">Google/Apple Calendar &amp; Gmail Bank Bridge</span>
                             <span id="bridge-settings-status" style="font-size: var(--font-xs); color: var(--text-dim);">[NOT CONFIGURED]</span>

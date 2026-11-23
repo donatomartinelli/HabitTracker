@@ -44,7 +44,7 @@ t = t[:start] + '''        <div class="join-cta">
 
 # 3. Footer without signature
 rep('<div class="wrap"><span>CORTEX · personal operating system</span><span>Made by Donato Martinelli</span></div>',
-    '<div class="wrap"><span>CORTEX · personal operating system</span><span>© 2026</span></div>')
+    '<div class="wrap"><span>CORTEX · personal operating system</span><span><a href="privacy/">Privacy</a> · © 2026</span></div>')
 
 # 4. Script: Tally instead of the draft form handler
 s0 = t.index('  // Waitlist (draft)')

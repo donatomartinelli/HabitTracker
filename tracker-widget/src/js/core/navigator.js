@@ -59,6 +59,28 @@ const OPTIONAL_MODULES = [
     { key: 'diet', section: 'health', label: 'Diet', desc: 'Meals, macros and body weight' },
     { key: 'streak', section: 'health', label: 'Streak', desc: 'Consistency grid and focus hours' }
 ];
+// Labs: personal or advanced integrations, off by default for new users
+const LAB_MODULES = [
+    { key: 'lab_sony', label: 'Voice recorder import', desc: 'Desktop app: imports recordings from a Sony voice recorder and transcribes them with your AI key' },
+    { key: 'lab_bridge', label: 'Calendar and bank email bridge', desc: 'Google Apps Script bridge: Google/Apple calendars and bank notification emails' }
+];
+function labAutoDefault(key) {
+    try {
+        if (key === 'lab_sony') return (typeof processedAudioFiles !== 'undefined' && processedAudioFiles.length > 0) || Boolean(cortexStore.getItem('tracker_sony_archive_dir'));
+        if (key === 'lab_bridge') return Boolean(cortexStore.getItem('cortex_bridge_url'));
+    } catch (e) { /* ignore */ }
+    return false;
+}
+function isLabEnabled(key) {
+    if (typeof enabledModules !== 'undefined' && typeof enabledModules[key] === 'boolean') return enabledModules[key];
+    return labAutoDefault(key);
+}
+function applyLabClasses() {
+    document.body.classList.toggle('lab-sony-off', !isLabEnabled('lab_sony'));
+    document.body.classList.toggle('lab-bridge-off', !isLabEnabled('lab_bridge'));
+}
+window.isLabEnabled = isLabEnabled;
+
 let enabledModules = (function () {
     try {
         const v = JSON.parse(cortexStore.getItem(MODULES_KEY) || 'null');
@@ -90,6 +112,7 @@ function applyEnabledModules(obj) {
     afterModulesChanged();
 }
 function afterModulesChanged() {
+    applyLabClasses();
     if (navState.mode === 'section') {
         const tab = navState.lastTab[navState.section];
         if (!isSectionEnabled(navState.section) || (tab && !isModuleEnabled(tab))) navigateToSection(navState.section);
@@ -123,6 +146,16 @@ function openModulesPanel() {
                     </label>`).join('')}
             </div>`;
     }).join('');
+    const labs = `
+            <div class="modules-group">
+                <div class="modules-group-title">Labs</div>
+                ${LAB_MODULES.map(m => `
+                    <label class="modules-row" for="mod-${m.key}">
+                        <input type="checkbox" id="mod-${m.key}" data-mod="${m.key}" ${isLabEnabled(m.key) ? 'checked' : ''}>
+                        <span class="modules-name">${m.label}</span>
+                        <span class="modules-desc">${m.desc}</span>
+                    </label>`).join('')}
+            </div>`;
     wrap.innerHTML = `
         <div class="modules-panel" role="dialog" aria-modal="true" aria-labelledby="modules-title">
             <div class="modules-head">
@@ -131,6 +164,7 @@ function openModulesPanel() {
             </div>
             <p class="modules-intro">Turn on only what you use. Today is always on. Switching a module off hides it everywhere; your data stays and comes back when you switch it on again.</p>
             ${groups}
+            ${labs}
             <div class="modules-foot"><button type="button" class="btn btn-primary btn-sm" data-close>[DONE]</button></div>
         </div>`;
     wrap.addEventListener('click', (e) => {
@@ -444,6 +478,7 @@ function restoreNavView() {
 window.addEventListener('DOMContentLoaded', () => {
     // Window controls (minimize/close) only make sense in the desktop app
     document.body.classList.toggle('is-tauri', Boolean(window.__TAURI__));
+    applyLabClasses();
 
     // The old manual switch is gone: layout follows the window width
     cortexStore.removeItem('cortex_force_mobile');

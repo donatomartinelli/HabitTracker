@@ -54,7 +54,8 @@
         'js/ai/terminal-ui.js',
         'js/ai/palette.js',
         'js/core/mobile-touch.js',
-        'js/core/navigator.js'
+        'js/core/navigator.js',
+        'js/core/onboarding.js'
     ];
     window.CORTEX_APP_SCRIPTS = APP_SCRIPTS;
 

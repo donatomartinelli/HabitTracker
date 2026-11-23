@@ -459,7 +459,7 @@ function deleteUniTax(taxId) {
 // ============================================================================
 
 function renderUniDashboard() {
-    ensureTasseUniCategory();
+    // (fees category is ensured when a fee is added or paid)
 
     renderUniAtomRoadmap();
     renderUniAtomLectures();
@@ -1020,6 +1020,7 @@ function renderUniAtomLibretto() {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-    ensureTasseUniCategory();
+    // The fees category is created when a fee is added, not on every start (keeps new installs clean)
+    if (typeof CORTEX_STARTER_USER === 'undefined' || !CORTEX_STARTER_USER) ensureTasseUniCategory();
     renderUniDashboard();
 });

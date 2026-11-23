@@ -33,9 +33,15 @@ function syncNotesCategoriesState() {
         noteCategories = ['General'];
     }
     
+    // "Registrazioni" holds voice-recorder transcripts: shown only to people who use that lab
+    // (or who already have notes in it), so new users don't see a personal folder.
+    const hasRecordings = Object.keys(notesContent || {}).some(k => (k === 'Registrazioni' || k.startsWith('Registrazioni')) && String(notesContent[k] || '').trim());
+    const keepRecordings = hasRecordings || (typeof isLabEnabled === 'function'
+        ? isLabEnabled('lab_sony')
+        : noteCategories.includes('Registrazioni'));
     noteCategories = noteCategories.filter(c => c !== 'Extracted' && c !== 'Registrazioni');
-    
-    if (!noteCategories.includes('Registrazioni')) noteCategories.push('Registrazioni');
+
+    if (keepRecordings) noteCategories.push('Registrazioni');
     if (!noteCategories.includes('General')) noteCategories.unshift('General');
 
     if (!noteCategories.includes(activeNoteCategory)) {
@@ -175,7 +181,10 @@ function getAllParentCategories() {
         if (parent && !parents.includes(parent)) parents.push(parent);
     });
     if (!parents.includes('General')) parents.unshift('General');
-    if (!parents.includes('Registrazioni')) parents.push('Registrazioni');
+    // The recordings folder appears only for the voice-recorder lab (or if it already exists)
+    // Before the labs system has loaded, keep the folder only if it already exists
+    const recordingsOn = typeof isLabEnabled === 'function' ? isLabEnabled('lab_sony') : (noteCategories || []).includes('Registrazioni');
+    if (recordingsOn && !parents.includes('Registrazioni')) parents.push('Registrazioni');
     return parents;
 }
 function getSubcategoriesForParent(parentCat) {

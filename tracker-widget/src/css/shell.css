@@ -496,3 +496,40 @@ body.mobile-view-mode .modules-desc { grid-column: 2; }
 .account-note { margin: 0; font-size: var(--font-2xs); color: var(--text-dim); line-height: var(--line-normal); }
 .account-status { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); font-size: var(--font-xs); border: 1px solid var(--border-color); padding: var(--space-2) var(--space-3); }
 .account-status .dim { font-size: var(--font-2xs); letter-spacing: var(--tracking-label); }
+
+/* ---------- Welcome guide ---------- */
+.ob-overlay {
+    position: fixed; inset: 0; z-index: 4000;
+    background: var(--bg-main);
+    display: flex; align-items: center; justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 16px max(16px, env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+}
+.ob-panel { width: min(620px, 100%); display: flex; flex-direction: column; gap: var(--space-4); }
+.ob-top { display: flex; justify-content: space-between; align-items: center; }
+.ob-brand { font-weight: bold; letter-spacing: var(--tracking-label); font-size: var(--font-sm); }
+.ob-dots { display: flex; gap: var(--space-1); }
+.ob-dot { width: 18px; height: 2px; background: var(--border-bright); }
+.ob-dot.on { background: var(--text-main); }
+.ob-kicker { font-size: var(--font-2xs); letter-spacing: var(--tracking-label); color: var(--accent-gold); }
+.ob-title { font-size: clamp(1.4rem, 4vw, 2rem); line-height: 1.15; margin: 0; text-wrap: balance; text-transform: none; letter-spacing: -0.01em; }
+.ob-text { margin: 0; color: var(--text-muted); font-size: var(--font-md); line-height: var(--line-normal); max-width: 52ch; }
+.ob-actions { display: flex; gap: var(--space-3); align-items: center; flex-wrap: wrap; margin-top: var(--space-2); }
+.ob-areas { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+.ob-area { display: flex; gap: var(--space-3); align-items: flex-start; border: 1px solid var(--border-color); padding: var(--space-3); cursor: pointer; }
+.ob-area:hover { border-color: var(--border-bright); }
+.ob-area input { margin-top: 3px; width: 16px; height: 16px; accent-color: var(--text-main); flex-shrink: 0; }
+.ob-area span { display: flex; flex-direction: column; gap: 2px; font-size: var(--font-sm); }
+.ob-area .dim { font-size: var(--font-2xs); }
+.ob-todos { display: flex; flex-direction: column; gap: var(--space-2); }
+.ob-todos input { font-size: var(--font-md); padding: var(--space-3); }
+.ob-examples { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip-btn { background: transparent; border: 1px solid var(--border-bright); color: var(--text-muted); font: inherit; font-size: var(--font-xs); padding: var(--space-1) var(--space-3); cursor: pointer; }
+.chip-btn:hover { border-color: var(--text-main); color: var(--text-main); }
+body.mobile-view-mode .ob-areas { grid-template-columns: 1fr; }
+
+/* Labs (personal integrations) hidden unless switched on */
+body.lab-sony-off .lab-sony,
+body.lab-bridge-off .lab-bridge,
+body.lab-sony-off .btn-notes-mic-rec.lab-sony { display: none !important; }
+.account-secondary { border-top: 1px solid var(--border-color); padding-top: var(--space-2); }

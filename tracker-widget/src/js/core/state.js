@@ -244,6 +244,44 @@ function persistKeysMap(entriesMap) {
     }
 }
 
+// ----------------------------------------------------------------------------
+// FIRST RUN: is this a brand-new install (no data of any kind yet)?
+// ----------------------------------------------------------------------------
+const CORTEX_FRESH_INSTALL = ['tracker_templates', 'tracker_routines', 'tracker_notes', 'tracker_logs', 'm_trans']
+    .every(k => cortexStore.getItem(k) === null);
+if (CORTEX_FRESH_INSTALL) {
+    cortexStore.setItem('cortex_fresh_install', '1');
+    cortexStore.setItem('cortex_starter', '1');   // permanent: this user started from the neutral setup
+} else if (cortexStore.getItem('cortex_onboarded') === null && cortexStore.getItem('cortex_fresh_install') === null) {
+    // Existing users skip the welcome guide
+    cortexStore.setItem('cortex_onboarded', '1');
+}
+// True for every launch of a user who started clean (not only the very first one)
+const CORTEX_STARTER_USER = cortexStore.getItem('cortex_starter') === '1';
+
+// Neutral starting point for new users (English, empty, nothing personal)
+const STARTER_DATA = {
+    'tracker_note_cats': ['Inbox', 'Ideas', 'Projects'],
+    'tracker_diet_data': [
+        { type: 'Breakfast' }, { type: 'Lunch' }, { type: 'Snack' }, { type: 'Dinner' }
+    ],
+    'tracker_diet_rules': '',
+    'tracker_food_db': [
+        { name: 'Oats', kcal: 389, p: 16.9, c: 66.3, f: 6.9, defaultG: 50 },
+        { name: 'Rice', kcal: 360, p: 7.0, c: 79.0, f: 0.6, defaultG: 80 },
+        { name: 'Pasta', kcal: 357, p: 12.5, c: 72.0, f: 1.5, defaultG: 80 },
+        { name: 'Chicken breast', kcal: 110, p: 23.0, c: 0, f: 1.2, defaultG: 150 },
+        { name: 'Eggs', kcal: 143, p: 12.6, c: 0.7, f: 9.5, defaultG: 100 },
+        { name: 'Greek yogurt', kcal: 97, p: 9.0, c: 3.9, f: 5.0, defaultG: 150 },
+        { name: 'Banana', kcal: 89, p: 1.1, c: 22.8, f: 0.3, defaultG: 120 },
+        { name: 'Olive oil', kcal: 884, p: 0, c: 0, f: 100, defaultG: 10 }
+    ],
+    'tracker_gym_plan': { 1: [], 2: [] },
+    'tracker_gym_routine': { enabled: false, timeWindows: [] },
+    'm_categories': ['General', 'Food', 'Transport', 'Bills', 'Subscriptions', 'Health', 'Fun', 'Study'],
+    'tracker_routines': []
+};
+
 function migrateAndInitData() {
     const defaults = {
         'tracker_templates': [],
@@ -289,6 +327,10 @@ function migrateAndInitData() {
         'tracker_routine_logs': {}
     };
 
+    // A brand-new install starts clean and neutral. The DEFAULT_* values above are the
+    // original author's personal setup: they stay only as fallbacks for existing data.
+    if (CORTEX_FRESH_INSTALL) Object.assign(defaults, STARTER_DATA);
+
     for (let key in defaults) {
         if (cortexStore.getItem(key) === null) {
             try {
@@ -327,7 +369,8 @@ let mRecurring = safeJsonParse(cortexStore.getItem('m_rec'), []);
 let mWishlist = safeJsonParse(cortexStore.getItem('m_wish'), []);
 let mVaults = safeJsonParse(cortexStore.getItem('m_vaults'), []);
 let mCategories = safeJsonParse(cortexStore.getItem('m_categories'), DEFAULT_MONEY_CATEGORIES);
-if (!mCategories.includes('Tasse Uni')) mCategories.push('Tasse Uni');
+// University fees get their own category, except on a fresh install (added when the uni module is used)
+if (!CORTEX_STARTER_USER && !mCategories.includes('Tasse Uni')) mCategories.push('Tasse Uni');
 
 // Health (Diet & Gym)
 let nextWorkoutDay = parseInt(cortexStore.getItem('tracker_gym_next'), 10) || 1;
@@ -335,7 +378,7 @@ let savedGymWeights = safeJsonParse(cortexStore.getItem('tracker_gym_weights'), 
 let gymStartDate = cortexStore.getItem('gym_start_date') || "";
 let gymEndDate = cortexStore.getItem('gym_end_date') || "";
 let dietData = safeJsonParse(cortexStore.getItem('tracker_diet_data'), DEFAULT_DIET_DATA);
-let dietRules = cortexStore.getItem('tracker_diet_rules') || DEFAULT_DIET_RULES;
+let dietRules = cortexStore.getItem('tracker_diet_rules') ?? DEFAULT_DIET_RULES;
 let gymPlan = safeJsonParse(cortexStore.getItem('tracker_gym_plan'), DEFAULT_GYM_PLAN);
 let gymRoutine = Object.assign({}, DEFAULT_GYM_ROUTINE, safeJsonParse(cortexStore.getItem('tracker_gym_routine'), {}));
 let foodDb = safeJsonParse(cortexStore.getItem('tracker_food_db'), DEFAULT_FOOD_DB);

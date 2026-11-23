@@ -161,6 +161,17 @@
         renderAccountPanel();
     }
 
+    // Permanently deletes the account and its cloud data. Data on this device stays.
+    async function deleteAccount() {
+        const t = await token();
+        await call('/rest/v1/rpc/delete_my_account', { method: 'POST', token: t, body: {} });
+        saveSession(null);
+        ['cortex_sync_base', 'cortex_sync_base_owner', 'cortex_sync_dirty_since', 'cortex_last_cloud_ts']
+            .forEach(k => cortexStore.removeItem(k));
+        if (typeof refreshSyncIndicatorFromState === 'function') refreshSyncIndicatorFromState();
+        if (typeof showToast === 'function') showToast('[☁ ACCOUNT] Account deleted. Your data is still on this device.');
+    }
+
     // The email link redirects back here with the tokens in the URL hash
     async function handleRedirect() {
         const h = location.hash || '';
@@ -224,7 +235,7 @@
     // ------------------------------------------------------------------
     // Account panel
     // ------------------------------------------------------------------
-    let panelStep = 'email';   // email → check-inbox → (signed in)
+    let panelStep = 'email';   // email → check-inbox → (signed in) → confirm-delete
     let panelError = '';
 
     function openAccountPanel() {
@@ -247,7 +258,16 @@
         const wrap = document.getElementById('account-panel');
         if (!wrap) return;
         let body = '';
-        if (isSignedIn()) {
+        if (isSignedIn() && panelStep === 'confirm-delete') {
+            body = `
+                <p class="modules-intro"><strong>Delete your account?</strong> This permanently removes your account and the copy of your data in the cloud. Other devices stop syncing. The data on this device stays here, and you can export it first.</p>
+                <div class="account-error" aria-live="polite">${esc(panelError)}</div>
+                <div class="account-actions">
+                    <button type="button" class="btn btn-danger btn-sm" data-act="delete-confirm">[DELETE MY ACCOUNT]</button>
+                    <button type="button" class="btn btn-sm" data-act="export">[EXPORT MY DATA]</button>
+                    <button type="button" class="ghost-btn" data-act="delete-cancel">Cancel</button>
+                </div>`;
+        } else if (isSignedIn()) {
             const status = typeof cloudSyncStatus !== 'undefined' ? cloudSyncStatus : 'idle';
             const last = typeof lastSyncOkMs !== 'undefined' && lastSyncOkMs && typeof formatAgo === 'function' ? formatAgo(lastSyncOkMs) : 'not yet';
             body = `
@@ -257,6 +277,10 @@
                     <button type="button" class="btn btn-primary btn-sm" data-act="sync">[⇅ SYNC NOW]</button>
                     <button type="button" class="btn btn-sm" data-act="conflicts">[SAVED CONFLICTS]</button>
                     <button type="button" class="ghost-btn danger" data-act="signout">Sign out</button>
+                </div>
+                <div class="account-actions account-secondary">
+                    <button type="button" class="ghost-btn" data-act="export">Export my data</button>
+                    <button type="button" class="ghost-btn danger" data-act="delete">Delete account</button>
                 </div>`;
         } else if (panelStep === 'check-inbox') {
             const email = cortexStore.getItem(PENDING_KEY) || '';
@@ -281,7 +305,11 @@
                 <div class="account-actions">
                     <button type="button" class="btn btn-primary btn-sm" data-act="send">[SEND SIGN-IN EMAIL]</button>
                 </div>
-                <p class="account-note">Data on this device stays here and is merged with your account the first time you sign in. Nothing is deleted.</p>`;
+                <p class="account-note">Data on this device stays here and is merged with your account the first time you sign in. Nothing is deleted.</p>
+                <div class="account-actions account-secondary">
+                    <button type="button" class="ghost-btn" data-act="export">Export my data</button>
+                    <a class="ghost-btn" href="https://donatomartinelli.github.io/cortex/privacy/" target="_blank" rel="noopener">Privacy</a>
+                </div>`;
         }
         wrap.innerHTML = `
             <div class="modules-panel" role="dialog" aria-modal="true" aria-labelledby="account-title">
@@ -324,6 +352,17 @@
         });
         act('conflicts')?.addEventListener('click', () => { wrap.remove(); if (typeof showSyncConflictsModal === 'function') showSyncConflictsModal(); });
         act('signout')?.addEventListener('click', () => signOut());
+        wrap.querySelectorAll('[data-act="export"]').forEach(b => b.addEventListener('click', () => {
+            if (typeof exportData === 'function') exportData();
+        }));
+        act('delete')?.addEventListener('click', () => { panelStep = 'confirm-delete'; panelError = ''; renderAccountPanel(); });
+        act('delete-cancel')?.addEventListener('click', () => { panelStep = 'email'; panelError = ''; renderAccountPanel(); });
+        act('delete-confirm')?.addEventListener('click', async (e) => {
+            busy(e.currentTarget, true, '[DELETING…]');
+            try { await deleteAccount(); panelStep = 'email'; panelError = ''; }
+            catch (err) { panelError = friendlyError(err); }
+            renderAccountPanel();
+        });
         (wrap.querySelector('#account-email') || wrap.querySelector('#account-link'))?.focus();
     }
 
@@ -335,7 +374,7 @@
         return m;
     }
 
-    window.CortexAccount = { isSignedIn, userId, userEmail, sendSignInEmail, completeSignIn, signOut, fetchState, saveState };
+    window.CortexAccount = { isSignedIn, userId, userEmail, sendSignInEmail, completeSignIn, signOut, fetchState, saveState, deleteAccount };
     window.openAccountPanel = openAccountPanel;
 
     window.addEventListener('DOMContentLoaded', () => { handleRedirect(); });
