@@ -80,7 +80,7 @@ function renderTreeSidebar(containerEl) {
 
         const row = document.createElement('div');
         row.style.cssText = `display:flex; align-items:center; gap:6px; padding: 4px 6px; padding-left: ${4 + depth * 12}px; cursor: pointer; user-select: none; border-left: 2px solid ${isActive ? 'var(--text-main)' : 'transparent'}; background: ${isActive ? 'rgba(255,255,255,0.06)' : 'transparent'}; font-size: var(--font-xs);`;
-        row.className = 'note-tree-row';
+        row.className = 'note-tree-row' + (isActive ? ' is-active' : '');
 
         const icon = document.createElement('span');
         icon.style.cssText = 'width:12px; text-align:center; color:var(--text-dim); font-weight:bold; cursor:pointer;';
@@ -131,6 +131,7 @@ function renderTreeSidebar(containerEl) {
         };
 
         row.onclick = () => {
+            if (hasChildren) expandedTreeNodes.add(fullPath); // selecting a folder also shows its subfolders
             activeNoteCategory = fullPath;
             selectedNoteCardKeys.clear();
             renderNoteCategories();
@@ -144,6 +145,7 @@ function renderTreeSidebar(containerEl) {
 
         if (hasChildren && isExpanded) {
             const childrenContainer = document.createElement('div');
+            childrenContainer.className = 'note-tree-children';
             childrenKeys.sort().forEach(k => {
                 renderNode(k, nodeData._children[k], childrenContainer, depth + 1);
             });
@@ -434,13 +436,16 @@ function renderNotesAtomBrowse(customContainer = null) {
     if (!root) return;
 
     syncNotesCategoriesState();
-    const sortLabels = { 'newest': '[SORT: NEW]', 'longest': '[SORT: LONG ↓]', 'shortest': '[SORT: SHORT ↑]' };
+    const compact = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
+    const sortLabels = compact
+        ? { 'newest': '[NEW]', 'longest': '[LONG]', 'shortest': '[SHORT]' }
+        : { 'newest': '[SORT: NEW]', 'longest': '[SORT: LONG ↓]', 'shortest': '[SORT: SHORT ↑]' };
     const selCount = selectedNoteCardKeys.size;
 
     root.innerHTML = `
         <div class="module-body-padded u-grow u-flex u-col u-gap-2 u-clip u-p-0" style="height:100%;">
             
-            <div class="section-header-row u-mb-0 u-wrap u-gap-2 u-noshrink" style="padding:var(--space-3) var(--space-4) 0 var(--space-4);">
+            <div class="nb-toolbar section-header-row u-mb-0 u-wrap u-gap-2 u-noshrink" style="padding:var(--space-3) var(--space-4) 0 var(--space-4);">
                 <div>
                     <span class="section-label">Notes Explorer</span>
                     <span class="sony-pipeline-status-lbl u-fs-xs u-gold u-bold u-ml-2"></span>
@@ -473,8 +478,8 @@ function renderNotesAtomBrowse(customContainer = null) {
             <div id="notes-batch-ai-drawer" class="note-ai-drawer u-noshrink u-scroll-y" style="display:none; max-height:52%; margin:0 var(--space-4);"></div>
 
             <!-- LAYOUT SPLIT A 2 COLONNE: TREE (SX) E MASONRY (DX) -->
-            <div class="u-flex u-grow u-clip u-mt-1" style="min-height:0; border-top:1px solid var(--border-color);">
-                <div class="u-scroll-y" id="notes-tree-sidebar" style="width:200px; border-right:1px solid var(--border-color); padding:var(--space-2) var(--space-1) var(--space-2) 0; background:rgba(0,0,0,0.2);"></div>
+            <div class="notes-split u-flex u-grow u-clip u-mt-1" style="min-height:0; border-top:1px solid var(--border-color);">
+                <div class="notes-tree u-scroll-y" id="notes-tree-sidebar" style="width:200px; border-right:1px solid var(--border-color); padding:var(--space-2) var(--space-1) var(--space-2) 0; background:rgba(0,0,0,0.2);"></div>
                 <div class="notes-browse-container nb-cards-mount u-grow u-scroll-y u-flex" style="padding:var(--space-3);"></div>
             </div>
         </div>
@@ -495,6 +500,9 @@ function renderNotesAtomBrowse(customContainer = null) {
 
     renderTreeSidebar(root.querySelector('#notes-tree-sidebar'));
     populateBrowseMasonryDom(root.querySelector('.nb-cards-mount'), currentBrowseFilterQuery);
+    // Phone: bring the selected folder chip into view
+    const activeChip = root.querySelector('.note-tree-row.is-active');
+    if (activeChip && compact) activeChip.scrollIntoView({ block: 'nearest', inline: 'center' });
 }
 
 function collectVisibleCardsList(filterQuery = '') {
@@ -644,6 +652,9 @@ function extractNoteSemanticTags(bodyText) {
     return Array.from(tags);
 }
 
+// Where each graph node was last time, so reopening the graph doesn't reshuffle it
+const graphPositionCache = new Map();
+
 function buildNotesGraphTopology(filterParent = 'ALL') {
     const nodes = [];
     const links = [];
@@ -669,7 +680,7 @@ function buildNotesGraphTopology(filterParent = 'ALL') {
             const nNode = {
                 id: nId, kind: 'note', catKey: pCat, storageIdx: idx, card: card,
                 label: firstLine, tags: extractNoteSemanticTags(card.body),
-                x: pNode.x + (Math.random() - 0.5) * 90, y: pNode.y + (Math.random() - 0.5) * 90,
+                x: pNode.x + Math.cos(idx * 2.399) * (24 + idx * 6), y: pNode.y + Math.sin(idx * 2.399) * (24 + idx * 6),
                 vx: 0, vy: 0, radius: Math.min(7.5, Math.max(4, 3.5 + Math.log10((card.body || '').length + 10))),
                 color: '#999999'
             };
@@ -698,7 +709,7 @@ function buildNotesGraphTopology(filterParent = 'ALL') {
                 const nNode = {
                     id: nId, kind: 'note', catKey: sObj.full, storageIdx: idx, card: card,
                     label: firstLine, tags: extractNoteSemanticTags(card.body),
-                    x: sNode.x + (Math.random() - 0.5) * 80, y: sNode.y + (Math.random() - 0.5) * 80,
+                    x: sNode.x + Math.cos(idx * 2.399) * (20 + idx * 5), y: sNode.y + Math.sin(idx * 2.399) * (20 + idx * 5),
                     vx: 0, vy: 0, radius: Math.min(7.5, Math.max(4, 3.5 + Math.log10((card.body || '').length + 10))),
                     color: '#bbbbbb'
                 };
@@ -1004,13 +1015,8 @@ function renderNotesAtomGraph() {
         camZoom = Math.max(0.35, Math.min(3.2, camZoom * (e.deltaY < 0 ? 1.12 : 0.89)));
     }, { passive: false });
 
-    const stepPhysicsAndDraw = () => {
-        if (!document.body.contains(canvas)) return;
-        const rect = stage.getBoundingClientRect();
-        if (rect.width > 0 && Math.abs(canvas.width - rect.width * (window.devicePixelRatio || 1)) > 4) resizeCanvas();
-
-        tickTime += 0.018;
-
+    // One step of the layout forces (also used to settle the graph before showing it)
+    const physicsStep = (withDrift) => {
         for (let i = 0; i < nodes.length; i++) {
             for (let j = i + 1; j < nodes.length; j++) {
                 const a = nodes[i], b = nodes[j];
@@ -1037,12 +1043,36 @@ function renderNotesAtomGraph() {
 
         nodes.forEach(n => {
             if (n === draggedNode) return;
-            const driftAmp = n.kind === 'note' ? 0.055 : 0.025;
+            const driftAmp = withDrift ? (n.kind === 'note' ? 0.055 : 0.025) : 0;
             n.vx += Math.cos(tickTime + n.phase) * driftAmp - n.x * 0.0035;
             n.vy += Math.sin(tickTime * 0.85 + n.phase) * driftAmp - n.y * 0.0035;
             n.vx *= 0.86; n.vy *= 0.86;
+            // never let a node fly off
+            const sp = Math.hypot(n.vx, n.vy);
+            if (sp > 6) { n.vx *= 6 / sp; n.vy *= 6 / sp; }
             n.x += n.vx; n.y += n.vy;
         });
+    };
+
+    // Start from where nodes were last time; settle new ones off-screen, then show
+    nodes.forEach(n => {
+        const p = graphPositionCache.get(n.id);
+        if (p) { n.x = p.x; n.y = p.y; }
+    });
+    const unsettled = nodes.some(n => !graphPositionCache.has(n.id));
+    for (let it = 0; it < (unsettled ? 320 : 40); it++) physicsStep(false);
+    nodes.forEach(n => { n.vx = 0; n.vy = 0; });
+    const rememberPositions = () => nodes.forEach(n => graphPositionCache.set(n.id, { x: n.x, y: n.y }));
+    rememberPositions();
+
+    const stepPhysicsAndDraw = () => {
+        if (!document.body.contains(canvas)) return;
+        const rect = stage.getBoundingClientRect();
+        if (rect.width > 0 && Math.abs(canvas.width - rect.width * (window.devicePixelRatio || 1)) > 4) resizeCanvas();
+
+        tickTime += 0.018;
+        physicsStep(true);
+        if (Math.round(tickTime / 0.018) % 60 === 0) rememberPositions();
 
         ctx.clearRect(0, 0, rect.width, rect.height);
         ctx.save();

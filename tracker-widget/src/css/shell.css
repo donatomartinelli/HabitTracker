@@ -612,3 +612,45 @@ body.mobile-view-mode .focus-strip .header-focus-btn { min-height: 32px; }
 body.mobile-view-mode .modal-overlay { z-index: 1300 !important; }
 .focus-free-row { width: 100%; display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; padding-bottom: var(--space-3); border-bottom: 1px dotted var(--border-color); margin-bottom: var(--space-2); }
 .focus-free-row input { flex: 1 1 180px; min-width: 0; }
+
+/* ---------- Notes on the phone: folders as one scrollable row of chips ---------- */
+body.mobile-view-mode .notes-split { flex-direction: column; }
+body.mobile-view-mode .notes-tree {
+    width: 100% !important;
+    flex: 0 0 auto;
+    display: flex;
+    gap: var(--space-1);
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: var(--space-2) var(--space-3) !important;
+    border-right: none !important;
+    border-bottom: 1px solid var(--border-color);
+    scrollbar-width: none;
+}
+body.mobile-view-mode .notes-tree .note-tree-children { display: contents; }
+body.mobile-view-mode .notes-tree .note-tree-row {
+    flex: 0 0 auto;
+    padding: var(--space-1) var(--space-3) !important;
+    border: 1px solid var(--border-color) !important;
+    background: transparent !important;
+    gap: var(--space-1) !important;
+    min-height: 32px;
+}
+body.mobile-view-mode .notes-tree .note-tree-row.is-active { border-color: var(--text-main) !important; background: var(--text-main) !important; }
+body.mobile-view-mode .notes-tree .note-tree-row.is-active span { color: var(--bg-main) !important; }
+body.mobile-view-mode .notes-tree .note-tree-row > span:first-child { display: none; }
+body.mobile-view-mode .notes-tree .note-tree-row > span:nth-child(2) { flex: 0 1 auto !important; }
+body.mobile-view-mode .nb-cards-mount { padding: var(--space-3) !important; }
+body.mobile-view-mode .nb-toolbar { flex-wrap: nowrap !important; padding: var(--space-2) var(--space-3) 0 !important; }
+body.mobile-view-mode .nb-toolbar > div:first-child { display: none; }
+body.mobile-view-mode .nb-toolbar > div:last-child { flex: 1; flex-wrap: nowrap !important; min-width: 0; }
+body.mobile-view-mode .nb-toolbar .nb-search-inp { flex: 1; min-width: 0; width: auto !important; }
+
+/* ---------- Week planner: symbols when day columns are narrow ---------- */
+.block-absolute .blk-sym { display: none; }
+.planner-compact .block-absolute { display: flex; align-items: flex-start; justify-content: center; padding: 2px 0 !important; }
+.planner-compact .block-absolute .blk-full { display: none; }
+.planner-compact .block-absolute .blk-sym { display: block; font-size: var(--font-sm); line-height: 1.1; letter-spacing: 0; text-align: center; }
+.planner-symbol-legend { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); padding: var(--space-2) var(--space-3); font-size: var(--font-2xs); color: var(--text-dim); border-bottom: 1px solid var(--border-color); }
+.planner-symbol-legend b { color: var(--text-main); }
+.planner-symbol-legend[hidden] { display: none; }

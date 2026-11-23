@@ -148,6 +148,42 @@ function computeOverlapColumns(blocks) {
     });
 }
 
+// Narrow columns (phone, small widget): blocks show a symbol instead of broken words
+const PLANNER_SYMBOLS = [
+    { sym: '▲', label: 'Training', re: /gym|palestra|workout|allenament|leg day|upper|lower body|corsa|\brun\b|running|sport|swim|nuoto|yoga|pilates/ },
+    { sym: '§', label: 'Study', re: /stud|exam|esame|lezion|lecture|analys|analisi|physic|fisica|math|matemat|\buni\b|universit|chapter|capitolo|\blab\b|homework|compiti/ },
+    { sym: '■', label: 'Work', re: /work|lavor|meeting|riunion|\bcall\b|client|office|ufficio|report/ },
+    { sym: '◎', label: 'Meal', re: /dinner|cena|lunch|pranzo|breakfast|colazione|\bmeal|pasto/ },
+    { sym: '◆', label: 'Social', re: /friend|amic|party|festa|social|birthday|compleanno|\bdate\b/ },
+    { sym: '+', label: 'Health', re: /doctor|medic|dentist|health|salute|farmac|therapy|terapia/ },
+    { sym: '¶', label: 'Reading', re: /\bread|legg|lettura|book|libro/ },
+    { sym: '→', label: 'Travel', re: /travel|viagg|train|treno|flight|volo|\bbus\b|transport|commute/ },
+    { sym: '€', label: 'Money', re: /\bpay|bill|bollett|bank|banca|money|soldi|\brent\b|affitto|\btax|tasse/ },
+    { sym: '●', label: 'Focus', re: /focus|deep work|pomodoro/ },
+    { sym: '☾', label: 'Rest', re: /sleep|dorm|\bnap\b|riposo|\brest\b/ }
+];
+
+function plannerSymbolFor(title, category) {
+    const text = `${category && category !== 'Single Event' ? category : ''} ${title || ''}`.toLowerCase();
+    const hit = PLANNER_SYMBOLS.find(s => s.re.test(text));
+    if (hit) return { sym: hit.sym, label: hit.label };
+    const words = String(title || category || '?').trim().split(/\s+/).filter(Boolean);
+    const initials = words.length > 1 ? words[0][0] + words[1][0] : (words[0] || '?').slice(0, 2);
+    return { sym: initials.toUpperCase(), label: null };
+}
+
+function updatePlannerCompactMode() {
+    const grid = document.getElementById('planner-grid');
+    const scrollArea = document.getElementById('planner-scroll');
+    if (!grid) return;
+    const firstCol = grid.querySelector('.planner-col-absolute') || grid.firstElementChild;
+    const colW = firstCol ? firstCol.getBoundingClientRect().width : grid.getBoundingClientRect().width / 7;
+    const compact = colW > 0 && colW < 72;
+    (scrollArea || grid).classList.toggle('planner-compact', compact);
+    const legend = document.getElementById('planner-symbol-legend');
+    if (legend) legend.hidden = !compact || !legend.textContent.trim();
+}
+
 function renderWeeklyPlanner() {
     try {
         const sidebar = document.getElementById('reference-toggles-list');
@@ -253,6 +289,7 @@ function renderWeeklyPlanner() {
         }
 
         const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        const weekSymbolsUsed = new Map();
 
         for (let i = 0; i < 7; i++) {
             const currentD = new Date(weekStart);
@@ -427,8 +464,17 @@ function renderWeeklyPlanner() {
                 `;
 
                 const bTag = document.createElement('b');
+                bTag.className = 'blk-full';
                 bTag.textContent = (b.isTransport ? '🚆 ' : '') + b.title;
                 block.appendChild(bTag);
+                const symInfo = b.isTransport ? { sym: '→', label: 'Travel' } : plannerSymbolFor(b.title, b.category);
+                const symTag = document.createElement('b');
+                symTag.className = 'blk-sym';
+                symTag.textContent = symInfo.sym;
+                symTag.setAttribute('aria-hidden', 'true');
+                block.appendChild(symTag);
+                block.setAttribute('aria-label', `${b.title}, ${b.start}–${b.end}`);
+                if (symInfo.label) weekSymbolsUsed.set(symInfo.sym, symInfo.label);
 
                 const phaseMeta = getDayPhaseForTime(b.start);
                 block.onmouseenter = (ev) => showTooltip(ev, b.title, `${b.start} - ${b.end} (${phaseMeta.short})`, b.category);
@@ -460,6 +506,23 @@ function renderWeeklyPlanner() {
 
             grid.appendChild(dayCol);
         }
+
+        // Legend for the symbols shown when columns are narrow
+        if (scrollArea && scrollArea.parentNode) {
+            let legend = document.getElementById('planner-symbol-legend');
+            if (!legend) {
+                legend = document.createElement('div');
+                legend.id = 'planner-symbol-legend';
+                legend.className = 'planner-symbol-legend';
+                scrollArea.parentNode.insertBefore(legend, scrollArea);
+            }
+            legend.innerHTML = [...weekSymbolsUsed].map(([sym, label]) => `<span><b>${escapeHtml(sym)}</b> ${escapeHtml(label)}</span>`).join('');
+            if (!scrollArea.__compactObserver && typeof ResizeObserver === 'function') {
+                scrollArea.__compactObserver = new ResizeObserver(() => updatePlannerCompactMode());
+                scrollArea.__compactObserver.observe(scrollArea);
+            }
+        }
+        updatePlannerCompactMode();
 
         if (scrollArea) {
             if (!document.getElementById('planner-hover-line')) {
