@@ -399,6 +399,8 @@ function deleteTask(id) {
 }
 
 function deleteEvent(id) {
+    const ev = specificEvents.find(e => e.id === id);
+    if (ev && ev.extFeed && typeof explainImportedEvent === 'function') { explainImportedEvent(ev); return; }
     specificEvents = specificEvents.filter(e => e.id !== id);
     saveData();
     renderTasks();

@@ -374,7 +374,13 @@
         return m;
     }
 
-    window.CortexAccount = { isSignedIn, userId, userEmail, sendSignInEmail, completeSignIn, signOut, fetchState, saveState, deleteAccount };
+    // Calls a database function (Postgres RPC) as the signed-in user
+    async function rpc(name, args = {}) {
+        const t = await token();
+        return call('/rest/v1/rpc/' + name, { method: 'POST', token: t, body: args });
+    }
+
+    window.CortexAccount = { isSignedIn, userId, userEmail, sendSignInEmail, completeSignIn, signOut, fetchState, saveState, deleteAccount, rpc, supabaseUrl: SB_URL };
     window.openAccountPanel = openAccountPanel;
 
     window.addEventListener('DOMContentLoaded', () => { handleRedirect(); });

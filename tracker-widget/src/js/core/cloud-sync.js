@@ -250,7 +250,9 @@ function buildFullCortexCloudPayload(timestampMs) {
             icloudIcsUrl: typeof icloudIcsUrl !== 'undefined' ? icloudIcsUrl : '',
             bankGmailQuery: typeof bankGmailQuery !== 'undefined' ? bankGmailQuery : '',
             processedBankEmails: typeof processedBankEmails !== 'undefined' ? processedBankEmails : [],
-            enabledModules: typeof enabledModules !== 'undefined' ? enabledModules : {}
+            enabledModules: typeof enabledModules !== 'undefined' ? enabledModules : {},
+            calendarFeeds: typeof calendarFeeds !== 'undefined' ? calendarFeeds : [],
+            timeZone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })()
         }
     };
 }
@@ -331,6 +333,7 @@ function applyFullCortexCloudPayload(payloadObj) {
         }
 
         if (d.enabledModules && typeof applyEnabledModules === 'function') applyEnabledModules(d.enabledModules);
+        if (Array.isArray(d.calendarFeeds) && typeof applyCalendarFeeds === 'function') applyCalendarFeeds(d.calendarFeeds);
 
         saveData();
         saveMoneyData();

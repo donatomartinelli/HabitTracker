@@ -538,3 +538,17 @@ body.lab-sony-off .btn-notes-mic-rec.lab-sony { display: none !important; }
 .notes-md-box { border-top: 1px solid var(--border-color); margin-top: var(--space-4); padding-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); }
 .notes-md-hint { font-size: var(--font-xs); color: var(--text-dim); line-height: var(--line-normal); }
 .notes-md-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* Calendar connect panel */
+.cal-connect-panel { gap: var(--space-4); }
+.cal-feed-row { display: grid; grid-template-columns: 10px auto minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; padding: var(--space-2) 0; border-bottom: 1px solid var(--border-color); font-size: var(--font-xs); }
+.cal-feed-dot { width: 10px; height: 10px; }
+.cal-feed-name { color: var(--text-main); font-weight: bold; }
+.cal-feed-meta { color: var(--text-dim); font-size: var(--font-2xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cal-help { font-size: var(--font-xs); color: var(--text-muted); padding: var(--space-2) 0; }
+.cal-help summary { cursor: pointer; color: var(--text-dim); }
+.cal-steps { margin: var(--space-2) 0 0; padding-left: var(--space-4); display: grid; gap: var(--space-1); font-size: var(--font-xs); color: var(--text-muted); line-height: var(--line-normal); }
+.cal-steps strong { color: var(--text-main); }
+.cal-link-row { display: flex; gap: var(--space-2); }
+.cal-link-row input { flex: 1; min-width: 0; font-size: var(--font-2xs); }
+.cal-connect-panel .modules-group { gap: var(--space-2); }

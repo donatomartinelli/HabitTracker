@@ -41,6 +41,7 @@
         'js/modules/tasks.js',
         'js/modules/notes.js',
         'js/modules/notes-markdown.js',
+        'js/modules/calendar-sync.js',
         'js/modules/planner.js',
         'js/modules/focus.js',
         'js/modules/diet.js',

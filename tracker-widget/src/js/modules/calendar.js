@@ -21,6 +21,7 @@ document.addEventListener('mousedown', (e) => {
 function openEventQuickEditPopover(eventId, anchorEl) {
     const ev = specificEvents.find(x => x.id === eventId);
     if (!ev || !anchorEl) return;
+    if (ev.extFeed && typeof explainImportedEvent === 'function') { explainImportedEvent(ev); return; }
 
     if (activeEventPopoverEl && activeEventPopoverEl.dataset.eventId === eventId) {
         closeEventQuickEditPopover();
@@ -228,7 +229,8 @@ function buildDayEventsListDom(targetListEl) {
             ev.stopPropagation();
             deleteEvent(e.id);
         };
-        evRow.appendChild(delBtn);
+        if (!e.extFeed) evRow.appendChild(delBtn); // imported events are read-only
+        else evRow.title = 'From a connected calendar (read-only)';
         targetListEl.appendChild(evRow);
     });
 }
@@ -255,7 +257,8 @@ function renderCalendarAtomGrid() {
                     <span class="u-fs-xs u-dim u-ml-2">// ${monthLabel}</span>
                 </div>
                 <div class="u-flex u-gap-2 u-ai-center">
-                    <button type="button" class="btn btn-sm lab-bridge" onclick="syncExternalCalendarsNow(true)" title="Sync Google & Apple Calendar">[📅 SYNC]</button>
+                    <button type="button" class="btn btn-sm" onclick="openCalendarConnect()" title="Connect Google, Apple or Outlook calendars">[⇄ CONNECT]</button>
+                    <button type="button" class="btn btn-sm lab-bridge" onclick="syncExternalCalendarsNow(true)" title="Personal bridge (Labs)">[📅 BRIDGE]</button>
                     <button type="button" class="btn btn-sm" onclick="changeMonth(-1)">‹</button>
                     <button type="button" class="btn btn-sm" onclick="changeMonth(1)">›</button>
                 </div>
