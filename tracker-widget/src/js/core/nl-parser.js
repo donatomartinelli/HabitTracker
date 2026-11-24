@@ -209,7 +209,8 @@
         m = findFree(ctx, /\b(?:alle|ore|at|h)\s+(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)?\b/);
         if (!m) m = findFree(ctx, /\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/);
         if (!m) m = findFree(ctx, /\b(\d{1,2})[:](\d{2})\b/);
-        if (!m) m = findFree(ctx, /\b(\d{1,2})h\b/);
+        // "15h" is an hour, "2h" is a length (handled by extractDuration)
+        if (!m) { const h = findFree(ctx, /\b(\d{1,2})h\b/); if (h && +h[1] >= 13) m = h; }
         if (m) {
             const s = toMinutes(m[1], m[2], m[3]);
             if (s !== null) {
@@ -236,6 +237,120 @@
         m = findFree(ctx, /\b(?:per|for)?\s*(\d+)\s*(minuti|minuto|min|mins|minutes?|m)\b/);
         if (m) { take(ctx, m.index, m[0].length); return parseInt(m[1], 10); }
         return null;
+    }
+
+    // ------------------------------------------------------------------
+    // Parts of the day: "stasera", "domani pomeriggio", "in the morning"
+    // → a time window used to place things in a free slot.
+    // ------------------------------------------------------------------
+    const DAYPARTS = { morning: [8 * 60, 12 * 60], afternoon: [13 * 60, 19 * 60], evening: [19 * 60, 23 * 60] };
+    const DAYPART_LABEL = { morning: 'morning', afternoon: 'afternoon', evening: 'evening' };
+
+    function extractDayPart(ctx, today) {
+        const pick = (re, part, date) => {
+            const m = findFree(ctx, re);
+            if (!m) return null;
+            take(ctx, m.index, m[0].length);
+            return { part, date };
+        };
+        return pick(/\b(stamattina|stamani|this morning)\b/, 'morning', today)
+            || pick(/\b(oggi pomeriggio|this afternoon)\b/, 'afternoon', today)
+            || pick(/\b(stasera|stanotte|tonight|this evening)\b/, 'evening', today)
+            || pick(/\b(?:(?:in the|in|di|la|nel|nella)\s+)?(mattina|mattinata|morning)\b/, 'morning', null)
+            || pick(/\b(?:(?:in the|in|di|il|nel)\s+)?(pomeriggio|afternoon)\b/, 'afternoon', null)
+            || pick(/\b(?:(?:in the|in|di|la|nella)\s+)?(serata|sera|evening)\b|\bin serata\b/, 'evening', null);
+    }
+
+    // ------------------------------------------------------------------
+    // Free-slot finder: first gap of `dur` minutes in [from, to),
+    // avoiding the busy intervals [[start, end], ...] (minutes).
+    // ------------------------------------------------------------------
+    function findSlot(busy, dur, from, to) {
+        const iv = (busy || []).filter(b => b && b[1] > b[0]).map(b => [b[0], b[1]]).sort((a, b) => a[0] - b[0]);
+        let t = Math.ceil(from / 15) * 15;
+        for (const [s, e] of iv) {
+            if (e <= t) continue;
+            if (s - t >= dur) break;
+            t = Math.max(t, Math.ceil(e / 15) * 15);
+        }
+        return t + dur <= to ? t : null;
+    }
+
+    function slotOn(date, dur, part, today, opts) {
+        const win = part ? DAYPARTS[part] : [opts.dayStart ?? 8 * 60, opts.dayEnd ?? 22 * 60];
+        let from = win[0];
+        if (date === today && typeof opts.now === 'number') from = Math.max(from, opts.now + 5);
+        const busy = typeof opts.busyOn === 'function' ? (opts.busyOn(date) || []) : [];
+        const s = findSlot(busy, dur, from, win[1]);
+        return s === null ? null : { start: s, end: s + dur };
+    }
+
+    // ------------------------------------------------------------------
+    // Recurrence: "ogni lunedì e giovedì", "every weekday", "tutti i giorni"
+    // ------------------------------------------------------------------
+    const DAY_CODE = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+    const EN_PLURAL = ['sundays', 'mondays', 'tuesdays', 'wednesdays', 'thursdays', 'fridays', 'saturdays'];
+
+    function extractRecurrence(ctx) {
+        const pick = (re) => { const m = findFree(ctx, re); if (m) take(ctx, m.index, m[0].length); return m; };
+        if (pick(/\b(?:(?:ogni|tutti i|nei)\s+giorni?\s+(?:feriali?|lavorativi?)|giorni feriali|dal lunedi al venerdi|(?:every|on)\s+weekdays?|weekdays)\b/))
+            return { spec: 'weekdays', days: [1, 2, 3, 4, 5], label: 'every weekday' };
+        if (pick(/\b(?:(?:ogni|nei|tutti i)\s+(?:weekend|fine settimana)|(?:every|on)\s+weekends?|weekends)\b/))
+            return { spec: 'weekends', days: [0, 6], label: 'every weekend' };
+        if (pick(/\b(?:ogni giorno|tutti i giorni|ogni di|every day|everyday|each day|daily)\b/))
+            return { spec: 'daily', days: [0, 1, 2, 3, 4, 5, 6], label: 'every day' };
+        const DAYW = `(?:${WEEKDAY_RE})`;
+        const SEP = `\\s*(?:,|\\be\\b|\\band\\b|&|\\/)\\s*(?:il\\s+|i\\s+)?`;
+        let m = pick(new RegExp(`\\b(?:ogni|every|each|tutti\\s+i|tutte\\s+le)\\s+(${DAYW}s?(?:${SEP}${DAYW}s?)*)\\b`));
+        if (!m) {
+            const PL = EN_PLURAL.join('|');
+            m = pick(new RegExp(`\\b(?:on\\s+)?((?:${PL})(?:${SEP}(?:${PL}))*)\\b`));
+        }
+        if (!m) return null;
+        const days = [];
+        m[1].split(/\s*(?:,|\be\b|\band\b|&|\/)\s*/).forEach(w => {
+            w = w.replace(/^(il|i)\s+/, '').trim();
+            let i = weekdayIndex(w);
+            if (i < 0) i = weekdayIndex(w.replace(/s$/, ''));
+            if (i >= 0 && !days.includes(i)) days.push(i);
+        });
+        if (!days.length) return null;
+        days.sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7)); // Monday first
+        return { spec: days.map(i => DAY_CODE[i]).join(','), days, label: 'every ' + days.map(i => DAY_SHORT[i]).join(', ') };
+    }
+
+    // ------------------------------------------------------------------
+    // Tolerant matching of existing items: "fatto anal" → "Studio analisi"
+    // ------------------------------------------------------------------
+    const simple = (s) => strip(String(s || '').toLowerCase()).replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
+    const ARTICLES = /^(il|lo|la|l|i|gli|le|un|una|uno|the|my|mio|mia|a|an)\s+/;
+
+    function scoreTitle(query, title) {
+        const a = simple(query).replace(ARTICLES, ''), b = simple(title);
+        if (!a || !b) return 0;
+        if (a === b) return 100;
+        if (b.startsWith(a)) return 90;
+        const qt = a.split(' '), bt = b.split(' ');
+        if (qt.every(w => bt.some(x => x.startsWith(w)))) return 80;
+        if (b.includes(a)) return 70;
+        if (a.length >= 3) {
+            let i = 0;
+            for (const ch of b) if (ch === a[i]) i++;
+            if (i === a.length) return 40;
+        }
+        return 0;
+    }
+
+    function findItem(query, items, filter) {
+        let best = null, bestScore = 0;
+        for (const it of items || []) {
+            if (!it || (filter && !filter(it))) continue;
+            let s = scoreTitle(query, it.title);
+            if (!s) continue;
+            if (it.done) s -= 5;
+            if (s > bestScore) { bestScore = s; best = it; }
+        }
+        return bestScore >= 40 ? best : null;
     }
 
     // ------------------------------------------------------------------
@@ -270,8 +385,123 @@
         if (/^da\s+fare\b/.test(norm)) return { verb: 'todo', len: norm.match(/^da\s+fare/)[0].length };
         if (/^remind\s+me(\s+to)?\b/.test(norm)) return { verb: 'todo', len: norm.match(/^remind\s+me(\s+to)?/)[0].length };
         if (/^voglio\s+comprare\b/.test(norm)) return { verb: 'wish', len: norm.match(/^voglio\s+comprare/)[0].length };
+        const did = norm.match(/^(?:ho\s+(?:fatto|finito|completato)|i\s+(?:did|finished|completed)|spunta|completa)\b/);
+        if (did) return { verb: 'done', len: did[0].length };
         for (const v of VERBS) if (v.words.includes(first)) return { verb: v.verb, len: first.length };
         return null;
+    }
+
+    // ------------------------------------------------------------------
+    // Actions on what already exists: undo, questions, move, postpone
+    // ------------------------------------------------------------------
+    const timeRange = (s, e) => `${fmtMins(s)}-${fmtMins(e)}`;
+    const AGENDA_RE = /^(?:(?:che\s+)?cosa\s+(?:ho|c'?e|devo\s+fare|mi\s+resta(?:\s+da\s+fare)?|resta|manca)|che\s+(?:ho|c'?e)|what'?s\s+(?:on|left|planned|next|up)|what\s+(?:is\s+on|do\s+i\s+have|have\s+i\s+got)|agenda|impegni|my\s+day|schedule\s+for)\b/;
+    const AGENDA_LEFTOVER = /^(?:in\s+programma|da\s+fare|di\s+bello|planned|left|to\s+do|on|next|up|for)?$/;
+    const SPENT_RE = /^(?:quanto\s+(?:ho\s+)?spes[oi]|spese|how\s+much\s+(?:did\s+i\s+|have\s+i\s+)?spen[dt]|spending|spent)\b/;
+    const MOVE_RE = /^(?:sposta|spostare|rimanda|rimandare|posticipa|anticipa|move|reschedule|postpone|push|defer)\s+/;
+    const BULK_RE = /^(?:tutto|tutti|tutte|il\s+resto|il\s+non\s+fatto|quello\s+che\s+(?:non\s+ho\s+fatto|resta|manca)|cio\s+che\s+resta|everything|all|the\s+rest|undone|unfinished|what'?s\s+left)(?:\s+(?:il\s+)?(?:non\s+fatto|da\s+fare|quello\s+che\s+resta|undone|unfinished|left|di\s+oggi|today|from\s+today))*(?=\s|$)/;
+
+    function interpretAction(raw, norm, today, opts) {
+        const items = opts.items || [];
+
+        // Undo
+        if (/^(?:annulla|undo|disfa|ctrl\s*\+?\s*z)(?:\s+(?:l'?ultima\s+(?:cosa|azione|modifica)|last(?:\s+change)?))?$/.test(norm)) {
+            return [{ kind: 'undo', label: 'Undo the last change', cmd: 'undo' }];
+        }
+
+        // "cosa ho giovedì?" · "what's on friday"
+        const ag = norm.match(AGENDA_RE);
+        if (ag) {
+            const ctx = makeCtx(raw.slice(ag[0].length).replace(/[?!.]+\s*$/, ''));
+            const part = extractDayPart(ctx, today);
+            const d = extractDate(ctx, today) || (part && part.date) || today;
+            if (AGENDA_LEFTOVER.test(simple(rest(ctx)))) {
+                return [{ kind: 'agenda', label: `Show schedule · ${prettyDate(d, today)}`, cmd: d === today ? 'today' : `schedule @${d}` }];
+            }
+        }
+
+        // "quanto ho speso questa settimana?" (a sentence with an amount is an expense instead)
+        if (SPENT_RE.test(norm) && !/\d/.test(norm)) {
+            let period = 'month', label = 'this month';
+            if (/\b(oggi|today)\b/.test(norm)) { period = 'today'; label = 'today'; }
+            else if (/\b(ieri|yesterday)\b/.test(norm)) { period = 'yesterday'; label = 'yesterday'; }
+            else if (/\b(settimana|week)\b/.test(norm)) { period = 'week'; label = 'this week'; }
+            else if (/\b(anno|year)\b/.test(norm)) { period = 'year'; label = 'this year'; }
+            return [{ kind: 'spent', label: `Spending · ${label}`, cmd: `spent ${period}` }];
+        }
+
+        const mv = norm.match(MOVE_RE);
+        if (!mv) return null;
+        const after = raw.slice(mv[0].length);
+        const afterNorm = strip(after.toLowerCase());
+
+        // "rimanda tutto a domani" · "push everything unfinished to monday"
+        const bulk = afterNorm.match(BULK_RE);
+        if (bulk) {
+            const ctx = makeCtx(after);
+            take(ctx, 0, bulk[0].length);
+            const d = extractDate(ctx, today) || addDays(today, 1);
+            const left = items.filter(it => it.kind === 'todo' && it.date && it.date <= today && !it.done && it.date !== d).length;
+            const what = opts.items ? `${left} unfinished to-do${left === 1 ? '' : 's'}` : 'unfinished to-dos';
+            return [{ kind: 'postpone', label: `Move ${what} → ${prettyDate(d, today)}`, cmd: `postpone @${d}` }];
+        }
+
+        // "sposta dentista a giovedì alle 16"
+        const ctx = makeCtx(after);
+        const part = extractDayPart(ctx, today);
+        const date = extractDate(ctx, today);
+        const time = extractTime(ctx);
+        const dur = extractDuration(ctx);
+        const query = rest(ctx);
+        if (!query || (!date && !time && !part)) return null;
+        const item = findItem(query, items, it => it.kind === 'event' || it.kind === 'todo');
+        if (!item) return [];
+        const d = date || (part && part.date) || item.date || today;
+        let span = '';
+        if (item.kind === 'event') {
+            const len = dur || (item.start != null && item.end != null ? item.end - item.start : 60);
+            if (time) {
+                let s = time.start;
+                if (part && part.part !== 'morning' && s < 12 * 60 && s >= 60) s += 12 * 60;
+                span = timeRange(s, time.end !== null && time.end > s ? time.end : Math.min(23 * 60 + 59, s + len));
+            } else if (part) {
+                const slot = slotOn(d, len, part.part, today, opts);
+                if (slot) span = timeRange(slot.start, slot.end);
+            }
+        }
+        const shown = span ? ` · ${span.replace('-', '–')}` : '';
+        return [{ kind: 'move', label: `Move · ${item.title} → ${prettyDate(d, today)}${shown}`, cmd: `move ${item.id} @${d}${span ? ' ' + span : ''}` }];
+    }
+
+    // "chiama Marco domani poi palestra alle 18" · "12€ pranzo; peso 72"
+    function interpretChain(raw, opts) {
+        const bySemicolon = raw.includes(';');
+        const parts = (bySemicolon ? raw.split(/\s*;\s*/) : raw.split(/\s+(?:e\s+poi|poi|and\s+then|then)\s+/i))
+            .map(s => s.trim()).filter(Boolean);
+        if (parts.length < 2) return null;
+        const firstVerb = matchVerb(strip(raw.toLowerCase()));
+        if (firstVerb && firstVerb.verb === 'note') return null;
+        const today = opts.today || fmtDate(new Date());
+        const sub = Object.assign({}, opts, { _noChain: true });
+        // A later part without its own date happens on the same day as the previous one:
+        // "chiama Marco domani poi palestra alle 18" → both tomorrow
+        let lastDate = null;
+        const picks = parts.map(p => {
+            const c = makeCtx(p);
+            const dp = extractDayPart(c, today);
+            const own = extractDate(c, today) || (dp && dp.date);
+            let pick = interpret(p, sub)[0] || null;
+            if (own) lastDate = own;
+            else if (lastDate && pick && (pick.kind === 'event' || pick.kind === 'todo')) pick = interpret(`${p} ${lastDate}`, sub)[0] || pick;
+            return pick;
+        });
+        if (picks.some(p => !p || p.kind === 'nav' || p.kind === 'undo' || p.kind === 'multi')) return null;
+        return {
+            bySemicolon,
+            kind: 'multi',
+            label: `${picks.length} actions · ` + picks.map(p => p.label).join('  +  '),
+            cmd: picks.map(p => p.cmd).join(' ;; ')
+        };
     }
 
     // ------------------------------------------------------------------
@@ -284,6 +514,18 @@
         const noteCats = (opts.noteCategories || []).map(c => String(c));
         const out = [];
         const norm = strip(raw.toLowerCase());
+
+        if (!opts._noChain) {
+            const chain = interpretChain(raw, opts);
+            if (chain) {
+                const { bySemicolon, ...multi } = chain;
+                // "x; y" is always a list; "x poi y" might also be one single thing, offered as alternatives
+                return bySemicolon ? [multi] : [multi].concat(interpret(raw, Object.assign({}, opts, { _noChain: true })));
+            }
+        }
+
+        const action = interpretAction(raw, norm, today, opts);
+        if (action) return action;
 
         // Navigation: "vai a soldi" / "open money"
         const nav = norm.match(NAV_WORDS);
@@ -333,7 +575,12 @@
                 }
                 return body ? [{ kind: 'note', label: `Note · ${body}`, cmd: `note ${body}` }] : [];
             }
-            if (v === 'done') return body ? [{ kind: 'done', label: `Mark done · ${body}`, cmd: `done ${body}` }] : [];
+            if (v === 'done') {
+                if (!body) return [];
+                const it = findItem(body, opts.items, x => (x.kind === 'todo' || x.kind === 'task') && x.date === today && !x.done);
+                if (it) return [{ kind: 'done', label: `Mark done · ${it.title}`, cmd: `done ${it.title}` }];
+                return [{ kind: 'done', label: `Mark done · ${body}`, cmd: `done ${body}` }];
+            }
             if (v === 'focus') return [{ kind: 'focus', label: body ? `Start focus · ${body}` : 'Start focus', cmd: `focus${body ? ' ' + body : ''}` }];
             if (v === 'wish') {
                 const amt = extractAmount(ctx, true);
@@ -378,26 +625,66 @@
         }
 
         // ---- date / time → event or to-do ----
-        const date = extractDate(ctx, today);
-        const time = extractTime(ctx);
+        const rec = extractRecurrence(ctx);
+        const part = extractDayPart(ctx, today);
+        const date = extractDate(ctx, today) || (part && part.date) || null;
+        let time = extractTime(ctx);
         const dur = extractDuration(ctx);
         const title = rest(ctx);
         const forced = verbHit ? verbHit.verb : null;
 
         if (!title) return out;
 
-        if (time || forced === 'event') {
+        // "alle 3 di pomeriggio" → 15:00
+        if (time && part && part.part !== 'morning' && time.start >= 60 && time.start < 12 * 60) {
+            time = { start: time.start + 720, end: time.end !== null && time.end < 720 ? time.end + 720 : time.end };
+        }
+
+        // Repeating: "ogni lunedì alle 18 palestra"
+        if (rec) {
+            let span = '';
+            if (time) span = timeRange(time.start, time.end !== null ? time.end : Math.min(23 * 60 + 59, time.start + (dur || 60)));
+            out.push({
+                kind: 'repeat',
+                label: `Repeat · ${rec.label}${span ? ' · ' + span.replace('-', '–') : ''} · ${title}`,
+                cmd: `every ${rec.spec}${span ? ' ' + span : ''} ${title}`
+            });
+            return out;
+        }
+
+        if (time) {
             const d = date || today;
-            if (time) {
-                const end = time.end !== null ? time.end : Math.min(23 * 60 + 59, time.start + (dur || 60));
-                out.push({
+            const end = time.end !== null ? time.end : Math.min(23 * 60 + 59, time.start + (dur || 60));
+            out.push({
+                kind: 'event',
+                label: `Event · ${prettyDate(d, today)} · ${fmtMins(time.start)}–${fmtMins(end)} · ${title}`,
+                cmd: `event @${d} ${fmtMins(time.start)}-${fmtMins(end)} ${title}`
+            });
+            out.push({ kind: 'todo', label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` });
+            return out;
+        }
+
+        // A length or a part of the day but no hour: put it in the first free slot.
+        // "studio analisi 2h domani" → event in the first free 2 hours tomorrow
+        if ((dur || part) && forced !== 'todo') {
+            const d = date || today;
+            const slot = slotOn(d, dur || 60, part && part.part, today, opts);
+            if (slot) {
+                const where = part ? `free ${DAYPART_LABEL[part.part]} slot` : 'first free slot';
+                const ev = {
                     kind: 'event',
-                    label: `Event · ${prettyDate(d, today)} · ${fmtMins(time.start)}–${fmtMins(end)} · ${title}`,
-                    cmd: `event @${d} ${fmtMins(time.start)}-${fmtMins(end)} ${title}`
-                });
-            } else {
-                out.push({ kind: 'event', label: `Event · ${prettyDate(d, today)} · ${title}`, cmd: `event @${d} ${title}` });
+                    label: `Event · ${prettyDate(d, today)} · ${fmtMins(slot.start)}–${fmtMins(slot.end)} (${where}) · ${title}`,
+                    cmd: `event @${d} ${timeRange(slot.start, slot.end)} ${title}`
+                };
+                const td = { kind: 'todo', label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` };
+                if (dur || forced === 'event') out.push(ev, td); else out.push(td, ev);
+                return out;
             }
+        }
+
+        if (forced === 'event') {
+            const d = date || today;
+            out.push({ kind: 'event', label: `Event · ${prettyDate(d, today)} · ${title}`, cmd: `event @${d} ${title}` });
             out.push({ kind: 'todo', label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` });
             return out;
         }
@@ -412,7 +699,7 @@
         return out;
     }
 
-    const api = { interpret, _internals: { extractDate, extractTime, makeCtx, rest } };
+    const api = { interpret, findSlot, scoreTitle, _internals: { extractDate, extractTime, extractRecurrence, extractDayPart, makeCtx, rest } };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.CortexNL = api;
 })(typeof window !== 'undefined' ? window : globalThis);

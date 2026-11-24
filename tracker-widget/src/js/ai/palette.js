@@ -168,6 +168,49 @@
             .map(s => ({ label: `Go to ${s.label}`, hint: s.hint, run: () => runCommand(`@nav ${s.key}`) }));
     }
 
+    // What the offline interpreter needs to know about your data:
+    // the things you can move or tick off, and when your days are busy.
+    function nlContext() {
+        const toMin = (hhmm) => { const [h, m] = String(hhmm || '').split(':').map(Number); return isNaN(h) ? null : h * 60 + (m || 0); };
+        const items = [];
+        const evs = typeof specificEvents !== 'undefined' ? specificEvents : [];
+        evs.forEach(e => {
+            if (!e || !e.title || !e.date || e.date < todayStr) return;
+            items.push({ id: e.id, kind: 'event', title: e.title, date: e.date, start: toMin(e.start), end: toMin(e.end) });
+        });
+        const tpls = typeof templates !== 'undefined' ? templates : [];
+        tpls.forEach(t => {
+            if (!t || !t.title || t.type === 'medicine') return;
+            const oneDay = t.isTodo && t.startDate && t.startDate === t.endDate;
+            const date = oneDay ? t.startDate : (isTaskActiveOnDate(t, todayStr) ? todayStr : null);
+            if (!date) return;
+            const log = (logs[date] && logs[date][t.id]) || [];
+            const done = log.length > 0 && log.length >= (t.instances || 1) && log.every(Boolean);
+            items.push({ id: t.id, kind: oneDay ? 'todo' : 'task', title: t.title, date, done });
+        });
+        const busyOn = (date) => {
+            const out = [];
+            const dow = parseLocalDate(date).getDay();
+            evs.forEach(e => { if (e && e.date === date && e.start && e.end) out.push([toMin(e.start), toMin(e.end)]); });
+            const windows = (list, active) => list.forEach(t => {
+                if (!t || !Array.isArray(t.timeWindows) || !active(t)) return;
+                t.timeWindows.forEach(w => { if (w.days && w.days.includes(dow) && w.start && w.end) out.push([toMin(w.start), toMin(w.end)]); });
+            });
+            windows(tpls, t => isTaskActiveOnDate(t, date));
+            if (typeof routinesData !== 'undefined' && typeof isRoutineActiveOnDate === 'function') windows(routinesData, r => isRoutineActiveOnDate(r, date));
+            const blocks = typeof ephemeralData !== 'undefined' && Array.isArray(ephemeralData[date]) ? ephemeralData[date] : [];
+            blocks.forEach(b => { if (b && b.start && b.end) out.push([toMin(b.start), toMin(b.end)]); });
+            return out.filter(([s, e]) => s !== null && e !== null);
+        };
+        const now = typeof getNow === 'function' ? getNow() : new Date();
+        return {
+            today: todayStr,
+            now: now.getHours() * 60 + now.getMinutes(),
+            noteCategories: typeof noteCategories !== 'undefined' ? noteCategories : [],
+            items, busyOn
+        };
+    }
+
     function build(raw) {
         const q = raw.trim();
         const groups = [];
@@ -186,12 +229,9 @@
             const preview = typeof getCommandPreview === 'function' ? getCommandPreview(q) : q;
             doThis.push({ label: preview || q, hint: 'Enter', primary: true, run: () => runCommand(q), stage: q });
         } else if (typeof CortexNL !== 'undefined') {
-            let parsed = CortexNL.interpret(q, {
-                today: todayStr,
-                noteCategories: typeof noteCategories !== 'undefined' ? noteCategories : []
-            });
+            let parsed = CortexNL.interpret(q, nlContext());
             const off = (k) => typeof isModuleEnabled === 'function' && !isModuleEnabled(k);
-            const kindModule = { expense: 'money', income: 'money', wish: 'money', weight: 'diet', note: 'notes' };
+            const kindModule = { expense: 'money', income: 'money', wish: 'money', spent: 'money', weight: 'diet', note: 'notes' };
             const navTarget = (p) => p.kind === 'nav' ? p.cmd.slice(5).trim() : null;
             const blockedBy = (p) => {
                 if (kindModule[p.kind] && off(kindModule[p.kind])) return kindModule[p.kind];
@@ -247,7 +287,7 @@
             }] });
         } else if (!doThis.length && !groups.length) {
             groups.push({ title: 'NOTHING MATCHED', items: [{
-                label: 'Try: “12€ lunch”, “dentist tomorrow at 3pm”, “note Ideas: …”', hint: 'Tab for commands', fill: ''
+                label: 'Try: “dentist tomorrow at 3pm”, “study 2h tomorrow”, “gym every monday at 18”, “move dentist to friday”', hint: 'Tab for commands', fill: ''
             }] });
         }
         return groups;

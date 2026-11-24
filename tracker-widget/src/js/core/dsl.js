@@ -224,6 +224,7 @@ function isValidDslCommand(raw) {
     const str = (raw || '').trim();
     if (!str) return false;
     if (str === '?' || str.toLowerCase() === 'help') return true;
+    if (str.includes(' ;; ')) return str.split(' ;; ').every(p => isValidDslCommand(p));
 
     const lowerStr = str.toLowerCase();
     if (typeof customAliases !== 'undefined' && customAliases[lowerStr]) return true;
@@ -299,7 +300,16 @@ function isValidDslCommand(raw) {
             return Boolean(rest);
         case 'focus':
         case 'pomo':
-            return true;
+        case 'undo':
+            return !rest;
+        case 'postpone':
+            return !rest || (rest.startsWith('@') && Boolean(resolveDateToken(rest)));
+        case 'move':
+            return /^\S+\s+@\S+(?:\s+\d{2}:\d{2}-\d{2}:\d{2})?$/.test(rest);
+        case 'every':
+            return /^(daily|weekdays|weekends|[a-z]{3}(?:,[a-z]{3})*)(?:\s+\d{2}:\d{2}-\d{2}:\d{2})?\s+\S/.test(rest.toLowerCase());
+        case 'spent':
+            return /^(today|yesterday|week|month|year)?$/.test(rest.toLowerCase());
         case 'event': {
             const parsedEv = parseEventCommandArgs(rest);
             return Boolean(parsedEv.title);
@@ -540,6 +550,7 @@ function getContextualSuggestions(rawInput) {
 function getCommandPreview(raw) {
     const str = (raw || '').trim();
     if (!str) return 'Type DSL command or natural language for AI';
+    if (str.includes(' ;; ')) return str.split(' ;; ').map(p => getCommandPreview(p)).join('  +  ');
     if (str.includes(';')) {
         const count = str.split(';').map(s => s.trim()).filter(Boolean).length;
         return `[MULTI-COMMAND] Stage ${count} commands into queue`;
@@ -693,6 +704,19 @@ function getCommandPreview(raw) {
             return `[SYSTEM] Open Settings`;
         case 'goto':
             return `[CALENDAR] Jump to ${resolveDateToken(rest) || rest}`;
+        case 'undo':
+            return `[UNDO] Undo the last change`;
+        case 'postpone':
+            return `[TO-DO] Move unfinished to-dos to ${resolveDateToken(rest) || tomorrowStr}`;
+        case 'move': {
+            const id = rest.split(/\s+/)[0];
+            const item = specificEvents.find(e => String(e.id) === id) || templates.find(t => String(t.id) === id);
+            return `[MOVE] "${item ? item.title : id}" → ${rest.slice(id.length).trim()}`;
+        }
+        case 'every':
+            return `[REPEAT] ${rest}`;
+        case 'spent':
+            return `[MONEY] Spending ${rest || 'month'}`;
         case 'export':
         case 'backup':
             return `[SYSTEM] Export JSON backup`;
@@ -898,11 +922,51 @@ function renderInstantMoneySummary() {
     showInstantInspectionCard(`FINANCE SNAPSHOT`, html);
 }
 
+function renderInstantSpendingSummary(period) {
+    const d = new Date(todayObj);
+    let from = todayStr, to = todayStr, label = 'TODAY';
+    if (period === 'yesterday') { d.setDate(d.getDate() - 1); from = to = formatDate(d); label = 'YESTERDAY'; }
+    else if (period === 'week') { d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); from = formatDate(d); label = 'THIS WEEK'; }
+    else if (period === 'month') { from = todayStr.slice(0, 8) + '01'; label = 'THIS MONTH'; }
+    else if (period === 'year') { from = todayStr.slice(0, 5) + '01-01'; label = 'THIS YEAR'; }
+
+    const out = (mTransactions || []).filter(t => t && t.type === 'out' && t.date >= from && t.date <= to);
+    const total = out.reduce((s, t) => s + (parseFloat(t.amount) || 0), 0);
+    const byCat = {};
+    out.forEach(t => { const c = t.category || 'Generale'; byCat[c] = (byCat[c] || 0) + (parseFloat(t.amount) || 0); });
+    const rows = Object.entries(byCat).sort((a, b) => b[1] - a[1]).slice(0, 6);
+
+    let html = `
+        <div style="padding:var(--space-2) var(--space-3); border:1px solid var(--border-bright); background:rgba(255,255,255,0.03);">
+            <div class="u-dim u-fs-xs">SPENT · ${out.length} expense${out.length === 1 ? '' : 's'}</div>
+            <div style="font-size:var(--font-lg); font-weight:bold; margin-top:2px;">€${total.toFixed(2)}</div>
+        </div>`;
+    if (!rows.length) html += `<div class="empty-state u-py-1">[ NO EXPENSES ]</div>`;
+    rows.forEach(([cat, amt]) => {
+        const pct = total > 0 ? Math.round(amt / total * 100) : 0;
+        html += `<div class="u-flex u-jc-between u-fs-xs" style="padding:var(--space-1) var(--space-2); border:1px solid var(--border-color);">
+            <span>${escapeHtml(cat)}</span><span class="u-muted">€${amt.toFixed(2)} · ${pct}%</span></div>`;
+    });
+    showInstantInspectionCard(`SPENDING // ${label}`, html);
+}
+
+// A one-day item (to-do) moved to another day keeps everything else
+function moveOneDayTemplate(t, dateStr) {
+    t.startDate = dateStr;
+    t.endDate = dateStr;
+    t.daysOfWeek = [parseLocalDate(dateStr).getDay()];
+}
+
+function refreshPlanningViews() {
+    ['renderCalendar', 'renderTasks', 'renderWeeklyPlanner', 'renderDayPlannerModule', 'renderTracker', 'renderHudPod']
+        .forEach(fn => { if (typeof window[fn] === 'function') window[fn](); });
+}
+
 function isInspectionOnlyCommand(raw) {
     const parts = (raw || '').trim().split(/\s+/);
     const cmd = (parts[0] || '').toLowerCase();
     const rest = (parts[1] || '').toLowerCase();
-    if (cmd === 'diet' || cmd === 'today' || cmd === 'oggi' || cmd === 'tomorrow' || cmd === 'domani' || cmd === 'schedule' || cmd === 'bal' || cmd === 'money' || cmd === 'balance') {
+    if (cmd === 'diet' || cmd === 'today' || cmd === 'oggi' || cmd === 'tomorrow' || cmd === 'domani' || cmd === 'schedule' || cmd === 'bal' || cmd === 'money' || cmd === 'balance' || cmd === 'spent') {
         return true;
     }
     if (cmd === 'gym' && rest !== 'done') return true;
@@ -921,6 +985,12 @@ function executeTerminalCommand(raw) {
     if (str === '?' || str.toLowerCase() === 'help') {
         if (typeof openShortcutsHelp === 'function') openShortcutsHelp();
         return true;
+    }
+
+    // Several commands from one sentence: "todo @… call mum ;; event @… gym"
+    if (str.includes(' ;; ')) {
+        const results = str.split(' ;; ').map(p => executeTerminalCommand(p));
+        return results.some(Boolean);
     }
 
     const lowerStr = str.toLowerCase();
@@ -1404,6 +1474,103 @@ function executeTerminalCommand(raw) {
 
     if (cmd === 'export' || cmd === 'backup') {
         exportData();
+        return true;
+    }
+
+    if (cmd === 'undo') {
+        if (typeof performGlobalUndo !== 'function') return false;
+        performGlobalUndo();
+        return true;
+    }
+
+    // move <id> @YYYY-MM-DD [HH:MM-HH:MM] — an event or a one-day to-do
+    if (cmd === 'move') {
+        const m = rest.match(/^(\S+)\s+@(\S+)(?:\s+(\d{2}:\d{2})-(\d{2}:\d{2}))?$/);
+        if (!m) return false;
+        const target = resolveDateToken(m[2]);
+        if (!target) return false;
+        const ev = specificEvents.find(e => String(e.id) === m[1]);
+        if (ev) {
+            ev.date = target;
+            if (m[3]) { ev.start = m[3]; ev.end = m[4]; }
+            saveData();
+            refreshPlanningViews();
+            if (typeof showToast === 'function') showToast(`[MOVED] "${ev.title}" → ${target}${ev.start && ev.end ? ` ${ev.start}–${ev.end}` : ''}`);
+            return true;
+        }
+        const t = templates.find(x => String(x.id) === m[1]);
+        if (t && t.startDate && t.startDate === t.endDate) {
+            moveOneDayTemplate(t, target);
+            saveData();
+            refreshPlanningViews();
+            if (typeof showToast === 'function') showToast(`[MOVED] "${t.title}" → ${target}`);
+            return true;
+        }
+        return false;
+    }
+
+    // postpone [@date] — every unfinished one-day to-do from today (or earlier) moves to the date
+    if (cmd === 'postpone') {
+        const target = resolveDateToken(rest) || tomorrowStr;
+        let moved = 0;
+        templates.forEach(t => {
+            if (!t.isTodo || !t.startDate || t.startDate !== t.endDate) return;
+            if (t.startDate > todayStr || t.startDate === target) return;
+            const log = logs[t.startDate] && logs[t.startDate][t.id];
+            if (Array.isArray(log) && log.length && log.every(Boolean)) return;
+            moveOneDayTemplate(t, target);
+            moved++;
+        });
+        if (moved) { saveData(); refreshPlanningViews(); }
+        if (typeof showToast === 'function') {
+            showToast(moved ? `[MOVED] ${moved} to-do${moved === 1 ? '' : 's'} → ${target}` : '[MOVED] Nothing left to move');
+        }
+        return true;
+    }
+
+    // every <daily|weekdays|weekends|mon,thu> [HH:MM-HH:MM] <title> — a repeating task
+    if (cmd === 'every') {
+        const m = rest.match(/^(\S+)(?:\s+(\d{2}:\d{2})-(\d{2}:\d{2}))?\s+(.+)$/);
+        if (!m) return false;
+        const CODES = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+        const spec = m[1].toLowerCase();
+        let frequency = 'specific', days;
+        if (spec === 'daily') { frequency = 'all'; days = [0, 1, 2, 3, 4, 5, 6]; }
+        else if (spec === 'weekdays') { frequency = 'weekdays'; days = [1, 2, 3, 4, 5]; }
+        else if (spec === 'weekends') { frequency = 'weekends'; days = [0, 6]; }
+        else days = spec.split(',').map(c => CODES.indexOf(c)).filter(i => i >= 0);
+        if (!days.length) return false;
+        const title = m[4].trim();
+        const catName = 'Recurring';
+        if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+        const base = {
+            id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+            category: catName, title, instances: 1, color: '#b08d43',
+            startDate: todayStr, endDate: null, exceptions: []
+        };
+        if (m[2]) {
+            const [sh, sm] = m[2].split(':').map(Number);
+            const [eh, em] = m[3].split(':').map(Number);
+            Object.assign(base, {
+                type: 'timed', frequency: 'specific', daysOfWeek: days, noTimer: false,
+                timerMinutes: Math.max(5, (eh * 60 + em) - (sh * 60 + sm)),
+                timeWindows: [{ start: m[2], end: m[3], days }]
+            });
+        } else {
+            Object.assign(base, {
+                type: 'untimed', frequency, daysOfWeek: frequency === 'specific' ? days : [],
+                noTimer: true, timerMinutes: 15, timeWindows: []
+            });
+        }
+        templates.push(base);
+        saveData();
+        refreshPlanningViews();
+        if (typeof showToast === 'function') showToast(`[REPEAT] "${title}" (${spec}${m[2] ? ' ' + m[2] + '–' + m[3] : ''})`);
+        return true;
+    }
+
+    if (cmd === 'spent') {
+        renderInstantSpendingSummary(rest.toLowerCase() || 'month');
         return true;
     }
 
