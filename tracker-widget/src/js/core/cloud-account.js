@@ -280,6 +280,7 @@
                 </div>
                 <div class="account-actions account-secondary">
                     <button type="button" class="ghost-btn" data-act="export">Export my data</button>
+                    <button type="button" class="ghost-btn" data-act="feedback">Send feedback</button>
                     <button type="button" class="ghost-btn danger" data-act="delete">Delete account</button>
                 </div>`;
         } else if (panelStep === 'check-inbox') {
@@ -308,6 +309,7 @@
                 <p class="account-note">Data on this device stays here and is merged with your account the first time you sign in. Nothing is deleted.</p>
                 <div class="account-actions account-secondary">
                     <button type="button" class="ghost-btn" data-act="export">Export my data</button>
+                    <button type="button" class="ghost-btn" data-act="feedback">Send feedback</button>
                     <a class="ghost-btn" href="https://donatomartinelli.github.io/cortex/privacy/" target="_blank" rel="noopener">Privacy</a>
                 </div>`;
         }
@@ -352,6 +354,10 @@
         });
         act('conflicts')?.addEventListener('click', () => { wrap.remove(); if (typeof showSyncConflictsModal === 'function') showSyncConflictsModal(); });
         act('signout')?.addEventListener('click', () => signOut());
+        wrap.querySelectorAll('[data-act="feedback"]').forEach(b => b.addEventListener('click', () => {
+            wrap.remove();
+            if (typeof openFeedback === 'function') openFeedback();
+        }));
         wrap.querySelectorAll('[data-act="export"]').forEach(b => b.addEventListener('click', () => {
             if (typeof exportData === 'function') exportData();
         }));

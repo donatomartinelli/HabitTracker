@@ -86,6 +86,12 @@ test('parte del giorno sposta l\'ora al pomeriggio o alla sera', () => {
     assert.equal(first('dentista domani alle 15'), 'event @2026-11-23 15:00-16:00 dentista');
 });
 
+test('"study" con un giorno è un piano, senza giorno avvia il focus', () => {
+    assert.equal(first('study maths 2h tomorrow'), 'event @2026-11-23 12:00-14:00 study maths');
+    assert.equal(first('studia inglese stasera'), 'todo @2026-11-22 studia inglese');
+    assert.equal(first('study maths'), 'focus maths');
+});
+
 test('"2h" è una durata, "15h" un orario', () => {
     assert.equal(first('palestra 18h'), 'event @2026-11-22 18:00-19:00 palestra');
     assert.notEqual(first('ripasso 2h domani'), 'event @2026-11-23 02:00-03:00 ripasso');
@@ -101,6 +107,8 @@ test('frasi concatenate', () => {
     assert.equal(first('12€ pranzo; peso 72'), 'out 12 pranzo ;; weight 72');
     // la seconda parte eredita il giorno della prima
     assert.equal(first('chiama Marco domani poi palestra alle 18'), 'todo @2026-11-23 chiama Marco ;; event @2026-11-23 18:00-19:00 palestra');
+    // un pezzo senza data prende il giorno di quello prima
+    assert.equal(first('call mum friday then groceries'), 'todo @2026-11-27 call mum ;; todo @2026-11-27 groceries');
     // una nota resta una nota
     assert.equal(first('nota: prima x poi y'), 'note prima x poi y');
     // se un pezzo non si capisce, non si spezza

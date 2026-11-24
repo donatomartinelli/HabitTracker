@@ -57,7 +57,8 @@
         'js/ai/palette.js',
         'js/core/mobile-touch.js',
         'js/core/navigator.js',
-        'js/core/onboarding.js'
+        'js/core/onboarding.js',
+        'js/core/feedback.js'
     ];
     window.CORTEX_APP_SCRIPTS = APP_SCRIPTS;
 
@@ -275,12 +276,23 @@
     // ------------------------------------------------------------------
     // Errori imprevisti: visibili invece che silenziosi
     // ------------------------------------------------------------------
+    // The last few errors stay on this device only: "Send feedback" can attach them if you agree.
+    function logError(msg) {
+        try {
+            const list = JSON.parse(localStorage.getItem('cortex_error_log') || '[]');
+            list.unshift({ at: new Date().toISOString(), msg: String(msg).slice(0, 300) });
+            localStorage.setItem('cortex_error_log', JSON.stringify(list.slice(0, 15)));
+        } catch (err) { /* storage full or blocked: nothing to do */ }
+    }
     window.addEventListener('error', (e) => {
         if (!e || !e.message) return;
+        const where = e.filename ? ' (' + e.filename.split('/').pop() + (e.lineno ? ':' + e.lineno : '') + ')' : '';
+        logError(e.message + where);
         notify('⚠ Error: ' + e.message + (e.filename ? ' (' + e.filename.split('/').pop() + ')' : ''));
     });
     window.addEventListener('unhandledrejection', (e) => {
         const r = e && e.reason;
+        logError('Unhandled: ' + (r && r.message ? r.message : r));
         console.error('[Cortex] promise non gestita', r);
     });
 

@@ -413,6 +413,13 @@
             return [{ kind: 'undo', label: 'Undo the last change', cmd: 'undo' }];
         }
 
+        // "segnala un problema: …" · "send feedback"
+        const fb = raw.match(/^(?:feedback|segnala(?:\s+un)?\s+(?:problema|bug|errore)|ho\s+un\s+problema|invia\s+(?:un\s+)?feedback|suggerimento|report\s+(?:a\s+)?(?:bug|problem)|send\s+feedback|suggestion)(?![a-z])[\s:,-]*/i);
+        if (fb) {
+            const text = raw.slice(fb[0].length).trim();
+            return [{ kind: 'feedback', label: text ? `Send feedback · ${text}` : 'Send feedback', cmd: `feedback${text ? ' ' + text : ''}` }];
+        }
+
         // "cosa ho giovedì?" · "what's on friday"
         const ag = norm.match(AGENDA_RE);
         if (ag) {
@@ -579,7 +586,8 @@
             const own = extractDate(c, today) || (dp && dp.date);
             let pick = interpret(p, sub)[0] || null;
             if (own) lastDate = own;
-            else if (lastDate && pick && (pick.kind === 'event' || pick.kind === 'todo')) pick = interpret(`${p} ${lastDate}`, sub)[0] || pick;
+            // "…friday then groceries": a bare part becomes a to-do on the same day
+            else if (lastDate && (!pick || pick.kind === 'event' || pick.kind === 'todo')) pick = interpret(`${p} ${lastDate}`, sub)[0] || pick;
             return pick;
         });
         if (picks.some(p => !p || p.kind === 'nav' || p.kind === 'undo' || p.kind === 'multi')) return null;
@@ -622,7 +630,12 @@
             if (sec) return [{ kind: 'nav', label: `Go to ${sec.key === 'tiles' ? 'Tiles' : sec.key[0].toUpperCase() + sec.key.slice(1)}`, cmd: `@nav ${sec.key}` }];
         }
 
-        const verbHit = matchVerb(norm);
+        let verbHit = matchVerb(norm);
+        // "study maths 2h tomorrow" is a plan, not a timer to start now
+        if (verbHit && verbHit.verb === 'focus') {
+            const probe = makeCtx(raw.slice(verbHit.len));
+            if (extractDayPart(probe, today) || extractDate(probe, today) || extractTime(probe)) verbHit = null;
+        }
         const body = verbHit ? raw.slice(verbHit.len).replace(/^[\s:,]+/, '') : raw;
         const ctx = makeCtx(body);
 

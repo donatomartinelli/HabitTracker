@@ -681,3 +681,9 @@ html body.mobile-view-mode {
 html body.mobile-view-mode .ask-bar-container.expanded { top: calc(8px + var(--safe-top)) !important; }
 html body.mobile-view-mode .pomodoro-overlay { padding-top: var(--safe-top); padding-bottom: env(safe-area-inset-bottom, 0px); }
 html body.mobile-view-mode #btn-widget-mode { top: calc(16px + var(--safe-top)) !important; left: 16px !important; }
+
+/* Feedback panel (js/core/feedback.js) */
+.fb-text { width: 100%; min-height: 110px; resize: vertical; font: inherit; }
+.fb-check { display: flex; gap: var(--space-2); align-items: center; font-size: var(--font-xs); color: var(--text-muted); cursor: pointer; }
+.fb-check input { width: 16px; height: 16px; accent-color: var(--text-main); }
+.fb-details { margin: 0; max-height: 140px; overflow: auto; white-space: pre-wrap; word-break: break-word; font-size: var(--font-2xs); color: var(--text-muted); border: 1px solid var(--border-color); padding: var(--space-2); }

@@ -302,6 +302,8 @@ function isValidDslCommand(raw) {
         case 'pomo':
         case 'undo':
             return !rest;
+        case 'feedback':
+            return true;
         case 'postpone':
             return !rest || (rest.startsWith('@') && Boolean(resolveDateToken(rest)));
         case 'move':
@@ -718,6 +720,8 @@ function getCommandPreview(raw) {
             return `[CALENDAR] Jump to ${resolveDateToken(rest) || rest}`;
         case 'undo':
             return `[UNDO] Undo the last change`;
+        case 'feedback':
+            return `[FEEDBACK] Tell us what happened`;
         case 'postpone':
             return `[TO-DO] Move unfinished to-dos to ${resolveDateToken(rest) || tomorrowStr}`;
         case 'move': {
@@ -1527,6 +1531,13 @@ function executeTerminalCommand(raw) {
 
     if (cmd === 'export' || cmd === 'backup') {
         exportData();
+        return true;
+    }
+
+    // feedback [text] — opens the feedback panel (js/core/feedback.js), text pre-filled
+    if (cmd === 'feedback') {
+        if (typeof openFeedback !== 'function') return false;
+        openFeedback(rest);
         return true;
     }
 

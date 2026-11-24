@@ -909,12 +909,72 @@ function initModalsHtml() {
         <div class="modal-content" style="width:960px; max-width:96%; max-height:90vh;">
             <div class="u-flex u-jc-between u-ai-base u-mb-4" style="border-bottom:1px solid var(--border-color); padding-bottom:var(--space-2);">
                 <div>
-                    <h2 class="u-m-0 u-border-0 u-p-0">Cortex DSL Manual // Sintassi, Autocompletamento &amp; Modifiche</h2>
-                    <span class="u-fs-xs u-dim">Usa <code>[TAB]</code> per autocompletare · <code>[ENTER]</code> per eseguire all'istante · <code>[SHIFT + ENTER]</code> (o <code>;</code>) per impilare nella Staging Area.</span>
+                    <h2 class="u-m-0 u-border-0 u-p-0">What you can type</h2>
+                    <span class="u-fs-xs u-dim">Open the bar with <code>Ctrl K</code> (or ⌘ on the phone) and write like you'd write to a friend, in English or Italian. Cortex shows what it will do before doing it, and every change can be undone.</span>
                 </div>
-                <span class="u-fs-xs u-main u-bold">SHORTCUT: [?]</span>
+                <button type="button" class="btn btn-sm" onclick="closeModals(); if (typeof openFeedback === 'function') openFeedback();">[SEND FEEDBACK]</button>
             </div>
 
+            <div class="help-manual-columns help-phrases">
+                <div class="help-section-card">
+                    <div class="help-section-title">Add things</div>
+                    <div class="help-grid">
+                        <div class="help-key"><code>dentist tomorrow at 3pm</code></div>
+                        <div class="help-desc">An event with a time. <span class="u-dim">dentista domani alle 15</span></div>
+                        <div class="help-key"><code>call mum friday</code></div>
+                        <div class="help-desc">A to-do on that day. <span class="u-dim">chiamare mamma venerdì</span></div>
+                        <div class="help-key"><code>study maths 2h tomorrow</code></div>
+                        <div class="help-desc">Finds the first free 2 hours. Add <em>morning</em>, <em>afternoon</em> or <em>evening</em> to choose when.</div>
+                        <div class="help-key"><code>gym every monday and thursday at 6pm</code></div>
+                        <div class="help-desc">Repeats. Also <em>every day</em>, <em>every weekday</em>, <em>every weekend</em>. <span class="u-dim">ogni lunedì alle 18</span></div>
+                        <div class="help-key"><code>call Marco tomorrow then gym at 6pm</code></div>
+                        <div class="help-desc">Several things at once, with <em>then</em> / <em>poi</em> or <code>;</code></div>
+                        <div class="help-key"><code>12€ lunch</code> · <code>Ideas: …</code></div>
+                        <div class="help-desc">An expense, or a note in a folder.</div>
+                    </div>
+                </div>
+                <div class="help-section-card">
+                    <div class="help-section-title">Change what's there</div>
+                    <div class="help-grid">
+                        <div class="help-key"><code>move dentist to friday at 10</code></div>
+                        <div class="help-desc">Moves an event or a to-do. <span class="u-dim">sposta dentista a venerdì</span></div>
+                        <div class="help-key"><code>postpone everything to tomorrow</code></div>
+                        <div class="help-desc">Moves every unfinished to-do. <span class="u-dim">rimanda tutto a domani</span></div>
+                        <div class="help-key"><code>done anal</code></div>
+                        <div class="help-desc">Ticks off a task, even typed in part (“Study analysis”).</div>
+                        <div class="help-key"><code>extend dentist by 30 min</code></div>
+                        <div class="help-desc">Also <em>shorten</em>. <span class="u-dim">allunga / accorcia</span></div>
+                        <div class="help-key"><code>rename dentist to check-up</code> · <code>color dentist red</code></div>
+                        <div class="help-desc"><span class="u-dim">rinomina … in … · colora … di rosso</span></div>
+                        <div class="help-key"><code>delete dentist</code> · <code>undo</code></div>
+                        <div class="help-desc">Add a day to pick the right one: <em>delete dentist friday</em>. <span class="u-dim">cancella · annulla</span></div>
+                    </div>
+                </div>
+                <div class="help-section-card">
+                    <div class="help-section-title">Ask</div>
+                    <div class="help-grid">
+                        <div class="help-key"><code>what do I have thursday?</code></div>
+                        <div class="help-desc"><span class="u-dim">cosa ho giovedì?</span></div>
+                        <div class="help-key"><code>how much did I spend this week?</code></div>
+                        <div class="help-desc">Also <em>today</em>, <em>this month</em>, <em>this year</em>.</div>
+                    </div>
+                </div>
+                <div class="help-section-card">
+                    <div class="help-section-title">It learns from you</div>
+                    <div class="help-grid">
+                        <div class="help-key">Your usual times</div>
+                        <div class="help-desc">After “gym 6–7:30pm” twice, <em>gym saturday</em> goes at 6pm for 90 minutes.</div>
+                        <div class="help-key">Your choices</div>
+                        <div class="help-desc">Pick the alternative twice and it comes first next time.</div>
+                        <div class="help-key"><code>shortcut gy = gym</code></div>
+                        <div class="help-desc">Your own abbreviations. <code>shortcuts</code> lists them.</div>
+                        <div class="help-key"><code>feedback …</code></div>
+                        <div class="help-desc">Something broke or confused you? Tell us.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="help-section-title u-mt-4" style="margin-top:var(--space-4);">Advanced: exact commands</div>
             <div class="help-manual-columns">
                 <!-- 1. TASKS, FOCUS, CALENDARIO & NOTE -->
                 <div class="help-section-card">

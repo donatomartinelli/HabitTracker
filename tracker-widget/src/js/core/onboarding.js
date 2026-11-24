@@ -1,9 +1,10 @@
 // --- js/core/onboarding.js ---
 // WELCOME GUIDE for brand-new installs (never shown to people who already have data).
 //   1. Welcome (or "I already use Cortex" → sign in)
-//   2. What do you want to organize? → modules
-//   3. Three things for today → to-dos
-//   4. Meet the command bar → try a sentence
+//   2. How do you spend your days? → study / work / a bit of everything (picks modules and examples)
+//   3. What do you want to organize? → modules
+//   4. Three things for today → to-dos
+//   5. Meet the command bar → try a sentence
 // Finishing or skipping sets cortex_onboarded = 1.
 
 (function () {
@@ -20,9 +21,30 @@
         { id: 'health', label: 'Train and eat well', hint: 'Workouts, meals, body weight', modules: ['gym', 'diet'], on: false },
         { id: 'habits', label: 'Build habits', hint: 'Streak grid and focus hours', modules: ['streak'], on: true }
     ];
-    const EXAMPLES = ['dentist tomorrow at 3pm', '12€ lunch', 'call mum friday', 'Ideas: a name for my side project'];
+    // Who you are changes the starting modules, the example to-dos and the sentences to try
+    const PROFILES = [
+        {
+            id: 'study', label: 'Studying', hint: 'Lectures, exams, study sessions',
+            areas: { study: true, money: true },
+            todos: ['Review chapter 3', 'Email the professor', 'Book the library room'],
+            examples: ['study maths 2h tomorrow', 'exam history 15/01 at 9', 'lecture every monday and wednesday 9-11', 'move study to friday', 'what do I have thursday?']
+        },
+        {
+            id: 'work', label: 'Working', hint: 'Meetings, deep work, deadlines',
+            areas: {},
+            todos: ['Send the weekly report', 'Prepare slides for Monday', 'Call the accountant'],
+            examples: ['call with Anna tomorrow at 3pm', 'deep work 2h tomorrow morning', 'standup every weekday 9:30-9:45', 'postpone everything to tomorrow', 'what do I have friday?']
+        },
+        {
+            id: 'mix', label: 'A bit of everything', hint: 'Life, errands, side projects',
+            areas: { money: true },
+            todos: ['Reply to the landlord', 'Go for a 20-minute walk', 'Read one chapter'],
+            examples: ['dentist tomorrow at 3pm', 'gym every monday and thursday at 6pm', 'call mum friday then groceries', '12€ lunch', 'move dentist to friday']
+        }
+    ];
 
     let step = 0;
+    let profile = PROFILES[2];
     const choice = Object.fromEntries(AREAS.map(a => [a.id, a.on]));
 
     function needsOnboarding() {
@@ -51,7 +73,7 @@
     function render() {
         const wrap = document.getElementById('onboarding');
         if (!wrap) return;
-        const dots = [0, 1, 2, 3].map(i => `<span class="ob-dot ${i === step ? 'on' : ''}"></span>`).join('');
+        const dots = [0, 1, 2, 3, 4].map(i => `<span class="ob-dot ${i === step ? 'on' : ''}"></span>`).join('');
         let body = '';
 
         if (step === 0) {
@@ -65,7 +87,23 @@
                 </div>`;
         } else if (step === 1) {
             body = `
-                <div class="ob-kicker">STEP 1 OF 3</div>
+                <div class="ob-kicker">STEP 1 OF 4</div>
+                <h2 class="ob-title">How do you spend most of your days?</h2>
+                <p class="ob-text">Cortex sets itself up around it. Nothing is locked: you can change everything later.</p>
+                <div class="ob-areas ob-profiles">
+                    ${PROFILES.map(p => `
+                        <label class="ob-area" for="ob-p-${p.id}">
+                            <input type="radio" name="ob-profile" id="ob-p-${p.id}" data-profile="${p.id}" ${profile.id === p.id ? 'checked' : ''}>
+                            <span><strong>${esc(p.label)}</strong><span class="dim">${esc(p.hint)}</span></span>
+                        </label>`).join('')}
+                </div>
+                <div class="ob-actions">
+                    <button type="button" class="btn btn-primary" data-next>[CONTINUE]</button>
+                    <button type="button" class="ghost-btn" data-back>Back</button>
+                </div>`;
+        } else if (step === 2) {
+            body = `
+                <div class="ob-kicker">STEP 2 OF 4</div>
                 <h2 class="ob-title">What do you want Cortex to help with?</h2>
                 <p class="ob-text">Pick what you'll use now. You can change this any time in Modules.</p>
                 <div class="ob-areas">
@@ -79,13 +117,13 @@
                     <button type="button" class="btn btn-primary" data-next>[CONTINUE]</button>
                     <button type="button" class="ghost-btn" data-back>Back</button>
                 </div>`;
-        } else if (step === 2) {
+        } else if (step === 3) {
             body = `
-                <div class="ob-kicker">STEP 2 OF 3</div>
+                <div class="ob-kicker">STEP 3 OF 4</div>
                 <h2 class="ob-title">Three things you want to get done today</h2>
                 <p class="ob-text">Small or big. They'll be waiting on your Today screen.</p>
                 <div class="ob-todos">
-                    ${[0, 1, 2].map(i => `<input type="text" class="form-control" id="ob-todo-${i}" placeholder="${['Reply to the landlord', 'Go for a 20-minute walk', 'Read one chapter'][i]}" autocomplete="off">`).join('')}
+                    ${[0, 1, 2].map(i => `<input type="text" class="form-control" id="ob-todo-${i}" placeholder="${esc(profile.todos[i])}" autocomplete="off">`).join('')}
                 </div>
                 <div class="ob-actions">
                     <button type="button" class="btn btn-primary" data-next>[CONTINUE]</button>
@@ -94,10 +132,10 @@
         } else {
             const isPhone = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
             body = `
-                <div class="ob-kicker">STEP 3 OF 3</div>
+                <div class="ob-kicker">STEP 4 OF 4</div>
                 <h2 class="ob-title">One bar for everything</h2>
-                <p class="ob-text">${isPhone ? 'Tap ⌘ at the bottom' : 'Press <kbd>Ctrl K</kbd>'} and write what you mean, in English or Italian. Cortex shows what it will do before doing it.</p>
-                <div class="ob-examples">${EXAMPLES.map(e => `<button type="button" class="chip-btn" data-try="${esc(e)}">${esc(e)}</button>`).join('')}</div>
+                <p class="ob-text">${isPhone ? 'Tap ⌘ at the bottom' : 'Press <kbd>Ctrl K</kbd>'} and write what you mean, in English or Italian. Cortex shows what it will do before doing it, finds free time for you, and learns your habits. Type <kbd>?</kbd> to see everything it understands.</p>
+                <div class="ob-examples">${profile.examples.map(e => `<button type="button" class="chip-btn" data-try="${esc(e)}">${esc(e)}</button>`).join('')}</div>
                 <div class="ob-actions">
                     <button type="button" class="btn btn-primary" data-finish>[OPEN MY DAY]</button>
                     <button type="button" class="ghost-btn" data-back>Back</button>
@@ -117,9 +155,15 @@
             if (typeof openAccountPanel === 'function') openAccountPanel();
         });
         wrap.querySelectorAll('[data-area]').forEach(cb => cb.addEventListener('change', () => { choice[cb.dataset.area] = cb.checked; }));
+        wrap.querySelectorAll('[data-profile]').forEach(rb => rb.addEventListener('change', () => {
+            profile = PROFILES.find(p => p.id === rb.dataset.profile) || profile;
+            // the profile pre-selects areas; the next step still lets you change them
+            AREAS.forEach(a => { choice[a.id] = a.on || Boolean(profile.areas[a.id]); });
+        }));
         wrap.querySelector('[data-next]')?.addEventListener('click', () => {
-            if (step === 1) applyModules();
-            if (step === 2) addTodos([0, 1, 2].map(i => wrap.querySelector(`#ob-todo-${i}`).value));
+            if (step === 1) cortexStore.setItem('cortex_profile', profile.id);
+            if (step === 2) applyModules();
+            if (step === 3) addTodos([0, 1, 2].map(i => wrap.querySelector(`#ob-todo-${i}`).value));
             step++;
             render();
         });
@@ -136,7 +180,7 @@
         wrap.querySelectorAll('.ob-todos input').forEach((inp, i, all) => inp.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') { e.preventDefault(); (all[i + 1] || wrap.querySelector('[data-next]')).focus(); }
         }));
-        (wrap.querySelector('input:not([type=checkbox])') || wrap.querySelector('[data-next], [data-finish]'))?.focus();
+        (wrap.querySelector('input:not([type=checkbox]):not([type=radio])') || wrap.querySelector('[data-next], [data-finish]'))?.focus();
     }
 
     function start() {

@@ -9,7 +9,7 @@
 // IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
 // e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v23';
+const CACHE_NAME = 'cortex-os-cache-v24';
 
 const CORE_ASSETS = [
     './',
@@ -60,6 +60,7 @@ const CORE_ASSETS = [
     './js/modules/review.js',
     './js/core/navigator.js',
     './js/core/onboarding.js',
+    './js/core/feedback.js',
     './css/shell.css',
     './css/ui.css',
     './js/ai/gemini-agent.js',
