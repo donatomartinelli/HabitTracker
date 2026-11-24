@@ -284,6 +284,11 @@ function renderDiet() {
     renderDietAtomToday();
     renderDietAtomWeek();
     renderLegacyDietContainer();
+    // Foods table and weight log live in js/modules/meals.js
+    if (window.CortexMeals) {
+        CortexMeals.renderFoods();
+        CortexMeals.renderWeight();
+    }
 }
 
 // ============================================================================
@@ -291,6 +296,8 @@ function renderDiet() {
 // ============================================================================
 
 function renderDietAtomToday() {
+    // New day view: meals with times, what you ate, weight (js/modules/meals.js)
+    if (window.CortexMeals) { CortexMeals.renderToday(); return; }
     const root = document.getElementById('module-diet-today');
     if (!root) return;
 
@@ -455,6 +462,17 @@ function buildWeeklyDietMatrixDom(targetEl) {
         const labelCell = document.createElement('div');
         labelCell.className = 'diet-cell diet-row-label';
         labelCell.textContent = rowObj.type;
+        if (rowObj.time) {
+            const tm = document.createElement('span');
+            tm.className = 'diet-row-time';
+            tm.textContent = rowObj.time;
+            labelCell.appendChild(tm);
+        }
+        if (window.CortexMeals && rowObj.id) {
+            labelCell.style.cursor = 'pointer';
+            labelCell.title = 'Change time';
+            labelCell.onclick = () => CortexMeals.openMealSheet(selectedDateStr, rowObj.id);
+        }
         rowEl.appendChild(labelCell);
 
         dayOrder.forEach(dVal => {

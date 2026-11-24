@@ -1,7 +1,7 @@
 // --- js/modules/planner.js ---
-// Atomic Module 4: Weekly Planner (06:30 - 24:00), Left Phase Column, All-Day + Timed Events & 3-Way Sync
+// Atomic Module 4: Weekly Planner (day hours from Settings → Appearance, see js/core/prefs.js), Left Phase Column, All-Day + Timed Events & 3-Way Sync
 
-const PLANNER_START_HOUR = 6.5; // 06:30
+// Start/end of the visible day come from CORTEX_DAY (js/core/prefs.js)
 let plannerZoom = 42;
 window.shouldScrollPlanner = true;
 
@@ -51,7 +51,7 @@ function timeToMinutes(timeStr) {
 }
 
 function minutesToTimeStr(totalMins) {
-    const clamped = Math.max(390, Math.min(24 * 60, Math.round(totalMins)));
+    const clamped = Math.max(Math.round(CORTEX_DAY.start * 60), Math.min(24 * 60, Math.round(totalMins)));
     const h = Math.floor(clamped / 60);
     const m = clamped % 60;
     if (h === 24) return '23:59';
@@ -61,7 +61,7 @@ function minutesToTimeStr(totalMins) {
 function timeToPx(timeStr, zoomVal = plannerZoom) {
     if (!timeStr || typeof timeStr !== 'string' || !timeStr.includes(':')) return 0;
     const [h, m] = timeStr.split(':').map(Number);
-    return ((h + (m / 60)) - PLANNER_START_HOUR) * zoomVal;
+    return ((h + (m / 60)) - CORTEX_DAY.start) * zoomVal;
 }
 
 function getDayPhaseForTime(timeStr) {
@@ -77,13 +77,13 @@ function getDayPhaseForTime(timeStr) {
 
 function renderPhaseLabelsColumn(phaseColEl, zoomVal) {
     if (!phaseColEl) return;
-    const totalHeight = (24 - PLANNER_START_HOUR) * zoomVal;
+    const totalHeight = (CORTEX_DAY.end - CORTEX_DAY.start) * zoomVal;
     phaseColEl.innerHTML = '';
     phaseColEl.style.height = `${totalHeight}px`;
 
     const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
     phases.forEach((ph, idx) => {
-        const topPx = (ph.startDec - PLANNER_START_HOUR) * zoomVal;
+        const topPx = (ph.startDec - CORTEX_DAY.start) * zoomVal;
         const heightPx = (ph.endDec - ph.startDec) * zoomVal;
 
         const box = document.createElement('div');
@@ -98,7 +98,7 @@ function renderPhaseLabelsColumn(phaseColEl, zoomVal) {
 function appendDayPhaseBandsToColumn(colEl, zoomVal) {
     const phases = typeof DAY_PHASES !== 'undefined' ? DAY_PHASES : [];
     phases.forEach((ph, idx) => {
-        const topPx = (ph.startDec - PLANNER_START_HOUR) * zoomVal;
+        const topPx = (ph.startDec - CORTEX_DAY.start) * zoomVal;
         const heightPx = (ph.endDec - ph.startDec) * zoomVal;
 
         const band = document.createElement('div');
@@ -202,7 +202,6 @@ function renderWeeklyPlanner() {
             scrollArea.insertBefore(phaseLabels, timeLabels);
         }
 
-        headerRow.style.paddingLeft = '103px';
         const oldFooter = document.getElementById('planner-fixed-footer');
         if (oldFooter) oldFooter.remove();
 
@@ -256,7 +255,7 @@ function renderWeeklyPlanner() {
             sidebar.appendChild(wrap);
         });
 
-        const totalGridHeight = (24 - PLANNER_START_HOUR) * plannerZoom;
+        const totalGridHeight = (CORTEX_DAY.end - CORTEX_DAY.start) * plannerZoom;
 
         renderPhaseLabelsColumn(phaseLabels, plannerZoom);
 
@@ -266,13 +265,13 @@ function renderWeeklyPlanner() {
         const tl630 = document.createElement('div');
         tl630.className = 'time-label';
         tl630.style.top = `0px`;
-        tl630.textContent = `06:30`;
+        tl630.textContent = minutesToTimeStr(CORTEX_DAY.start * 60);
         timeLabels.appendChild(tl630);
 
-        for (let h = 7; h < 24; h++) {
+        for (let h = Math.floor(CORTEX_DAY.start) + 1; h < CORTEX_DAY.end; h++) {
             const tl = document.createElement('div');
             tl.className = 'time-label';
-            tl.style.top = `${(h - PLANNER_START_HOUR) * plannerZoom}px`;
+            tl.style.top = `${(h - CORTEX_DAY.start) * plannerZoom}px`;
             tl.textContent = `${h.toString().padStart(2, '0')}:00`;
             timeLabels.appendChild(tl);
         }
@@ -333,17 +332,17 @@ function renderWeeklyPlanner() {
             line630.style.top = `0px`;
             dayCol.appendChild(line630);
 
-            for (let h = 7; h <= 24; h++) {
+            for (let h = Math.floor(CORTEX_DAY.start) + 1; h <= CORTEX_DAY.end; h++) {
                 const line = document.createElement('div');
                 line.className = 'grid-line-abs';
-                line.style.top = `${(h - PLANNER_START_HOUR) * plannerZoom}px`;
+                line.style.top = `${(h - CORTEX_DAY.start) * plannerZoom}px`;
                 dayCol.appendChild(line);
             }
 
             const customDayBlocks = Array.isArray(ephemeralData[loopDateStr]) ? ephemeralData[loopDateStr] : [];
 
             // 1. Ghost Layers
-            referenceLayers.forEach(ref => {
+            referenceLayers.forEach((ref, refIdx) => {
                 if (ref && refToggles[ref.id]) {
                     (ref.timeWindows || []).forEach(tw => {
                         if (tw.days && tw.days.includes(jsDay)) {
@@ -356,8 +355,10 @@ function renderWeeklyPlanner() {
                             const height = Math.max(timeToPx(tw.end) - top, 6);
                             if (top + height > 0) {
                                 const block = document.createElement('div');
-                                block.className = 'block-absolute block-ref';
-                                block.style.cssText = `top:${top}px; height:${height}px; border-color:${ref.color}; background-color:${hexToRgba(ref.color, ref.opacity || 0.15)};`;
+                                block.className = `block-absolute block-ref ${refIdx % 2 ? 'is-alt' : ''}`;
+                                // Places and timetables are context, not plans: a light hatch with the name, never a solid wall
+                                block.style.cssText = `top:${top}px; height:${height}px; --ref-color:${ref.color || '#777777'};`;
+                                if (height >= 22) block.innerHTML = `<span class="ref-label">${escapeHtml(ref.title)}</span>`;
                                 block.onmouseenter = (ev) => showTooltip(ev, ref.title, `${tw.start} - ${tw.end}`, 'Ghost Layer');
                                 block.onmousemove = moveTooltip;
                                 block.onmouseleave = hideTooltip;
@@ -536,9 +537,9 @@ function renderWeeklyPlanner() {
                     const rect = scrollArea.getBoundingClientRect();
                     const y = e.clientY - rect.top + scrollArea.scrollTop;
                     const relativeY = y - 8;
-                    const hoursDec = (relativeY / plannerZoom) + PLANNER_START_HOUR;
+                    const hoursDec = (relativeY / plannerZoom) + CORTEX_DAY.start;
 
-                    if (hoursDec >= PLANNER_START_HOUR && hoursDec <= 24 && relativeY >= 0) {
+                    if (hoursDec >= CORTEX_DAY.start && hoursDec <= CORTEX_DAY.end && relativeY >= 0) {
                         const h = Math.floor(hoursDec);
                         const m = Math.floor((hoursDec - h) * 60);
                         document.getElementById('planner-hover-time').innerText = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
@@ -564,10 +565,26 @@ function renderWeeklyPlanner() {
         }
 
         drawCurrentTimeLine();
+        alignPlannerHeader();
     } catch (error) {
         console.error("Error in renderWeeklyPlanner:", error);
     }
 }
+
+// Day names sit exactly above their columns, whatever the width of the time/phase labels and scrollbar
+function alignPlannerHeader() {
+    const headerRow = document.getElementById('planner-header');
+    const grid = document.getElementById('planner-grid');
+    if (!headerRow || !grid) return;
+    requestAnimationFrame(() => {
+        const h = headerRow.getBoundingClientRect();
+        const g = grid.getBoundingClientRect();
+        if (!g.width || !h.width) return;
+        headerRow.style.paddingLeft = `${Math.max(0, g.left - h.left)}px`;
+        headerRow.style.paddingRight = `${Math.max(0, h.right - g.right)}px`;
+    });
+}
+window.addEventListener('resize', () => alignPlannerHeader());
 
 function hidePlannerInstance(e, taskId, dateStr, startTime) {
     e.preventDefault();
@@ -611,7 +628,7 @@ function drawCurrentTimeLine() {
     const m = now.getMinutes();
     const curHourDec = h + (m / 60);
 
-    if (curHourDec < PLANNER_START_HOUR) return;
+    if (curHourDec < CORTEX_DAY.start || curHourDec > CORTEX_DAY.end) return;
 
     const weekStart = getWeekStart(selectedDateStr);
     const daysDiff = Math.floor((now - weekStart) / (1000 * 60 * 60 * 24));
@@ -619,7 +636,7 @@ function drawCurrentTimeLine() {
     if (daysDiff >= 0 && daysDiff < 7) {
         const cols = document.querySelectorAll('#planner-grid .planner-col-absolute');
         if (cols[daysDiff]) {
-            const top = (curHourDec - PLANNER_START_HOUR) * plannerZoom;
+            const top = (curHourDec - CORTEX_DAY.start) * plannerZoom;
             const line = document.createElement('div');
             line.className = 'current-time-line';
             line.style.top = `${top}px`;
@@ -635,7 +652,7 @@ function drawCurrentTimeLine() {
 
     const dayPlanCanvas = document.getElementById('plan-mod-day-canvas');
     if (dayPlanCanvas && typeof planBuilderDateStr !== 'undefined' && planBuilderDateStr === todayStr) {
-        const topDay = (curHourDec - PLANNER_START_HOUR) * (typeof tmwTimelineZoom !== 'undefined' ? tmwTimelineZoom : 46);
+        const topDay = (curHourDec - CORTEX_DAY.start) * (typeof tmwTimelineZoom !== 'undefined' ? tmwTimelineZoom : 46);
         const lineDay = document.createElement('div');
         lineDay.className = 'current-time-line';
         lineDay.style.top = `${topDay}px`;

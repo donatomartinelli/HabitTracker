@@ -429,8 +429,9 @@ function renderGymAtomToday() {
     const body = root.querySelector('#gym-today-body');
     if (!isScheduled) {
         body.innerHTML = `
-            <div class="u-grow u-flex u-col u-ai-center u-jc-center u-gap-3" style="border:1px dashed var(--border-color); background:rgba(255,255,255,0.01);">
-                <div class="empty-state u-p-0">[ NO TRAINING SCHEDULED FOR THIS DATE ]</div>
+            <div class="gym-rest-day">
+                <div class="gym-rest-title">Rest day</div>
+                <div class="gym-rest-sub">No training scheduled for this date.</div>
                 <button type="button" class="btn btn-sm" id="btn-force-train-today">[TRAIN ANYWAY]</button>
             </div>
         `;

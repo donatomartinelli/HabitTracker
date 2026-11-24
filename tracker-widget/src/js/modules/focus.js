@@ -35,7 +35,12 @@ function injectFocusIntoDayPlanner(task, mins) {
 }
 
 // audioCtx è condiviso: viene creato una sola volta in js/core/audio.js
+function focusSoundOn() {
+    return typeof getPref !== 'function' || getPref('focusSound') !== false;
+}
+
 function playBeep(frequency, duration) {
+    if (!focusSoundOn()) return;
     if (audioCtx.state === 'suspended') audioCtx.resume();
     const oscillator = audioCtx.createOscillator();
     const gainNode = audioCtx.createGain();
@@ -100,10 +105,23 @@ function quickStartTaskFocus(templateId) {
     const t = templates.find(x => x.id === templateId);
     if (!t) return false;
 
-    const mins = getTaskDurationMinutes(t, selectedDateStr);
+    let mins = getTaskDurationMinutes(t, selectedDateStr);
     if (mins <= 0) {
         if (typeof showToast === 'function') showToast(`[CHECK-ONLY] "${t.title}" has no timer.`);
         return false;
+    }
+
+    // Tasks measured in time (Algebra 2h): run the planned session if there is one now,
+    // and count the minutes instead of ticking one box per timer
+    const study = window.CortexStudy && CortexStudy.isTimeTarget(t, selectedDateStr);
+    let planned = null;
+    if (study && selectedDateStr === todayStr) {
+        const now = getNow();
+        const nowMin = now.getHours() * 60 + now.getMinutes();
+        planned = (Array.isArray(ephemeralData[todayStr]) ? ephemeralData[todayStr] : [])
+            .filter(b => b && b.templateId === t.id && b.studyWindowId && timeToMinutes(b.end) > nowMin && timeToMinutes(b.start) <= nowMin + 10)
+            .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start))[0] || null;
+        if (planned) mins = Math.max(5, timeToMinutes(planned.end) - Math.max(nowMin, timeToMinutes(planned.start)));
     }
 
     focusPlaylist = [{
@@ -113,11 +131,12 @@ function quickStartTaskFocus(templateId) {
         title: t.title,
         duration: mins,
         color: t.color || '#ffffff',
-        isPartial: false
+        isPartial: Boolean(study),
+        isStudy: Boolean(study)
     }];
     currentPlaylistIndex = 0;
     isFullscreenFocusOpen = false;
-    injectFocusIntoDayPlanner(t, mins);
+    if (!planned) injectFocusIntoDayPlanner(t, mins);
     startCurrentPlaylistPhase();
     if (typeof showToast === 'function') {
         showToast(`[FOCUS INLINE] Started ${mins}m: ${t.title} [${t.category}]`);
@@ -163,14 +182,34 @@ function startFreeFocus(title, mins = 25) {
     if (typeof showToast === 'function') showToast(`[FOCUS] ${focusPlaylist[0].title} — ${mins} min`);
 }
 
-function checkOffCompletedTaskInstance(templateId) {
+function checkOffCompletedTaskInstance(templateId, dateStr = todayStr) {
     const t = templates.find(x => x.id === templateId);
     if (!t) return;
     const instancesCount = t.instances || 1;
-    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(instancesCount).fill(false);
+    const currentLog = (logs[dateStr] && logs[dateStr][t.id]) || Array(instancesCount).fill(false);
     const firstUncheckedIndex = currentLog.indexOf(false);
     if (firstUncheckedIndex !== -1 && typeof toggleTask === 'function') {
-        toggleTask(t.id, firstUncheckedIndex);
+        // toggleTask works on the date being viewed: point it at the session's date
+        const prev = selectedDateStr;
+        selectedDateStr = dateStr;
+        try { toggleTask(t.id, firstUncheckedIndex); } finally { selectedDateStr = prev; }
+    }
+}
+
+// A focus phase on a task is over (finished or skipped): log the minutes once, credit the task.
+// The log id is fixed per session + phase, so two devices finishing the same phase count it once.
+function completeTaskPhase(phase, minutes, dateStr, phaseIndex) {
+    if (!phase || phase.type !== 'task' || minutes <= 0) return;
+    const entryId = focusSessionId ? `fl_${focusSessionId}_${phaseIndex}` : null;
+    let logged = true;
+    if (typeof logFocusSession === 'function') {
+        logged = logFocusSession(minutes, phase.category, phase.title, dateStr, phase.id || null, entryId) !== false;
+    }
+    if (!logged) return;
+    if (phase.isStudy && phase.id && window.CortexStudy) {
+        CortexStudy.creditMinutes(phase.id, dateStr, minutes);
+    } else if (!phase.isPartial && phase.id) {
+        checkOffCompletedTaskInstance(phase.id, dateStr);
     }
 }
 
@@ -179,13 +218,8 @@ function skipPomodoroPhase() {
 
     const phase = focusPlaylist[currentPlaylistIndex];
     if (phase.type === 'task') {
-        if (typeof logFocusSession === 'function') {
-            const elapsedMins = Math.max(1, Math.round((totalPhaseTime - Math.max(0, timeRemaining)) / 60));
-            logFocusSession(elapsedMins, phase.category, phase.title, todayStr);
-        }
-        if (!phase.isPartial && phase.id) {
-            checkOffCompletedTaskInstance(phase.id);
-        }
+        const elapsedMins = Math.max(1, Math.round((totalPhaseTime - Math.max(0, timeRemaining)) / 60));
+        completeTaskPhase(phase, elapsedMins, todayStr, currentPlaylistIndex);
     }
 
     clearInterval(pomodoroInterval);
@@ -198,6 +232,7 @@ function resetPomodoroPhase() {
     timeRemaining = totalPhaseTime;
     phaseEndTimeMs = Date.now() + (timeRemaining * 1000);
     updatePomodoroDisplay();
+    publishFocusSession();
 }
 
 function splitPlaylistTask(index) {
@@ -490,20 +525,50 @@ function resetWidgetMode() {
     }
 }
 
-function startCurrentPlaylistPhase() {
+// opts.startAt: when the phase began (the end of the previous one), so every device
+//               computes the same end time; default = now.
+// opts.quiet:   no beep (catching up phases that ended while the app was closed)
+function startCurrentPlaylistPhase(opts = {}) {
     if (currentPlaylistIndex >= focusPlaylist.length) {
         stopPomodoro();
         if (typeof showToast === 'function') showToast('[FOCUS] Session completed & tasks checked off!');
         return;
     }
 
-    isPomodoroPaused = false;
-    const pauseBtnFull = document.getElementById('btn-pomodoro-pause');
-    if (pauseBtnFull) pauseBtnFull.innerText = 'Pause';
-    const pauseBtnHdr = document.getElementById('btn-header-focus-pause');
-    if (pauseBtnHdr) pauseBtnHdr.textContent = '[PAUSE]';
+    // A new playlist = a new session, shared with your other devices
+    if (focusSessionRef !== focusPlaylist || !focusSessionId) {
+        focusSessionId = 'fs_' + Date.now().toString(36) + Math.floor(Math.random() * 1e6).toString(36);
+        focusSessionRef = focusPlaylist;
+        focusSessionFrom = focusDeviceLabel();
+        focusSessionStartedHere = true;
+    }
 
+    isPomodoroPaused = false;
     const phase = focusPlaylist[currentPlaylistIndex];
+    renderFocusPhaseChrome(phase, { beep: !opts.quiet });
+
+    totalPhaseTime = phase.duration * 60;
+    phaseEndTimeMs = (opts.startAt || Date.now()) + (totalPhaseTime * 1000);
+    timeRemaining = Math.ceil((phaseEndTimeMs - Date.now()) / 1000);
+
+    // ATTIVA LA ZENITH MODE
+    toggleZenithMode(true, phase.category);
+
+    syncFocusViewState();
+    renderLiveFocusQueue();
+    updatePomodoroDisplay();
+    clearInterval(pomodoroInterval);
+    pomodoroInterval = setInterval(runPomodoroTick, 250);
+    publishFocusSession();
+}
+
+// Titles, colours and buttons of the current phase (header strip + full screen)
+function renderFocusPhaseChrome(phase, opts = {}) {
+    const pauseBtnFull = document.getElementById('btn-pomodoro-pause');
+    if (pauseBtnFull) pauseBtnFull.innerText = isPomodoroPaused ? 'Resume' : 'Pause';
+    const pauseBtnHdr = document.getElementById('btn-header-focus-pause');
+    if (pauseBtnHdr) pauseBtnHdr.textContent = isPomodoroPaused ? '[RESUME]' : '[PAUSE]';
+
     const activeColor = phase.type === 'task' ? (phase.color || '#ffffff') : '#888888';
 
     // Aggiorna Fullscreen Overlay
@@ -513,7 +578,7 @@ function startCurrentPlaylistPhase() {
         const catPrefix = phase.category ? `[${phase.category}] ` : '';
         if (titleEl) titleEl.innerText = `${catPrefix}${phase.title}`;
         if (circle) circle.setAttribute('stroke', activeColor);
-        playBeep(800, 0.2);
+        if (opts.beep) playBeep(800, 0.2);
     } else {
         if (titleEl) titleEl.innerText = 'BREAK TIME';
         if (circle) circle.setAttribute('stroke', '#666666');
@@ -527,31 +592,18 @@ function startCurrentPlaylistPhase() {
 
     if (hdrPill) {
         hdrPill.style.borderLeftColor = activeColor;
-        hdrPill.classList.remove('is-paused');
+        hdrPill.classList.toggle('is-paused', isPomodoroPaused);
     }
     if (hdrTitle) {
         hdrTitle.textContent = phase.type === 'task' ? phase.title : 'BREAK';
     }
     if (hdrIcon) {
-        hdrIcon.textContent = '▶';
+        hdrIcon.textContent = isPomodoroPaused ? '⏸' : '▶';
         hdrIcon.style.color = activeColor;
     }
     if (hdrProgBar) {
         hdrProgBar.style.background = activeColor;
     }
-
-    totalPhaseTime = phase.duration * 60;
-    timeRemaining = totalPhaseTime;
-    phaseEndTimeMs = Date.now() + (totalPhaseTime * 1000);
-
-    // ATTIVA LA ZENITH MODE
-    toggleZenithMode(true, phase.category);
-
-    syncFocusViewState();
-    renderLiveFocusQueue();
-    updatePomodoroDisplay();
-    clearInterval(pomodoroInterval);
-    pomodoroInterval = setInterval(runPomodoroTick, 250);
 }
 
 function updatePomodoroDisplay() {
@@ -592,23 +644,24 @@ function runPomodoroTick() {
     timeRemaining = Math.ceil((phaseEndTimeMs - nowMs) / 1000);
     updatePomodoroDisplay();
 
-    // Modifica la fine di runPomodoroTick()
     if (timeRemaining <= 0) {
         clearInterval(pomodoroInterval);
         const phase = focusPlaylist[currentPlaylistIndex];
+        if (!phase) { stopPomodoro(); return; }
+        const endedAt = phaseEndTimeMs;
+        // Ended a while ago (app was closed, or another device ran it): catch up quietly
+        const overdue = nowMs - endedAt > 5000;
 
         if (phase.type === 'task') {
-            if (window.sysAudio) window.sysAudio.playSweep(); // <-- SUONO SWEEP
-            if (typeof logFocusSession === 'function') {
-                logFocusSession(phase.duration, phase.category, phase.title, todayStr);
-            }
-            if (!phase.isPartial && phase.id) {
-                checkOffCompletedTaskInstance(phase.id);
-            }
+            if (window.sysAudio && focusSoundOn() && !overdue) window.sysAudio.playSweep(); // <-- SUONO SWEEP
+            const endDate = typeof formatDate === 'function' ? formatDate(new Date(endedAt)) : todayStr;
+            completeTaskPhase(phase, phase.duration, endDate, currentPlaylistIndex);
+            if (typeof renderTodayModule === 'function') renderTodayModule();
         }
 
         currentPlaylistIndex++;
-        startCurrentPlaylistPhase();
+        // The next phase starts when this one ended: same timing on every device
+        startCurrentPlaylistPhase({ startAt: endedAt, quiet: overdue });
     }
 }
 
@@ -629,6 +682,7 @@ function togglePomodoroPause() {
 
     const hdrIcon = document.getElementById('header-focus-icon');
     if (hdrIcon) hdrIcon.textContent = isPomodoroPaused ? '⏸' : '▶';
+    publishFocusSession();
 }
 
 // Modifica stopPomodoro()
@@ -641,6 +695,9 @@ function stopPomodoro() {
     
     // DISATTIVA LA ZENITH MODE
     toggleZenithMode(false);
+    focusSessionId = null;
+    focusSessionRef = null;
+    publishFocusSession();
 }
 
 function toggleZenithMode(isActive, categoryName) {
@@ -672,3 +729,166 @@ function toggleZenithMode(isActive, categoryName) {
         document.body.classList.remove('zenith-mode');
     }
 }
+// ============================================================================
+// ONE FOCUS SESSION FOR ALL YOUR DEVICES
+// ============================================================================
+// The running session (playlist, current phase, absolute end time, pause) is saved as one
+// piece of synced data ("focusSession", see js/core/cloud-sync.js). Start on the phone, open
+// the tablet: the same timer is there, at the same second. Pause, skip and stop travel too.
+// It is saved as a single JSON string so a sync can never mix half of one device's session
+// with half of another's: the newest whole session wins.
+
+const FOCUS_SESSION_KEY = 'tracker_focus_session';
+let focusSessionId = null;
+let focusSessionRef = null;          // the playlist array this session id belongs to
+let focusSessionFrom = '';           // 'phone' | 'tablet' | 'computer' | 'desktop app'
+let focusSessionStartedHere = false;
+let focusSessionJson = cortexStore.getItem(FOCUS_SESSION_KEY) || null;   // what is shared right now
+let applyingSharedFocus = false;
+
+function focusDeviceLabel() {
+    const ua = navigator.userAgent || '';
+    if (window.__TAURI__) return 'desktop app';
+    if (/iPad|Tablet/i.test(ua) || (/Android/i.test(ua) && !/Mobile/i.test(ua)) || (/Macintosh/i.test(ua) && navigator.maxTouchPoints > 1)) return 'tablet';
+    if (/Mobi|iPhone|Android/i.test(ua)) return 'phone';
+    return 'computer';
+}
+
+function serializeFocusSession() {
+    const running = focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length && focusSessionId;
+    if (!running) return null;
+    return JSON.stringify({
+        v: 1,
+        id: focusSessionId,
+        from: focusSessionFrom,
+        playlist: focusPlaylist,
+        index: currentPlaylistIndex,
+        total: totalPhaseTime,
+        paused: isPomodoroPaused,
+        endMs: isPomodoroPaused ? null : phaseEndTimeMs,
+        remaining: isPomodoroPaused ? Math.max(0, timeRemaining) : null
+    });
+}
+
+// Called after every change of the local timer: save, and send it soon
+function publishFocusSession() {
+    if (applyingSharedFocus) return;
+    const json = serializeFocusSession();
+    if (json === focusSessionJson) return;
+    focusSessionJson = json;
+    if (json) cortexStore.setItem(FOCUS_SESSION_KEY, json);
+    else cortexStore.removeItem(FOCUS_SESSION_KEY);
+    if (typeof markLocalChangeForCloud === 'function') markLocalChangeForCloud();
+    // Don't wait the usual 3 s: other devices should see it right away
+    if (typeof scheduleSyncSoon === 'function' && typeof isCloudSyncConfigured === 'function' && isCloudSyncConfigured()) scheduleSyncSoon(400);
+}
+
+// For cloud-sync.js
+function getFocusSessionForSync() {
+    return focusSessionJson || null;
+}
+function applyFocusSessionFromSync(json) {
+    const next = json || null;
+    const boot = focusBootPending;
+    focusBootPending = false;
+    if (next === focusSessionJson && !boot) return;
+    const changed = next !== focusSessionJson;
+    focusSessionJson = next;
+    if (next) cortexStore.setItem(FOCUS_SESSION_KEY, next);
+    else cortexStore.removeItem(FOCUS_SESSION_KEY);
+    adoptFocusSession(next, { fromOtherDevice: changed });
+}
+
+// At start-up, with sync on, wait for the cloud before resuming what this device remembers:
+// the session may have been stopped elsewhere, and resuming it would count minutes never done.
+let focusBootPending = false;
+function settleFocusBoot() {
+    if (!focusBootPending) return;
+    focusBootPending = false;
+    if (focusSessionJson && !focusPlaylist.length) adoptFocusSession(focusSessionJson, { fromOtherDevice: false });
+}
+window.settleFocusBoot = settleFocusBoot;
+
+// When the last phase of a session ended (ms), or null if paused
+function focusSessionEndsAt(st) {
+    if (!st || st.paused || !st.endMs) return null;
+    const rest = (st.playlist || []).slice(st.index + 1).reduce((a, p) => a + (Number(p.duration) || 0), 0);
+    return Number(st.endMs) + rest * 60000;
+}
+const FOCUS_STALE_MS = 12 * 60 * 60 * 1000;
+
+// Make this device show the shared session (or stop, if it was stopped elsewhere)
+function adoptFocusSession(json, opts = {}) {
+    let st = null;
+    try { st = json ? JSON.parse(json) : null; } catch (e) { st = null; }
+    let valid = st && Array.isArray(st.playlist) && st.playlist.length && st.index >= 0 && st.index < st.playlist.length;
+    // Finished more than 12 hours ago: forgotten, not something to count now. Clear it everywhere.
+    const endsAt = valid ? focusSessionEndsAt(st) : null;
+    if (valid && endsAt !== null && Date.now() - endsAt > FOCUS_STALE_MS) {
+        valid = false;
+        focusSessionJson = null;
+        cortexStore.removeItem(FOCUS_SESSION_KEY);
+        if (typeof markLocalChangeForCloud === 'function') setTimeout(markLocalChangeForCloud, 0);
+    }
+
+    applyingSharedFocus = true;
+    try {
+        if (!valid) {
+            if (focusPlaylist.length) {
+                const wasRunning = Boolean(focusSessionId);
+                stopPomodoro();
+                if (opts.fromOtherDevice && wasRunning && typeof showToast === 'function') showToast('[FOCUS] Stopped on another device');
+            }
+            focusSessionId = null;
+            focusSessionRef = null;
+        } else {
+            const isNew = st.id !== focusSessionId;
+            focusPlaylist = st.playlist;
+            focusSessionRef = focusPlaylist;
+            focusSessionId = st.id;
+            focusSessionFrom = st.from || '';
+            if (isNew) focusSessionStartedHere = !opts.fromOtherDevice && st.from === focusDeviceLabel();
+            currentPlaylistIndex = st.index;
+            isPomodoroPaused = Boolean(st.paused);
+            totalPhaseTime = Number(st.total) || (focusPlaylist[currentPlaylistIndex].duration * 60);
+            if (isPomodoroPaused) {
+                timeRemaining = Math.max(0, Number(st.remaining) || 0);
+                phaseEndTimeMs = Date.now() + timeRemaining * 1000;
+            } else {
+                phaseEndTimeMs = Number(st.endMs) || Date.now();
+                timeRemaining = Math.ceil((phaseEndTimeMs - Date.now()) / 1000);
+            }
+            const phase = focusPlaylist[currentPlaylistIndex];
+            renderFocusPhaseChrome(phase, { beep: false });
+            if (isNew) isFullscreenFocusOpen = false;
+            toggleZenithMode(true, phase.category);
+            syncFocusViewState();
+            renderLiveFocusQueue();
+            updatePomodoroDisplay();
+            clearInterval(pomodoroInterval);
+            pomodoroInterval = setInterval(runPomodoroTick, 250);
+            if (isNew && opts.fromOtherDevice && typeof showToast === 'function') {
+                const m = Math.max(0, Math.floor(timeRemaining / 60));
+                showToast(`[FOCUS] Running from your ${focusSessionFrom || 'other device'}: ${phase.type === 'task' ? phase.title : 'break'} · ${m} min left`);
+            }
+        }
+    } finally {
+        applyingSharedFocus = false;
+    }
+    if (typeof renderTodayModule === 'function') renderTodayModule();
+}
+
+// For the Today card: where the running session comes from
+window.getFocusSessionInfo = () => (focusSessionId ? { id: focusSessionId, from: focusSessionFrom, here: focusSessionStartedHere } : null);
+
+// After a reload (or reopening the app) the session continues where it is
+window.addEventListener('DOMContentLoaded', () => {
+    if (!focusSessionJson || focusPlaylist.length) return;
+    const canSync = typeof isCloudSyncConfigured === 'function' && isCloudSyncConfigured() && navigator.onLine;
+    if (!canSync) {
+        setTimeout(() => adoptFocusSession(focusSessionJson, { fromOtherDevice: false }), 0);
+        return;
+    }
+    focusBootPending = true;
+    setTimeout(settleFocusBoot, 8000);   // cloud too slow: go with what this device has
+});

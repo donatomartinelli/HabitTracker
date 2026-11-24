@@ -50,10 +50,10 @@ function updateExternalBridgeSettingsUI() {
 
     if (statusEl) {
         if (!bridgeWebAppUrl) {
-            statusEl.textContent = '[NOT CONFIGURED]';
+            statusEl.textContent = 'Not set up';
             statusEl.style.color = 'var(--text-dim)';
         } else {
-            statusEl.textContent = '[READY // ISYBANK PARSER ACTIVE]';
+            statusEl.textContent = 'Ready';
             statusEl.style.color = 'var(--accent-green)';
         }
     }

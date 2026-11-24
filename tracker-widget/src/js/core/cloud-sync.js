@@ -13,6 +13,9 @@
 // Quando parte da sola:
 //   all'avvio · 3s dopo una modifica · quando torni sull'app · quando torna la rete ·
 //   ogni 60s se l'app è aperta · subito quando chiudi/nascondi l'app con modifiche in sospeso.
+//   Con l'account: ogni ~8s un controllo leggerissimo (solo il numero di versione) e, se un altro
+//   dispositivo ha scritto, una sync completa. Così una sessione di focus avviata sul telefono
+//   compare sul tablet già aperto in pochi secondi.
 
 const GIST_FILENAME = 'cortex_cloud_state.json';
 const SYNC_PAYLOAD_VERSION = 3;
@@ -20,6 +23,7 @@ const SYNC_BASE_KEY = 'cortex_sync_base';
 const SYNC_CONFLICTS_KEY = 'cortex_sync_conflicts';
 const SYNC_CHANGE_DEBOUNCE_MS = 3000;
 const SYNC_POLL_MS = 60000;
+const SYNC_LIVE_CHECK_MS = 8000;
 const SYNC_FOCUS_THROTTLE_MS = 10000;
 const SYNC_MAX_CONFLICTS = 100;
 const SYNC_DIRTY_KEY = 'cortex_sync_dirty_since';
@@ -42,6 +46,7 @@ let syncDebounceTimer = null;
 let lastSyncAttemptMs = 0;
 let lastSyncOkMs = 0;
 let cloudSyncStatus = 'idle';
+let lastKnownRemoteVersion = null;   // account only: the row version seen at the last sync
 
 // Modifiche rimaste in sospeso dalla sessione precedente (es. app chiusa offline)
 (function restorePendingFromLastSession() {
@@ -218,6 +223,8 @@ function buildFullCortexCloudPayload(timestampMs) {
             generalTodos: typeof generalTodos !== 'undefined' ? generalTodos : [],
             plannerExceptions: typeof plannerExceptions !== 'undefined' ? plannerExceptions : {},
             dailyPriorities: typeof dailyPriorities !== 'undefined' ? dailyPriorities : {},
+            studyPlans: typeof studyPlans !== 'undefined' ? studyPlans : {},
+            dietLogs: typeof dietLogs !== 'undefined' ? dietLogs : {},
             routinesData: typeof routinesData !== 'undefined' ? routinesData : [],
             routineLogs: typeof routineLogs !== 'undefined' ? routineLogs : {},
             focusLogs: typeof focusLogs !== 'undefined' ? focusLogs : [],
@@ -252,6 +259,9 @@ function buildFullCortexCloudPayload(timestampMs) {
             bankGmailQuery: typeof bankGmailQuery !== 'undefined' ? bankGmailQuery : '',
             processedBankEmails: typeof processedBankEmails !== 'undefined' ? processedBankEmails : [],
             enabledModules: typeof enabledModules !== 'undefined' ? enabledModules : {},
+            uiPrefs: typeof getCortexPrefs === 'function' ? getCortexPrefs() : {},
+            // The running focus session, shared by every device (js/modules/focus.js)
+            focusSession: typeof getFocusSessionForSync === 'function' ? getFocusSessionForSync() : null,
             calendarFeeds: typeof calendarFeeds !== 'undefined' ? calendarFeeds : [],
             timeZone: (() => { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } })()
         }
@@ -282,6 +292,8 @@ function applyFullCortexCloudPayload(payloadObj) {
         if (Array.isArray(d.generalTodos)) generalTodos = d.generalTodos;
         if (d.plannerExceptions && typeof d.plannerExceptions === 'object') plannerExceptions = d.plannerExceptions;
         if (d.dailyPriorities && typeof d.dailyPriorities === 'object') dailyPriorities = d.dailyPriorities;
+        if (d.studyPlans && typeof d.studyPlans === 'object' && !Array.isArray(d.studyPlans)) studyPlans = d.studyPlans;
+        if (d.dietLogs && typeof d.dietLogs === 'object' && !Array.isArray(d.dietLogs)) dietLogs = d.dietLogs;
         if (Array.isArray(d.routinesData)) routinesData = d.routinesData;
         if (d.routineLogs && typeof d.routineLogs === 'object') routineLogs = d.routineLogs;
         if (Array.isArray(d.focusLogs)) focusLogs = d.focusLogs;
@@ -338,6 +350,10 @@ function applyFullCortexCloudPayload(payloadObj) {
         }
 
         if (d.enabledModules && typeof applyEnabledModules === 'function') applyEnabledModules(d.enabledModules);
+        if (d.uiPrefs && typeof applySyncedPrefs === 'function') applySyncedPrefs(d.uiPrefs);
+        if (Object.prototype.hasOwnProperty.call(d, 'focusSession') && typeof applyFocusSessionFromSync === 'function') {
+            applyFocusSessionFromSync(typeof d.focusSession === 'string' ? d.focusSession : null);
+        }
         if (Array.isArray(d.calendarFeeds) && typeof applyCalendarFeeds === 'function') applyCalendarFeeds(d.calendarFeeds);
 
         saveData();
@@ -365,7 +381,7 @@ function rerenderAllAfterSync() {
     const calls = [
         'refreshActivePanesInPlace', 'renderTasks', 'renderCalendar', 'renderWeeklyPlanner',
         'renderDayPlannerModule', 'renderDiet', 'renderGymDashboard', 'renderMoneyDashboard',
-        'renderUniDashboard', 'renderNoteCategories', 'syncMobileModeUI',
+        'renderUniDashboard', 'renderNoteCategories', 'syncMobileModeUI', 'renderTodayModule',
         'updateWorkspaceDropdownUI', 'updateExternalBridgeSettingsUI'
     ];
     for (const fn of calls) {
@@ -400,7 +416,9 @@ function saveSyncBase(stateObj) {
 }
 
 function recordSyncConflicts(conflicts, keptSide) {
-    if (!conflicts || !conflicts.length) return;
+    // Two devices touching the running timer is normal: the newest wins, nothing to review
+    conflicts = (conflicts || []).filter(c => !String(c.path || '').startsWith('focusSession'));
+    if (!conflicts.length) return;
     let list = [];
     try { list = JSON.parse(cortexStore.getItem(SYNC_CONFLICTS_KEY) || '[]'); } catch (e) { list = []; }
     const at = new Date().toISOString();
@@ -423,6 +441,7 @@ const SYNC_SECTION_LABELS = {
     notesContent: 'Notes', journals: 'Journal', categoryOrder: 'Category order', referenceLayers: 'Planner layers',
     refToggles: 'Active layers', ephemeralData: 'Day blocks', generalTodos: 'To-dos',
     plannerExceptions: 'Planner exceptions', dailyPriorities: 'Daily priorities', routinesData: 'Routines',
+    studyPlans: 'Study windows', dietLogs: 'Meals eaten',
     routineLogs: 'Routine history', focusLogs: 'Focus sessions', mBalance: 'Balance', mTransactions: 'Transactions',
     mRecurring: 'Bills', mWishlist: 'Wishlist', mVaults: 'Vaults', mCategories: 'Spending categories',
     savedGymWeights: 'Gym weights', dietData: 'Diet', dietRules: 'Diet rules', foodDb: 'Foods',
@@ -646,6 +665,7 @@ async function syncNow(isManual = false) {
         const remotePayload = await fetchRemote();
         const remoteData = (remotePayload && remotePayload.data) || {};
         const remoteTs = parseInt(remotePayload && remotePayload.updatedAt, 10) || 0;
+        if (isAccountSignedIn()) lastKnownRemoteVersion = remotePayload.__version ?? null;
 
         // Da qui in poi tutto è sincrono fino all'upload: nessuna modifica locale può infilarsi
         const seqAtMerge = localChangeSeq;
@@ -660,7 +680,8 @@ async function syncNow(isManual = false) {
 
         if (changedHere) {
             applyFullCortexCloudPayload({ data: merged });
-            if (!isManual && typeof showToast === 'function' && base) {
+            const onlyTimer = CortexMerge.same(Object.assign({}, merged, { focusSession: null }), Object.assign({}, local, { focusSession: null }));
+            if (!isManual && !onlyTimer && typeof showToast === 'function' && base) {
                 showToast('[☁ SYNC] Updated with changes from your other device');
             }
         }
@@ -674,7 +695,11 @@ async function syncNow(isManual = false) {
             for (let attempt = 0; attempt < 4; attempt++) {
                 newTs = Math.max(Date.now(), remoteTs + 1);
                 const others = await uploadRemote({ version: SYNC_PAYLOAD_VERSION, updatedAt: newTs, data: finalState }, versionRead);
-                if (!others.length) { written = true; break; }
+                if (!others.length) {
+                    written = true;
+                    if (isAccountSignedIn()) lastKnownRemoteVersion = (versionRead === null || versionRead === undefined) ? 1 : Number(versionRead) + 1;
+                    break;
+                }
                 // Un altro dispositivo ha scritto tra la nostra lettura e la nostra scrittura:
                 // unisco quello che ha scritto, così nessuna modifica va persa, e riprovo.
                 console.warn('[SYNC] scrittura concorrente rilevata, unisco e riprovo');
@@ -707,11 +732,13 @@ async function syncNow(isManual = false) {
         recordSyncConflicts(conflicts, localWins ? 'this device' : 'other device');
 
         isCloudSyncInProgress = false;
+        if (typeof settleFocusBoot === 'function') settleFocusBoot();
         setCloudSyncHeaderIndicator(hasLocalChangesPending() ? 'queued' : 'ok');
         updateCloudSyncSettingsUI();
         if (isManual && typeof showToast === 'function') showToast('[☁ SYNC] Everything is in sync');
     } catch (err) {
         isCloudSyncInProgress = false;
+        if (typeof settleFocusBoot === 'function') settleFocusBoot();
         console.error('[SYNC] errore', err);
         setCloudSyncHeaderIndicator(navigator.onLine ? 'error' : 'offline', `Error: ${err.message}`);
         updateCloudSyncSettingsUI();
@@ -810,28 +837,28 @@ function updateCloudSyncSettingsUI() {
 
     if (conflictsBtn) {
         const n = getSyncConflicts().length;
-        conflictsBtn.textContent = `[SAVED CONFLICTS: ${n}]`;
+        conflictsBtn.textContent = n ? `Conflicts (${n})` : 'Conflicts';
         conflictsBtn.style.color = n ? 'var(--accent-gold)' : '';
     }
 
     if (statusLbl) {
         if (!isCloudSyncConfigured()) {
-            statusLbl.textContent = '[NOT SET UP]';
+            statusLbl.textContent = 'Not set up';
             statusLbl.style.color = 'var(--text-dim)';
         } else if (!navigator.onLine) {
-            statusLbl.textContent = '[OFFLINE // SAVED HERE]';
+            statusLbl.textContent = 'Offline: changes are saved here';
             statusLbl.style.color = 'var(--accent-gold)';
         } else if (isCloudSyncInProgress) {
-            statusLbl.textContent = '[SYNCING…]';
+            statusLbl.textContent = 'Syncing…';
             statusLbl.style.color = 'var(--accent-gold)';
         } else if (hasLocalChangesPending()) {
-            statusLbl.textContent = '[CHANGES WAITING]';
+            statusLbl.textContent = 'Changes waiting to sync';
             statusLbl.style.color = 'var(--accent-gold)';
         } else if (cloudSyncStatus === 'error') {
-            statusLbl.textContent = '[ERROR — TRY AGAIN]';
+            statusLbl.textContent = 'Error: try again';
             statusLbl.style.color = 'var(--accent-red)';
         } else {
-            statusLbl.textContent = `[CONNECTED // LAST SYNC: ${formatAgo(lastSyncOkMs).toUpperCase()}]`;
+            statusLbl.textContent = `Connected · last sync ${formatAgo(lastSyncOkMs)}`;
             statusLbl.style.color = 'var(--accent-green)';
         }
     }
@@ -874,6 +901,25 @@ window.addEventListener('DOMContentLoaded', () => {
         if (Date.now() - lastSyncAttemptMs < SYNC_POLL_MS - 1000) return;
         syncNow(false);
     }, SYNC_POLL_MS);
+
+    // Account: tiny version check every ~8s while the app is open; full sync only if something changed.
+    // The timer runs more often than the check so the check never drifts to every other tick.
+    let lastLiveCheckMs = 0;
+    let liveCheckInFlight = false;
+    setInterval(async () => {
+        if (document.visibilityState !== 'visible' || !isAccountSignedIn() || !navigator.onLine || isCloudSyncInProgress || liveCheckInFlight) return;
+        const now = Date.now();
+        if (now - lastLiveCheckMs < SYNC_LIVE_CHECK_MS - 300) return;
+        if (now - lastSyncAttemptMs < 3000) return;          // a full sync just ran
+        if (typeof CortexAccount.fetchVersion !== 'function') return;
+        lastLiveCheckMs = now;
+        liveCheckInFlight = true;
+        try {
+            const v = await CortexAccount.fetchVersion();
+            if (v !== null && v !== lastKnownRemoteVersion) syncNow(false);
+        } catch (e) { /* offline or token refresh: the regular sync will report it */ }
+        finally { liveCheckInFlight = false; }
+    }, 2500);
 
     // Aggiorna i "x min fa" dell'indicatore
     setInterval(() => { if (cloudSyncStatus === 'ok') setCloudSyncHeaderIndicator('ok'); }, 30000);

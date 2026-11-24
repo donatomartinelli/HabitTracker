@@ -206,6 +206,14 @@
         return payload;
     }
 
+    // Just the version number of the row: a few bytes, cheap enough to ask every few seconds
+    async function fetchVersion() {
+        const t = await token();
+        const rows = await call(`/rest/v1/cortex_state?select=version&user_id=eq.${encodeURIComponent(userId())}`, { token: t });
+        const row = Array.isArray(rows) && rows[0];
+        return row ? Number(row.version) : null;
+    }
+
     // Returns { ok: true } or { ok: false, latest } when another device wrote first
     async function saveState(payload, versionRead) {
         const t = await token();
@@ -386,7 +394,7 @@
         return call('/rest/v1/rpc/' + name, { method: 'POST', token: t, body: args });
     }
 
-    window.CortexAccount = { isSignedIn, userId, userEmail, sendSignInEmail, completeSignIn, signOut, fetchState, saveState, deleteAccount, rpc, supabaseUrl: SB_URL };
+    window.CortexAccount = { isSignedIn, userId, userEmail, sendSignInEmail, completeSignIn, signOut, fetchState, fetchVersion, saveState, deleteAccount, rpc, supabaseUrl: SB_URL };
     window.openAccountPanel = openAccountPanel;
 
     window.addEventListener('DOMContentLoaded', () => { handleRedirect(); });

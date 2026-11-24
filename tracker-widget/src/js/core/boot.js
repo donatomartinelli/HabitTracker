@@ -28,6 +28,7 @@
     const APP_SCRIPTS = [
         'js/core/audio.js',
         'js/core/state.js',
+        'js/core/prefs.js',
         'js/core/sync-merge.js',
         'js/core/cloud-sync.js',
         'js/core/cloud-account.js',
@@ -44,7 +45,9 @@
         'js/modules/calendar-sync.js',
         'js/modules/planner.js',
         'js/modules/focus.js',
+        'js/modules/study.js',
         'js/modules/diet.js',
+        'js/modules/meals.js',
         'js/modules/gym.js',
         'js/modules/money.js',
         'js/modules/uni.js',
@@ -57,6 +60,7 @@
         'js/ai/palette.js',
         'js/core/mobile-touch.js',
         'js/core/navigator.js',
+        'js/core/settings-page.js',
         'js/core/onboarding.js',
         'js/core/feedback.js'
     ];

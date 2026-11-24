@@ -216,7 +216,8 @@ const ALL_STORAGE_KEYS = [
     'tracker_uni_data',
     'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio', 'tracker_extracted_notes',
     'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view',
-    'tracker_custom_aliases', 'tracker_routines', 'tracker_routine_logs', 'tracker_nl_learning'
+    'tracker_custom_aliases', 'tracker_routines', 'tracker_routine_logs', 'tracker_nl_learning',
+    'tracker_study_plans', 'tracker_diet_logs'
 ];
 
 function safeJsonParse(rawStr, fallbackVal) {
@@ -325,7 +326,9 @@ function migrateAndInitData() {
         'tracker_custom_aliases': {},
         'tracker_nl_learning': {},
         'tracker_routines': DEFAULT_ROUTINES_DATA,
-        'tracker_routine_logs': {}
+        'tracker_routine_logs': {},
+        'tracker_study_plans': {},
+        'tracker_diet_logs': {}
     };
 
     // A brand-new install starts clean and neutral. The DEFAULT_* values above are the
@@ -361,6 +364,9 @@ let focusLogs = safeJsonParse(cortexStore.getItem('tracker_focus_logs'), []);
 let dailyPriorities = safeJsonParse(cortexStore.getItem('tracker_daily_priorities'), {});
 let routinesData = safeJsonParse(cortexStore.getItem('tracker_routines'), DEFAULT_ROUTINES_DATA);
 let routineLogs = safeJsonParse(cortexStore.getItem('tracker_routine_logs'), {});
+// Study windows per day (js/modules/study.js) and what was actually eaten (js/modules/meals.js)
+let studyPlans = safeJsonParse(cortexStore.getItem('tracker_study_plans'), {});
+let dietLogs = safeJsonParse(cortexStore.getItem('tracker_diet_logs'), {});
 let selectedTodos = new Set();
 
 // Money
@@ -449,6 +455,7 @@ function saveData() {
         'tracker_processed_audio': processedAudioFiles,
         'tracker_routines': routinesData,
         'tracker_routine_logs': routineLogs,
+        'tracker_study_plans': studyPlans,
         'tracker_math_state': mathHubState,
         'tracker_math_weights': mentalMathWeights,
         'tracker_math_history': mentalMathHistory,
@@ -479,7 +486,8 @@ function saveHealthData() {
         'tracker_gym_plan': gymPlan,
         'tracker_gym_routine': gymRoutine,
         'tracker_food_db': foodDb,
-        'tracker_body_logs': bodyLogs
+        'tracker_body_logs': bodyLogs,
+        'tracker_diet_logs': dietLogs
     });
 }
 
@@ -521,17 +529,24 @@ if (!noteCategories.includes('Extracted')) {
 // UTILITY DATE, LOG FOCUS & BACKUP MANUALE
 // ============================================================================
 
-function logFocusSession(minutes, category, title, dateStr = todayStr) {
+// entryId: fixed id for a phase of a shared focus session (js/modules/focus.js).
+// If that id is already logged (by this or another device) nothing is added: returns false.
+function logFocusSession(minutes, category, title, dateStr = todayStr, templateId = null, entryId = null) {
     const mins = Math.round(parseFloat(minutes) || 0);
-    if (mins <= 0) return;
-    focusLogs.push({
-        id: 'fl_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
+    if (mins <= 0) return false;
+    if (entryId && focusLogs.some(l => l && l.id === entryId)) return false;
+    const entry = {
+        id: entryId || ('fl_' + Date.now() + '_' + Math.floor(Math.random() * 1000)),
         date: dateStr,
         category: (category || 'General').trim(),
         title: (title || 'Focus Session').trim(),
         minutes: mins
-    });
+    };
+    // Lets study progress count minutes per task (js/modules/study.js)
+    if (templateId) entry.templateId = templateId;
+    focusLogs.push(entry);
     saveData();
+    return true;
 }
 
 function getNow() { return new Date(); }
@@ -677,7 +692,9 @@ function buildBackupObject() {
         'tracker_custom_aliases': JSON.stringify(customAliases),
         'tracker_nl_learning': JSON.stringify(nlLearning),
         'tracker_routines': JSON.stringify(routinesData),
-        'tracker_routine_logs': JSON.stringify(routineLogs)
+        'tracker_routine_logs': JSON.stringify(routineLogs),
+        'tracker_study_plans': JSON.stringify(studyPlans),
+        'tracker_diet_logs': JSON.stringify(dietLogs)
     };
 }
 
@@ -764,7 +781,9 @@ function captureCurrentStateSnapshotString() {
         bodyLogs,
         focusLogs,
         journals,
-        dailyPriorities
+        dailyPriorities,
+        studyPlans,
+        dietLogs
     });
 }
 
@@ -844,6 +863,8 @@ function applyStateSnapshotString(snapStr) {
         if (Array.isArray(s.focusLogs)) focusLogs = s.focusLogs;
         if (s.journals && typeof s.journals === 'object') journals = s.journals;
         if (s.dailyPriorities && typeof s.dailyPriorities === 'object') dailyPriorities = s.dailyPriorities;
+        if (s.studyPlans && typeof s.studyPlans === 'object') studyPlans = s.studyPlans;
+        if (s.dietLogs && typeof s.dietLogs === 'object') dietLogs = s.dietLogs;
 
         lastCapturedSnapshotStr = snapStr;
         saveData();

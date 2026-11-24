@@ -464,6 +464,14 @@ function applyResponsiveMode(initial = false) {
     isMobileViewMode = wantMobile;
     document.body.classList.toggle('mobile-view-mode', wantMobile);
     if (typeof hideMobileGymQuickStepper === 'function' && !wantMobile) hideMobileGymQuickStepper();
+    // Settings → General → Start screen
+    if (initial && typeof getPref === 'function') {
+        const start = getPref('startScreen');
+        if (start && start !== 'last' && NAV_SECTIONS[start] && isSectionEnabled(start)) {
+            navState.mode = 'section';
+            navState.section = start;
+        }
+    }
     restoreNavView();
     // Show/hide the phone-only bars (top date strip, bottom bar)
     if (typeof syncMobileModeUI === 'function') syncMobileModeUI();

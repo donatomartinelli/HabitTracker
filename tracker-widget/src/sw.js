@@ -9,7 +9,7 @@
 // IMPORTANTE: quando aggiungi un nuovo file JS/CSS all'app, aggiungilo anche qui
 // e aumenta il numero di CACHE_NAME.
 
-const CACHE_NAME = 'cortex-os-cache-v25';
+const CACHE_NAME = 'cortex-os-cache-v26';
 
 const CORE_ASSETS = [
     './',
@@ -30,9 +30,12 @@ const CORE_ASSETS = [
     './css/features.css',
     './css/money.css',
     './css/health.css',
+    './css/planning.css',
+    './css/settings.css',
     './js/core/boot.js',
     './js/core/audio.js',
     './js/core/state.js',
+    './js/core/prefs.js',
     './js/core/sync-merge.js',
     './js/core/cloud-sync.js',
     './js/core/cloud-account.js',
@@ -50,7 +53,9 @@ const CORE_ASSETS = [
     './js/modules/calendar-sync.js',
     './js/modules/planner.js',
     './js/modules/focus.js',
+    './js/modules/study.js',
     './js/modules/diet.js',
+    './js/modules/meals.js',
     './js/modules/gym.js',
     './js/modules/money.js',
     './js/modules/uni.js',
@@ -59,6 +64,7 @@ const CORE_ASSETS = [
     './js/modules/today.js',
     './js/modules/review.js',
     './js/core/navigator.js',
+    './js/core/settings-page.js',
     './js/core/onboarding.js',
     './js/core/feedback.js',
     './css/shell.css',

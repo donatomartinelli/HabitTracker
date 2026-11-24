@@ -36,7 +36,7 @@ function updateGeminiKeyStatusUI() {
     const status = document.getElementById('gemini-key-status');
     if (inp && inp.value !== geminiApiKey) inp.value = geminiApiKey;
     if (status) {
-        status.textContent = geminiApiKey ? '[KEY CONFIGURED]' : '[NO API KEY]';
+        status.textContent = geminiApiKey ? 'Key saved' : 'No key yet';
         status.style.color = geminiApiKey ? 'var(--accent-green)' : 'var(--accent-red)';
     }
 }
@@ -54,13 +54,13 @@ function updateGeminiAudioKeyStatusUI() {
     if (inp && inp.value !== geminiAudioApiKey) inp.value = geminiAudioApiKey;
     if (status) {
         if (geminiAudioApiKey) {
-            status.textContent = '[DEDICATED KEY ACTIVE]';
+            status.textContent = 'Separate key in use';
             status.style.color = 'var(--accent-green)';
         } else if (geminiApiKey) {
-            status.textContent = '[USING MAIN KEY]';
+            status.textContent = 'Using the main key';
             status.style.color = 'var(--accent-gold)';
         } else {
-            status.textContent = '[NO KEY SET]';
+            status.textContent = 'No key yet';
             status.style.color = 'var(--accent-red)';
         }
     }

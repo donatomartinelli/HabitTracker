@@ -1,9 +1,9 @@
 // --- js/modules/today.js ---
 // TODAY: the home screen of Cortex.
-//   Left  → NOW (focus timer or current block) · TODAY's tasks · quick stats
-//   Right → TIMELINE of the day (fixed tasks, planned blocks, events)
-// On narrow screens the two columns stack.
-// Reuses the app's existing logic (templates, logs, focus engine, money metrics).
+//   Left  → cards: week priorities · now/up next · study windows · coming up · tasks · meals · routines · numbers
+//   Right → TIMELINE of the day (fixed tasks, study windows with their sessions, meals, events)
+// Which cards show, and in which order, is chosen in Settings → Today (js/core/prefs.js).
+// On narrow screens everything stacks in that order.
 
 (function () {
     'use strict';
@@ -16,6 +16,8 @@
     };
     const pad = (n) => String(n).padStart(2, '0');
     const fmtMins = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
+    const nowMinutes = () => { const n = (typeof getNow === 'function' ? getNow() : new Date()); return n.getHours() * 60 + n.getMinutes(); };
+    const fmtDur = (m) => (window.CortexStudy ? CortexStudy.fmtDur(m) : `${Math.round(m)}m`);
 
     // ------------------------------------------------------------------
     // Data
@@ -31,12 +33,16 @@
         return list.map(t => {
             const inst = t.instances || 1;
             const log = (logs[todayStr] && logs[todayStr][t.id]) || Array(inst).fill(false);
-            const done = log.every(Boolean);
             const win = Array.isArray(t.timeWindows)
                 ? t.timeWindows.find(w => w && w.days && w.days.includes(dayIdx) && w.start)
                 : null;
             const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, todayStr) : 0;
-            return { t, inst, log, done, start: win ? win.start : null, mins };
+            // Tasks measured in time (Algebra 2h): progress in minutes instead of boxes
+            const timeTarget = window.CortexStudy && CortexStudy.isTimeTarget(t, todayStr) && mins > 0;
+            const prog = timeTarget ? CortexStudy.progress(t, todayStr) : null;
+            const ticks = log.filter(Boolean).length;
+            const done = prog ? prog.complete : ticks >= inst;
+            return { t, inst, log, ticks, done, start: win ? win.start : null, mins, prog };
         }).sort((a, b) => {
             if (a.done !== b.done) return a.done ? 1 : -1;
             const sa = toMins(a.start), sb = toMins(b.start);
@@ -66,6 +72,7 @@
             <div class="today-routines">${blocks}</div>`;
     }
 
+    // Every timed thing of today, flat (study sessions included), for the NOW card
     function getTimelineBlocks() {
         const dayIdx = (typeof getNow === 'function' ? getNow() : new Date()).getDay();
         const blocks = [];
@@ -73,17 +80,21 @@
             if (!t || !Array.isArray(t.timeWindows) || !isTaskActiveOnDate(t, todayStr)) return;
             t.timeWindows.forEach(w => {
                 if (w && w.days && w.days.includes(dayIdx) && w.start && w.end) {
+                    if (typeof plannerExceptions !== 'undefined' && plannerExceptions[`${t.id}_${todayStr}_${w.start}`]) return;
                     blocks.push({ start: toMins(w.start), end: toMins(w.end), title: t.title, color: t.color, kind: 'task' });
                 }
             });
         });
         const eph = (typeof ephemeralData !== 'undefined' && Array.isArray(ephemeralData[todayStr])) ? ephemeralData[todayStr] : [];
         eph.forEach(b => {
-            if (b && b.start && b.end) blocks.push({ start: toMins(b.start), end: toMins(b.end), title: b.title, color: b.color, kind: 'block' });
+            if (b && b.start && b.end) blocks.push({ start: toMins(b.start), end: toMins(b.end), title: b.title, color: b.color, kind: b.studyWindowId ? 'study' : 'block', windowId: b.studyWindowId || null, templateId: b.templateId });
         });
         (typeof specificEvents !== 'undefined' ? specificEvents : []).forEach(e => {
             if (e && e.date === todayStr && e.start && e.end) blocks.push({ start: toMins(e.start), end: toMins(e.end), title: e.title, color: e.color, kind: 'event' });
         });
+        if (window.CortexMeals) {
+            CortexMeals.getMealBlocks(todayStr).forEach(m => blocks.push({ start: m.start, end: m.end, title: m.title, sub: m.summary, color: '#8a8a8a', kind: 'meal', mealId: m.id, status: m.status }));
+        }
         return blocks.filter(b => b.start !== null && b.end !== null).sort((a, b) => a.start - b.start);
     }
 
@@ -111,7 +122,15 @@
             if (typeof getMoneyAllocationMetrics === 'function') spendable = getMoneyAllocationMetrics().spendable;
         } catch (e) { /* money optional */ }
 
-        return { streak, done, total, focusMin, spendable };
+        let kcal = null;
+        try {
+            if (window.CortexMeals && (typeof isModuleEnabled !== 'function' || isModuleEnabled('diet'))) {
+                const tot = CortexMeals.dayTotals(todayStr);
+                if (tot.planned.kcal > 0) kcal = tot.eaten.kcal;
+            }
+        } catch (e) { /* diet optional */ }
+
+        return { streak, done, total, focusMin, spendable, kcal };
     }
 
     // ------------------------------------------------------------------
@@ -125,14 +144,21 @@
             const secs = Math.abs(timeRemaining || 0);
             const pct = totalPhaseTime > 0 ? Math.max(0, Math.min(100, (timeRemaining / totalPhaseTime) * 100)) : 0;
             const title = phase.type === 'task' ? phase.title : 'Break';
+            const nextPhase = focusPlaylist[currentPlaylistIndex + 1];
+            const info = typeof getFocusSessionInfo === 'function' ? getFocusSessionInfo() : null;
+            const fromTxt = info && !info.here && info.from ? ` · from your ${esc(info.from)}` : '';
+            const queue = focusPlaylist.length > 1
+                ? `<div class="today-now-queue dim">${currentPlaylistIndex + 1} of ${focusPlaylist.length}${nextPhase ? ` · next: ${nextPhase.type === 'break' ? `break ${nextPhase.duration}m` : esc(nextPhase.title)}` : ''}</div>`
+                : '';
             return `
-                <div class="today-now is-live">
+                <div class="today-now is-live ${phase.type === 'break' ? 'is-break' : ''}">
                     <div class="today-now-row">
-                        <span class="today-now-label">${isPomodoroPaused ? 'PAUSED' : 'FOCUS'}</span>
+                        <span class="today-now-label">${isPomodoroPaused ? 'PAUSED' : (phase.type === 'break' ? 'BREAK' : 'FOCUS')}${fromTxt}</span>
                         <span class="today-now-time">${pad(Math.floor(secs / 60))}:${pad(secs % 60)}</span>
                     </div>
                     <div class="today-now-title">${esc(title)}</div>
                     <div class="today-progress"><div style="width:${pct.toFixed(1)}%"></div></div>
+                    ${queue}
                     <div class="today-now-actions">
                         <button type="button" class="btn btn-sm" onclick="togglePomodoroPause(); renderTodayModule();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
                         <button type="button" class="btn btn-sm" onclick="skipPomodoroPhase(); renderTodayModule();">[SKIP]</button>
@@ -142,14 +168,23 @@
                 </div>`;
         }
 
-        const now = (typeof getNow === 'function' ? getNow() : new Date());
-        const cur = now.getHours() * 60 + now.getMinutes();
+        const cur = nowMinutes();
         const blocks = getTimelineBlocks();
-        const current = blocks.find(b => cur >= b.start && cur < b.end);
+        const current = blocks.find(b => cur >= b.start && cur < b.end && b.kind !== 'meal') || blocks.find(b => cur >= b.start && cur < b.end);
         const next = blocks.find(b => b.start > cur);
+        const focusBlock = current || next;
         let line = '<span class="dim">Nothing scheduled right now.</span>';
         if (current) line = `<span class="dim">Until ${fmtMins(current.end)}</span> ${esc(current.title)}`;
         else if (next) line = `<span class="dim">Next at ${fmtMins(next.start)}</span> ${esc(next.title)}`;
+
+        let primary = '<button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">[▶ START FOCUS]</button>';
+        if (focusBlock && focusBlock.kind === 'study' && focusBlock.windowId) {
+            primary = `<button type="button" class="btn btn-primary btn-sm" data-now-study="${esc(focusBlock.windowId)}">[▶ START STUDY]</button>
+                       <button type="button" class="ghost-btn" onclick="openTimerModal()">Other focus</button>`;
+        } else if (focusBlock && focusBlock.kind === 'meal' && !focusBlock.status && current === focusBlock) {
+            primary = `<button type="button" class="btn btn-sm" data-meal-eaten="${esc(focusBlock.mealId)}">✓ Eaten</button>
+                       <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">[▶ START FOCUS]</button>`;
+        }
 
         return `
             <div class="today-now">
@@ -157,9 +192,7 @@
                     <span class="today-now-label">${current ? 'NOW' : 'UP NEXT'}</span>
                 </div>
                 <div class="today-now-title">${line}</div>
-                <div class="today-now-actions">
-                    <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">[▶ START FOCUS]</button>
-                </div>
+                <div class="today-now-actions">${primary}</div>
             </div>`;
     }
 
@@ -168,50 +201,171 @@
             const isPhone = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
             return `<div class="today-empty">No tasks for today. Add one below or ${isPhone ? 'tap <kbd>⌘</kbd> and write it' : 'press <kbd>Ctrl K</kbd>'}.</div>`;
         }
-        return items.map(({ t, inst, log, done, start, mins }) => {
-            const boxes = Array.from({ length: inst }, (_, i) =>
-                `<button type="button" class="check-box ${log[i] ? 'checked' : ''}" aria-label="Mark ${esc(t.title)} ${inst > 1 ? (i + 1) : ''} done" data-today-toggle="${esc(t.id)}" data-i="${i}"></button>`
-            ).join('');
-            const meta = [];
-            if (start) meta.push(start);
-            if (!start && mins > 0) meta.push(mins >= 60 ? `${(mins / 60).toFixed(mins % 60 ? 1 : 0)}h` : `${mins}m`);
-            if (t.isTodo) meta.push('to-do');
+        return items.map(({ t, inst, ticks, done, start, mins, prog }) => {
+            // One box per row, so every title lines up. Multi-step tasks advance one step per tap.
+            const box = `<button type="button" class="check-box ${done ? 'checked' : ''} ${!done && ticks > 0 ? 'partial' : ''}" aria-label="Mark ${esc(t.title)} done" data-today-check="${esc(t.id)}"></button>`;
+            let meta = '';
+            let bar = '';
+            if (prog) {
+                meta = `<b>${fmtDur(Math.min(prog.done, Math.max(prog.target, prog.done)))}</b> / ${fmtDur(prog.target)}`;
+                const pct = prog.target > 0 ? Math.min(100, (prog.done / prog.target) * 100) : (done ? 100 : 0);
+                bar = `<div class="today-task-bar"><div style="width:${pct.toFixed(1)}%"></div></div>`;
+            } else {
+                const bits = [];
+                if (start) bits.push(start);
+                if (inst > 1) bits.push(`${ticks}/${inst}`);
+                if (!start && mins > 0 && inst === 1) bits.push(fmtDur(mins));
+                if (t.isTodo) bits.push('to-do');
+                meta = esc(bits.join(' · '));
+            }
             const canFocus = !done && mins > 0;
             return `
-                <div class="today-task ${done ? 'is-done' : ''}" style="--task-color:${esc(t.color || '#ffffff')}">
-                    <div class="today-task-checks">${boxes}</div>
-                    <div class="today-task-title">${esc(t.title)}</div>
-                    <div class="today-task-meta">${esc(meta.join(' · '))}</div>
+                <div class="today-task ${done ? 'is-done' : ''} ${prog ? 'has-bar' : ''}" style="--task-color:${esc(t.color || '#ffffff')}">
+                    ${box}
+                    <div class="today-task-body">
+                        <div class="today-task-title">${esc(t.title)}</div>
+                        ${bar}
+                    </div>
+                    <div class="today-task-meta">${meta}</div>
                     ${canFocus ? `<button type="button" class="ghost-btn today-task-play" data-today-focus="${esc(t.id)}" aria-label="Focus on ${esc(t.title)}">▶</button>` : '<span class="today-task-play"></span>'}
                 </div>`;
         }).join('');
     }
 
-    function renderTimeline(blocks) {
-        const now = (typeof getNow === 'function' ? getNow() : new Date());
-        const cur = now.getHours() * 60 + now.getMinutes();
-        if (!blocks.length) {
+    function toggleFromToday(id) {
+        const t = (templates || []).find(x => x.id === id);
+        if (!t) return;
+        const inst = t.instances || 1;
+        const prev = selectedDateStr;
+        selectedDateStr = todayStr;
+        try {
+            const log = (logs[todayStr] && logs[todayStr][id]) || Array(inst).fill(false);
+            const timeTarget = window.CortexStudy && CortexStudy.isTimeTarget(t, todayStr) && getTaskDurationMinutes(t, todayStr) > 0;
+            const complete = timeTarget ? CortexStudy.progress(t, todayStr).complete : log.filter(Boolean).length >= inst;
+            if (inst === 1) {
+                toggleTask(id, 0);
+            } else if (complete) {
+                // un-tick everything
+                if (!logs[todayStr]) logs[todayStr] = {};
+                logs[todayStr][id] = Array(inst).fill(false);
+                saveData();
+                if (typeof renderTasks === 'function') renderTasks();
+                if (typeof renderTracker === 'function') renderTracker();
+            } else if (timeTarget) {
+                // a study subject: one tap = done for today
+                if (!logs[todayStr]) logs[todayStr] = {};
+                logs[todayStr][id] = Array(inst).fill(true);
+                saveData();
+                if (typeof renderTasks === 'function') renderTasks();
+                if (typeof renderTracker === 'function') renderTracker();
+            } else {
+                const next = log.findIndex(x => !x);
+                toggleTask(id, next === -1 ? 0 : next);
+            }
+        } finally {
+            selectedDateStr = prev;
+        }
+    }
+
+    // TIMELINE: flat rows, study windows grouped with their sessions and breaks
+    function renderTimeline() {
+        const cur = nowMinutes();
+        const flat = getTimelineBlocks().filter(b => b.kind !== 'study');
+        const groups = window.CortexStudy ? CortexStudy.timelineGroups(todayStr) : [];
+        const items = [
+            ...flat.map(b => ({ type: 'block', start: b.start, b })),
+            ...groups.map(g => ({ type: 'group', start: g.start, g }))
+        ].sort((a, b) => a.start - b.start);
+        if (!items.length) {
             return `<div class="today-empty">No timed blocks today. Plan your day in <a href="#" data-nav="plan">Plan</a>.</div>`;
         }
-        let nowDrawn = false;
+
         const rows = [];
-        blocks.forEach(b => {
-            if (!nowDrawn && b.start > cur) {
-                rows.push(`<div class="today-tl-now"><span>${fmtMins(cur)}</span></div>`);
-                nowDrawn = true;
+        let nowDrawn = false;
+        const nowLine = () => `<div class="today-tl-now"><span>${fmtMins(cur)}</span></div>`;
+        const maybeNow = (start) => { if (!nowDrawn && start > cur) { rows.push(nowLine()); nowDrawn = true; } };
+        const stateOf = (s, e) => (e <= cur ? 'is-past' : (s <= cur ? 'is-current' : ''));
+
+        items.forEach(it => {
+            if (it.type === 'block') {
+                const b = it.b;
+                maybeNow(b.start);
+                if (b.kind === 'meal') {
+                    rows.push(`
+                        <div class="today-tl-row is-meal ${stateOf(b.start, b.end)} ${b.status ? 'is-' + b.status : ''}">
+                            <span class="today-tl-time">${fmtMins(b.start)}</span>
+                            <button type="button" class="today-tl-block" data-meal-open="${esc(b.mealId)}" style="--block-color:#8a8a8a">
+                                <span class="today-tl-title">${b.status === 'eaten' ? '✓ ' : ''}${esc(b.title)} <span class="dim">${esc(b.sub || '')}</span></span>
+                                <span class="today-tl-end">${fmtMins(b.end)}</span>
+                            </button>
+                        </div>`);
+                    return;
+                }
+                rows.push(`
+                    <div class="today-tl-row ${stateOf(b.start, b.end)}">
+                        <span class="today-tl-time">${fmtMins(b.start)}</span>
+                        <span class="today-tl-block" style="--block-color:${esc(b.color || '#555555')}">
+                            <span class="today-tl-title">${esc(b.title)}</span>
+                            <span class="today-tl-end">${fmtMins(b.end)}</span>
+                        </span>
+                    </div>`);
+                return;
             }
-            const state = b.end <= cur ? 'is-past' : (b.start <= cur ? 'is-current' : '');
+            const g = it.g;
+            maybeNow(g.start);
             rows.push(`
-                <div class="today-tl-row ${state}">
-                    <span class="today-tl-time">${fmtMins(b.start)}</span>
-                    <span class="today-tl-block" style="--block-color:${esc(b.color || '#555555')}">
-                        <span class="today-tl-title">${esc(b.title)}</span>
-                        <span class="today-tl-end">${fmtMins(b.end)}</span>
-                    </span>
+                <div class="today-tl-group-head ${stateOf(g.start, g.end)}">
+                    <span class="today-tl-time">${fmtMins(g.start)}</span>
+                    <button type="button" class="today-tl-group-title" data-study-edit="${esc(g.win.id)}" title="Edit this study window">
+                        <span>◉ ${esc(g.label)} <span class="dim">· ${esc(g.rhythm)}</span></span>
+                        <span class="today-tl-end">${fmtMins(g.end)}</span>
+                    </button>
                 </div>`);
+            const ses = g.sessions;
+            ses.forEach((b, i) => {
+                const s = toMins(b.start), e = toMins(b.end);
+                if (i > 0) {
+                    const ps = toMins(ses[i - 1].end);
+                    if (s - ps >= 3) {
+                        maybeNow(ps);
+                        rows.push(`<div class="today-tl-row is-break is-in-group ${stateOf(ps, s)}"><span class="today-tl-time">${fmtMins(ps)}</span><span class="today-tl-break">break · ${s - ps}m</span></div>`);
+                    }
+                }
+                maybeNow(s);
+                rows.push(`
+                    <div class="today-tl-row is-in-group ${stateOf(s, e)}">
+                        <span class="today-tl-time">${fmtMins(s)}</span>
+                        <span class="today-tl-block" style="--block-color:${esc(b.color || '#555555')}">
+                            <span class="today-tl-title">${esc(b.title)} <span class="dim">${e - s}m</span></span>
+                            <span class="today-tl-end">${fmtMins(e)}</span>
+                        </span>
+                    </div>`);
+            });
         });
-        if (!nowDrawn) rows.push(`<div class="today-tl-now"><span>${fmtMins(cur)}</span></div>`);
+        if (!nowDrawn) rows.push(nowLine());
         return rows.join('');
+    }
+
+    function renderStats(st) {
+        const focusH = (st.focusMin / 60).toFixed(st.focusMin % 60 ? 1 : 0);
+        const cells = [
+            `<div class="today-stat"><span class="dim">STREAK</span><strong>${st.streak}d</strong></div>`,
+            `<div class="today-stat"><span class="dim">FOCUS</span><strong>${focusH}h</strong></div>`
+        ];
+        if (st.kcal !== null) cells.push(`<div class="today-stat" data-nav="health" data-tab="diet"><span class="dim">EATEN</span><strong>${Math.round(st.kcal)}<small> kcal</small></strong></div>`);
+        if (typeof isModuleEnabled !== 'function' || isModuleEnabled('money')) {
+            const money = st.spendable === null ? '—' : `€${Number(st.spendable).toFixed(0)}`;
+            cells.push(`<div class="today-stat" data-nav="money"><span class="dim">FREE</span><strong class="${st.spendable !== null && st.spendable < 0 ? 'neg' : ''}">${money}</strong></div>`);
+        }
+        return `<div class="today-stats">${cells.join('')}</div>`;
+    }
+
+    function cardOrder() {
+        const list = typeof getPref === 'function' ? getPref('todayCards') : null;
+        return Array.isArray(list) && list.length ? list : [
+            { key: 'week', on: true }, { key: 'now', on: true }, { key: 'study', on: true }, { key: 'coming', on: true },
+            { key: 'tasks', on: true }, { key: 'meals', on: true }, { key: 'routines', on: true }, { key: 'stats', on: true }, { key: 'timeline', on: true }
+        ];
     }
 
     function renderTodayModule() {
@@ -220,48 +374,61 @@
 
         // Today always shows today, whatever date other modules are browsing
         const items = getTodayTasks();
-        const blocks = getTimelineBlocks();
         const st = getStats();
         const doneCount = items.filter(i => i.done).length;
-        const focusH = (st.focusMin / 60).toFixed(st.focusMin % 60 ? 1 : 0);
-        const money = st.spendable === null ? '—' : `€${Number(st.spendable).toFixed(0)}`;
         const dateObj = typeof parseLocalDate === 'function' ? parseLocalDate(todayStr) : new Date();
         const dateLabel = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+        const isPhone = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
 
         const openRoutines = new Set([...root.querySelectorAll('.today-routine[open] summary span:first-child')].map(e => e.textContent));
         const keepInput = root.querySelector('#today-add-input');
         const draft = keepInput ? keepInput.value : '';
         const hadFocus = keepInput && document.activeElement === keepInput;
+        const prevScroll = root.scrollTop;
+
+        const timelineHtml = () => `
+            <div class="today-section-head">
+                <span>TIMELINE</span>
+                <button type="button" class="ghost-btn" data-nav="plan">Edit plan</button>
+            </div>
+            <div class="today-timeline">${renderTimeline()}</div>`;
+
+        const cardHtml = {
+            week: () => renderWeekPriorities(),
+            now: () => renderNowCard(),
+            study: () => (window.CortexStudy ? CortexStudy.renderTodayCard(todayStr) : ''),
+            coming: () => renderComingUp(),
+            tasks: () => `
+                <div class="today-section-head">
+                    <span>TODAY</span>
+                    <span class="dim">${doneCount} / ${items.length}</span>
+                </div>
+                <div class="today-tasks">${renderTaskRows(items)}</div>
+                <input type="text" id="today-add-input" class="today-add" placeholder="+ Add a to-do for today" autocomplete="off">`,
+            meals: () => (window.CortexMeals ? CortexMeals.renderTodayCard(todayStr) : ''),
+            routines: () => renderRoutines(),
+            stats: () => renderStats(st),
+            timeline: () => timelineHtml()
+        };
+
+        const order = cardOrder().filter(c => c.on && cardHtml[c.key]);
+        const timelineOn = order.some(c => c.key === 'timeline');
+        const mainKeys = order.filter(c => isPhone || c.key !== 'timeline').map(c => c.key);
+        const mainHtml = mainKeys.map(k => {
+            const html = cardHtml[k]();
+            return html ? `<div class="today-card" data-card="${k}">${html}</div>` : '';
+        }).join('');
 
         root.innerHTML = `
-            <div class="today-wrap">
+            <div class="today-wrap ${!timelineOn || isPhone ? 'is-single' : ''}">
                 <section class="today-main">
                     <div class="today-date">${esc(dateLabel)}</div>
                     ${renderReviewInvite()}
-                    ${renderWeekPriorities()}
-                    ${renderNowCard()}
-                    ${renderComingUp()}
-                    <div class="today-section-head">
-                        <span>TODAY</span>
-                        <span class="dim">${doneCount} / ${items.length}</span>
-                    </div>
-                    <div class="today-tasks">${renderTaskRows(items)}</div>
-                    <input type="text" id="today-add-input" class="today-add" placeholder="+ Add a to-do for today" autocomplete="off">
-                    ${renderRoutines()}
-                    <div class="today-stats">
-                        <div class="today-stat"><span class="dim">STREAK</span><strong>${st.streak}d</strong></div>
-                        <div class="today-stat"><span class="dim">FOCUS</span><strong>${focusH}h</strong></div>
-                        ${(typeof isModuleEnabled !== 'function' || isModuleEnabled('money')) ? `<div class="today-stat" data-nav="money"><span class="dim">FREE</span><strong class="${st.spendable !== null && st.spendable < 0 ? 'neg' : ''}">${money}</strong></div>` : ''}
-                    </div>
+                    ${mainHtml || '<div class="today-empty">Every card is hidden. Choose what Today shows in Settings → Today.</div>'}
                 </section>
-                <section class="today-side">
-                    <div class="today-section-head">
-                        <span>TIMELINE</span>
-                        <button type="button" class="ghost-btn" data-nav="plan">Edit plan</button>
-                    </div>
-                    <div class="today-timeline">${renderTimeline(blocks)}</div>
-                </section>
+                ${timelineOn && !isPhone ? `<section class="today-side">${timelineHtml()}</section>` : ''}
             </div>`;
+        if (prevScroll) root.scrollTop = prevScroll;
 
         root.querySelectorAll('.today-routine').forEach(d => {
             if (openRoutines.has(d.querySelector('summary span')?.textContent)) d.open = true;
@@ -282,12 +449,9 @@
             });
         }
 
-        root.querySelectorAll('[data-today-toggle]').forEach(el => {
+        root.querySelectorAll('[data-today-check]').forEach(el => {
             el.addEventListener('click', () => {
-                const prev = selectedDateStr;
-                selectedDateStr = todayStr;
-                toggleTask(el.dataset.todayToggle, parseInt(el.dataset.i, 10));
-                selectedDateStr = prev;
+                toggleFromToday(el.dataset.todayCheck);
                 renderTodayModule();
             });
         });
@@ -321,6 +485,12 @@
         root.querySelector('[data-gym-done]')?.addEventListener('click', () => {
             if (typeof openGymWorkoutReviewModal === 'function') openGymWorkoutReviewModal(todayStr, nextWorkoutDay);
         });
+        root.querySelectorAll('[data-now-study]').forEach(el => el.addEventListener('click', () => {
+            if (window.CortexStudy) { CortexStudy.startWindow(todayStr, el.dataset.nowStudy); renderTodayModule(); }
+        }));
+        // Study card + timeline window headers; meal card + timeline meals
+        if (window.CortexStudy) CortexStudy.bindTodayCard(root, todayStr);
+        if (window.CortexMeals) CortexMeals.bindTodayCard(root, todayStr);
     }
 
     // ------------------------------------------------------------------
@@ -436,6 +606,7 @@
     setInterval(() => {
         const el = document.getElementById('module-today');
         if (!el || !el.isConnected || el.closest('#module-registry')) return;
+        if (document.getElementById('study-editor') || document.getElementById('meal-sheet')) return;
         const running = typeof focusPlaylist !== 'undefined' && focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
         const m = new Date().getMinutes();
         if (running) {

@@ -2556,10 +2556,15 @@ function renderDayPlannerModule() {
                     </span>
                     ${lockedBadge}
                 </div>
-                <span class="u-fs-2xs u-dim u-noshrink">
-                    ${isVisible ? '[HIDE ▲]' : `[SHOW ${slotsToday.length} ▼]`}
+                <span class="u-flex u-ai-center u-gap-2 u-noshrink">
+                    ${window.CortexStudy && !/treno|train|bus|metro|tram|transport|volo|flight/i.test(ref.title) ? '<button type="button" class="ghost-btn plan-study-here">Study here</button>' : ''}
+                    <span class="u-fs-2xs u-dim">${isVisible ? '[HIDE ▲]' : `[SHOW ${slotsToday.length} ▼]`}</span>
                 </span>
             `;
+            bannerRow.querySelector('.plan-study-here')?.addEventListener('click', (ev) => {
+                ev.stopPropagation();
+                CortexStudy.openEditor(targetDate, { refId: ref.id });
+            });
             refBox.appendChild(bannerRow);
 
             if (isVisible) {
@@ -2611,14 +2616,19 @@ function renderDayPlannerModule() {
         } else {
             flexTasksForDay.forEach(t => {
                 const rawMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, targetDate) : (t.timerMinutes || 0);
-                const unitMins = rawMins > 0 ? rawMins : 15;
+                let unitMins = rawMins > 0 ? rawMins : 15;
                 const totalInstances = t.instances || 1;
-                const usedBlocks = customBlocks
+                // Time-based: how much of the day's target is already on the timeline
+                const fmtH = (m) => (window.CortexStudy ? CortexStudy.fmtDur(m) : `${m}m`);
+                const targetMins = rawMins > 0 && window.CortexStudy ? CortexStudy.targetFor(t, targetDate) : totalInstances * unitMins;
+                const placedMins = customBlocks
                     .filter(b => b.templateId === t.id)
-                    .reduce((acc, b) => acc + (b.blocksUsed || 1), 0);
-                const remainingBlocks = Math.max(0, totalInstances - usedBlocks);
+                    .reduce((acc, b) => acc + (b.minutes || (timeToMinutes(b.end) - timeToMinutes(b.start)) || 0), 0);
+                const leftMins = Math.max(0, targetMins - placedMins);
+                const remainingBlocks = rawMins > 0 ? (leftMins >= 5 ? 1 : 0) : Math.max(0, totalInstances - customBlocks.filter(b => b.templateId === t.id).length);
+                if (rawMins > 0 && leftMins > 0) unitMins = Math.min(unitMins, leftMins);
 
-                totalCommittedMins += totalInstances * unitMins;
+                totalCommittedMins += rawMins > 0 ? targetMins : totalInstances * unitMins;
 
                 const isTapSelected = mobileSelectedPlanItemToPlace &&
                     mobileSelectedPlanItemToPlace.templateId === t.id;
@@ -2637,7 +2647,9 @@ function renderDayPlannerModule() {
                             <span class="u-dim">[${escapeHtml(t.category)}]</span> ${escapeHtml(t.title)}
                         </div>
                         <div class="u-fs-2xs u-dim" style="margin-top:2px;">
-                            ${unitMins}m/block · <strong>${remainingBlocks}/${totalInstances} remaining</strong>
+                            ${rawMins > 0
+                                ? `${fmtH(targetMins)} today · ${placedMins > 0 ? `${fmtH(placedMins)} placed · ` : ''}<strong>${leftMins > 0 ? `${fmtH(leftMins)} left` : 'all placed'}</strong>`
+                                : `${totalInstances}× · <strong>${remainingBlocks} left</strong>`}
                         </div>
                     </div>
                     <span style="font-size:var(--font-2xs); color: ${isTapSelected ? 'var(--accent-gold)' : 'var(--text-dim)'}; font-weight:bold;">${rightHint}</span>
@@ -2793,8 +2805,8 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     const isMob = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
     const isInteractiveEdit = !isMob || (currentDayPlanMode === 'edit');
 
-    const startHour = 6.5; // 06:30
-    const totalHeight = (24 - startHour) * tmwTimelineZoom;
+    const startHour = CORTEX_DAY.start; // Settings → Appearance → Day hours
+    const totalHeight = (CORTEX_DAY.end - startHour) * tmwTimelineZoom;
 
     const phaseCol = document.getElementById('plan-mod-phase-labels');
     if (typeof renderPhaseLabelsColumn === 'function') {
@@ -2807,10 +2819,10 @@ function renderDayPlannerTimelineCanvas(targetDate) {
     const lbl630 = document.createElement('div');
     lbl630.className = 'time-label';
     lbl630.style.top = '0px';
-    lbl630.textContent = '06:30';
+    lbl630.textContent = minutesToTimeStr(startHour * 60);
     labelsCol.appendChild(lbl630);
 
-    for (let h = 7; h < 24; h++) {
+    for (let h = Math.floor(startHour) + 1; h < CORTEX_DAY.end; h++) {
         const tl = document.createElement('div');
         tl.className = 'time-label';
         tl.style.top = `${(h - startHour) * tmwTimelineZoom}px`;
@@ -2828,7 +2840,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         const rect = canvasCol.getBoundingClientRect();
         const relY = Math.max(0, Math.min(totalHeight, e.clientY - rect.top));
         const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
-        const snappedMins = Math.max(390, Math.min(24 * 60 - 15, Math.round(rawMins / 15) * 15));
+        const snappedMins = Math.max(Math.round(startHour * 60), Math.min(CORTEX_DAY.end * 60 - 15, Math.round(rawMins / 15) * 15));
         const timeStr = minutesToTimeStr(snappedMins);
 
         const toPlace = mobileSelectedPlanItemToPlace;
@@ -2843,7 +2855,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         appendDayPhaseBandsToColumn(canvasCol, tmwTimelineZoom, true);
     }
 
-    for (let half = 13; half <= 48; half++) {
+    for (let half = Math.ceil(startHour * 2); half <= CORTEX_DAY.end * 2; half++) {
         const hDec = half / 2;
         const line = document.createElement('div');
         line.className = 'grid-line-abs';
@@ -2851,6 +2863,10 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         if (half % 2 !== 0) line.style.opacity = '0.35';
         canvasCol.appendChild(line);
     }
+
+    // Study windows (band behind the sessions) and meals (js/modules/study.js, meals.js)
+    if (window.CortexStudy) CortexStudy.decorateDayCanvas(canvasCol, targetDate, tmwTimelineZoom, startHour);
+    if (window.CortexMeals) CortexMeals.decorateDayCanvas(canvasCol, targetDate, tmwTimelineZoom, startHour);
 
     const dropIndicator = document.createElement('div');
     dropIndicator.id = 'plan-mod-drop-indicator';
@@ -3116,8 +3132,8 @@ window.addEventListener('mousemove', (e) => {
     if (!canvasCol || !indicator || !badge) return;
 
     const rect = canvasCol.getBoundingClientRect();
-    const startHour = 6.5;
-    const totalHeight = (24 - startHour) * tmwTimelineZoom;
+    const startHour = CORTEX_DAY.start;
+    const totalHeight = (CORTEX_DAY.end - startHour) * tmwTimelineZoom;
 
     if (planTimelineDragState.mode === 'resize_block') {
         const relY = Math.max(0, Math.min(totalHeight, e.clientY - rect.top));
@@ -3140,7 +3156,7 @@ window.addEventListener('mousemove', (e) => {
     if (e.clientX >= rect.left - 30 && e.clientX <= rect.right + 30 && e.clientY >= rect.top && e.clientY <= rect.bottom) {
         const relY = Math.max(0, Math.min(totalHeight, e.clientY - rect.top));
         const rawMins = Math.round(((relY / tmwTimelineZoom) + startHour) * 60);
-        const snappedMins = Math.max(390, Math.min(24 * 60 - 5, Math.round(rawMins / 5) * 5));
+        const snappedMins = Math.max(Math.round(startHour * 60), Math.min(CORTEX_DAY.end * 60 - 5, Math.round(rawMins / 5) * 5));
         const snappedTimeStr = minutesToTimeStr(snappedMins);
         const dur = planTimelineDragState.currentDurationMins || 15;
         const endStr = minutesToTimeStr(Math.min(24 * 60, snappedMins + dur));
@@ -3188,6 +3204,7 @@ window.addEventListener('mouseup', () => {
             if (b) {
                 b.end = newEndStr;
                 b.minutes = endMins - startMins;
+                if (window.CortexStudy) CortexStudy.markPinned(b);
             }
         } else if (p.blockKind === 'event') {
             const ev = specificEvents.find(x => x.id === p.blockId);
@@ -3228,6 +3245,7 @@ window.addEventListener('mouseup', () => {
             if (b) {
                 b.start = newStartStr;
                 b.end = newEndStr;
+                if (window.CortexStudy) CortexStudy.markPinned(b);
             }
         } else if (p.blockKind === 'event') {
             const ev = specificEvents.find(x => x.id === p.blockId);
