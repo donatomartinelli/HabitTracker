@@ -285,9 +285,10 @@
             if (sug.length) groups.push({ title: 'COMMANDS', items: sug });
         }
 
-        // 3. Search your data
+        // 3. Search your data — notes excluded: you write a lot, and matching old notes
+        //    on every sentence is noise. Notes are searched from the Notes section.
         if (typeof cortexSearch === 'function' && q.length >= 2 && !isDsl) {
-            const found = cortexSearch(q, 6).map(r => ({
+            const found = cortexSearch(q, 30).filter(r => r.kind !== 'Note' && r.kind !== 'Notes').slice(0, 6).map(r => ({
                 label: `${r.kind} · ${r.title}`, hint: r.sub, run: () => { closeTerminal(); r.run(); }
             }));
             if (found.length) groups.push({ title: 'FOUND IN YOUR DATA', items: found });
