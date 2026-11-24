@@ -333,10 +333,14 @@
         const qt = a.split(' '), bt = b.split(' ');
         if (qt.every(w => bt.some(x => x.startsWith(w)))) return 80;
         if (b.includes(a)) return 70;
+        // letters in order ("stdanl" → "studio analisi"), starting at a word and not spread too far apart
         if (a.length >= 3) {
-            let i = 0;
-            for (const ch of b) if (ch === a[i]) i++;
-            if (i === a.length) return 40;
+            for (let s = 0; s < b.length; s++) {
+                if (b[s] !== a[0] || (s > 0 && b[s - 1] !== ' ')) continue;
+                let i = 0, j = s;
+                for (; j < b.length && i < a.length; j++) if (b[j] === a[i]) i++;
+                if (i === a.length && j - s <= a.length * 2) return 40;
+            }
         }
         return 0;
     }
@@ -430,6 +434,9 @@
             return [{ kind: 'spent', label: `Spending · ${label}`, cmd: `spent ${period}` }];
         }
 
+        const edit = interpretEdit(raw, norm, today, items);
+        if (edit) return edit;
+
         const mv = norm.match(MOVE_RE);
         if (!mv) return null;
         const after = raw.slice(mv[0].length);
@@ -471,6 +478,86 @@
         }
         const shown = span ? ` · ${span.replace('-', '–')}` : '';
         return [{ kind: 'move', label: `Move · ${item.title} → ${prettyDate(d, today)}${shown}`, cmd: `move ${item.id} @${d}${span ? ' ' + span : ''}` }];
+    }
+
+    // ------------------------------------------------------------------
+    // Editing what exists: delete, rename, longer/shorter, colour
+    // ------------------------------------------------------------------
+    const DELETE_RE = /^(?:cancella|elimina|rimuovi|togli|delete|remove|cancel)\s+/;
+    const RENAME_RE = /^(?:rinomina|rename|cambia\s+(?:il\s+)?nome\s+(?:a|di)|change\s+(?:the\s+)?name\s+of)\s+/;
+    const LONGER_RE = /^(?:allunga|estendi|prolunga|extend|lengthen)\s+/;
+    const SHORTER_RE = /^(?:accorcia|riduci|shorten|cut)\s+/;
+    const COLOR_RE = /^(?:colora|colore|cambia\s+colore\s+(?:a|di)|color|colour|paint)\s+/;
+    const COLORS = ['rosso', 'red', 'verde', 'green', 'blu', 'blue', 'giallo', 'yellow', 'oro', 'gold', 'viola', 'purple', 'bianco', 'white', 'grigio', 'grey', 'gray'];
+    const COLOR_WORD = new RegExp(`\\b(${COLORS.join('|')})\\b`);
+    const editable = (it) => it.kind === 'event' || it.kind === 'todo' || it.kind === 'task';
+
+    function describe(it, today) {
+        const when = it.date ? prettyDate(it.date, today) : (it.kind === 'task' ? 'repeating' : '');
+        const hours = it.start != null && it.end != null ? ` ${fmtMins(it.start)}–${fmtMins(it.end)}` : '';
+        return `${it.title}${when ? ` (${when}${hours})` : ''}`;
+    }
+
+    // Finds the item named in `text`; a date in it narrows the choice ("cancella dentista di giovedì")
+    function pickItem(text, today, items, filter) {
+        const ctx = makeCtx(text);
+        const date = extractDate(ctx, today);
+        const query = rest(ctx);
+        if (!query) return null;
+        return findItem(query, items, it => editable(it) && (!filter || filter(it)) && (!date || it.date === date));
+    }
+
+    function interpretEdit(raw, norm, today, items) {
+        let m;
+        if ((m = norm.match(DELETE_RE))) {
+            const it = pickItem(raw.slice(m[0].length), today, items);
+            if (!it) return [];
+            const what = it.kind === 'task' ? 'repeating task' : it.kind;
+            return [{ kind: 'delete', label: `Delete ${what} · ${describe(it, today)}`, cmd: `delete ${it.id}` }];
+        }
+        if ((m = norm.match(RENAME_RE))) {
+            const body = raw.slice(m[0].length);
+            // "riunione con Marco in call con Marco": try each separator, keep the first whose left side is a real item
+            const sep = /\s+(?:in|come|to|as|into)\s+|\s*(?:=|→|->|:)\s*/gi;
+            let s;
+            while ((s = sep.exec(body)) !== null) {
+                const left = body.slice(0, s.index), right = body.slice(s.index + s[0].length).trim();
+                if (!left.trim() || !right) continue;
+                const it = pickItem(left, today, items);
+                if (it) return [{ kind: 'rename', label: `Rename · ${it.title} → ${right}`, cmd: `rename ${it.id} = ${right}` }];
+            }
+            return [];
+        }
+        const longer = norm.match(LONGER_RE), shorter = !longer && norm.match(SHORTER_RE);
+        if (longer || shorter) {
+            const ctx = makeCtx(raw.slice((longer || shorter)[0].length));
+            const mins = extractDuration(ctx);
+            const query = rest(ctx).replace(/\s+(?:di|by|of)$/i, '');
+            if (!mins || !query) return null;
+            const it = findItem(query, items, x => x.kind === 'event' && x.start != null && x.end != null);
+            if (!it) return [];
+            const delta = longer ? mins : -mins;
+            const end = Math.max(it.start + 5, Math.min(23 * 60 + 59, it.end + delta));
+            return [{
+                kind: 'resize',
+                label: `${longer ? 'Longer' : 'Shorter'} · ${it.title} · ${fmtMins(it.start)}–${fmtMins(end)}`,
+                cmd: `resize ${it.id} ${delta > 0 ? '+' : ''}${delta}`
+            }];
+        }
+        if ((m = norm.match(COLOR_RE))) {
+            const body = raw.slice(m[0].length);
+            const bodyNorm = strip(body.toLowerCase());
+            const c = bodyNorm.match(COLOR_WORD);
+            if (!c) return null;
+            const query = (body.slice(0, c.index) + ' ' + body.slice(c.index + c[0].length))
+                .replace(/\s+/g, ' ').trim()
+                .replace(/^(?:a|di|in|to)\s+|\s+(?:di|in|a|to)$/gi, '').trim();
+            if (!query) return null;
+            const it = pickItem(query, today, items);
+            if (!it) return [];
+            return [{ kind: 'color', label: `Colour · ${it.title} → ${c[1]}`, cmd: `color ${it.id} ${c[1]}` }];
+        }
+        return null;
     }
 
     // "chiama Marco domani poi palestra alle 18" · "12€ pranzo; peso 72"

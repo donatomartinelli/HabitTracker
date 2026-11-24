@@ -107,6 +107,44 @@ test('frasi concatenate', () => {
     assert.equal(first('cena poi cinema sabato alle 20'), 'event @2026-11-28 20:00-21:00 cena poi cinema');
 });
 
+test('cancellare', () => {
+    assert.equal(first('cancella dentista'), 'delete e_1');
+    assert.equal(first('elimina la riunione'), 'delete e_2');
+    assert.equal(first('delete nonna'), 'delete t_1');
+    assert.equal(first('togli studio analisi'), 'delete t_3');
+    assert.match(interpret('togli studio analisi', T)[0].label, /repeating task/);
+    // la data restringe la scelta
+    assert.equal(first('cancella dentista di lunedì'), 'delete e_1');
+    assert.deepEqual(all('cancella dentista di venerdì'), []);
+    assert.deepEqual(all('cancella qualcosa che non esiste'), []);
+    // "rimuovi scorciatoia" resta il comando delle scorciatoie
+    assert.equal(first('rimuovi scorciatoia pal'), 'shortcut -pal');
+});
+
+test('rinominare', () => {
+    assert.equal(first('rinomina riunione con Marco in call con Marco'), 'rename e_2 = call con Marco');
+    assert.equal(first('rinomina dentista in Dentista Rossi'), 'rename e_1 = Dentista Rossi');
+    assert.equal(first('rename nonna to call grandma'), 'rename t_1 = call grandma');
+    assert.equal(first('cambia nome a dentista: visita'), 'rename e_1 = visita');
+    assert.deepEqual(all('rinomina xyz in abc'), []);
+});
+
+test('allungare e accorciare un evento', () => {
+    assert.equal(first('allunga dentista di 30 min'), 'resize e_1 +30');
+    assert.match(interpret('allunga dentista di 30 min', T)[0].label, /15:00–16:30/);
+    assert.equal(first('accorcia la riunione di mezz\'ora'), 'resize e_2 -30');
+    assert.equal(first('extend marco by 1 hour'), 'resize e_2 +60');
+    // un to-do non ha orari: niente da allungare
+    assert.deepEqual(all('allunga nonna di 30 min'), []);
+});
+
+test('cambiare colore', () => {
+    assert.equal(first('colora dentista di rosso'), 'color e_1 rosso');
+    assert.equal(first('colore blu a palestra'), undefined); // nessuna "palestra" tra gli elementi
+    assert.equal(first('colore blu alla riunione'), 'color e_2 blu');
+    assert.equal(first('color nonna green'), 'color t_1 green');
+});
+
 test('ricerca dello slot', () => {
     assert.equal(findSlot([[480, 600]], 60, 480, 1320), 600);
     assert.equal(findSlot([[480, 600], [610, 700]], 60, 480, 1320), 705);

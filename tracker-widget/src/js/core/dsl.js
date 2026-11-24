@@ -312,6 +312,16 @@ function isValidDslCommand(raw) {
             return /^(today|yesterday|week|month|year)?$/.test(rest.toLowerCase());
         case 'shortcut':
             return !rest || /^-\S+$/.test(rest) || /^\S+\s*=\s*\S/.test(rest);
+        case 'delete':
+            return Boolean(findEditableById(rest));
+        case 'rename':
+            return /^\S+\s*=\s*\S/.test(rest) && Boolean(findEditableById(rest.split(/\s*=/)[0].trim()));
+        // "color palestra red" typed by hand is a sentence, not an id: let the interpreter handle it
+        case 'resize':
+            return /^\S+\s+[+-]?\d{1,3}$/.test(rest) && Boolean(findEditableById(rest.split(/\s+/)[0]));
+        case 'color':
+            return /^\S+\s+\S+$/.test(rest) && Boolean(findEditableById(rest.split(/\s+/)[0]))
+                && Boolean(resolveEventColorToken('#' + rest.split(/\s+/)[1]));
         case 'event': {
             const parsedEv = parseEventCommandArgs(rest);
             return Boolean(parsedEv.title);
@@ -719,6 +729,20 @@ function getCommandPreview(raw) {
             return `[REPEAT] ${rest}`;
         case 'spent':
             return `[MONEY] Spending ${rest || 'month'}`;
+        case 'delete': {
+            const f = findEditableById(rest);
+            return f ? `[DELETE] "${f.item.title}"` : '[DELETE] Not found';
+        }
+        case 'rename': {
+            const f = findEditableById(rest.split(/\s*=/)[0].trim());
+            return `[RENAME] "${f ? f.item.title : '?'}" → "${rest.split(/=\s*/).slice(1).join('=')}"`;
+        }
+        case 'resize':
+        case 'color': {
+            const [id, arg] = rest.split(/\s+/);
+            const f = findEditableById(id);
+            return `[${cmd.toUpperCase()}] "${f ? f.item.title : id}" ${arg || ''}`;
+        }
         case 'shortcut':
             if (!rest) return '[SHORTCUTS] Show your shortcuts';
             return rest.startsWith('-') ? `[SHORTCUTS] Remove "${rest.slice(1)}"` : `[SHORTCUTS] ${rest.replace(/\s*=\s*/, ' → ')}`;
@@ -967,6 +991,16 @@ function renderInstantShortcutsSummary() {
             <strong>${escapeHtml(k)}</strong><span class="u-muted">→ ${escapeHtml(v)}</span></div>`;
     });
     showInstantInspectionCard('SHORTCUTS', html);
+}
+
+// The event or task with this id, and the list it lives in
+function findEditableById(id) {
+    if (!id) return null;
+    const ev = (typeof specificEvents !== 'undefined' ? specificEvents : []).find(e => String(e.id) === String(id));
+    if (ev) return { item: ev, list: specificEvents, type: 'event' };
+    const t = (typeof templates !== 'undefined' ? templates : []).find(x => String(x.id) === String(id));
+    if (t) return { item: t, list: templates, type: 'template' };
+    return null;
 }
 
 // A one-day item (to-do) moved to another day keeps everything else
@@ -1590,6 +1624,60 @@ function executeTerminalCommand(raw) {
 
     if (cmd === 'spent') {
         renderInstantSpendingSummary(rest.toLowerCase() || 'month');
+        return true;
+    }
+
+    // delete <id> — an event, a to-do or a task (Ctrl+Z / [UNDO] brings it back)
+    if (cmd === 'delete') {
+        const f = findEditableById(rest);
+        if (!f) return false;
+        f.list.splice(f.list.indexOf(f.item), 1);
+        if (f.type === 'template' && typeof selectedTodos !== 'undefined') selectedTodos.delete(f.item.id);
+        saveData();
+        refreshPlanningViews();
+        if (typeof showToast === 'function') showToast(`[DELETED] "${f.item.title}"`);
+        return true;
+    }
+
+    // rename <id> = <new title>
+    if (cmd === 'rename') {
+        const m = rest.match(/^(\S+)\s*=\s*(.+)$/);
+        const f = m && findEditableById(m[1]);
+        if (!f) return false;
+        const old = f.item.title;
+        f.item.title = m[2].trim();
+        saveData();
+        refreshPlanningViews();
+        if (typeof showToast === 'function') showToast(`[RENAMED] "${old}" → "${f.item.title}"`);
+        return true;
+    }
+
+    // resize <id> <+/-minutes> — changes when a timed event ends
+    if (cmd === 'resize') {
+        const m = rest.match(/^(\S+)\s+([+-]?\d{1,3})$/);
+        const f = m && findEditableById(m[1]);
+        if (!f || f.type !== 'event' || !f.item.start || !f.item.end) return false;
+        const toMin = (s) => { const [h, mm] = s.split(':').map(Number); return h * 60 + mm; };
+        const pad = (n) => String(n).padStart(2, '0');
+        const start = toMin(f.item.start);
+        const end = Math.max(start + 5, Math.min(23 * 60 + 59, toMin(f.item.end) + parseInt(m[2], 10)));
+        f.item.end = `${pad(Math.floor(end / 60))}:${pad(end % 60)}`;
+        saveData();
+        refreshPlanningViews();
+        if (typeof showToast === 'function') showToast(`[RESIZED] "${f.item.title}" ${f.item.start}–${f.item.end}`);
+        return true;
+    }
+
+    // color <id> <rosso|blue|…|hex>
+    if (cmd === 'color') {
+        const m = rest.match(/^(\S+)\s+(\S+)$/);
+        const f = m && findEditableById(m[1]);
+        const hex = m && resolveEventColorToken('#' + m[2].replace(/^#/, ''));
+        if (!f || !hex) return false;
+        f.item.color = hex;
+        saveData();
+        refreshPlanningViews();
+        if (typeof showToast === 'function') showToast(`[COLOUR] "${f.item.title}" → ${m[2]}`);
         return true;
     }
 

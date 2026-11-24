@@ -182,9 +182,9 @@
         tpls.forEach(t => {
             if (!t || !t.title || t.type === 'medicine') return;
             const oneDay = t.isTodo && t.startDate && t.startDate === t.endDate;
+            // repeating tasks not on today still count: you can rename, recolour or delete them
             const date = oneDay ? t.startDate : (isTaskActiveOnDate(t, todayStr) ? todayStr : null);
-            if (!date) return;
-            const log = (logs[date] && logs[date][t.id]) || [];
+            const log = (date && logs[date] && logs[date][t.id]) || [];
             const done = log.length > 0 && log.length >= (t.instances || 1) && log.every(Boolean);
             items.push({ id: t.id, kind: oneDay ? 'todo' : 'task', title: t.title, date, done });
         });
