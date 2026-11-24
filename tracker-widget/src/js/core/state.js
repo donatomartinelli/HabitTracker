@@ -216,7 +216,7 @@ const ALL_STORAGE_KEYS = [
     'tracker_uni_data',
     'tracker_gemini_key', 'tracker_gemini_audio_key', 'tracker_processed_audio', 'tracker_extracted_notes',
     'tracker_opacity', 'tracker_red_mode', 'tracker_layout_tree', 'tracker_workspace_presets', 'tracker_startup_view',
-    'tracker_custom_aliases', 'tracker_routines', 'tracker_routine_logs'
+    'tracker_custom_aliases', 'tracker_routines', 'tracker_routine_logs', 'tracker_nl_learning'
 ];
 
 function safeJsonParse(rawStr, fallbackVal) {
@@ -323,6 +323,7 @@ function migrateAndInitData() {
         'tracker_workspace_presets': [],
         'tracker_startup_view': 'last',
         'tracker_custom_aliases': {},
+        'tracker_nl_learning': {},
         'tracker_routines': DEFAULT_ROUTINES_DATA,
         'tracker_routine_logs': {}
     };
@@ -402,6 +403,14 @@ function saveCustomAliases() {
     persistKeysMap({
         'tracker_custom_aliases': customAliases
     });
+}
+
+// What the command bar has learned from you (js/core/nl-parser.js → LEARNING)
+let nlLearning = safeJsonParse(cortexStore.getItem('tracker_nl_learning'), {});
+
+function saveNlLearning() {
+    persistKeysMap({ 'tracker_nl_learning': nlLearning });
+    if (typeof markLocalChangeForCloud === 'function') markLocalChangeForCloud();
 }
 
 let activeSlots = ['tasks', 'planner'];
@@ -666,6 +675,7 @@ function buildBackupObject() {
         'tracker_workspace_presets': JSON.stringify(workspacePresets),
         'tracker_startup_view': startupView,
         'tracker_custom_aliases': JSON.stringify(customAliases),
+        'tracker_nl_learning': JSON.stringify(nlLearning),
         'tracker_routines': JSON.stringify(routinesData),
         'tracker_routine_logs': JSON.stringify(routineLogs)
     };

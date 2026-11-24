@@ -310,6 +310,8 @@ function isValidDslCommand(raw) {
             return /^(daily|weekdays|weekends|[a-z]{3}(?:,[a-z]{3})*)(?:\s+\d{2}:\d{2}-\d{2}:\d{2})?\s+\S/.test(rest.toLowerCase());
         case 'spent':
             return /^(today|yesterday|week|month|year)?$/.test(rest.toLowerCase());
+        case 'shortcut':
+            return !rest || /^-\S+$/.test(rest) || /^\S+\s*=\s*\S/.test(rest);
         case 'event': {
             const parsedEv = parseEventCommandArgs(rest);
             return Boolean(parsedEv.title);
@@ -717,6 +719,9 @@ function getCommandPreview(raw) {
             return `[REPEAT] ${rest}`;
         case 'spent':
             return `[MONEY] Spending ${rest || 'month'}`;
+        case 'shortcut':
+            if (!rest) return '[SHORTCUTS] Show your shortcuts';
+            return rest.startsWith('-') ? `[SHORTCUTS] Remove "${rest.slice(1)}"` : `[SHORTCUTS] ${rest.replace(/\s*=\s*/, ' → ')}`;
         case 'export':
         case 'backup':
             return `[SYSTEM] Export JSON backup`;
@@ -950,6 +955,20 @@ function renderInstantSpendingSummary(period) {
     showInstantInspectionCard(`SPENDING // ${label}`, html);
 }
 
+function renderInstantShortcutsSummary() {
+    const entries = Object.entries((typeof nlLearning !== 'undefined' && nlLearning.shortcuts) || {}).sort((a, b) => a[0].localeCompare(b[0]));
+    let html = '';
+    if (!entries.length) {
+        html = `<div class="empty-state u-py-1">[ NO SHORTCUTS YET ]</div>
+            <div class="u-fs-xs u-muted" style="padding:var(--space-1) var(--space-2);">Try: “shortcut pal = palestra”, then “pal domani alle 18”.</div>`;
+    }
+    entries.forEach(([k, v]) => {
+        html += `<div class="u-flex u-jc-between u-fs-xs" style="padding:var(--space-1) var(--space-2); border:1px solid var(--border-color);">
+            <strong>${escapeHtml(k)}</strong><span class="u-muted">→ ${escapeHtml(v)}</span></div>`;
+    });
+    showInstantInspectionCard('SHORTCUTS', html);
+}
+
 // A one-day item (to-do) moved to another day keeps everything else
 function moveOneDayTemplate(t, dateStr) {
     t.startDate = dateStr;
@@ -966,7 +985,7 @@ function isInspectionOnlyCommand(raw) {
     const parts = (raw || '').trim().split(/\s+/);
     const cmd = (parts[0] || '').toLowerCase();
     const rest = (parts[1] || '').toLowerCase();
-    if (cmd === 'diet' || cmd === 'today' || cmd === 'oggi' || cmd === 'tomorrow' || cmd === 'domani' || cmd === 'schedule' || cmd === 'bal' || cmd === 'money' || cmd === 'balance' || cmd === 'spent') {
+    if (cmd === 'diet' || cmd === 'today' || cmd === 'oggi' || cmd === 'tomorrow' || cmd === 'domani' || cmd === 'schedule' || cmd === 'bal' || cmd === 'money' || cmd === 'balance' || cmd === 'spent' || (cmd === 'shortcut' && parts.length === 1)) {
         return true;
     }
     if (cmd === 'gym' && rest !== 'done') return true;
@@ -1571,6 +1590,29 @@ function executeTerminalCommand(raw) {
 
     if (cmd === 'spent') {
         renderInstantSpendingSummary(rest.toLowerCase() || 'month');
+        return true;
+    }
+
+    // shortcut · shortcut pal = palestra · shortcut -pal
+    if (cmd === 'shortcut') {
+        if (typeof nlLearning === 'undefined') return false;
+        if (!nlLearning.shortcuts || typeof nlLearning.shortcuts !== 'object') nlLearning.shortcuts = {};
+        if (!rest) { renderInstantShortcutsSummary(); return true; }
+        const norm = (w) => w.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+        if (rest.startsWith('-')) {
+            const key = norm(rest.slice(1).trim());
+            if (!nlLearning.shortcuts[key]) { if (typeof showToast === 'function') showToast(`[SHORTCUTS] "${key}" doesn't exist`); return true; }
+            delete nlLearning.shortcuts[key];
+            saveNlLearning();
+            if (typeof showToast === 'function') showToast(`[SHORTCUTS] Removed "${key}"`);
+            return true;
+        }
+        const m = rest.match(/^(\S+)\s*=\s*(.+)$/);
+        if (!m) return false;
+        const key = norm(m[1]);
+        nlLearning.shortcuts[key] = m[2].trim();
+        saveNlLearning();
+        if (typeof showToast === 'function') showToast(`[SHORTCUTS] "${key}" → "${m[2].trim()}"`);
         return true;
     }
 

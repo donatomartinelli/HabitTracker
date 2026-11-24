@@ -245,6 +245,7 @@ function buildFullCortexCloudPayload(timestampMs) {
             mentalMathConfig: typeof mentalMathConfig !== 'undefined' ? mentalMathConfig : {},
             workspacePresets: typeof workspacePresets !== 'undefined' ? workspacePresets : [],
             customAliases: typeof customAliases !== 'undefined' ? customAliases : {},
+            nlLearning: typeof nlLearning !== 'undefined' ? nlLearning : {},
             macroDefaultTrees: typeof macroDefaultTrees !== 'undefined' ? macroDefaultTrees : {},
             bridgeWebAppUrl: typeof bridgeWebAppUrl !== 'undefined' ? bridgeWebAppUrl : '',
             icloudIcsUrl: typeof icloudIcsUrl !== 'undefined' ? icloudIcsUrl : '',
@@ -311,6 +312,10 @@ function applyFullCortexCloudPayload(payloadObj) {
         if (d.mentalMathConfig && typeof d.mentalMathConfig === 'object' && Object.keys(d.mentalMathConfig).length) mentalMathConfig = d.mentalMathConfig;
         if (Array.isArray(d.workspacePresets)) workspacePresets = d.workspacePresets;
         if (d.customAliases && typeof d.customAliases === 'object') customAliases = d.customAliases;
+        if (d.nlLearning && typeof d.nlLearning === 'object' && !Array.isArray(d.nlLearning)) {
+            nlLearning = d.nlLearning;
+            cortexStore.setItem('tracker_nl_learning', JSON.stringify(nlLearning));
+        }
         if (d.macroDefaultTrees && typeof d.macroDefaultTrees === 'object') {
             macroDefaultTrees = d.macroDefaultTrees;
             cortexStore.setItem('tracker_macro_default_trees', JSON.stringify(macroDefaultTrees));
@@ -422,7 +427,8 @@ const SYNC_SECTION_LABELS = {
     mRecurring: 'Bills', mWishlist: 'Wishlist', mVaults: 'Vaults', mCategories: 'Spending categories',
     savedGymWeights: 'Gym weights', dietData: 'Diet', dietRules: 'Diet rules', foodDb: 'Foods',
     bodyLogs: 'Body weight', gymPlan: 'Gym plan', gymRoutine: 'Gym routine', uniData: 'University',
-    mathHubState: 'Math', workspacePresets: 'Saved views', customAliases: 'Custom commands'
+    mathHubState: 'Math', workspacePresets: 'Saved views', customAliases: 'Custom commands',
+    nlLearning: 'Command bar learning'
 };
 function humanSyncPath(path) {
     const parts = String(path || '').split('.');

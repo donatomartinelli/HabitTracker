@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "tauri": "tauri",
-    "test": "node --test tests/sync-merge.test.js tests/nl-parser.test.js tests/nl-actions.test.js"
+    "test": "node --test tests/sync-merge.test.js tests/nl-parser.test.js tests/nl-actions.test.js tests/nl-learning.test.js"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2"

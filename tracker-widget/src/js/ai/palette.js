@@ -207,8 +207,18 @@
             today: todayStr,
             now: now.getHours() * 60 + now.getMinutes(),
             noteCategories: typeof noteCategories !== 'undefined' ? noteCategories : [],
-            items, busyOn
+            items, busyOn,
+            learning: typeof nlLearning !== 'undefined' ? nlLearning : null
         };
+    }
+
+    // You ran interpretation #index of what you typed: remember it
+    function learnFromRun(typed, offered, index) {
+        if (typeof nlLearning === 'undefined' || typeof CortexNL === 'undefined' || !CortexNL.learn) return;
+        try {
+            nlLearning = CortexNL.learn(nlLearning, typed, offered, index);
+            if (typeof saveNlLearning === 'function') saveNlLearning();
+        } catch (e) { /* learning must never block a command */ }
     }
 
     function build(raw) {
@@ -242,8 +252,11 @@
             const blocked = parsed.map(blockedBy).filter(Boolean);
             parsed = parsed.filter(p => !blockedBy(p));
             parsed.forEach((p, i) => doThis.push({
-                label: p.label, hint: i === 0 ? 'Enter' : 'alternative', primary: i === 0,
-                run: () => runCommand(p.cmd), stage: p.cmd, cmd: p.cmd
+                label: p.label,
+                hint: i === 0 ? (p.learned ? 'Enter · learned' : 'Enter') : 'alternative',
+                primary: i === 0,
+                run: () => { if (runCommand(p.cmd)) learnFromRun(q, parsed, i); },
+                stage: p.cmd, cmd: p.cmd
             }));
             // Understood, but it belongs to a module that's switched off: say so instead of "nothing matched"
             if (!doThis.length && blocked.length) {
@@ -255,6 +268,12 @@
             }
         }
         if (doThis.length) groups.push({ title: "I'LL DO THIS", items: doThis });
+
+        // Sentences you type often that start like this one (Tab or Enter fills them in)
+        if (!isDsl && typeof CortexNL !== 'undefined' && CortexNL.suggestPhrases && typeof nlLearning !== 'undefined') {
+            const often = CortexNL.suggestPhrases(nlLearning, q).map(p => ({ label: p.text, hint: `used ${p.n}×`, fill: p.text }));
+            if (often.length) groups.push({ title: 'YOU OFTEN TYPE', items: often });
+        }
 
         // 2. Command completions (from the existing DSL suggestions)
         if (!isDsl && typeof getContextualSuggestions === 'function') {

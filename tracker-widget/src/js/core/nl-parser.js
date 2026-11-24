@@ -507,7 +507,7 @@
     // ------------------------------------------------------------------
     // Main
     // ------------------------------------------------------------------
-    function interpret(text, opts = {}) {
+    function interpretCore(text, opts = {}) {
         const raw = String(text || '').trim();
         if (!raw) return [];
         const today = opts.today || fmtDate(new Date());
@@ -655,12 +655,9 @@
         if (time) {
             const d = date || today;
             const end = time.end !== null ? time.end : Math.min(23 * 60 + 59, time.start + (dur || 60));
-            out.push({
-                kind: 'event',
-                label: `Event · ${prettyDate(d, today)} · ${fmtMins(time.start)}–${fmtMins(end)} · ${title}`,
-                cmd: `event @${d} ${fmtMins(time.start)}-${fmtMins(end)} ${title}`
-            });
-            out.push({ kind: 'todo', label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` });
+            const ev = mkEvent(d, time.start, end, title, today);
+            if (time.end === null && !dur) ev.lenDefault = true; // the length was a guess: learning may fix it
+            out.push(ev, mkTodo(d, title, today));
             return out;
         }
 
@@ -671,12 +668,8 @@
             const slot = slotOn(d, dur || 60, part && part.part, today, opts);
             if (slot) {
                 const where = part ? `free ${DAYPART_LABEL[part.part]} slot` : 'first free slot';
-                const ev = {
-                    kind: 'event',
-                    label: `Event · ${prettyDate(d, today)} · ${fmtMins(slot.start)}–${fmtMins(slot.end)} (${where}) · ${title}`,
-                    cmd: `event @${d} ${timeRange(slot.start, slot.end)} ${title}`
-                };
-                const td = { kind: 'todo', label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` };
+                const ev = Object.assign(mkEvent(d, slot.start, slot.end, title, today, where), { auto: true, part: part && part.part, dur });
+                const td = mkTodo(d, title, today);
                 if (dur || forced === 'event') out.push(ev, td); else out.push(td, ev);
                 return out;
             }
@@ -684,22 +677,223 @@
 
         if (forced === 'event') {
             const d = date || today;
-            out.push({ kind: 'event', label: `Event · ${prettyDate(d, today)} · ${title}`, cmd: `event @${d} ${title}` });
-            out.push({ kind: 'todo', label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` });
+            out.push(mkEvent(d, null, null, title, today), mkTodo(d, title, today));
             return out;
         }
 
         if (date || forced === 'todo') {
             const d = date || today;
-            out.push({ kind: 'todo', label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` });
-            if (date) out.push({ kind: 'event', label: `Event · ${prettyDate(d, today)} · ${title}`, cmd: `event @${d} ${title}` });
+            out.push(mkTodo(d, title, today));
+            if (date) out.push(mkEvent(d, null, null, title, today));
             return out;
         }
 
         return out;
     }
 
-    const api = { interpret, findSlot, scoreTitle, _internals: { extractDate, extractTime, extractRecurrence, extractDayPart, makeCtx, rest } };
+    function mkEvent(d, s, e, title, today, note) {
+        const timed = s !== null && s !== undefined;
+        return {
+            kind: 'event', date: d, start: timed ? s : null, end: timed ? e : null, title,
+            label: `Event · ${prettyDate(d, today)}${timed ? ` · ${fmtMins(s)}–${fmtMins(e)}` : ''}${note ? ` (${note})` : ''} · ${title}`,
+            cmd: `event @${d}${timed ? ' ' + timeRange(s, e) : ''} ${title}`
+        };
+    }
+    function mkTodo(d, title, today) {
+        return { kind: 'todo', date: d, title, label: `To-do · ${prettyDate(d, today)} · ${title}`, cmd: `todo @${d} ${title}` };
+    }
+
+    // ------------------------------------------------------------------
+    // LEARNING — everything stays on your devices (synced like the rest of your data).
+    //
+    // learning = {
+    //   choices:   { key: { event: 3, todo: 1 } }   which interpretation you pick for a title
+    //   habits:    { key: { start, dur, n } }      when you usually do it ("palestra" → 18:00, 90 min)
+    //   shortcuts: { pal: 'palestra' }             your own abbreviations
+    //   phrases:   { simple text: { text, n, at } } sentences you type often
+    // }
+    // A key is the title simplified ("Palestra gambe" → "palestra gambe"),
+    // with its first word as a fallback ("w:palestra").
+    // ------------------------------------------------------------------
+    const MAX_KEYS = 300;
+    const MAX_PHRASES = 120;
+
+    function emptyLearning() { return { choices: {}, habits: {}, shortcuts: {}, phrases: {} }; }
+    function normLearning(L) {
+        const base = emptyLearning();
+        if (!L || typeof L !== 'object') return base;
+        for (const k of Object.keys(base)) if (L[k] && typeof L[k] === 'object' && !Array.isArray(L[k])) base[k] = L[k];
+        return base;
+    }
+
+    function learnKeys(title) {
+        const words = simple(title).replace(ARTICLES, '').split(' ').filter(Boolean);
+        if (!words.length) return [];
+        const full = words.slice(0, 4).join(' ');
+        const firstWord = words.find(w => w.length >= 3 && !FILLERS.has(w));
+        const keys = [full];
+        if (firstWord) keys.push('w:' + firstWord);
+        return keys;
+    }
+    const lookup = (map, title) => { for (const k of learnKeys(title)) if (map[k]) return map[k]; return null; };
+
+    // ---- shortcuts ----
+    function expandShortcuts(text, shortcuts) {
+        const keys = Object.keys(shortcuts || {});
+        if (!keys.length) return text;
+        return text.replace(/[\p{L}\p{N}_'-]+/gu, (w) => {
+            const hit = shortcuts[strip(w.toLowerCase())];
+            return typeof hit === 'string' && hit ? hit : w;
+        });
+    }
+
+    // "scorciatoia pal = palestra" · "alias pal palestra" · "quando scrivo pal intendo palestra"
+    // "rimuovi scorciatoia pal" · "scorciatoie"
+    function interpretShortcutCommand(raw) {
+        const n = strip(raw.toLowerCase()).trim();
+        if (/^(scorciatoie|shortcuts|aliases|le mie scorciatoie|my shortcuts)$/.test(n)) {
+            return [{ kind: 'shortcut', label: 'Show your shortcuts', cmd: 'shortcut' }];
+        }
+        let m = n.match(/^(?:rimuovi|elimina|cancella|remove|delete)\s+(?:la\s+)?(?:scorciatoia|shortcut|alias)\s+([a-z0-9_'-]+)$/);
+        if (m) return [{ kind: 'shortcut', label: `Remove shortcut “${m[1]}”`, cmd: `shortcut -${m[1]}` }];
+        m = raw.match(/^(?:scorciatoia|shortcut|alias)\s+([\p{L}\p{N}_'-]+)\s*(?:=|→|->|:|\s)\s*(.+)$/iu)
+            || raw.match(/^(?:quando\s+scrivo|when\s+i\s+(?:type|write))\s+([\p{L}\p{N}_'-]+)\s+(?:intendo|vuol\s+dire|significa|i\s+mean|means)\s+(.+)$/iu);
+        if (m) {
+            const abbr = strip(m[1].toLowerCase());
+            const full = m[2].trim().replace(/^["“]|["”]$/g, '');
+            if (!full || full.includes(' ;; ')) return [];
+            return [{ kind: 'shortcut', label: `Shortcut · “${abbr}” → “${full}”`, cmd: `shortcut ${abbr} = ${full}` }];
+        }
+        return null;
+    }
+
+    // ---- using what was learned ----
+    function applyLearning(results, L, opts) {
+        if (!results.length) return results;
+        const today = opts.today || fmtDate(new Date());
+        let out = results.slice();
+
+        // 1. Your usual time and length for this title
+        const firstTitled = out.find(r => r.title && (r.kind === 'event' || r.kind === 'todo'));
+        const habit = firstTitled ? lookup(L.habits, firstTitled.title) : null;
+        if (habit && habit.n >= 2 && habit.dur > 0) {
+            out = out.map(r => {
+                if (r.kind !== 'event' || !r.lenDefault) return r;
+                return Object.assign(mkEvent(r.date, r.start, Math.min(23 * 60 + 59, r.start + habit.dur), r.title, today), { learned: true });
+            });
+            const hasTimed = out.some(r => r.kind === 'event' && r.start !== null && !r.auto);
+            if (!hasTimed) {
+                const d = firstTitled.date || today;
+                const s = habit.start, e = Math.min(23 * 60 + 59, habit.start + habit.dur);
+                const inPart = (p) => !p || (s >= DAYPARTS[p][0] && s < DAYPARTS[p][1]);
+                const auto = out.find(r => r.auto);
+                if (!auto || inPart(auto.part)) {
+                    const busy = typeof opts.busyOn === 'function' ? (opts.busyOn(d) || []) : [];
+                    const clash = busy.some(([bs, be]) => bs < e && be > s);
+                    const usual = Object.assign(mkEvent(d, s, e, firstTitled.title, today, clash ? 'your usual time · busy' : 'your usual time'), { learned: true, busy: clash });
+                    out = out.filter(r => !(r.kind === 'event' && (r.auto || r.start === null)));
+                    if (clash) out.push(usual); else out.unshift(usual);
+                }
+            }
+        }
+
+        // 2. The interpretation you usually pick for this title goes first
+        const pref = firstTitled ? lookup(L.choices, firstTitled.title) : null;
+        if (pref && out.length > 1) {
+            const top = out[0].kind;
+            let bestKind = null, best = 0;
+            const usable = (k) => out.findIndex(r => r.kind === k && !r.busy); // never promote a clash
+            for (const [k, c] of Object.entries(pref)) if (k !== 'at' && c > best && usable(k) >= 0) { best = c; bestKind = k; }
+            if (bestKind && bestKind !== top && best >= 2 && best > (pref[top] || 0)) {
+                const i = usable(bestKind);
+                const [picked] = out.splice(i, 1);
+                out.unshift(Object.assign({}, picked, { learned: true }));
+            }
+        }
+        return out;
+    }
+
+    // ---- learning from what you ran ----
+    // results: what was offered; chosen: index of the one you ran; raw: what you typed
+    function learn(L0, raw, results, chosen) {
+        const L = normLearning(JSON.parse(JSON.stringify(L0 || {})));
+        const pick = results && results[chosen];
+        if (!pick) return L;
+        const now = Date.now();
+
+        // a sentence you type often (shown as a completion later)
+        const pk = simple(raw);
+        if (pk.length >= 4 && pick.kind !== 'shortcut' && pick.kind !== 'undo') {
+            const p = L.phrases[pk] || { text: raw.trim(), n: 0 };
+            L.phrases[pk] = { text: raw.trim(), n: (p.n || 0) + 1, at: now };
+        }
+
+        const parts = pick.kind === 'multi' ? [] : [pick];
+        for (const r of parts) {
+            if (!r.title) continue;
+            const keys = learnKeys(r.title);
+            // choices: only when there was a real choice between kinds
+            if (results.some(x => x.kind !== r.kind && x.kind !== 'multi')) {
+                keys.forEach(k => {
+                    const c = Object.assign({}, L.choices[k]);
+                    c[r.kind] = (c[r.kind] || 0) + 1;
+                    c.at = now;
+                    L.choices[k] = c;
+                });
+            }
+            // habits: a timed event whose time you gave (or confirmed)
+            if (r.kind === 'event' && r.start !== null && r.end !== null && !r.auto) {
+                const dur = r.end - r.start;
+                keys.forEach(k => {
+                    const h = L.habits[k];
+                    if (!h || Math.abs(h.start - r.start) > 90) {
+                        L.habits[k] = { start: r.start, dur, n: 1, at: now };
+                    } else {
+                        const n = Math.min(h.n, 9);
+                        const round5 = (x) => Math.round(x / 5) * 5;
+                        L.habits[k] = {
+                            start: round5((h.start * n + r.start) / (n + 1)),
+                            dur: r.lenDefault ? h.dur : round5((h.dur * n + dur) / (n + 1)),
+                            n: h.n + 1, at: now
+                        };
+                    }
+                });
+            }
+        }
+        trim(L.choices, MAX_KEYS);
+        trim(L.habits, MAX_KEYS);
+        trim(L.phrases, MAX_PHRASES);
+        return L;
+    }
+    function trim(map, max) {
+        const keys = Object.keys(map);
+        if (keys.length <= max) return;
+        keys.sort((a, b) => (map[a].at || 0) - (map[b].at || 0)).slice(0, keys.length - max).forEach(k => delete map[k]);
+    }
+
+    // Sentences you type often that start like what you're typing now
+    function suggestPhrases(L, typed, limit = 3) {
+        const q = simple(typed);
+        if (q.length < 2) return [];
+        return Object.entries(normLearning(L).phrases)
+            .filter(([k, p]) => k !== q && k.startsWith(q) && p.n >= 2)
+            .sort((a, b) => b[1].n - a[1].n || (b[1].at || 0) - (a[1].at || 0))
+            .slice(0, limit)
+            .map(([, p]) => ({ text: p.text, n: p.n }));
+    }
+
+    function interpret(text, opts = {}) {
+        const original = String(text || '').trim();
+        if (!original) return [];
+        const sc = interpretShortcutCommand(original);
+        if (sc) return sc;
+        const L = opts.learning ? normLearning(opts.learning) : null;
+        const raw = L ? expandShortcuts(original, L.shortcuts) : original;
+        const res = interpretCore(raw, opts);
+        return L ? applyLearning(res, L, opts) : res;
+    }
+
+    const api = { interpret, findSlot, scoreTitle, learn, suggestPhrases, emptyLearning, normLearning, _internals: { extractDate, extractTime, extractRecurrence, extractDayPart, makeCtx, rest } };
     if (typeof module !== 'undefined' && module.exports) module.exports = api;
     else root.CortexNL = api;
 })(typeof window !== 'undefined' ? window : globalThis);
