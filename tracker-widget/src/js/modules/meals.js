@@ -149,6 +149,91 @@
         return d && d.meals[row.id] ? d.meals[row.id] : null;
     }
 
+    // ------------------------------------------------------------------
+    // Food by food: each planned food is eaten ✓, not eaten ✗ or not logged yet.
+    // log = { status: 'eaten' | 'partial' | 'skipped', items: [{ name, g }] (eaten), skipped: [names] }
+    // ------------------------------------------------------------------
+    const lc = (x) => String(x || '').toLowerCase();
+    function plannedFor(mealId, date) {
+        if (mealId === '__rules') return parseItems(typeof dietRules === 'string' ? dietRules : '');
+        const row = mealById(mealId);
+        return row ? plannedItemsOf(row, date) : [];
+    }
+    function logFor(date, mealId) {
+        const d = dayLog(date);
+        return d && d.meals[mealId] ? d.meals[mealId] : null;
+    }
+    // 'eaten' | 'skipped' | null for one planned food
+    function foodState(log, name) {
+        if (!log) return null;
+        const n = lc(name);
+        if ((log.items || []).some(i => lc(i.name) === n)) return 'eaten';
+        if ((log.skipped || []).some(x => lc(x) === n)) return 'skipped';
+        if (log.status === 'skipped') return 'skipped';
+        return null;
+    }
+    // Status of the whole meal from its foods
+    function refreshStatus(date, mealId) {
+        const d = dayLog(date);
+        const log = d && d.meals[mealId];
+        if (!log) return;
+        if (!Array.isArray(log.items)) log.items = [];
+        if (!Array.isArray(log.skipped)) log.skipped = [];
+        const names = plannedFor(mealId, date).filter(x => x.name).map(x => lc(x.name));
+        const eaten = new Set(log.items.map(i => lc(i.name)));
+        const skipped = new Set(log.skipped.map(lc));
+        if (!eaten.size && !skipped.size) { delete d.meals[mealId]; return; }
+        const pending = names.filter(n => !eaten.has(n) && !skipped.has(n));
+        if (!eaten.size) log.status = pending.length ? 'partial' : 'skipped';
+        else log.status = (!skipped.size && !pending.length) ? 'eaten' : 'partial';
+    }
+    // Tap on a food: not logged → eaten → not eaten → eaten …
+    function toggleFood(date, mealId, name) {
+        const planned = plannedFor(mealId, date);
+        const food = planned.find(x => x.name && lc(x.name) === lc(name));
+        const label = food ? food.name : name;
+        const d = dayLog(date, true);
+        let log = d.meals[mealId];
+        if (!log) log = d.meals[mealId] = { status: 'partial', items: [], skipped: [] };
+        if (!Array.isArray(log.items)) log.items = [];
+        if (!Array.isArray(log.skipped)) log.skipped = [];
+        // An old "whole meal skipped" becomes food-by-food
+        if (log.status === 'skipped' && !log.skipped.length) log.skipped = planned.filter(x => x.name).map(x => x.name);
+        const state = foodState(log, name);
+        log.items = log.items.filter(i => lc(i.name) !== lc(name));
+        log.skipped = log.skipped.filter(x => lc(x) !== lc(name));
+        if (state === 'eaten') log.skipped.push(label);
+        else log.items.push({ name: label, g: r0(food && food.g ? food.g : 0) });
+        refreshStatus(date, mealId);
+        persist();
+        rerender();
+    }
+    function skipMeal(date, mealId) {
+        const d = dayLog(date, true);
+        d.meals[mealId] = { status: 'skipped', items: [], skipped: plannedFor(mealId, date).filter(x => x.name).map(x => x.name) };
+        persist();
+        rerender();
+    }
+    // Chips for the planned foods of a meal, tappable
+    function foodChipsHtml(mealId, date, planned, log) {
+        return planned.map(i => {
+            if (i.free) return '<span class="meal-food">Free meal</span>';
+            if (!i.name) return `<span class="meal-food is-unknown">${esc(i.label)}</span>`;
+            const stt = foodState(log, i.name);
+            const ate = stt === 'eaten' ? (log.items || []).find(x => lc(x.name) === lc(i.name)) : null;
+            const g = ate && ate.g ? ate.g : i.g;
+            const mark = stt === 'eaten' ? '✓ ' : stt === 'skipped' ? '✗ ' : '';
+            const tip = stt === 'eaten' ? 'Eaten: tap if you did not eat it' : stt === 'skipped' ? 'Not eaten: tap if you ate it' : 'Tap when you have eaten it';
+            return `<button type="button" class="meal-food is-toggle ${stt ? 'is-' + stt : ''}" data-food="${esc(i.name)}" data-food-meal="${esc(mealId)}" title="${tip}" aria-pressed="${stt === 'eaten'}">${mark}${esc(i.name)}${g ? ` <b>${r0(g)}g</b>` : ''}</button>`;
+        }).join('');
+    }
+    function bindFoodChips(root, date) {
+        root.querySelectorAll('[data-food]').forEach(b => b.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleFood(date, b.dataset.foodMeal, b.dataset.food);
+        }));
+    }
+
     // Totals for a day: planned (plan + daily extras) and actually eaten
     function dayTotals(date) {
         const planned = { kcal: 0, p: 0, c: 0, f: 0 };
@@ -159,14 +244,14 @@
             if (isBreakfastHidden(row)) return;
             add(planned, macrosOfItems(plannedItemsOf(row, date)));
             const st = mealStatus(row, date);
-            if (st && st.status === 'eaten') { add(eaten, macrosOfItems(st.items || [])); logged++; }
-            if (st) logged += st.status === 'skipped' ? 1 : 0;
+            if (st && st.status !== 'skipped') add(eaten, macrosOfItems(st.items || []));
+            if (st) logged++;
         });
         const rulesItems = parseItems(typeof dietRules === 'string' ? dietRules : '');
         add(planned, macrosOfItems(rulesItems));
         const d = dayLog(date);
         const rules = d && d.meals.__rules;
-        if (rules && rules.status === 'eaten') add(eaten, macrosOfItems(rules.items || []));
+        if (rules && rules.status !== 'skipped') add(eaten, macrosOfItems(rules.items || []));
         if (d && d.extra.length) add(eaten, macrosOfItems(d.extra));
         return { planned, eaten, logged };
     }
@@ -191,7 +276,9 @@
                 end: Math.min(24 * 60, t + (parseInt(row.dur, 10) || 20)),
                 summary: items.map(i => i.free ? 'Free meal' : (i.g && i.name ? `${i.name} ${r0(i.g)}g` : i.label)).join(' · '),
                 kcal,
-                status: st ? st.status : null
+                status: st ? st.status : null,
+                eatenKcal: st && st.status !== 'skipped' ? macrosOfItems(st.items || []).kcal : 0,
+                foods: items
             };
         }).filter(Boolean).sort((a, b) => a.start - b.start);
     }
@@ -202,11 +289,11 @@
         const px = (mins) => ((mins / 60) - startHour) * zoom;
         getMealBlocks(date).forEach(m => {
             const el = document.createElement('div');
-            el.className = `meal-block ${m.status === 'eaten' ? 'is-eaten' : ''} ${m.status === 'skipped' ? 'is-skipped' : ''}`;
+            el.className = `meal-block ${m.status ? 'is-' + m.status : ''}`;
             el.style.top = `${px(m.start)}px`;
             el.style.height = `${Math.max(14, px(m.end) - px(m.start))}px`;
             el.title = `${fmt(m.start)} ${m.title}: ${m.summary}`;
-            el.innerHTML = `<span class="meal-block-t"><b>${esc(fmt(m.start))} ${esc(m.title)}</b> <span class="meal-block-s">${esc(m.summary)}</span></span><span class="meal-block-k">${m.status === 'eaten' ? '✓ ' : ''}${num(m.kcal)} kcal</span>`;
+            el.innerHTML = `<span class="meal-block-t"><b>${esc(fmt(m.start))} ${esc(m.title)}</b> <span class="meal-block-s">${esc(m.summary)}</span></span><span class="meal-block-k">${m.status === 'eaten' ? '✓ ' : m.status === 'partial' ? '◐ ' : ''}${num(m.kcal)} kcal</span>`;
             el.addEventListener('click', (e) => { e.stopPropagation(); openMealSheet(date, m.id); });
             canvas.appendChild(el);
         });
@@ -226,12 +313,17 @@
     }
 
     function markEatenAsPlanned(date, mealId) {
-        const row = mealById(mealId);
-        const items = mealId === '__rules'
-            ? parseItems(typeof dietRules === 'string' ? dietRules : '')
-            : (row ? plannedItemsOf(row, date) : []);
+        const planned = plannedFor(mealId, date).filter(i => i.name && i.g);
         const d = dayLog(date, true);
-        d.meals[mealId] = { status: 'eaten', items: items.filter(i => i.name && i.g).map(i => ({ name: i.name, g: r0(i.g) })) };
+        const prev = d.meals[mealId] || { items: [], skipped: [] };
+        // "Eaten" on a meal: everything not marked as not eaten
+        const skipped = prev.status === 'skipped' ? [] : (prev.skipped || []);
+        const items = [...(prev.items || [])];
+        planned.forEach(x => {
+            if (!items.some(i => lc(i.name) === lc(x.name)) && !skipped.some(y => lc(y) === lc(x.name))) items.push({ name: x.name, g: r0(x.g) });
+        });
+        d.meals[mealId] = { status: 'eaten', items, skipped };
+        refreshStatus(date, mealId);
         persist();
         rerender();
     }
@@ -251,19 +343,15 @@
         const planned = isRules ? parseItems(typeof dietRules === 'string' ? dietRules : '') : plannedItemsOf(row, date);
         const st = isRules ? (dayLog(date) && dayLog(date).meals.__rules) : mealStatus(row, date);
 
-        // Working list: planned foods (ticked unless logged otherwise) + logged extras
-        let items;
-        if (st && st.status === 'eaten') {
-            const loggedNames = new Set((st.items || []).map(i => i.name.toLowerCase()));
-            items = planned.filter(p => p.name).map(p => {
-                const hit = (st.items || []).find(i => i.name.toLowerCase() === p.name.toLowerCase());
-                return { name: p.name, g: hit ? hit.g : r0(p.g), planned: r0(p.g), on: Boolean(hit) };
-            });
-            (st.items || []).forEach(i => { if (!planned.some(p => p.name && p.name.toLowerCase() === i.name.toLowerCase())) items.push({ name: i.name, g: i.g, planned: null, on: true }); });
-            void loggedNames;
-        } else {
-            items = planned.filter(p => p.name).map(p => ({ name: p.name, g: r0(p.g), planned: r0(p.g), on: true }));
-        }
+        // Working list: planned foods (ticked unless marked as not eaten) + extra foods you logged
+        const items = planned.filter(p => p.name).map(p => {
+            const stt = foodState(st, p.name);
+            const hit = stt === 'eaten' ? (st.items || []).find(i => lc(i.name) === lc(p.name)) : null;
+            return { name: p.name, g: hit && hit.g ? hit.g : r0(p.g), planned: r0(p.g), on: stt !== 'skipped' };
+        });
+        (st && st.items ? st.items : []).forEach(i => {
+            if (!planned.some(p => p.name && lc(p.name) === lc(i.name))) items.push({ name: i.name, g: i.g, planned: null, on: true });
+        });
         // Water and similar notes are not foods: don't ask to add them to the table
         const unmatched = planned.filter(p => !p.name && !p.free && !/acqua|water|\d\s*l\b|litr/i.test(p.label));
         const isFree = planned.some(p => p.free);
@@ -292,7 +380,7 @@
                         </div>
                     </section>`}
                     <section class="study-field">
-                        <div class="study-label">${st && st.status === 'eaten' ? 'What you ate' : 'What to eat'} <span class="dim">· untick what you skipped, change the grams to what you really ate</span></div>
+                        <div class="study-label">${st ? 'What you ate' : 'What to eat'} <span class="dim">· untick what you did not eat, change the grams to what you really ate</span></div>
                         ${isFree ? '<div class="study-hint">Free meal in the plan: add what you ate below if you want it counted.</div>' : ''}
                         <div class="meal-items" data-items></div>
                         ${unmatched.length ? `<div class="dim study-hint">Not in your food table (no calories): ${unmatched.map(u => esc(u.label)).join(', ')}. Add them in Diet → Foods.</div>` : ''}
@@ -310,11 +398,11 @@
                 <div class="study-sheet-foot">
                     <div class="meal-foot-left">
                         ${st ? '<button type="button" class="ghost-btn" data-clear>Clear log</button>' : ''}
-                        ${!isRules ? '<button type="button" class="ghost-btn" data-skip>Skipped</button>' : ''}
+                        ${!isRules ? '<button type="button" class="ghost-btn" data-skip>Not eaten</button>' : ''}
                     </div>
                     <div class="study-foot-right">
                         <button type="button" class="btn btn-sm" data-close>Cancel</button>
-                        <button type="button" class="btn btn-primary btn-sm" data-save>${st && st.status === 'eaten' ? 'Save' : 'Eaten'}</button>
+                        <button type="button" class="btn btn-primary btn-sm" data-save>${st ? 'Save' : 'Eaten'}</button>
                     </div>
                 </div>
             </div>`;
@@ -383,16 +471,21 @@
         $('[data-save]').addEventListener('click', () => {
             saveTime();
             const d = dayLog(date, true);
-            d.meals[isRules ? '__rules' : row.id] = { status: 'eaten', items: items.filter(i => i.on && i.g > 0).map(i => ({ name: i.name, g: r0(i.g) })) };
+            const mid = isRules ? '__rules' : row.id;
+            d.meals[mid] = {
+                status: 'eaten',
+                items: items.filter(i => i.on && i.g > 0).map(i => ({ name: i.name, g: r0(i.g) })),
+                skipped: items.filter(i => i.planned !== null && (!i.on || !(i.g > 0))).map(i => i.name)
+            };
+            refreshStatus(date, mid);
             persist();
             closeSheet();
             rerender();
         });
         $('[data-skip]')?.addEventListener('click', () => {
             saveTime();
-            const d = dayLog(date, true);
-            d.meals[row.id] = { status: 'skipped', items: [] };
-            persist(); closeSheet(); rerender();
+            closeSheet();
+            skipMeal(date, row.id);
         });
         $('[data-clear]')?.addEventListener('click', () => { saveTime(); clearMeal(date, isRules ? '__rules' : row.id); closeSheet(); });
         wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) closeSheet(); });
@@ -516,21 +609,27 @@
             const items = plannedItemsOf(row, date);
             const st = mealStatus(row, date);
             const plan = macrosOfItems(items);
-            const eaten = st && st.status === 'eaten' ? macrosOfItems(st.items || []) : null;
+            const eaten = st && st.status !== 'skipped' ? macrosOfItems(st.items || []) : null;
             const past = date === todayStr && t !== null && t + (row.dur || 20) < nowMin;
-            const itemsHtml = items.length
-                ? items.map(i => i.free ? '<span class="meal-food">Free meal</span>' : `<span class="meal-food">${esc(i.name || i.label)}${i.g ? ` <b>${r0(i.g)}g</b>` : ''}</span>`).join('')
-                : '<span class="dim">Nothing planned</span>';
-            const status = st
-                ? (st.status === 'eaten' ? `<span class="meal-status is-eaten">✓ ${num(eaten.kcal)} kcal</span>` : '<span class="meal-status is-skipped">skipped</span>')
-                : (items.length ? `<button type="button" class="btn btn-sm meal-quick" data-eaten="${esc(row.id)}" title="Eaten as planned">✓ Eaten</button>` : '');
+            const pending = items.some(i => i.name && !foodState(st, i.name));
+            const itemsHtml = items.length ? foodChipsHtml(row.id, date, items, st) : '<span class="dim">Nothing planned</span>';
+            let status = '';
+            if (st && st.status === 'eaten') status = `<span class="meal-status is-eaten">✓ ${num(eaten.kcal)} kcal</span>`;
+            else if (st && st.status === 'skipped') status = '<span class="meal-status is-skipped">✗ not eaten</span>';
+            else if (st) status = `<span class="meal-status is-partial">◐ ${num(eaten.kcal)} kcal</span>`;
+            if (items.some(i => i.name) && (!st || pending)) {
+                status += `<span class="meal-quick-row">
+                    <button type="button" class="btn btn-sm meal-quick" data-eaten="${esc(row.id)}" title="${st ? 'The rest eaten as planned' : 'Eaten as planned'}">✓ ${st ? 'Rest' : 'Eaten'}</button>
+                    ${!st ? `<button type="button" class="ghost-btn meal-skip" data-skip-meal="${esc(row.id)}" title="Not eaten">✗</button>` : ''}
+                </span>`;
+            }
             return `
                 <div class="meal-row ${st ? 'is-' + st.status : ''} ${past && !st ? 'is-due' : ''}" data-meal="${esc(row.id)}">
                     <button type="button" class="meal-time" data-open="${esc(row.id)}" title="Change time">${t !== null ? fmt(t) : '--:--'}</button>
-                    <button type="button" class="meal-main" data-open="${esc(row.id)}">
-                        <span class="meal-name">${esc(row.type)} <span class="dim">· ${num(plan.kcal)} kcal</span></span>
+                    <div class="meal-main">
+                        <button type="button" class="meal-name" data-open="${esc(row.id)}" title="Change grams, add food, move the time">${esc(row.type)} <span class="dim">· ${num(plan.kcal)} kcal</span></button>
                         <span class="meal-foods">${itemsHtml}</span>
-                    </button>
+                    </div>
                     <span class="meal-side">${status}</span>
                 </div>`;
         }).join('');
@@ -571,7 +670,7 @@
                             </div>
                         </div>
                         <div class="diet2-meals">${mealsHtml || '<div class="dim study-hint">No meals in your plan yet. Add one with “+ Meal”.</div>'}${extras}</div>
-                        <div class="dim study-hint">Tap a meal to change grams, add food or move its time. Plans per weekday are in “Week plan”; calories come from “Foods”.</div>
+                        <div class="dim study-hint">Tap a food when you have eaten it (tap again: not eaten). Tap the meal name to change grams, add food or move its time.</div>
                     </div>
                     <div class="diet2-col diet2-side">
                         <div class="today-section-head"><span>WEIGHT</span><button type="button" class="ghost-btn" data-nav-weight>History</button></div>
@@ -582,6 +681,8 @@
 
         root.querySelectorAll('[data-open]').forEach(b => b.addEventListener('click', () => openMealSheet(date, b.dataset.open)));
         root.querySelectorAll('[data-eaten]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); markEatenAsPlanned(date, b.dataset.eaten); }));
+        root.querySelectorAll('[data-skip-meal]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); skipMeal(date, b.dataset.skipMeal); }));
+        bindFoodChips(root, date);
         root.querySelector('[data-toggle-bf]')?.addEventListener('click', () => { if (typeof toggleBreakfastVisibility === 'function') toggleBreakfastVisibility(); });
         root.querySelector('[data-add-meal]')?.addEventListener('click', addMeal);
         root.querySelector('[data-nav-weight]')?.addEventListener('click', () => { if (typeof navigateToSub === 'function') navigateToSub('diet_weight'); });
@@ -731,18 +832,22 @@
         const tot = dayTotals(date);
         const nowMin = (() => { const n = getNow(); return n.getHours() * 60 + n.getMinutes(); })();
         // The meal to deal with now: the latest one not logged whose time has come, otherwise the next one
-        const open = blocks.filter(b => !b.status);
+        const open = blocks.filter(b => !b.status || b.status === 'partial');
         const due = (date === todayStr ? [...open].reverse().find(b => b.start <= nowMin + 30) : null) || open[0] || null;
+        const dueLog = due ? logFor(date, due.id) : null;
         return `
             <div class="today-section-head"><span>MEALS</span><span class="dim">${num(tot.eaten.kcal)} / ${num(tot.planned.kcal)} kcal</span></div>
             <div class="today-meals">
                 ${due ? `
                 <div class="today-meal-next">
-                    <button type="button" class="today-meal-main" data-meal-open="${esc(due.id)}">
-                        <span class="today-meal-when">${date !== todayStr ? 'First' : due.end + 60 < nowMin ? 'Not logged' : due.start <= nowMin ? 'Now' : 'Next'} · ${fmt(due.start)} ${esc(due.title)}</span>
-                        <span class="today-meal-what">${esc(due.summary)}</span>
-                    </button>
-                    <button type="button" class="btn btn-sm" data-meal-eaten="${esc(due.id)}">✓ Eaten</button>
+                    <div class="today-meal-main">
+                        <button type="button" class="today-meal-when" data-meal-open="${esc(due.id)}">${date !== todayStr ? 'First' : due.end + 60 < nowMin ? 'Not logged' : due.start <= nowMin ? 'Now' : 'Next'} · ${fmt(due.start)} ${esc(due.title)}</button>
+                        <span class="meal-foods">${foodChipsHtml(due.id, date, due.foods || [], dueLog)}</span>
+                    </div>
+                    <div class="today-meal-actions">
+                        <button type="button" class="btn btn-sm" data-meal-eaten="${esc(due.id)}">✓ ${dueLog ? 'Rest' : 'Eaten'}</button>
+                        ${dueLog ? '' : `<button type="button" class="ghost-btn" data-meal-skip="${esc(due.id)}" title="Not eaten">✗</button>`}
+                    </div>
                 </div>` : '<div class="dim today-meal-done">All meals logged ✓</div>'}
                 <div class="today-meal-dots">${blocks.map(b => `<button type="button" class="today-meal-dot ${b.status ? 'is-' + b.status : ''}" data-meal-open="${esc(b.id)}" title="${esc(fmt(b.start))} ${esc(b.title)}">${esc(fmt(b.start))}</button>`).join('')}</div>
             </div>`;
@@ -750,6 +855,8 @@
     function bindTodayCard(root, date) {
         root.querySelectorAll('[data-meal-open]').forEach(b => b.addEventListener('click', () => openMealSheet(date, b.dataset.mealOpen)));
         root.querySelectorAll('[data-meal-eaten]').forEach(b => b.addEventListener('click', () => markEatenAsPlanned(date, b.dataset.mealEaten)));
+        root.querySelectorAll('[data-meal-skip]').forEach(b => b.addEventListener('click', () => skipMeal(date, b.dataset.mealSkip)));
+        bindFoodChips(root, date);
     }
 
     // ------------------------------------------------------------------
@@ -769,7 +876,7 @@
     ensureMealMeta();
 
     window.CortexMeals = {
-        getMealBlocks, decorateDayCanvas, openMealSheet, markEatenAsPlanned, dayTotals,
+        getMealBlocks, decorateDayCanvas, openMealSheet, markEatenAsPlanned, skipMeal, toggleFood, dayTotals,
         renderToday, renderFoods, renderWeight, renderTodayCard, bindTodayCard,
         weightCardHtml, bindWeight, logWeight, parseItems, macrosOfItems
     };

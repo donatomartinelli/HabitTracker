@@ -693,15 +693,24 @@ function initModalsHtml() {
     <!-- 16. Ghost Layer Modal -->
     <div id="referenceModal" class="modal-overlay" onclick="if(event.target === this) closeModals()">
         <div class="modal-content" style="width:450px;">
-            <h2>Add Ghost Layer</h2>
-            <form id="referenceForm">
+            <h2>Place or timetable</h2>
+            <form id="referenceForm" data-kind="study">
                 <input type="hidden" id="ref-id">
                 <div class="form-group">
-                    <label>Layer Name</label>
-                    <input type="text" id="ref-title" class="form-control" required>
+                    <label>Name</label>
+                    <input type="text" id="ref-title" class="form-control" required placeholder="Biblioteca Potenza · Treno Avigliano → Potenza">
                 </div>
                 <div class="form-group">
-                    <label>Time Windows &amp; Days</label>
+                    <label>Kind</label>
+                    <div class="ref-kinds" role="radiogroup" aria-label="Kind">
+                        <button type="button" class="ref-kind" data-ref-kind="study" onclick="setRefFormKind('study')">Study place</button>
+                        <button type="button" class="ref-kind" data-ref-kind="transport" onclick="setRefFormKind('transport')">Transport → ←</button>
+                        <button type="button" class="ref-kind" data-ref-kind="other" onclick="setRefFormKind('other')">Other</button>
+                    </div>
+                    <div class="ref-kind-hint" id="ref-kind-hint"></div>
+                </div>
+                <div class="form-group">
+                    <label>Opening hours / runs, and days</label>
                     <div id="ref-time-windows-container"></div>
                     <button type="button" class="btn u-w-full u-mb-3" style="border-style:dashed;" onclick="addRefTimeWindow()">+ Add Time Window</button>
                 </div>

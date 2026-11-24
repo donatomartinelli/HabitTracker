@@ -59,11 +59,22 @@
         );
         if (!active.length) return '';
         const blocks = active.map(r => {
-            const items = (r.sections || []).flatMap(sec => (sec.items || []).map(it => ({ sec: sec.title, title: it.title })));
-            const list = items.map(it => `<li><span class="dim">${esc(it.sec)}</span> ${esc(it.title)}</li>`).join('');
+            const logKey = typeof getRoutineLogStorageKey === 'function' ? getRoutineLogStorageKey(r, todayStr) : todayStr;
+            const rLog = (typeof routineLogs !== 'undefined' && routineLogs[logKey]) || {};
+            const secs = (r.sections || []).filter(sec => sec && Array.isArray(sec.items) && sec.items.length);
+            const total = secs.reduce((a, sec) => a + sec.items.length, 0);
+            const done = secs.reduce((a, sec) => a + sec.items.filter(it => rLog[it.id]).length, 0);
+            // The section name appears once, above its steps (not repeated on every line)
+            const sameAsTitle = secs.length === 1 && String(secs[0].title || '').trim().toLowerCase() === String(r.title || '').trim().toLowerCase();
+            const list = secs.map(sec => `
+                ${sameAsTitle || !sec.title ? '' : `<li class="today-routine-sec">${esc(sec.title)}</li>`}
+                ${sec.items.map(it => `
+                    <li><button type="button" class="today-routine-step ${rLog[it.id] ? 'is-done' : ''}" data-rt="${esc(r.id)}" data-rt-step="${esc(it.id)}" aria-pressed="${Boolean(rLog[it.id])}">
+                        <span class="check-box ${rLog[it.id] ? 'checked' : ''}" aria-hidden="true"></span><span>${esc(it.title)}</span>
+                    </button></li>`).join('')}`).join('');
             return `
-                <details class="today-routine" style="--task-color:${esc(r.color || '#ffffff')}">
-                    <summary><span>${esc(r.title)}</span><span class="dim">${items.length} steps</span></summary>
+                <details class="today-routine ${total && done === total ? 'is-complete' : ''}" style="--task-color:${esc(r.color || '#ffffff')}">
+                    <summary><span>${esc(r.title)}</span><span class="dim">${done}/${total}</span></summary>
                     <ul>${list || '<li class="dim">No steps</li>'}</ul>
                 </details>`;
         }).join('');
@@ -295,7 +306,7 @@
                         <div class="today-tl-row is-meal ${stateOf(b.start, b.end)} ${b.status ? 'is-' + b.status : ''}">
                             <span class="today-tl-time">${fmtMins(b.start)}</span>
                             <button type="button" class="today-tl-block" data-meal-open="${esc(b.mealId)}" style="--block-color:#8a8a8a">
-                                <span class="today-tl-title">${b.status === 'eaten' ? '✓ ' : ''}${esc(b.title)} <span class="dim">${esc(b.sub || '')}</span></span>
+                                <span class="today-tl-title">${b.status === 'eaten' ? '✓ ' : b.status === 'partial' ? '◐ ' : b.status === 'skipped' ? '✗ ' : ''}${esc(b.title)} <span class="dim">${esc(b.sub || '')}</span></span>
                                 <span class="today-tl-end">${fmtMins(b.end)}</span>
                             </button>
                         </div>`);
@@ -433,6 +444,10 @@
         root.querySelectorAll('.today-routine').forEach(d => {
             if (openRoutines.has(d.querySelector('summary span')?.textContent)) d.open = true;
         });
+        root.querySelectorAll('[data-rt-step]').forEach(b => b.addEventListener('click', () => {
+            if (typeof toggleRoutineStepCheckbox === 'function') toggleRoutineStepCheckbox(b.dataset.rt, b.dataset.rtStep, todayStr);
+            renderTodayModule();
+        }));
 
         const input = root.querySelector('#today-add-input');
         if (input) {

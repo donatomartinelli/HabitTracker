@@ -5,6 +5,31 @@
 let plannerZoom = 42;
 window.shouldScrollPlanner = true;
 
+// ----------------------------------------------------------------------------
+// PLACES AND TIMETABLES (ghost layers) come in three kinds:
+//   study     → libraries, study rooms: offered in "Where and when do you study"
+//   transport → trains, buses: every run is → outbound or ← return
+//   other     → any timetable you only want to see (gym, office hours...)
+// Layers saved before kinds existed are guessed from their name until you pick one.
+// ----------------------------------------------------------------------------
+const GHOST_KINDS = {
+    study: { label: 'Study place', hint: 'Libraries and study rooms. They are offered when you plan where to study.' },
+    transport: { label: 'Transport', hint: 'Trains and buses. Mark each run as → outbound or ← return.' },
+    other: { label: 'Other', hint: 'Any timetable you just want to see, like the gym or office hours.' }
+};
+function ghostKindOf(ref) {
+    if (ref && GHOST_KINDS[ref.kind]) return ref.kind;
+    const t = String((ref && ref.title) || '').toLowerCase();
+    if (/tren|train|\bbus|metro|tram|transport|volo|flight|navetta|corriera|autobus|ferrov|stazion|→|->|andata|ritorno/.test(t)) return 'transport';
+    if (/bibliotec|library|aula|stud|sala lettura|campus|universit/.test(t)) return 'study';
+    return 'other';
+}
+function ghostDirArrow(tw) {
+    return tw && tw.dir === 'out' ? '→' : tw && tw.dir === 'back' ? '←' : '';
+}
+window.ghostKindOf = ghostKindOf;
+window.ghostDirArrow = ghostDirArrow;
+
 function hexToRgba(hex, alpha) {
     if (!hex || typeof hex !== 'string' || hex.length < 7) return `rgba(255, 255, 255, ${alpha})`;
     let r = parseInt(hex.slice(1, 3), 16),
@@ -358,8 +383,10 @@ function renderWeeklyPlanner() {
                                 block.className = `block-absolute block-ref ${refIdx % 2 ? 'is-alt' : ''}`;
                                 // Places and timetables are context, not plans: a light hatch with the name, never a solid wall
                                 block.style.cssText = `top:${top}px; height:${height}px; --ref-color:${ref.color || '#777777'};`;
-                                if (height >= 22) block.innerHTML = `<span class="ref-label">${escapeHtml(ref.title)}</span>`;
-                                block.onmouseenter = (ev) => showTooltip(ev, ref.title, `${tw.start} - ${tw.end}`, 'Ghost Layer');
+                                const arrow = ghostKindOf(ref) === 'transport' ? ghostDirArrow(tw) : '';
+                                if (height >= 22) block.innerHTML = `<span class="ref-label">${arrow ? arrow + ' ' : ''}${escapeHtml(ref.title)}</span>`;
+                                block.classList.add('kind-' + ghostKindOf(ref));
+                                block.onmouseenter = (ev) => showTooltip(ev, `${arrow ? arrow + ' ' : ''}${ref.title}`, `${tw.start} - ${tw.end}`, GHOST_KINDS[ghostKindOf(ref)].label);
                                 block.onmousemove = moveTooltip;
                                 block.onmouseleave = hideTooltip;
                                 dayCol.appendChild(block);
@@ -662,7 +689,7 @@ function drawCurrentTimeLine() {
 
 setInterval(drawCurrentTimeLine, 60000);
 
-function addRefTimeWindow(start = '', end = '', days = []) {
+function addRefTimeWindow(start = '', end = '', days = [], dir = '') {
     const container = document.getElementById('ref-time-windows-container');
     if (!container) return;
     const div = document.createElement('div');
@@ -686,6 +713,14 @@ function addRefTimeWindow(start = '', end = '', days = []) {
                 <label>End</label>
                 <input type="time" class="form-control ref-end" required value="${end}">
             </div>
+            <div class="form-group u-mb-0 ref-dir-wrap">
+                <label>Direction</label>
+                <select class="form-control ref-dir">
+                    <option value="" ${!dir ? 'selected' : ''}>—</option>
+                    <option value="out" ${dir === 'out' ? 'selected' : ''}>→ Outbound</option>
+                    <option value="back" ${dir === 'back' ? 'selected' : ''}>← Return</option>
+                </select>
+            </div>
             <button type="button" class="icon-btn delete" onclick="this.parentElement.parentElement.remove()" style="margin-top:var(--space-5);">×</button>
         </div>
         <div class="days-checkboxes u-flex u-gap-3">${checksHtml}</div>
@@ -706,17 +741,20 @@ function openReferenceModal(refId = null) {
         if (!ref) return;
         document.getElementById('ref-id').value = ref.id;
         document.getElementById('ref-title').value = ref.title;
+        setRefFormKind(ghostKindOf(ref));
         const cInp = document.getElementById('r-color');
         cInp.value = ref.color || '#444444';
         updateCustomColor(cInp, 'r-color');
 
         if (Array.isArray(ref.timeWindows) && ref.timeWindows.length > 0) {
-            ref.timeWindows.forEach(tw => addRefTimeWindow(tw.start, tw.end, tw.days || []));
+            ref.timeWindows.forEach(tw => addRefTimeWindow(tw.start, tw.end, tw.days || [], tw.dir || ''));
         } else {
             addRefTimeWindow();
         }
     } else {
         document.getElementById('ref-id').value = "";
+        setRefFormKind(typeof window.__nextGhostKind === 'string' ? window.__nextGhostKind : 'study');
+        window.__nextGhostKind = null;
         addRefTimeWindow();
         const cInp = document.getElementById('r-color');
         cInp.value = '#444444';
@@ -727,9 +765,25 @@ function openReferenceModal(refId = null) {
     document.getElementById('referenceModal').style.display = 'flex';
 }
 
+// Kind picker in the ghost layer form
+function setRefFormKind(kind) {
+    const form = document.getElementById('referenceForm');
+    if (!form) return;
+    const k = GHOST_KINDS[kind] ? kind : 'study';
+    form.dataset.kind = k;
+    form.querySelectorAll('[data-ref-kind]').forEach(b => {
+        b.classList.toggle('active', b.dataset.refKind === k);
+        b.setAttribute('aria-checked', b.dataset.refKind === k ? 'true' : 'false');
+    });
+    const hint = document.getElementById('ref-kind-hint');
+    if (hint) hint.textContent = GHOST_KINDS[k].hint;
+}
+window.setRefFormKind = setRefFormKind;
+
 document.getElementById('referenceForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const existingId = document.getElementById('ref-id').value;
+    const kind = GHOST_KINDS[this.dataset.kind] ? this.dataset.kind : 'study';
     const title = document.getElementById('ref-title').value.trim();
     const color = document.getElementById('r-color').value || '#444444';
     let timeWindows = [];
@@ -739,7 +793,8 @@ document.getElementById('referenceForm')?.addEventListener('submit', function(e)
         const end = row.querySelector('.ref-end').value;
         let days = [];
         row.querySelectorAll('.tw-day-check:checked').forEach(cb => days.push(parseInt(cb.value, 10)));
-        if (start && end && days.length > 0) timeWindows.push({ start, end, days });
+        const dir = kind === 'transport' ? (row.querySelector('.ref-dir')?.value || '') : '';
+        if (start && end && days.length > 0) timeWindows.push(dir ? { start, end, days, dir } : { start, end, days });
     });
 
     if (timeWindows.length === 0) {
@@ -751,12 +806,13 @@ document.getElementById('referenceForm')?.addEventListener('submit', function(e)
         const ref = referenceLayers.find(x => x.id === existingId);
         if (ref) {
             ref.title = title;
+            ref.kind = kind;
             ref.timeWindows = timeWindows;
             ref.color = color;
         }
     } else {
         const newId = 'r_' + Date.now();
-        referenceLayers.push({ id: newId, title, timeWindows, color, opacity: '0.8' });
+        referenceLayers.push({ id: newId, title, timeWindows, color, kind });
         refToggles[newId] = true;
     }
 

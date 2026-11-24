@@ -283,6 +283,17 @@ function navigateToTiles() {
     };
 })();
 
+// Saving or deleting a view updates the list of views in the rail
+['saveCurrentWorkspacePreset', 'deleteWorkspacePreset'].forEach(fn => {
+    const orig = window[fn];
+    if (typeof orig !== 'function') return;
+    window[fn] = function (...args) {
+        const r = orig.apply(this, args);
+        try { renderNavChrome(); } catch (e) { /* rail not ready yet */ }
+        return r;
+    };
+});
+
 // Commands / old code that set a view directly (e.g. "show money") → keep the nav in sync
 (function hookSetModulesView() {
     if (typeof setModulesView !== 'function') return;
@@ -323,15 +334,25 @@ function renderRail() {
         const active = navState.mode === 'section' && navState.section === k;
         return `<button type="button" class="rail-item ${active ? 'active' : ''}" data-sec="${k}" ${active ? 'aria-current="page"' : ''}>${NAV_SECTIONS[k].label}</button>`;
     }).join('');
+    const presets = (typeof workspacePresets !== 'undefined' ? workspacePresets : []);
+    const viewsHtml = presets.length ? `
+        <div class="rail-group rail-views" aria-label="Saved views">
+            <div class="rail-label">Views</div>
+            ${presets.map(p => `<button type="button" class="rail-item rail-view ${navState.mode === 'tiles' && navState.preset === p.id ? 'active' : ''}" data-preset="${escapeHtml(String(p.id))}" title="${escapeHtml(p.name)}">${escapeHtml(p.name)}</button>`).join('')}
+        </div>` : '';
     rail.innerHTML = `
-        <div class="rail-group">${items}</div>
+        <div class="rail-top">
+            <div class="rail-group">${items}</div>
+            ${viewsHtml}
+        </div>
         <div class="rail-group rail-bottom">
             <button type="button" class="rail-item ${navState.mode === 'tiles' ? 'active' : ''}" data-tiles title="Free-form tiling dashboard">▦ Tiles</button>
             <button type="button" class="rail-item rail-quiet" data-modules title="Choose which modules you use">Modules</button>
             <button type="button" class="rail-item rail-quiet" data-account title="Sign in and sync your devices">Account</button>
         </div>`;
     rail.querySelectorAll('[data-sec]').forEach(b => b.addEventListener('click', () => navigateToSection(b.dataset.sec)));
-    rail.querySelector('[data-tiles]')?.addEventListener('click', navigateToTiles);
+    rail.querySelector('[data-tiles]')?.addEventListener('click', () => { navState.preset = null; navigateToTiles(); });
+    rail.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => openSavedView(b.dataset.preset)));
     rail.querySelector('[data-modules]')?.addEventListener('click', openModulesPanel);
     rail.querySelector('[data-account]')?.addEventListener('click', () => { if (typeof openAccountPanel === 'function') openAccountPanel(); });
 }
@@ -364,7 +385,8 @@ function renderSectionTabs() {
     const activeTab = sec && secTabs.length ? (navState.lastTab[navState.section] || secTabs[0].key) : null;
     // On a phone the module's own sub-tab strip already lists sub-modules
     const subs = (activeTab && !(typeof isMobileViewMode !== 'undefined' && isMobileViewMode)) ? getSubmodulesOf(activeTab) : [];
-    if (!sec || (secTabs.length < 2 && subs.length < 2)) {
+    const composable = activeTab && !(typeof isMobileViewMode !== 'undefined' && isMobileViewMode) && composeCandidates(navState.section, activeTab).length >= 2;
+    if (!sec || (secTabs.length < 2 && subs.length < 2 && !composable)) {
         bar.hidden = true;
         bar.innerHTML = '';
         return;
@@ -383,13 +405,16 @@ function renderSectionTabs() {
                 return `<button type="button" class="section-subtab ${isActive ? 'active' : ''}" data-sub="${k}">${shortModuleName(k)}</button>`;
             }).join('')}
         </div>` : '';
+    const canCompose = !(typeof isMobileViewMode !== 'undefined' && isMobileViewMode) && composeCandidates(navState.section, activeTab).length >= 2;
     bar.hidden = false;
     bar.innerHTML = `
         <span class="section-tabs-title">${sec.label}</span>
         <div class="section-tabs-list" role="tablist">
             ${secTabs.length > 1 ? secTabs.map(t => `<button type="button" role="tab" class="section-tab ${t.key === activeTab ? 'active' : ''}" aria-selected="${t.key === activeTab}" data-tab="${t.key}">${t.label}</button>`).join('') : ''}
         </div>
-        ${subChips}`;
+        ${subChips}
+        ${canCompose ? '<button type="button" class="section-compose" data-compose title="Choose what this tab shows on a computer">Customize</button>' : ''}`;
+    bar.querySelector('[data-compose]')?.addEventListener('click', () => openComposePanel(navState.section, activeTab));
     bar.querySelectorAll('[data-tab]').forEach(b => b.addEventListener('click', () => navigateToSection(navState.section, b.dataset.tab)));
     bar.querySelectorAll('[data-sub]').forEach(b => b.addEventListener('click', () => navigateToSub(b.dataset.sub)));
 }
@@ -413,6 +438,167 @@ function renderBottomBar() {
     nav.querySelector('[data-cmd]')?.addEventListener('click', () => { if (typeof openTerminal === 'function') openTerminal(); });
     nav.querySelector('[data-more]')?.addEventListener('click', toggleMoreSheet);
 }
+
+// ------------------------------------------------------------------
+// Saved views in the rail
+// ------------------------------------------------------------------
+function openSavedView(presetId) {
+    rememberTilesLayout();
+    navState.mode = 'tiles';
+    navState.preset = presetId;
+    saveNavState();
+    document.body.classList.add('tiles-mode');
+    if (typeof applyWorkspacePreset === 'function') applyWorkspacePreset(presetId);
+    renderNavChrome();
+}
+
+// ------------------------------------------------------------------
+// Customize what a tab shows on a computer (stored in macroDefaultTrees, synced)
+// ------------------------------------------------------------------
+const COMPOSE_ARRANGEMENTS = {
+    row: { label: 'Side by side' },
+    col: { label: 'Stacked' },
+    main: { label: 'One big + side' },
+    grid: { label: 'Grid' }
+};
+
+// Modules you can put in a tab: its own views, then the other tabs of the same section
+function composeCandidates(secKey, tabKey) {
+    const sec = NAV_SECTIONS[secKey];
+    if (!sec || typeof dashboardModules === 'undefined') return [];
+    const out = [];
+    const add = (k) => { if (k && dashboardModules[k] && !out.includes(k)) out.push(k); };
+    const own = getSubmodulesOf(tabKey);
+    if (own.length) own.forEach(add); else add(tabKey);
+    visibleTabs(secKey).forEach(t => {
+        if (t.key === tabKey) return;
+        const subs = getSubmodulesOf(t.key);
+        if (subs.length) subs.forEach(add); else add(t.key);
+    });
+    return out;
+}
+
+function chainTree(dir, keys) {
+    if (keys.length === 1) return makePaneNode(keys[0]);
+    return makeSplitNode(dir, 1 / keys.length, makePaneNode(keys[0]), chainTree(dir, keys.slice(1)));
+}
+function buildComposeTree(keys, arrangement) {
+    if (!keys.length) return null;
+    if (keys.length === 1) return makePaneNode(keys[0]);
+    if (arrangement === 'col') return chainTree('col', keys);
+    if (arrangement === 'main') return makeSplitNode('row', 0.62, makePaneNode(keys[0]), chainTree('col', keys.slice(1)));
+    if (arrangement === 'grid') {
+        const left = keys.filter((_, i) => i % 2 === 0), right = keys.filter((_, i) => i % 2 === 1);
+        return makeSplitNode('row', 0.5, chainTree('col', left), chainTree('col', right));
+    }
+    return chainTree('row', keys);
+}
+// What the tab shows now, to pre-fill the panel
+function readComposition(tabKey) {
+    const tree = typeof getMacroDefaultSubtree === 'function' ? getMacroDefaultSubtree(tabKey) : null;
+    const keys = tree && typeof collectLeafPanes === 'function' ? collectLeafPanes(tree).map(n => n.module) : [tabKey];
+    let arrangement = 'row';
+    if (tree && tree.type === 'split') {
+        if (tree.dir === 'col') arrangement = 'col';
+        else if (tree.children && tree.children[1] && tree.children[1].type === 'split' && tree.children[1].dir === 'col') arrangement = tree.ratio > 0.55 ? 'main' : 'grid';
+    }
+    return { keys, arrangement };
+}
+
+function openComposePanel(secKey, tabKey) {
+    document.getElementById('compose-panel')?.remove();
+    const root = document.getElementById('modals-root');
+    if (!root) return;
+    const cands = composeCandidates(secKey, tabKey);
+    const cur = readComposition(tabKey);
+    const st = {
+        order: [...cur.keys.filter(k => cands.includes(k)), ...cands.filter(k => !cur.keys.includes(k))],
+        on: new Set(cur.keys.filter(k => cands.includes(k))),
+        arrangement: cur.arrangement
+    };
+    if (!st.on.size) st.on.add(cands[0]);
+    const tabLabel = (NAV_SECTIONS[secKey].tabs.find(t => t.key === tabKey) || {}).label || tabKey;
+    const wrap = document.createElement('div');
+    wrap.id = 'compose-panel';
+    wrap.className = 'modules-overlay compose-overlay';
+    const render = () => {
+        wrap.innerHTML = `
+            <div class="modules-panel compose-panel" role="dialog" aria-modal="true" aria-labelledby="compose-title">
+                <div class="modules-head">
+                    <span id="compose-title" class="section-label">Customize ${escapeHtml(NAV_SECTIONS[secKey].label)} › ${escapeHtml(tabLabel)}</span>
+                    <button type="button" class="hdr-icon" data-close aria-label="Close">×</button>
+                </div>
+                <p class="modules-intro">Pick what opens on a computer and how it is arranged. On the phone you still see one view at a time.</p>
+                <div class="compose-list">
+                    ${st.order.map((k, i) => `
+                        <div class="compose-row ${st.on.has(k) ? '' : 'is-off'}" data-key="${k}">
+                            <label class="compose-on"><input type="checkbox" ${st.on.has(k) ? 'checked' : ''} data-on> <span>${escapeHtml(shortModuleName(k))}</span></label>
+                            <span class="compose-move">
+                                <button type="button" data-move="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move up">↑</button>
+                                <button type="button" data-move="1" ${i === st.order.length - 1 ? 'disabled' : ''} aria-label="Move down">↓</button>
+                            </span>
+                        </div>`).join('')}
+                </div>
+                <div class="compose-arr" role="radiogroup" aria-label="Arrangement">
+                    ${Object.entries(COMPOSE_ARRANGEMENTS).map(([k, a]) => `
+                        <button type="button" class="compose-arr-btn ${st.arrangement === k ? 'active' : ''}" data-arr="${k}" aria-pressed="${st.arrangement === k}">
+                            <span class="compose-ico compose-ico-${k}" aria-hidden="true"><i></i><i></i><i></i></span>${a.label}
+                        </button>`).join('')}
+                </div>
+                <div class="modules-foot compose-foot">
+                    <button type="button" class="ghost-btn" data-reset>Reset to default</button>
+                    <span class="u-grow"></span>
+                    <button type="button" class="btn btn-sm" data-close>Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-save>Save</button>
+                </div>
+            </div>`;
+    };
+    wrap.addEventListener('click', (e) => {
+        if (e.target === wrap || e.target.closest('[data-close]')) { wrap.remove(); return; }
+        const mv = e.target.closest('[data-move]');
+        if (mv) {
+            const k = mv.closest('[data-key]').dataset.key;
+            const i = st.order.indexOf(k), j = i + parseInt(mv.dataset.move, 10);
+            if (j >= 0 && j < st.order.length) { [st.order[i], st.order[j]] = [st.order[j], st.order[i]]; render(); }
+            return;
+        }
+        const arr = e.target.closest('[data-arr]');
+        if (arr) { st.arrangement = arr.dataset.arr; render(); return; }
+        if (e.target.closest('[data-reset]')) {
+            if (typeof macroDefaultTrees !== 'undefined') { delete macroDefaultTrees[tabKey]; saveMacroDefaultTrees(); }
+            navState.lastSub[tabKey] = 'all';
+            saveNavState();
+            wrap.remove();
+            mountModuleForNav(tabKey);
+            renderNavChrome();
+            return;
+        }
+        if (e.target.closest('[data-save]')) {
+            const keys = st.order.filter(k => st.on.has(k));
+            if (!keys.length) return;
+            macroDefaultTrees[tabKey] = buildComposeTree(keys, st.arrangement);
+            saveMacroDefaultTrees();
+            if (typeof markLocalChangeForCloud === 'function') markLocalChangeForCloud();
+            navState.lastSub[tabKey] = 'all';
+            saveNavState();
+            wrap.remove();
+            mountModuleForNav(tabKey);
+            renderNavChrome();
+        }
+    });
+    wrap.addEventListener('change', (e) => {
+        const cb = e.target.closest('[data-on]');
+        if (!cb) return;
+        const k = cb.closest('[data-key]').dataset.key;
+        if (cb.checked) st.on.add(k); else if (st.on.size > 1) st.on.delete(k); else cb.checked = true;
+        render();
+    });
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') wrap.remove(); });
+    render();
+    root.appendChild(wrap);
+    wrap.querySelector('[data-save]')?.focus();
+}
+window.openComposePanel = openComposePanel;
 
 function toggleMoreSheet() {
     const sheet = document.getElementById('more-sheet');

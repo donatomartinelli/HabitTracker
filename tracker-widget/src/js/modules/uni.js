@@ -373,7 +373,7 @@ function addUniAppeal(examName, dateStr, timeStr = '09:00', sessionName = '') {
 function deleteUniAppeal(appealId) {
     const app = (uniData.appeals || []).find(a => a.id === appealId);
     if (app) {
-        specificEvents = specificEvents.filter(e => e.id !== a.eventId);
+        specificEvents = specificEvents.filter(e => e.id !== app.eventId);
     }
     uniData.appeals = (uniData.appeals || []).filter(a => a.id !== appealId);
     saveData();
@@ -547,7 +547,7 @@ function renderUniAtomRoadmap(customContainer = null) {
 
             const yearGrid = document.createElement('div');
             yearGrid.style.cssText = roadmapViewMode === 'grid' 
-                ? 'display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px;' 
+                ? 'display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px;' 
                 : 'display: flex; flex-direction: column; gap: 8px;';
 
             groupedByYear[year].forEach(course => {
@@ -555,61 +555,44 @@ function renderUniAtomRoadmap(customContainer = null) {
                 const phase = course.prepPhase || 'none';
 
                 const card = document.createElement('div');
-                card.style.cssText = `border:1px solid ${phase !== 'none' ? 'var(--border-bright)' : 'var(--border-color)'}; border-left:3px solid ${course.color || '#ffffff'}; padding:10px 12px; background:rgba(255,255,255,0.02); display:flex; flex-direction:column; justify-content:space-between; gap:8px; position:relative; min-height:115px;`;
-
-                let phaseBadge = '<span class="u-dim">[IDLE]</span>';
-                if (phase === 'study') phaseBadge = '<span class="u-green u-bold">[1: STUDIO + ANKI]</span>';
-                else if (phase === 'proofs') phaseBadge = '<span class="u-gold u-bold">[2: DIMOSTR. + ANKI]</span>';
+                card.className = 'uni-card';
+                card.style.setProperty('--course-color', course.color || '#ffffff');
 
                 const renderNormalMode = () => {
+                    const next = nextCourseTest(course);
+                    const daysTo = next ? Math.round((parseLocalDate(next.date) - parseLocalDate(todayStr)) / 86400000) : null;
+                    const preparing = Boolean(course.preparing) || phase === 'study' || phase === 'proofs';
+                    const plan = course.plan && Array.isArray(course.plan.blocks) && course.plan.blocks.length ? course.plan : null;
+                    const planLine = plan ? `${plan.blocks.map(x => `${x.label} ${fmtPrepDur(x.minutes)}`).join(' · ')} · ${prepDaysLabel(plan.days)}` : 'old plan: open it to set blocks and days';
+                    const nextLine = next
+                        ? `${EXAM_TEST_KINDS[next.kind] || 'Exam'} ${daysTo === 0 ? 'today' : daysTo === 1 ? 'tomorrow' : `in ${daysTo} days`} · ${next.date}`
+                        : 'No exam date yet';
+                    card.classList.toggle('is-preparing', preparing);
                     card.innerHTML = `
-                        <div class="u-flex u-jc-between u-ai-start u-gap-3">
+                        <div class="uni-card-top">
                             <div class="u-grow u-minw0">
-                                <div class="u-fs-md u-main u-bold u-upper u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(course.name)}</div>
-                                <div class="u-fs-xs u-dim" style="margin-top:2px;">${course.cfu} CFU · YEAR ${course.year || 1}</div>
+                                <div class="uni-card-name">${escapeHtml(course.name)}</div>
+                                <div class="uni-card-sub">${course.cfu} CFU · year ${course.year || 1}${course.examFormat && EXAM_FORMATS[course.examFormat] ? ' · ' + EXAM_FORMATS[course.examFormat].label.toLowerCase() : ''}</div>
                             </div>
-                            <span class="u-fs-xs u-tnum u-noshrink" style="padding:2px var(--space-2); border:1px solid var(--border-color); background:var(--bg-sec);">
-                                <strong class="u-main">${hoursStudied.toFixed(1)}H</strong>
-                            </span>
+                            <span class="uni-card-hours" title="Hours studied">${hoursStudied.toFixed(1)}h</span>
                         </div>
-                        <div class="u-fs-xs u-flex u-jc-between u-wrap u-gap-2" style="align-items:flex-end; margin-top:auto;">
-                            <div>${phaseBadge}</div>
-                            <div class="uni-course-actions u-flex u-gap-1 u-wrap"></div>
-                        </div>
-                    `;
-
-                    const actBox = card.querySelector('.uni-course-actions');
-
-                    const btnPhase1 = document.createElement('button');
-                    btnPhase1.className = `btn btn-sm ${phase === 'study' ? 'btn-primary' : ''}`;
-                    btnPhase1.textContent = '[1]';
-                    btnPhase1.title = 'Fase 1: Studio e Anki';
-                    btnPhase1.onclick = () => setExamPrepPhase(course.id, phase === 'study' ? 'none' : 'study');
-
-                    const btnPhase2 = document.createElement('button');
-                    btnPhase2.className = `btn btn-sm ${phase === 'proofs' ? 'btn-primary' : ''}`;
-                    btnPhase2.textContent = '[2]';
-                    btnPhase2.title = 'Fase 2: Dimostrazioni e Anki';
-                    btnPhase2.onclick = () => setExamPrepPhase(course.id, phase === 'proofs' ? 'none' : 'proofs');
-
-                    const btnPass = document.createElement('button');
-                    btnPass.className = 'icon-btn';
-                    btnPass.style.cssText = 'color:var(--accent-green); border:1px solid var(--accent-green); margin-left:var(--space-1);';
-                    btnPass.textContent = '✓';
-                    btnPass.onclick = () => {
+                        <div class="uni-card-next ${next && daysTo <= 7 ? 'is-close' : ''}">${escapeHtml(nextLine)}</div>
+                        ${preparing ? `<div class="uni-card-plan"><span class="uni-prep-badge">Preparing</span> ${escapeHtml(planLine)}</div>` : ''}
+                        <div class="uni-card-actions">
+                            <button type="button" class="btn btn-sm ${preparing ? '' : 'btn-primary'}" data-prep>${preparing ? 'Plan' : 'Prepare'}</button>
+                            <span class="u-grow"></span>
+                            <button type="button" class="ghost-btn" data-pass title="Record the grade">Passed ✓</button>
+                            <button type="button" class="icon-btn" data-edit aria-label="Edit ${escapeHtml(course.name)}">✎</button>
+                            <button type="button" class="icon-btn delete" data-del aria-label="Delete ${escapeHtml(course.name)}">×</button>
+                        </div>`;
+                    card.querySelector('[data-prep]').onclick = () => openExamPrepSheet(course.id);
+                    card.querySelector('[data-pass]').onclick = () => {
                         const g = prompt(`Grade (18-30 or 30L) for "${course.name}" (${course.cfu} CFU):`, '30');
                         if (g !== null && g.trim() !== '') recordPassedExam(course.id, g.trim(), course.cfu, todayStr);
                     };
-
-                    const btnEdit = document.createElement('button');
-                    btnEdit.className = 'icon-btn';
-                    btnEdit.textContent = '✎';
-                    btnEdit.onclick = renderEditMode;
-
-                    const btnDel = document.createElement('button');
-                    btnDel.className = 'icon-btn delete';
-                    btnDel.textContent = '×';
-                    btnDel.onclick = () => {
+                    card.querySelector('[data-edit]').onclick = renderEditMode;
+                    card.querySelector('[data-del]').onclick = () => {
+                        if (!confirm(`Remove "${course.name}" from your courses? Its study tasks end today.`)) return;
                         templates.filter(t => t.uniExamId === course.id).forEach(t => archiveTemplateSafely(t));
                         uniData.remainingExams = uniData.remainingExams.filter(x => x.id !== course.id);
                         syncCategoryOrder();
@@ -617,8 +600,6 @@ function renderUniAtomRoadmap(customContainer = null) {
                         saveUniData();
                         refreshAllConnectedViews();
                     };
-
-                    actBox.append(btnPhase1, btnPhase2, btnPass, btnEdit, btnDel);
                 };
 
                 const renderEditMode = () => {
@@ -797,7 +778,9 @@ function renderUniAtomAppeals() {
                 <div class="u-grow u-minw0 u-flex u-col u-gap-2">
                     <div class="sub-column-header">Exam Appeals</div>
                     <div class="u-flex u-gap-2 u-wrap">
-                        <input type="text" id="uni-app-name" class="form-control form-control-sm u-grow" style="min-width:100px;" placeholder="Exam...">
+                        <input type="text" id="uni-app-name" class="form-control form-control-sm u-grow" style="min-width:100px;" placeholder="Exam..." list="uni-course-names">
+                        <datalist id="uni-course-names">${(uniData.remainingExams || []).map(c => `<option value="${escapeHtml(c.name)}">`).join('')}</datalist>
+                        <select id="uni-app-kind" class="form-control form-control-sm" style="width:auto;">${Object.entries(EXAM_TEST_KINDS).map(([k, l]) => `<option value="${k}" ${k === 'written' ? 'selected' : ''}>${l}</option>`).join('')}</select>
                         <input type="date" id="uni-app-date" class="form-control form-control-sm" style="width:118px;" value="${todayStr}">
                         <input type="time" id="uni-app-time" class="form-control form-control-sm" style="width:80px;" value="09:00">
                         <button type="button" id="btn-add-uni-appeal" class="btn btn-primary btn-sm">+</button>
@@ -824,7 +807,17 @@ function renderUniAtomAppeals() {
         const name = root.querySelector('#uni-app-name').value;
         const date = root.querySelector('#uni-app-date').value;
         const time = root.querySelector('#uni-app-time').value;
-        addUniAppeal(name, date, time);
+        const kind = root.querySelector('#uni-app-kind').value;
+        const course = (uniData.remainingExams || []).find(c => c.name.toLowerCase() === String(name || '').trim().toLowerCase());
+        if (course) {
+            // A date of a course you have: same path as the Prepare sheet
+            const tests = courseTests(course).map(a => ({ id: a.id, kind: a.kind || 'exam', date: a.date, time: a.time }));
+            tests.push({ id: null, kind, date, time });
+            saveCourseTests(course, tests);
+            saveData(); saveUniData(); refreshAllConnectedViews();
+        } else {
+            addUniAppeal(name, date, time, EXAM_TEST_KINDS[kind] || '');
+        }
     };
 
     root.querySelector('#btn-add-uni-tax').onclick = () => {
@@ -853,7 +846,7 @@ function renderUniAtomAppeals() {
             row.innerHTML = `
                 <div>
                     <div class="m-title">${escapeHtml(app.examName)}</div>
-                    <div class="m-sub">${escapeHtml(app.date)} // ${escapeHtml(app.time || '09:00')}</div>
+                    <div class="m-sub">${escapeHtml(EXAM_TEST_KINDS[app.kind] || app.session || 'Exam')} · ${escapeHtml(app.date)} · ${escapeHtml(app.time || '09:00')}</div>
                 </div>
                 <div class="u-flex u-ai-center u-gap-2">
                     <span style="font-size:var(--font-xs); font-weight:bold; color:${diffDays <= 7 && diffDays >= 0 ? 'var(--accent-red)' : 'var(--accent-gold)'};">[${cdLabel}]</span>
@@ -1024,3 +1017,355 @@ window.addEventListener('DOMContentLoaded', () => {
     if (typeof CORTEX_STARTER_USER === 'undefined' || !CORTEX_STARTER_USER) ensureTasseUniCategory();
     renderUniDashboard();
 });
+// ============================================================================
+// 5. PREPARING AN EXAM
+// ----------------------------------------------------------------------------
+// "Prepare" on a course opens one sheet:
+//   - exam format (written + oral, written only, oral only, midterms, project + oral)
+//   - the dates of each test (they become appeals + calendar events)
+//   - the daily study plan: on which days, which blocks (Theory 2h High, Exercises 2h Medium,
+//     Anki 1h Light...), from when until when (default: the day before the first test)
+// Saving creates one daily task per block (category = the course), with its mental load,
+// so it shows in Today, in study windows and in the focus playlist.
+// ============================================================================
+
+const EXAM_FORMATS = {
+    written_oral: { label: 'Written + oral', tests: ['written', 'oral'] },
+    written: { label: 'Written only', tests: ['written'] },
+    oral: { label: 'Oral only', tests: ['oral'] },
+    partials: { label: 'Midterms', tests: ['partial', 'partial'] },
+    project_oral: { label: 'Project + oral', tests: ['project', 'oral'] }
+};
+const EXAM_TEST_KINDS = { written: 'Written', oral: 'Oral', partial: 'Midterm', project: 'Project due', exam: 'Exam' };
+const PREP_DAY_SETS = {
+    all: { label: 'Every day', days: [0, 1, 2, 3, 4, 5, 6] },
+    monsat: { label: 'Mon–Sat', days: [1, 2, 3, 4, 5, 6] },
+    weekdays: { label: 'Mon–Fri', days: [1, 2, 3, 4, 5] }
+};
+const PREP_DEFAULT_BLOCKS = [
+    { label: 'Theory', minutes: 120, load: 'deep' },
+    { label: 'Exercises', minutes: 120, load: 'practice' },
+    { label: 'Anki', minutes: 60, load: 'light' }
+];
+
+function courseTests(course) {
+    return (uniData.appeals || []).filter(a => a.examId === course.id || (!a.examId && String(a.examName || '').toLowerCase() === String(course.name || '').toLowerCase()))
+        .sort((a, b) => (a.date + (a.time || '')).localeCompare(b.date + (b.time || '')));
+}
+function nextCourseTest(course) {
+    return courseTests(course).find(a => a.date >= todayStr) || null;
+}
+function prepDaysLabel(days) {
+    const hit = Object.values(PREP_DAY_SETS).find(s => s.days.length === days.length && s.days.every(d => days.includes(d)));
+    if (hit) return hit.label;
+    const names = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    return [1, 2, 3, 4, 5, 6, 0].filter(d => days.includes(d)).map(d => names[d]).join(' ');
+}
+function fmtPrepDur(m) {
+    const h = Math.floor(m / 60), r = m % 60;
+    return h ? (r ? `${h}h${String(r).padStart(2, '0')}` : `${h}h`) : `${r}m`;
+}
+function splitPrepMinutes(m) {
+    for (const u of [30, 25, 20, 15]) if (m >= u && m % u === 0) return { instances: m / u, timer: u };
+    return { instances: 1, timer: Math.max(5, m) };
+}
+function prepPlanTemplates(course) {
+    return templates.filter(t => t.uniExamId === course.id && (String(t.uniRole || '').startsWith('plan_') || ['studio', 'anki', 'dimostrazioni'].includes(t.uniRole)) && (!t.endDate || t.endDate >= todayStr));
+}
+
+// The plan shown when the sheet opens: saved plan, or the old [1]/[2] tasks, or the defaults
+function currentPrepPlan(course) {
+    if (course.plan && Array.isArray(course.plan.blocks) && course.plan.blocks.length) return JSON.parse(JSON.stringify(course.plan));
+    const legacy = prepPlanTemplates(course);
+    const roleInfo = { studio: ['Theory', 'deep'], dimostrazioni: ['Proofs', 'practice'], anki: ['Anki', 'light'] };
+    const blocks = legacy.length
+        ? legacy.map(t => ({ id: 'b' + Math.random().toString(36).slice(2, 7), label: (roleInfo[t.uniRole] || [t.title])[0], minutes: (t.instances || 1) * (parseInt(t.timerMinutes, 10) || 30), load: t.load || (roleInfo[t.uniRole] || [null, 'deep'])[1] }))
+        : PREP_DEFAULT_BLOCKS.map(b => Object.assign({ id: 'b' + Math.random().toString(36).slice(2, 7) }, b));
+    const first = nextCourseTest(course);
+    const until = first ? (() => { const d = parseLocalDate(first.date); d.setDate(d.getDate() - 1); return formatDate(d); })() : '';
+    return { days: [1, 2, 3, 4, 5, 6], blocks, from: todayStr, until };
+}
+
+function saveCourseTests(course, tests) {
+    const keep = new Set();
+    tests.filter(x => x.date).forEach(x => {
+        const label = EXAM_TEST_KINDS[x.kind] || 'Exam';
+        let app = x.id ? (uniData.appeals || []).find(a => a.id === x.id) : null;
+        if (!app) {
+            const id = 'uapp_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+            app = { id, eventId: 'e_uapp_' + id };
+            uniData.appeals.push(app);
+        }
+        Object.assign(app, { examId: course.id, examName: course.name, kind: x.kind, date: x.date, time: x.time || '09:00', session: label });
+        keep.add(app.id);
+        specificEvents = specificEvents.filter(e => e.id !== app.eventId);
+        const [h, m] = (app.time || '09:00').split(':').map(Number);
+        specificEvents.push({
+            id: app.eventId, uniAppealId: app.id, title: `${label} · ${course.name}`,
+            date: app.date, start: app.time, end: `${String(Math.min(23, (h || 9) + 2)).padStart(2, '0')}:${String(m || 0).padStart(2, '0')}`,
+            color: course.color && course.color !== '#ffffff' ? course.color : '#b08d43'
+        });
+    });
+    // Dates removed in the sheet
+    courseTests(course).filter(a => !keep.has(a.id)).forEach(a => {
+        specificEvents = specificEvents.filter(e => e.id !== a.eventId);
+        uniData.appeals = uniData.appeals.filter(x => x.id !== a.id);
+    });
+}
+
+function applyPrepPlan(course, plan) {
+    const days = Array.isArray(plan.days) && plan.days.length ? plan.days : [0, 1, 2, 3, 4, 5, 6];
+    const blocks = plan.blocks.filter(b => b.label && b.minutes > 0);
+    const catName = course.name.trim();
+    if (!categoryOrder.includes(catName)) categoryOrder.push(catName);
+    // Old [1]/[2] tasks and blocks no longer in the plan
+    prepPlanTemplates(course).forEach(t => {
+        if (!blocks.some(b => t.uniRole === 'plan_' + b.id)) archiveTemplateSafely(t);
+    });
+    blocks.forEach(b => {
+        const { instances, timer } = splitPrepMinutes(b.minutes);
+        let t = templates.find(x => x.uniExamId === course.id && x.uniRole === 'plan_' + b.id);
+        if (!t) {
+            t = { id: `t_uni_${course.id}_${b.id}_${Date.now()}`, uniExamId: course.id, uniRole: 'plan_' + b.id, exceptions: [], type: 'untimed', timeWindows: [], noTimer: false };
+            templates.push(t);
+        }
+        Object.assign(t, {
+            category: catName, title: b.label, instances, timerMinutes: timer, load: b.load,
+            frequency: days.length === 7 ? 'all' : 'specific', daysOfWeek: days.length === 7 ? [] : [...days],
+            startDate: plan.from || todayStr, endDate: plan.until || null,
+            color: course.color || '#ffffff', priority: b.load === 'light' ? 'low' : 'high'
+        });
+    });
+    course.plan = { days, blocks, from: plan.from || todayStr, until: plan.until || '' };
+    course.preparing = true;
+    course.prepPhase = 'plan';
+}
+
+function stopPreparing(course) {
+    prepPlanTemplates(course).forEach(t => archiveTemplateSafely(t));
+    course.preparing = false;
+    course.prepPhase = 'none';
+    syncCategoryOrder();
+    saveData();
+    saveUniData();
+    refreshAllConnectedViews();
+    if (typeof showToast === 'function') showToast(`Stopped preparing ${course.name}: its daily tasks end today`);
+}
+
+function openExamPrepSheet(courseId) {
+    document.getElementById('exam-prep')?.remove();
+    const course = (uniData.remainingExams || []).find(c => c.id === courseId);
+    if (!course) return;
+    const esc = (v) => escapeHtml(String(v ?? ''));
+    const st = {
+        format: course.examFormat || 'written_oral',
+        tests: courseTests(course).map(a => ({ id: a.id, kind: a.kind || 'exam', date: a.date, time: a.time || '09:00' })),
+        plan: currentPrepPlan(course)
+    };
+    if (!st.tests.length) st.tests = EXAM_FORMATS[st.format].tests.map(k => ({ id: null, kind: k, date: '', time: '09:00' }));
+    const loads = window.CortexStudy ? CortexStudy.LOADS : { deep: { short: 'High' }, practice: { short: 'Medium' }, light: { short: 'Light' } };
+
+    const wrap = document.createElement('div');
+    wrap.id = 'exam-prep';
+    wrap.className = 'study-overlay';
+    wrap.innerHTML = `
+        <div class="study-sheet" role="dialog" aria-modal="true" aria-labelledby="exam-prep-title">
+            <div class="study-sheet-head">
+                <div>
+                    <div id="exam-prep-title" class="study-sheet-title">Prepare ${esc(course.name)}</div>
+                    <div class="dim study-sheet-date">${esc(course.cfu)} CFU · year ${esc(course.year || 1)}</div>
+                </div>
+                <button type="button" class="hdr-icon" data-close aria-label="Close">×</button>
+            </div>
+            <div class="study-sheet-body">
+                <section class="study-field">
+                    <div class="study-label">How the exam works</div>
+                    <div class="study-seg" data-formats></div>
+                </section>
+                <section class="study-field">
+                    <div class="study-label">Dates <span class="dim">· every date becomes an event in your calendar</span></div>
+                    <div class="prep-tests" data-tests></div>
+                    <button type="button" class="ghost-btn" data-add-test>+ Another date</button>
+                </section>
+                <section class="study-field">
+                    <div class="study-label">Daily study <span class="dim" data-per-day></span></div>
+                    <div class="prep-days">
+                        <div class="study-seg" data-daysets></div>
+                        <div class="prep-daypick" data-daypick></div>
+                    </div>
+                    <div class="prep-blocks" data-blocks></div>
+                    <button type="button" class="ghost-btn" data-add-block>+ Another block</button>
+                </section>
+                <section class="study-field">
+                    <div class="study-label">When</div>
+                    <div class="study-time-row">
+                        <label>From <input type="date" class="form-control form-control-sm" data-from></label>
+                        <label>Until <input type="date" class="form-control form-control-sm" data-until></label>
+                        <button type="button" class="ghost-btn" data-until-first>Day before the first date</button>
+                    </div>
+                    <div class="study-summary" data-summary></div>
+                </section>
+            </div>
+            <div class="study-sheet-foot">
+                ${course.preparing || course.prepPhase === 'study' || course.prepPhase === 'proofs' ? '<button type="button" class="ghost-btn danger" data-stop>Stop preparing</button>' : '<span></span>'}
+                <div class="study-foot-right">
+                    <button type="button" class="btn btn-sm" data-close>Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-save>${course.preparing ? 'Save plan' : 'Start preparing'}</button>
+                </div>
+            </div>
+        </div>`;
+    (document.getElementById('modals-root') || document.body).appendChild(wrap);
+    const $ = (s) => wrap.querySelector(s);
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+    const renderFormats = () => {
+        $('[data-formats]').innerHTML = Object.entries(EXAM_FORMATS).map(([k, f]) => `<button type="button" class="${st.format === k ? 'active' : ''}" data-format="${k}" aria-pressed="${st.format === k}">${esc(f.label)}</button>`).join('');
+    };
+    const renderTests = () => {
+        $('[data-tests]').innerHTML = st.tests.map((x, i) => `
+            <div class="prep-test" data-i="${i}">
+                <select class="form-control form-control-sm" data-kind>${Object.entries(EXAM_TEST_KINDS).map(([k, l]) => `<option value="${k}" ${x.kind === k ? 'selected' : ''}>${esc(l)}</option>`).join('')}</select>
+                <input type="date" class="form-control form-control-sm" data-date value="${esc(x.date)}">
+                <input type="time" class="form-control form-control-sm" data-time value="${esc(x.time)}">
+                <button type="button" class="icon-btn delete" data-del-test aria-label="Remove date">×</button>
+            </div>`).join('') || '<div class="dim study-hint">No dates yet.</div>';
+    };
+    const renderDays = () => {
+        const cur = st.plan.days;
+        $('[data-daysets]').innerHTML = Object.entries(PREP_DAY_SETS).map(([k, s]) => {
+            const on = s.days.length === cur.length && s.days.every(d => cur.includes(d));
+            return `<button type="button" class="${on ? 'active' : ''}" data-dayset="${k}">${esc(s.label)}</button>`;
+        }).join('');
+        $('[data-daypick]').innerHTML = [1, 2, 3, 4, 5, 6, 0].map(d => `<button type="button" class="prep-day ${cur.includes(d) ? 'active' : ''}" data-day="${d}" aria-pressed="${cur.includes(d)}">${dayNames[d].slice(0, 2)}</button>`).join('');
+    };
+    const renderBlocks = () => {
+        $('[data-blocks]').innerHTML = st.plan.blocks.map((b, i) => `
+            <div class="prep-block" data-i="${i}">
+                <input type="text" class="form-control form-control-sm" data-label value="${esc(b.label)}" placeholder="What (Theory, Exercises, Anki…)">
+                <div class="study-seg study-seg-sm">${Object.entries(loads).map(([k, l]) => `<button type="button" class="${b.load === k ? 'active' : ''}" data-load="${k}" title="${esc(l.hint || '')}">${esc(l.short)}</button>`).join('')}</div>
+                <div class="study-stepper"><button type="button" data-step="-15" aria-label="Less">−</button><span>${fmtPrepDur(b.minutes)}</span><button type="button" data-step="15" aria-label="More">+</button></div>
+                <button type="button" class="icon-btn delete" data-del-block aria-label="Remove block">×</button>
+            </div>`).join('');
+        update();
+    };
+    const update = () => {
+        const per = st.plan.blocks.reduce((a, b) => a + (b.minutes || 0), 0);
+        $('[data-per-day]').textContent = `· ${fmtPrepDur(per)} a day`;
+        const from = $('[data-from]').value || todayStr;
+        const until = $('[data-until]').value;
+        let daysCount = 0;
+        if (until && until >= from) {
+            const d = parseLocalDate(from), end = parseLocalDate(until);
+            while (d <= end) { if (st.plan.days.includes(d.getDay())) daysCount++; d.setDate(d.getDate() + 1); }
+        }
+        const bits = [`${fmtPrepDur(per)} on ${esc(prepDaysLabel(st.plan.days))}`];
+        if (until) bits.push(`${daysCount} study days · <b>${fmtPrepDur(per * daysCount)}</b> in total`);
+        else bits.push('<span class="study-warn">no end date: the tasks keep going until you stop preparing</span>');
+        const target = (parseFloat(course.cfu) || 6) * 25 * 60;   // ~25 h of work per CFU
+        if (until && per * daysCount < target * 0.5) bits.push(`<span class="dim">a ${esc(course.cfu)} CFU course is usually ~${Math.round(target / 60)}h of work</span>`);
+        $('[data-summary]').innerHTML = bits.join(' · ');
+    };
+
+    $('[data-formats]').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-format]');
+        if (!b) return;
+        st.format = b.dataset.format;
+        // Rebuild the empty date rows for the new format; keep dates already filled in
+        const filled = st.tests.filter(x => x.date);
+        if (!filled.length) st.tests = EXAM_FORMATS[st.format].tests.map(k => ({ id: null, kind: k, date: '', time: '09:00' }));
+        renderFormats(); renderTests();
+    });
+    $('[data-tests]').addEventListener('change', (e) => {
+        const row = e.target.closest('[data-i]');
+        if (!row) return;
+        const x = st.tests[parseInt(row.dataset.i, 10)];
+        if (e.target.matches('[data-kind]')) x.kind = e.target.value;
+        if (e.target.matches('[data-date]')) x.date = e.target.value;
+        if (e.target.matches('[data-time]')) x.time = e.target.value;
+    });
+    $('[data-tests]').addEventListener('click', (e) => {
+        const del = e.target.closest('[data-del-test]');
+        if (!del) return;
+        st.tests.splice(parseInt(del.closest('[data-i]').dataset.i, 10), 1);
+        renderTests();
+    });
+    $('[data-add-test]').addEventListener('click', () => {
+        const last = st.tests[st.tests.length - 1];
+        st.tests.push({ id: null, kind: last ? last.kind : 'exam', date: '', time: '09:00' });
+        renderTests();
+    });
+    $('[data-daysets]').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-dayset]');
+        if (!b) return;
+        st.plan.days = [...PREP_DAY_SETS[b.dataset.dayset].days];
+        renderDays(); update();
+    });
+    $('[data-daypick]').addEventListener('click', (e) => {
+        const b = e.target.closest('[data-day]');
+        if (!b) return;
+        const d = parseInt(b.dataset.day, 10);
+        st.plan.days = st.plan.days.includes(d) ? st.plan.days.filter(x => x !== d) : [...st.plan.days, d];
+        if (!st.plan.days.length) st.plan.days = [d];
+        renderDays(); update();
+    });
+    $('[data-blocks]').addEventListener('click', (e) => {
+        const row = e.target.closest('[data-i]');
+        if (!row) return;
+        const b = st.plan.blocks[parseInt(row.dataset.i, 10)];
+        const ld = e.target.closest('[data-load]');
+        const stp = e.target.closest('[data-step]');
+        if (ld) { b.load = ld.dataset.load; renderBlocks(); }
+        else if (stp) { b.minutes = Math.max(15, Math.min(600, b.minutes + parseInt(stp.dataset.step, 10))); renderBlocks(); }
+        else if (e.target.closest('[data-del-block]')) { st.plan.blocks.splice(parseInt(row.dataset.i, 10), 1); renderBlocks(); }
+    });
+    $('[data-blocks]').addEventListener('input', (e) => {
+        const row = e.target.closest('[data-i]');
+        if (row && e.target.matches('[data-label]')) st.plan.blocks[parseInt(row.dataset.i, 10)].label = e.target.value;
+    });
+    $('[data-add-block]').addEventListener('click', () => {
+        st.plan.blocks.push({ id: 'b' + Math.random().toString(36).slice(2, 7), label: '', minutes: 60, load: 'deep' });
+        renderBlocks();
+        wrap.querySelector('.prep-block:last-child [data-label]')?.focus();
+    });
+    $('[data-from]').value = st.plan.from || todayStr;
+    $('[data-until]').value = st.plan.until || '';
+    $('[data-from]').addEventListener('change', update);
+    $('[data-until]').addEventListener('change', update);
+    $('[data-until-first]').addEventListener('click', () => {
+        const first = st.tests.filter(x => x.date && x.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date))[0];
+        if (!first) { if (typeof showToast === 'function') showToast('Add the date of the exam first'); return; }
+        const d = parseLocalDate(first.date); d.setDate(d.getDate() - 1);
+        $('[data-until]').value = formatDate(d);
+        update();
+    });
+
+    const close = () => wrap.remove();
+    $('[data-save]').addEventListener('click', () => {
+        const blocks = st.plan.blocks.filter(b => String(b.label || '').trim() && b.minutes > 0).map(b => Object.assign(b, { label: b.label.trim() }));
+        if (!blocks.length) { if (typeof showToast === 'function') showToast('Add at least one study block (e.g. Theory 2h)'); return; }
+        let until = $('[data-until]').value;
+        if (!until) {
+            const first = st.tests.filter(x => x.date && x.date >= todayStr).sort((a, b) => a.date.localeCompare(b.date))[0];
+            if (first) { const d = parseLocalDate(first.date); d.setDate(d.getDate() - 1); until = formatDate(d); }
+        }
+        course.examFormat = st.format;
+        saveCourseTests(course, st.tests);
+        applyPrepPlan(course, { days: st.plan.days, blocks, from: $('[data-from]').value || todayStr, until });
+        syncCategoryOrder();
+        saveData();
+        saveUniData();
+        refreshAllConnectedViews();
+        if (typeof renderTodayModule === 'function') renderTodayModule();
+        close();
+        if (typeof showToast === 'function') showToast(`${course.name}: ${blocks.map(b => `${b.label} ${fmtPrepDur(b.minutes)}`).join(' · ')} on ${prepDaysLabel(course.plan.days)}`);
+    });
+    $('[data-stop]')?.addEventListener('click', () => { close(); stopPreparing(course); });
+    wrap.addEventListener('click', (e) => { if (e.target === wrap || e.target.closest('[data-close]')) close(); });
+    wrap.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
+
+    renderFormats();
+    renderTests();
+    renderDays();
+    renderBlocks();
+}
+window.openExamPrepSheet = openExamPrepSheet;

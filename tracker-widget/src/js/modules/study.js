@@ -508,7 +508,7 @@
                 slots: r.timeWindows.filter(tw => tw && tw.days && tw.days.includes(dayIdx) && tw.start && tw.end)
                     .sort((a, b) => toMin(a.start) - toMin(b.start))
             }))
-            .filter(p => p.slots.length && !/treno|train|bus|metro|tram|transport|volo|flight/i.test(p.ref.title));
+            .filter(p => p.slots.length && (typeof ghostKindOf === 'function' ? ghostKindOf(p.ref) === 'study' : !/tren|train|bus|metro|tram|transport|volo|flight/i.test(p.ref.title)));
     }
     function openingText(slots) {
         return slots.map(s => `${s.start}–${s.end}`).join(', ');

@@ -226,42 +226,46 @@
         <div id="module-cal-grid" class="module-container"></div>
         <div id="module-cal-agenda" class="module-container"></div>
 
-        <!-- 2. TASKS -->
+        <!-- 2. TASKS: at a set time (+ routines) · anytime today · to-do (js/modules/tasks.js) -->
         <div id="module-tasks" class="module-container">
-            <div class="module-body-padded" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0;">
+            <div class="module-body-padded tasks2" style="flex: 1; display: flex; flex-direction: column; overflow-y: auto; min-height: 0;">
                 <div class="section-header-row" style="flex-wrap: wrap; gap: 8px;">
                     <div>
                         <span class="section-label">Tasks</span>
                         <span id="tasks-date-badge" style="font-size: var(--font-xs); color: var(--text-dim); margin-left: 6px;"></span>
                     </div>
                     <div style="display: flex; gap: 6px; align-items: center;">
-                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">▶</button>
-                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()">⚙</button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()" title="Start a focus session">▶</button>
+                        <button type="button" class="btn btn-sm" onclick="openTasksSettingsModal()" title="Manage tasks, routines and places">⚙</button>
                     </div>
                 </div>
-                
-                <div id="today-tasks" class="daily-columns-wrap" style="flex: 1; align-items: flex-start;">
-                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
-                        <div id="scheduled-tasks-col">
-                            <div class="sub-column-header">Fixed</div>
-                            <div id="scheduled-tasks-list"></div>
-                        </div>
-                        <div id="routines-tasks-col">
-                            <div class="sub-column-header">Routines</div>
-                            <div id="routines-tasks-list"></div>
-                        </div>
-                    </div>
 
-                    <div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 18px;">
-                        <div id="flexible-tasks-col">
-                            <div class="sub-column-header">Flexible</div>
-                            <div id="flexible-tasks-list"></div>
-                        </div>
-                        <div id="todo-tasks-col">
-                            <div class="sub-column-header">To-Do</div>
-                            <div id="assigned-todos-list"></div>
-                            <input type="text" id="new-g-todo" class="form-control form-control-sm" style="margin-top: 8px;" placeholder="+ Add To-Do..." onkeydown="addGeneralTask(event)">
-                        </div>
+                <div id="today-tasks" class="tv-grid">
+                    <div class="tv-col">
+                        <section id="scheduled-tasks-col" class="tv-sec">
+                            <header class="tv-head"><span class="tv-heading">At a set time</span><span class="tv-count" id="tv-count-sched"></span></header>
+                            <p class="tv-desc">Lessons, events, trains and planned blocks, in order.</p>
+                            <div id="scheduled-tasks-list" class="tv-list"></div>
+                        </section>
+                        <section id="routines-tasks-col" class="tv-sec">
+                            <header class="tv-head"><span class="tv-heading">Routines</span><span class="tv-count" id="tv-count-rtn"></span></header>
+                            <div id="routines-tasks-list" class="tv-list"></div>
+                        </section>
+                    </div>
+                    <div class="tv-col">
+                        <section id="flexible-tasks-col" class="tv-sec">
+                            <header class="tv-head"><span class="tv-heading">Anytime today</span><span class="tv-count" id="tv-count-flex"></span></header>
+                            <p class="tv-desc">No fixed hour: do them when you can. Study subjects fill up with the time you focus on them.</p>
+                            <div id="flexible-tasks-list" class="tv-list"></div>
+                        </section>
+                    </div>
+                    <div class="tv-col">
+                        <section id="todo-tasks-col" class="tv-sec">
+                            <header class="tv-head"><span class="tv-heading">To-do</span><span class="tv-count" id="tv-count-todo"></span></header>
+                            <p class="tv-desc">One-off things for this day.</p>
+                            <div id="assigned-todos-list" class="tv-list"></div>
+                            <input type="text" id="new-g-todo" class="form-control form-control-sm tv-add" placeholder="+ Add a to-do" onkeydown="addGeneralTask(event)">
+                        </section>
                     </div>
                 </div>
             </div>

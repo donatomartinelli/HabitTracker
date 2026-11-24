@@ -1311,14 +1311,23 @@ function renderGhostLayersManagerList() {
 
     const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-    referenceLayers.forEach(ref => {
+    const order = ['study', 'transport', 'other'];
+    [...referenceLayers].sort((a, b) => order.indexOf(ghostKindOf(a)) - order.indexOf(ghostKindOf(b))).forEach((ref, i, arr) => {
+        if (i === 0 || ghostKindOf(arr[i - 1]) !== ghostKindOf(ref)) {
+            const h = document.createElement('div');
+            h.className = 'ghost-kind-head';
+            h.innerHTML = `<span>${escapeHtml(GHOST_KINDS[ghostKindOf(ref)].label)}</span><button type="button" class="ghost-btn">+ Add</button>`;
+            h.querySelector('button').onclick = () => { window.__nextGhostKind = ghostKindOf(ref); openReferenceModal(); };
+            cont.appendChild(h);
+        }
         const box = document.createElement('div');
         box.className = 'cfg-box';
         box.style.borderLeft = `3px solid ${ref.color || '#444444'}`;
 
         const slotsSummary = (ref.timeWindows || []).map(tw => {
             const dStr = (tw.days || []).map(d => dayNames[d]).join(',');
-            return `${tw.start}–${tw.end} (${dStr})`;
+            const arrow = ghostKindOf(ref) === 'transport' ? ghostDirArrow(tw) : '';
+            return `${arrow ? arrow + ' ' : ''}${tw.start}–${tw.end} (${dStr})`;
         }).join('  ·  ');
 
         box.innerHTML = `
@@ -1330,7 +1339,7 @@ function renderGhostLayersManagerList() {
                     </div>
                 </div>
                 <div class="u-flex u-gap-2 u-noshrink">
-                    <button type="button" class="btn btn-sm btn-edit-ghost">[EDIT]</button>
+                    <button type="button" class="btn btn-sm btn-edit-ghost">Edit</button>
                     <button type="button" class="icon-btn delete btn-del-ghost">×</button>
                 </div>
             </div>
@@ -1344,243 +1353,233 @@ function renderGhostLayersManagerList() {
 }
 
 // ============================================================================
-// RENDER PRINCIPALE TASKS: 4 COLONNE (FIXED, FLEXIBLE, ROUTINES, TO-DO)
+// TASKS VIEW: three clear lists instead of ALL / FIXED+RTN / FLEX / TO-DO
+//   At a set time  → everything with an hour, in order (lessons, events, trains, planned blocks)
+//   Routines       → checklists for the day (under the timed list)
+//   Anytime today  → no fixed hour; study subjects fill up with focus time
+//   To-do          → one-off things for this day
 // ============================================================================
+
+const tvEsc = (s) => escapeHtml(String(s ?? ''));
+const tvMin = (hhmm) => (typeof timeToMinutes === 'function' ? timeToMinutes(hhmm) : 0);
+const tvDur = (m) => (window.CortexStudy ? CortexStudy.fmtDur(m) : `${Math.round(m)}m`);
+
+// One tap on the box: single tasks toggle; multi-step tasks advance; study subjects = done for the day
+function toggleTaskSmart(id, dateStr = selectedDateStr) {
+    const t = templates.find(x => x.id === id);
+    if (!t) return;
+    const inst = t.instances || 1;
+    const prev = selectedDateStr;
+    selectedDateStr = dateStr;
+    try {
+        const log = (logs[dateStr] && logs[dateStr][id]) || Array(inst).fill(false);
+        const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, dateStr) : 0;
+        const timeTarget = window.CortexStudy && CortexStudy.isTimeTarget(t, dateStr) && mins > 0;
+        const complete = timeTarget ? CortexStudy.progress(t, dateStr).complete : log.filter(Boolean).length >= inst;
+        if (inst === 1) { toggleTask(id, 0); return; }
+        if (!logs[dateStr]) logs[dateStr] = {};
+        if (complete) logs[dateStr][id] = Array(inst).fill(false);
+        else if (timeTarget) logs[dateStr][id] = Array(inst).fill(true);
+        else { const next = log.findIndex(x => !x); toggleTask(id, next === -1 ? 0 : next); return; }
+        saveData();
+        renderTasks();
+        if (typeof renderTracker === 'function') renderTracker();
+    } finally {
+        selectedDateStr = prev;
+    }
+    if (typeof renderTodayModule === 'function') renderTodayModule();
+}
+
+// A row: [box] time · title · meta · ▶
+function tvRow(o) {
+    const row = document.createElement('div');
+    row.className = `tv-row ${o.done ? 'is-done' : ''} ${o.info ? 'is-info' : ''} ${o.locked ? 'priority-locked' : ''}`;
+    if (o.color) row.style.setProperty('--row-color', o.color);
+    row.innerHTML = `
+        ${o.check ? `<button type="button" class="check-box ${o.check.checked ? 'checked' : ''} ${o.check.partial ? 'partial' : ''}" aria-label="Mark ${tvEsc(o.title)} done"></button>` : '<span class="tv-dot" aria-hidden="true"></span>'}
+        ${o.time ? `<span class="tv-time">${tvEsc(o.time)}</span>` : ''}
+        <div class="tv-body">
+            <div class="tv-title">${o.titleHtml || tvEsc(o.title)}</div>
+            ${o.sub ? `<div class="tv-sub">${o.sub}</div>` : ''}
+            ${o.bar !== undefined ? `<div class="tv-bar"><div style="width:${Math.max(0, Math.min(100, o.bar)).toFixed(1)}%"></div></div>` : ''}
+        </div>
+        ${o.meta ? `<span class="tv-meta">${o.meta}</span>` : ''}
+        ${o.onFocus ? '<button type="button" class="ghost-btn tv-play" aria-label="Focus">▶</button>' : ''}`;
+    if (o.check) row.querySelector('.check-box').addEventListener('click', (e) => { e.stopPropagation(); o.check.onClick(); });
+    if (o.onFocus) row.querySelector('.tv-play').addEventListener('click', (e) => { e.stopPropagation(); o.onFocus(); });
+    if (o.onClick) { row.classList.add('is-clickable'); row.addEventListener('click', o.onClick); }
+    return row;
+}
+
+function tvEmpty(text) {
+    const el = document.createElement('div');
+    el.className = 'tv-empty';
+    el.textContent = text;
+    return el;
+}
+
+function tvCount(id, done, total) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = total ? `${done} / ${total}` : '';
+}
 
 function renderTasks() {
     const tasksModScrollEl = document.querySelector('#module-tasks .module-body-padded');
     const savedTasksScrollTop = tasksModScrollEl ? tasksModScrollEl.scrollTop : 0;
 
     const dateBadge = document.getElementById('tasks-date-badge');
-    if (dateBadge) dateBadge.textContent = `// ${selectedDateStr}`;
-
-    // INIEZIONE PULSANTI VISTA COLONNE
-    const headerRow = document.querySelector('#module-tasks .section-header-row > div:last-child');
-    if (headerRow && !document.getElementById('tasks-view-toggles')) {
-        const viewToggles = document.createElement('div');
-        viewToggles.id = 'tasks-view-toggles';
-        viewToggles.style.cssText = 'display:flex; gap:2px; margin-right:var(--space-2); border-right:1px dotted var(--border-color); padding-right:var(--space-2);';
-        headerRow.insertBefore(viewToggles, headerRow.firstChild);
+    if (dateBadge) {
+        const d = parseLocalDate(selectedDateStr);
+        dateBadge.textContent = d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'short' });
     }
-    const viewTogglesEl = document.getElementById('tasks-view-toggles');
-    if (viewTogglesEl) {
-        viewTogglesEl.innerHTML = `
-            <button type="button" class="btn btn-sm ${tasksViewMode==='all'?'btn-primary':''}" onclick="switchTasksViewMode('all')">ALL</button>
-            <button type="button" class="btn btn-sm ${tasksViewMode==='fixed'?'btn-primary':''}" onclick="switchTasksViewMode('fixed')">FIXED+RTN</button>
-            <button type="button" class="btn btn-sm ${tasksViewMode==='flex'?'btn-primary':''}" onclick="switchTasksViewMode('flex')">FLEX</button>
-            <button type="button" class="btn btn-sm ${tasksViewMode==='todo'?'btn-primary':''}" onclick="switchTasksViewMode('todo')">TO-DO</button>
-        `;
-    }
+    document.getElementById('tasks-view-toggles')?.remove();   // old ALL / FIXED+RTN / FLEX / TO-DO
 
     const schedContainer = document.getElementById('scheduled-tasks-list');
     const flexContainer = document.getElementById('flexible-tasks-list');
     if (!schedContainer || !flexContainer) return;
-
     schedContainer.innerHTML = '';
     flexContainer.innerHTML = '';
-    const schedFrag = document.createDocumentFragment();
-    const flexFrag = document.createDocumentFragment();
-    let hasSched = false, hasFlex = false;
 
-    const dayEvents = specificEvents.filter(e => e.date === selectedDateStr);
-    const selectedDayIdx = parseLocalDate(selectedDateStr).getDay();
-    const customBlocksToday = Array.isArray(ephemeralData[selectedDateStr]) ? ephemeralData[selectedDateStr] : [];
-    const confirmedTransportsToday = customBlocksToday.filter(b => b.isTransport);
-
-    if (dayEvents.length > 0) {
-        hasSched = true;
-        const eventGroup = document.createElement('div');
-        eventGroup.className = 'category-group';
-        eventGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title u-dim">Events</div></div>`;
-
-        dayEvents.forEach(e => {
-            const item = document.createElement('div');
-            item.className = 'task-item';
-            item.style.cssText = `border-left: 3px solid ${e.color}; padding-left:var(--space-3);`;
-
-            const left = document.createElement('div');
-            left.className = 'task-left';
-
-            const title = document.createElement('div');
-            title.className = 'task-title';
-            title.style.cssText = `color: ${e.color}; font-weight:bold;`;
-            const timeBadge = (e.start && e.end) ? `[${e.start}-${e.end}] ` : '';
-            title.textContent = `${timeBadge}${e.title}`;
-
-            left.appendChild(title);
-            item.appendChild(left);
-            eventGroup.appendChild(item);
-
-            item.classList.add('ev-edit-trigger');
-            item.style.cursor = 'pointer';
-            item.onclick = () => openEventQuickEditPopover(e.id, item);
-        });
-        schedFrag.appendChild(eventGroup);
-    }
-
-    if (confirmedTransportsToday.length > 0) {
-        hasSched = true;
-        const trGroup = document.createElement('div');
-        trGroup.className = 'category-group';
-        trGroup.innerHTML = `<div class="category-header-wrap"><div class="category-title u-dim">Transports</div></div>`;
-
-        confirmedTransportsToday.forEach(tr => {
-            const item = document.createElement('div');
-            item.className = 'task-item';
-            item.style.cssText = `border-left: 3px solid ${tr.color || '#ffffff'}; padding-left: 10px;`;
-
-            const left = document.createElement('div');
-            left.className = 'task-left';
-
-            const title = document.createElement('div');
-            title.className = 'task-title';
-            title.textContent = `[${tr.start}-${tr.end}] ${tr.title}`;
-
-            left.appendChild(title);
-            item.appendChild(left);
-            trGroup.appendChild(item);
-        });
-        schedFrag.appendChild(trGroup);
-    }
-
+    const date = selectedDateStr;
+    const dayIdx = parseLocalDate(date).getDay();
+    const blocksToday = Array.isArray(ephemeralData[date]) ? ephemeralData[date] : [];
+    const highDone = typeof areAllHighPriorityTasksDone === 'function' ? areAllHighPriorityTasksDone() : true;
     syncCategoryOrder();
 
-    categoryOrder.forEach(cat => {
-        const activeTasks = templates.filter(t =>
-            t.category === cat &&
-            t.type !== 'medicine' &&
-            !isSingleDayTodoTemplate(t) &&
-            isTaskActiveOnDate(t, selectedDateStr)
-        );
-
-        if (activeTasks.length > 0) {
-            const isTaskFixedOnDay = (t) => {
-                if (t.type === 'timed' || (t.timeWindows && t.timeWindows.length > 0)) return true;
-                return customBlocksToday.some(b => b.templateId === t.id);
-            };
-
-            const fixedTasks = activeTasks.filter(t => isTaskFixedOnDay(t));
-            const flexTasks = activeTasks.filter(t => !isTaskFixedOnDay(t));
-
-            const createPureGroup = (tasks, isFixedGroup) => {
-                const groupDiv = document.createElement('div');
-                groupDiv.className = 'category-group';
-
-                const headerWrap = document.createElement('div');
-                headerWrap.className = 'category-header-wrap';
-                const catTitle = document.createElement('div');
-                catTitle.className = 'category-title';
-                catTitle.textContent = cat;
-                headerWrap.appendChild(catTitle);
-                groupDiv.appendChild(headerWrap);
-
-                tasks.forEach(t => {
-                    const taskItem = document.createElement('div');
-                    taskItem.className = 'task-item';
-                    
-                    // PRIORITY LOCK LOGIC
-                    const isHighDone = areAllHighPriorityTasksDone();
-                    if (t.priority === 'optional' && !isHighDone) {
-                        taskItem.classList.add('priority-locked');
-                    }
-                    const instancesCount = t.instances || 1;
-                    const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(instancesCount).fill(false);
-
-                    const leftDiv = document.createElement('div');
-                    leftDiv.className = 'task-left';
-
-                    const titleDiv = document.createElement('div');
-                    titleDiv.className = 'task-title';
-
-                    const taskMins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, selectedDateStr) : (t.timerMinutes || 0);
-                    let timePrefix = '';
-                    if (isFixedGroup) {
-                        const customTimes = customBlocksToday.filter(b => b.templateId === t.id).map(b => `${b.start}-${b.end}`);
-                        if (customTimes.length > 0) {
-                            timePrefix = `[${customTimes.join(', ')}] `;
-                        } else if (t.timeWindows && t.timeWindows.length > 0) {
-                            const matchingTw = t.timeWindows.find(tw => tw.days && tw.days.includes(selectedDayIdx));
-                            if (matchingTw) timePrefix = `[${matchingTw.start}] `;
-                        }
-                    }
-                    const minSuffix = (!isFixedGroup && taskMins > 0) ? ` (${taskMins}m)` : '';
-                    titleDiv.textContent = `${timePrefix}${t.title}${minSuffix}`;
-                    leftDiv.appendChild(titleDiv);
-
-                    const instContainer = document.createElement('div');
-                    instContainer.className = 'instances-container';
-
-                    for (let i = 0; i < instancesCount; i++) {
-                        const cb = document.createElement('div');
-                        cb.className = `check-box ${currentLog[i] ? 'checked' : ''}`;
-                        cb.onclick = () => toggleTask(t.id, i);
-                        instContainer.appendChild(cb);
-                    }
-
-                    taskItem.appendChild(leftDiv);
-                    taskItem.appendChild(instContainer);
-                    groupDiv.appendChild(taskItem);
-                });
-                return groupDiv;
-            };
-
-            if (fixedTasks.length > 0) { hasSched = true; schedFrag.appendChild(createPureGroup(fixedTasks, true)); }
-            if (flexTasks.length > 0) { hasFlex = true; flexFrag.appendChild(createPureGroup(flexTasks, false)); }
-        }
+    // ---------- At a set time ----------
+    const timed = [];
+    let schedDone = 0, schedTotal = 0;
+    specificEvents.filter(e => e && e.date === date).forEach(e => {
+        timed.push({
+            start: e.start ? tvMin(e.start) : -1,
+            el: tvRow({
+                info: true, color: e.color || '#b84b4b',
+                time: e.start ? (e.end ? `${e.start}–${e.end}` : e.start) : 'all day',
+                title: e.title, sub: '<span class="tv-kind">event</span>',
+                onClick: (ev) => { if (typeof openEventQuickEditPopover === 'function') openEventQuickEditPopover(e.id, ev.currentTarget); }
+            })
+        });
     });
+    templates.forEach(t => {
+        if (!t || t.type === 'medicine' || !Array.isArray(t.timeWindows) || !t.timeWindows.length || !isTaskActiveOnDate(t, date)) return;
+        t.timeWindows.forEach(tw => {
+            if (!tw || !tw.days || !tw.days.includes(dayIdx)) return;
+            if (plannerExceptions[`${t.id}_${date}_${tw.start}`]) return;
+            const inst = t.instances || 1;
+            const log = (logs[date] && logs[date][t.id]) || Array(inst).fill(false);
+            const ticks = log.filter(Boolean).length;
+            const done = ticks >= inst;
+            schedTotal++; if (done) schedDone++;
+            timed.push({
+                start: tvMin(tw.start),
+                el: tvRow({
+                    color: t.color, time: `${tw.start}–${tw.end}`, title: t.title, done,
+                    sub: `<span class="tv-kind">${tvEsc(t.category || '')}</span>`,
+                    meta: inst > 1 ? `${ticks}/${inst}` : '',
+                    check: { checked: done, partial: !done && ticks > 0, onClick: () => toggleTaskSmart(t.id, date) },
+                    locked: t.priority === 'optional' && !highDone
+                })
+            });
+        });
+    });
+    // Planned blocks (study sessions, placed tasks, trains, focus)
+    const refById = (id) => (typeof referenceLayers !== 'undefined' ? referenceLayers : []).find(r => r.id === id);
+    blocksToday.forEach(b => {
+        if (!b || !b.start || !b.end) return;
+        const tpl = b.templateId ? templates.find(x => x.id === b.templateId) : null;
+        if (tpl && Array.isArray(tpl.timeWindows) && tpl.timeWindows.length && !b.studyWindowId) {
+            // A fixed task moved or resized for this day: still a task to tick, at its new time
+            const inst = tpl.instances || 1;
+            const log = (logs[date] && logs[date][tpl.id]) || Array(inst).fill(false);
+            const ticks = log.filter(Boolean).length;
+            const done = ticks >= inst;
+            schedTotal++; if (done) schedDone++;
+            timed.push({
+                start: tvMin(b.start),
+                el: tvRow({
+                    color: tpl.color, time: `${b.start}–${b.end}`, title: tpl.title, done,
+                    sub: `<span class="tv-kind">${tvEsc(tpl.category || '')} · moved</span>`,
+                    check: { checked: done, partial: !done && ticks > 0, onClick: () => toggleTaskSmart(tpl.id, date) }
+                })
+            });
+            return;
+        }
+        let kind = 'planned';
+        let title = b.title;
+        if (b.isTransport) {
+            kind = 'transport';
+            const ref = refById(b.refId);
+            const tw = ref && (ref.timeWindows || []).find(w => w.start === b.start && w.end === b.end);
+            const arrow = tw && tw.dir === 'back' ? '← ' : tw && tw.dir === 'out' ? '→ ' : '';
+            title = arrow + b.title;
+        } else if (b.studyWindowId) {
+            const win = window.CortexStudy ? CortexStudy.findWindow(date, b.studyWindowId) : null;
+            kind = `study${win ? ' · ' + tvEsc(win.place) : ''}`;
+        } else if (tpl && tpl.isTodo) kind = 'to-do';
+        timed.push({
+            start: tvMin(b.start),
+            el: tvRow({ info: true, color: b.color, time: `${b.start}–${b.end}`, title, sub: `<span class="tv-kind">${kind}</span>` })
+        });
+    });
+    (routinesData || []).forEach(r => {
+        if (!r || r.type !== 'timed' || !isRoutineActiveOnDate(r, date)) return;
+        (r.timeWindows || []).forEach(tw => {
+            if (tw && tw.days && tw.days.includes(dayIdx)) {
+                timed.push({ start: tvMin(tw.start), el: tvRow({ info: true, color: r.color, time: `${tw.start}–${tw.end}`, title: r.title, sub: '<span class="tv-kind">routine</span>' }) });
+            }
+        });
+    });
+    timed.sort((a, b) => a.start - b.start).forEach(x => schedContainer.appendChild(x.el));
+    if (!timed.length) schedContainer.appendChild(tvEmpty('Nothing at a set time this day.'));
+    tvCount('tv-count-sched', schedDone, schedTotal);
 
-    if (hasSched) schedContainer.appendChild(schedFrag);
-    else schedContainer.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
-
-    if (hasFlex) flexContainer.appendChild(flexFrag);
-    else flexContainer.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
+    // ---------- Anytime today ----------
+    let flexDone = 0, flexTotal = 0;
+    categoryOrder.forEach(cat => {
+        const list = templates.filter(t =>
+            t && t.category === cat && t.type !== 'medicine' && !isSingleDayTodoTemplate(t) &&
+            !(Array.isArray(t.timeWindows) && t.timeWindows.length) && t.type !== 'timed' &&
+            isTaskActiveOnDate(t, date)
+        );
+        if (!list.length) return;
+        const group = document.createElement('div');
+        group.className = 'tv-group';
+        group.innerHTML = `<div class="tv-group-title">${tvEsc(cat)}</div>`;
+        list.forEach(t => {
+            const inst = t.instances || 1;
+            const log = (logs[date] && logs[date][t.id]) || Array(inst).fill(false);
+            const ticks = log.filter(Boolean).length;
+            const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, date) : 0;
+            const timeTarget = window.CortexStudy && CortexStudy.isTimeTarget(t, date) && mins > 0;
+            const prog = timeTarget ? CortexStudy.progress(t, date) : null;
+            const done = prog ? prog.complete : ticks >= inst;
+            flexTotal++; if (done) flexDone++;
+            const planned = blocksToday.filter(b => b.templateId === t.id).sort((a, b) => tvMin(a.start) - tvMin(b.start));
+            const subBits = [];
+            if (planned.length) subBits.push(`planned ${planned.map(b => b.start).join(' · ')}`);
+            if (t.load && window.CortexStudy && CortexStudy.LOADS[t.load]) subBits.push(CortexStudy.LOADS[t.load].short.toLowerCase() + ' focus');
+            group.appendChild(tvRow({
+                color: t.color, title: t.title, done,
+                sub: subBits.length ? tvEsc(subBits.join(' · ')) : '',
+                meta: prog ? `<b>${tvDur(prog.done)}</b> / ${tvDur(prog.target)}` : (inst > 1 ? `${ticks}/${inst}` : (mins > 0 ? tvDur(mins) : '')),
+                bar: prog ? (prog.target > 0 ? (prog.done / prog.target) * 100 : 0) : undefined,
+                check: { checked: done, partial: !done && (ticks > 0 || (prog && prog.done > 0)), onClick: () => toggleTaskSmart(t.id, date) },
+                onFocus: !done && mins > 0 && date === todayStr ? () => { if (typeof quickStartTaskFocus === 'function') quickStartTaskFocus(t.id); } : null,
+                locked: t.priority === 'optional' && !highDone
+            }));
+        });
+        flexContainer.appendChild(group);
+    });
+    if (!flexTotal) flexContainer.appendChild(tvEmpty('Nothing without a set time this day.'));
+    tvCount('tv-count-flex', flexDone, flexTotal);
 
     renderRoutinesColumn();
     renderTodoColumn();
 
-    // GESTIONE DINAMICA COLONNE
-    const schedCol = document.getElementById('scheduled-tasks-col');
-    const rtnCol = document.getElementById('routines-tasks-col');
-    const flexCol = document.getElementById('flexible-tasks-col');
-    const todoCol = document.getElementById('todo-tasks-col');
-
-    schedCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'fixed') ? 'block' : 'none';
-    rtnCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'fixed') ? 'block' : 'none';
-    flexCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'flex') ? 'block' : 'none';
-    
-    const assignedUnplacedTodos = templates.filter(t => isSingleDayTodoTemplate(t) && isTaskActiveOnDate(t, selectedDateStr));
-    const hasAnyTodo = assignedUnplacedTodos.length > 0 || generalTodos.length > 0;
-    
-    if (!hasAnyTodo && tasksViewMode === 'all') {
-        todoCol.style.display = 'none'; // Nascondi To-Do vuoti in ALL view
-    } else {
-        todoCol.style.display = (tasksViewMode === 'all' || tasksViewMode === 'todo') ? 'block' : 'none';
-    }
-
-    const colWrap1 = schedCol.parentElement;
-    const colWrap2 = flexCol.parentElement;
-
-    if (tasksViewMode === 'all') {
-        colWrap1.style.display = 'flex';
-        colWrap2.style.display = 'flex';
-    } else if (tasksViewMode === 'fixed') {
-        colWrap1.style.display = 'flex';
-        colWrap2.style.display = 'none';
-    } else if (tasksViewMode === 'flex') {
-        colWrap1.style.display = 'none';
-        colWrap2.style.display = 'flex';
-    } else if (tasksViewMode === 'todo') {
-        colWrap1.style.display = 'none';
-        colWrap2.style.display = 'flex';
-        flexCol.style.display = 'none';
-    }
-
-    if (tasksModScrollEl && savedTasksScrollTop > 0) {
-        tasksModScrollEl.scrollTop = savedTasksScrollTop;
-    }
+    if (tasksModScrollEl && savedTasksScrollTop > 0) tasksModScrollEl.scrollTop = savedTasksScrollTop;
 }
 
-// --- COLONNA 3: ROUTINES + INIEZIONE AUTOMATICA MEDICINE ---
+// --- ROUTINES (+ medicines injected into the evening routine) ---
 
 function isRoutineActiveOnDate(routine, dateStr) {
     if (!routine) return false;
@@ -1624,162 +1623,89 @@ function toggleRoutineStepCheckbox(routineId, stepId, dateStr = selectedDateStr)
 function renderRoutinesColumn() {
     const container = document.getElementById('routines-tasks-list');
     if (!container) return;
-
     container.innerHTML = '';
-    const activeRoutines = (routinesData || []).filter(r => isRoutineActiveOnDate(r, selectedDateStr));
-    const activeMedsToday = templates.filter(t => t.type === 'medicine' && isTaskActiveOnDate(t, selectedDateStr));
+    const date = selectedDateStr;
+    const activeRoutines = (routinesData || []).filter(r => isRoutineActiveOnDate(r, date));
+    const activeMedsToday = templates.filter(t => t.type === 'medicine' && isTaskActiveOnDate(t, date));
+    const col = document.getElementById('routines-tasks-col');
+    if (col) col.hidden = !activeRoutines.length && !activeMedsToday.length;
+    if (!activeRoutines.length && !activeMedsToday.length) { tvCount('tv-count-rtn', 0, 0); return; }
 
-    if (activeRoutines.length === 0 && activeMedsToday.length === 0) {
-        container.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
-        return;
-    }
-
-    const frag = document.createDocumentFragment();
     const defaultEveningRtnId = activeRoutines.find(r => r.id === 'rtn_evening')?.id || activeRoutines[0]?.id;
+    let allDone = 0, allTotal = 0;
 
     activeRoutines.forEach(routine => {
-        const logKey = getRoutineLogStorageKey(routine, selectedDateStr);
-        const rLog = routineLogs[logKey] || {};
+        const rLog = routineLogs[getRoutineLogStorageKey(routine, date)] || {};
+        const group = document.createElement('div');
+        group.className = 'tv-group';
+        group.style.setProperty('--row-color', routine.color || '#ffffff');
+        const steps = (routine.sections || []).reduce((a, s) => a + ((s && s.items) ? s.items.length : 0), 0);
+        const stepsDone = (routine.sections || []).reduce((a, s) => a + ((s && s.items) ? s.items.filter(it => rLog[it.id]).length : 0), 0);
+        group.innerHTML = `<div class="tv-group-title is-routine"><span>${tvEsc(routine.title)}</span><span class="dim">${stepsDone}/${steps}</span></div>`;
 
-        const injectedMeds = activeMedsToday.filter(m => {
-            if (m.routineId) return m.routineId === routine.id;
-            return routine.id === defaultEveningRtnId;
+        const meds = activeMedsToday.filter(m => m.routineId ? m.routineId === routine.id : routine.id === defaultEveningRtnId);
+        meds.forEach(m => {
+            const inst = m.instances || 1;
+            const log = (logs[date] && logs[date][m.id]) || Array(inst).fill(false);
+            const ticks = log.filter(Boolean).length;
+            const low = (m.stock || 0) <= (m.alertDays || 7);
+            allTotal++; if (ticks >= inst) allDone++;
+            group.appendChild(tvRow({
+                color: m.color || routine.color, title: m.title, done: ticks >= inst,
+                sub: `<span class="${low ? 'tv-warn' : ''}">medicine · ${m.stock ?? 0} left</span>`,
+                meta: inst > 1 ? `${ticks}/${inst}` : '',
+                check: { checked: ticks >= inst, partial: ticks > 0 && ticks < inst, onClick: () => toggleTaskSmart(m.id, date) }
+            }));
         });
 
-        const card = document.createElement('div');
-        card.className = 'category-group';
-        card.style.borderLeft = `3px solid ${routine.color || '#ffffff'}`;
-
-        const header = document.createElement('div');
-        header.className = 'category-header-wrap';
-        header.innerHTML = `<div class="category-title">${escapeHtml(routine.title)}</div>`;
-        card.appendChild(header);
-
-        if (injectedMeds.length > 0) {
-            const medSec = document.createElement('div');
-            medSec.className = 'routine-subsection';
-            medSec.innerHTML = `<div class="routine-subsection-title">// MEDICINE</div>`;
-
-            injectedMeds.forEach(m => {
-                const inst = m.instances || 1;
-                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][m.id]) || Array(inst).fill(false);
-                const row = document.createElement('div');
-                row.className = 'task-item';
-
-                const left = document.createElement('div');
-                left.className = 'task-left';
-
-                const titleEl = document.createElement('div');
-                titleEl.className = 'task-title';
-                const lowStock = (m.stock || 0) <= (m.alertDays || 7);
-                titleEl.innerHTML = `${escapeHtml(m.title)} <span style="font-size:var(--font-2xs); color:${lowStock ? 'var(--accent-red)' : 'var(--text-dim)'};">(${m.stock ?? 0})</span>`;
-                left.appendChild(titleEl);
-
-                const instCont = document.createElement('div');
-                instCont.className = 'instances-container';
-                for (let i = 0; i < inst; i++) {
-                    const cb = document.createElement('div');
-                    cb.className = `check-box ${currentLog[i] ? 'checked' : ''}`;
-                    cb.onclick = () => toggleTask(m.id, i);
-                    instCont.appendChild(cb);
-                }
-
-                row.appendChild(left);
-                row.appendChild(instCont);
-                medSec.appendChild(row);
-            });
-
-            card.appendChild(medSec);
-        }
-
+        const sameAsTitle = (routine.sections || []).filter(s => s && s.items && s.items.length).length === 1
+            && String((routine.sections || []).find(s => s && s.items && s.items.length).title || '').trim().toLowerCase() === String(routine.title || '').trim().toLowerCase();
         (routine.sections || []).forEach(sec => {
-            if (!sec.items || sec.items.length === 0) return;
-            const secBlock = document.createElement('div');
-            secBlock.className = 'routine-subsection';
-
-            const secTitle = document.createElement('div');
-            secTitle.className = 'routine-subsection-title';
-            secTitle.textContent = `// ${sec.title}`;
-            secBlock.appendChild(secTitle);
-
+            if (!sec || !sec.items || !sec.items.length) return;
+            // The section name once, above its steps
+            if (!sameAsTitle && sec.title) {
+                const h = document.createElement('div');
+                h.className = 'tv-subhead';
+                h.textContent = sec.title;
+                group.appendChild(h);
+            }
             sec.items.forEach(item => {
-                const row = document.createElement('div');
-                row.className = 'task-item';
-                row.style.paddingLeft = '4px';
-                
-                const titleEl = document.createElement('div');
-                titleEl.className = 'task-title';
-                titleEl.style.color = 'var(--text-dim)';
-                titleEl.textContent = `• ${item.title}`;
-                
-                row.appendChild(titleEl);
-                secBlock.appendChild(row);
+                const on = Boolean(rLog[item.id]);
+                allTotal++; if (on) allDone++;
+                group.appendChild(tvRow({
+                    title: item.title, done: on,
+                    check: { checked: on, onClick: () => { toggleRoutineStepCheckbox(routine.id, item.id, date); if (typeof renderTodayModule === 'function') renderTodayModule(); } }
+                }));
             });
-
-            card.appendChild(secBlock);
         });
-
-        frag.appendChild(card);
+        container.appendChild(group);
     });
-
-    container.appendChild(frag);
+    tvCount('tv-count-rtn', allDone, allTotal);
 }
+
+// --- TO-DO ---
 
 function renderTodoColumn() {
     const assignedCont = document.getElementById('assigned-todos-list');
-    const customBlocksToday = Array.isArray(ephemeralData[selectedDateStr]) ? ephemeralData[selectedDateStr] : [];
-
-    if (assignedCont) {
-        assignedCont.innerHTML = '';
-        const assignedToday = templates.filter(t => isSingleDayTodoTemplate(t) && isTaskActiveOnDate(t, selectedDateStr));
-
-        if (assignedToday.length === 0) {
-            assignedCont.innerHTML = `<div class="empty-state">[ NONE ]</div>`;
-        } else {
-            const groupDiv = document.createElement('div');
-            groupDiv.className = 'category-group';
-            groupDiv.style.marginBottom = '0';
-
-            assignedToday.forEach(t => {
-                const taskItem = document.createElement('div');
-                taskItem.className = 'task-item';
-                const instancesCount = t.instances || 1;
-                const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(instancesCount).fill(false);
-                const isAllChecked = currentLog.every(Boolean);
-
-                const leftDiv = document.createElement('div');
-                leftDiv.className = 'task-left';
-
-                const titleDiv = document.createElement('div');
-                titleDiv.className = 'task-title';
-                if (isAllChecked) {
-                    titleDiv.style.textDecoration = 'line-through';
-                    titleDiv.style.color = 'var(--text-dim)';
-                }
-
-                const schedBlock = customBlocksToday.find(b => b.templateId === t.id);
-                const timePrefix = schedBlock ? `[${schedBlock.start}-${schedBlock.end}] ` : '';
-                titleDiv.textContent = `${timePrefix}${t.title}`;
-                leftDiv.appendChild(titleDiv);
-
-                const instContainer = document.createElement('div');
-                instContainer.className = 'instances-container';
-
-                for (let i = 0; i < instancesCount; i++) {
-                    const cb = document.createElement('div');
-                    cb.className = `check-box ${currentLog[i] ? 'checked' : ''}`;
-                    cb.onclick = () => toggleTask(t.id, i);
-                    instContainer.appendChild(cb);
-                }
-
-                taskItem.appendChild(leftDiv);
-                taskItem.appendChild(instContainer);
-                groupDiv.appendChild(taskItem);
-            });
-
-            assignedCont.appendChild(groupDiv);
-        }
-    }
+    if (!assignedCont) return;
+    const date = selectedDateStr;
+    const blocksToday = Array.isArray(ephemeralData[date]) ? ephemeralData[date] : [];
+    assignedCont.innerHTML = '';
+    const todos = templates.filter(t => isSingleDayTodoTemplate(t) && isTaskActiveOnDate(t, date));
+    let done = 0;
+    todos.forEach(t => {
+        const inst = t.instances || 1;
+        const log = (logs[date] && logs[date][t.id]) || Array(inst).fill(false);
+        const isDone = log.every(Boolean);
+        if (isDone) done++;
+        const placed = blocksToday.find(b => b.templateId === t.id);
+        assignedCont.appendChild(tvRow({
+            title: t.title, done: isDone, time: placed ? placed.start : '',
+            check: { checked: isDone, onClick: () => toggleTaskSmart(t.id, date) }
+        }));
+    });
+    if (!todos.length) assignedCont.appendChild(tvEmpty('No to-dos. Write one below.'));
+    tvCount('tv-count-todo', done, todos.length);
 }
 
 function addGeneralTask(e) {
@@ -2554,10 +2480,11 @@ function renderDayPlannerModule() {
                     <span style="font-size:var(--font-xs); color: ${isVisible ? 'var(--text-muted)' : 'var(--text-dim)'}; font-weight:bold; text-transform:uppercase; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
                         ${escapeHtml(ref.title)}
                     </span>
+                    <span class="ghost-kind-tag">${escapeHtml(GHOST_KINDS[ghostKindOf(ref)].label)}</span>
                     ${lockedBadge}
                 </div>
                 <span class="u-flex u-ai-center u-gap-2 u-noshrink">
-                    ${window.CortexStudy && !/treno|train|bus|metro|tram|transport|volo|flight/i.test(ref.title) ? '<button type="button" class="ghost-btn plan-study-here">Study here</button>' : ''}
+                    ${window.CortexStudy && ghostKindOf(ref) === 'study' ? '<button type="button" class="ghost-btn plan-study-here">Study here</button>' : ''}
                     <span class="u-fs-2xs u-dim">${isVisible ? '[HIDE ▲]' : `[SHOW ${slotsToday.length} ▼]`}</span>
                 </span>
             `;
@@ -2579,7 +2506,8 @@ function renderDayPlannerModule() {
                     chip.type = 'button';
                     chip.className = `btn btn-sm ${isConfirmed ? 'btn-primary' : ''}`;
                     chip.style.cssText = `padding: 1px 6px; font-size: var(--font-2xs); font-variant-numeric: tabular-nums; ${!isConfirmed ? 'border-style: dashed; opacity: 0.7;' : ''}`;
-                    chip.textContent = `${isConfirmed ? '🔒 ' : ''}${tw.start}–${tw.end}`;
+                    const arrow = ghostKindOf(ref) === 'transport' ? ghostDirArrow(tw) : '';
+                    chip.textContent = `${isConfirmed ? '🔒 ' : ''}${arrow ? arrow + ' ' : ''}${tw.start}–${tw.end}`;
                     chip.onclick = (e) => {
                         e.stopPropagation();
                         toggleConfirmTransportSlot(targetDate, ref.id, ref.title, ref.color, tw.start, tw.end);
@@ -2897,7 +2825,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
                     block.className = 'block-absolute block-ref';
                     block.style.cssText = `top:${top}px; height:${height}px; border: 1px dashed ${ref.color || '#555'}; background-color:${hexToRgba(ref.color || '#555555', 0.06)}; padding: 1px 6px; color: var(--text-dim); opacity: 0.55; cursor: pointer; display: flex; justify-content: space-between; align-items: center; z-index: 3;`;
                     block.innerHTML = `
-                        <span class="u-fs-2xs u-clip u-nowrap" style="text-overflow:ellipsis;">${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
+                        <span class="u-fs-2xs u-clip u-nowrap" style="text-overflow:ellipsis;">${ghostKindOf(ref) === 'transport' && ghostDirArrow(tw) ? ghostDirArrow(tw) + ' ' : ''}${escapeHtml(ref.title)} (${tw.start}–${tw.end})</span>
                         <span class="u-fs-2xs u-muted u-noshrink u-ml-2">[LOCK]</span>
                     `;
                     block.onclick = (e) => {
