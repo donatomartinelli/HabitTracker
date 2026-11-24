@@ -165,7 +165,8 @@
 
     function renderTaskRows(items) {
         if (!items.length) {
-            return `<div class="today-empty">No tasks for today. Add one below or press <kbd>Ctrl K</kbd>.</div>`;
+            const isPhone = typeof isMobileViewMode !== 'undefined' && isMobileViewMode;
+            return `<div class="today-empty">No tasks for today. Add one below or ${isPhone ? 'tap <kbd>⌘</kbd> and write it' : 'press <kbd>Ctrl K</kbd>'}.</div>`;
         }
         return items.map(({ t, inst, log, done, start, mins }) => {
             const boxes = Array.from({ length: inst }, (_, i) =>

@@ -109,6 +109,10 @@ test('frasi concatenate', () => {
     assert.equal(first('chiama Marco domani poi palestra alle 18'), 'todo @2026-11-23 chiama Marco ;; event @2026-11-23 18:00-19:00 palestra');
     // un pezzo senza data prende il giorno di quello prima
     assert.equal(first('call mum friday then groceries'), 'todo @2026-11-27 call mum ;; todo @2026-11-27 groceries');
+    // "spesa" senza importo è la spesa da fare, non un'uscita
+    assert.equal(first('chiama Marco domani poi spesa'), 'todo @2026-11-23 chiama Marco ;; todo @2026-11-23 spesa');
+    assert.equal(first('spesa domani'), 'todo @2026-11-23 spesa');
+    assert.equal(first('spesa 30 benzina'), 'out 30 benzina');
     // una nota resta una nota
     assert.equal(first('nota: prima x poi y'), 'note prima x poi y');
     // se un pezzo non si capisce, non si spezza

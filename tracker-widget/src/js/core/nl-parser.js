@@ -636,6 +636,12 @@
             const probe = makeCtx(raw.slice(verbHit.len));
             if (extractDayPart(probe, today) || extractDate(probe, today) || extractTime(probe)) verbHit = null;
         }
+        // "spesa" is also the grocery run: without an amount it's not an expense ("chiama Marco poi spesa")
+        if (verbHit && (verbHit.verb === 'out' || verbHit.verb === 'in')) {
+            const probe = makeCtx(raw.slice(verbHit.len));
+            extractDate(probe, today);
+            if (extractAmount(probe, true) === null) verbHit = null;
+        }
         const body = verbHit ? raw.slice(verbHit.len).replace(/^[\s:,]+/, '') : raw;
         const ctx = makeCtx(body);
 
