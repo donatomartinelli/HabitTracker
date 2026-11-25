@@ -46,6 +46,7 @@
         'js/modules/planner.js',
         'js/modules/focus.js',
         'js/modules/study.js',
+        'js/modules/study-draft.js',
         'js/modules/diet.js',
         'js/modules/meals.js',
         'js/modules/gym.js',

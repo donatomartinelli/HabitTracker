@@ -2695,6 +2695,8 @@ function renderDayPlannerModule() {
     }
 
     renderDayPlannerTimelineCanvas(targetDate);
+    // A study window being drawn on this day: its panel and the window over the timeline (study-draft.js)
+    if (window.CortexStudyDraft) CortexStudyDraft.mountPlan();
 }
 
 // ============================================================================

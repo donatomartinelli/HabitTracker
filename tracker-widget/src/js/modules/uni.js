@@ -1133,7 +1133,8 @@ function applyPrepPlan(course, plan) {
             category: catName, title: b.label, instances, timerMinutes: timer, load: b.load,
             frequency: days.length === 7 ? 'all' : 'specific', daysOfWeek: days.length === 7 ? [] : [...days],
             startDate: plan.from || todayStr, endDate: plan.until || null,
-            color: course.color || '#ffffff', priority: b.load === 'light' ? 'low' : 'high'
+            color: (window.CortexStudy && b.load) ? CortexStudy.kindColor(b.load) : (course.color || '#ffffff'), kindColor: true,
+            priority: b.load === 'light' ? 'low' : 'high'
         });
     });
     course.plan = { days, blocks, from: plan.from || todayStr, until: plan.until || '' };

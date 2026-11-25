@@ -215,7 +215,10 @@
         }
         return items.map(({ t, inst, ticks, done, start, mins, prog }) => {
             // One box per row, so every title lines up. Multi-step tasks advance one step per tap.
-            const box = `<button type="button" class="check-box ${done ? 'checked' : ''} ${!done && ticks > 0 ? 'partial' : ''}" aria-label="Mark ${esc(t.title)} done" data-today-check="${esc(t.id)}"></button>`;
+            // Tasks counted in time show only their line; the others keep their box
+            const box = prog
+                ? '<span class="today-task-nobox" aria-hidden="true"></span>'
+                : `<button type="button" class="check-box ${done ? 'checked' : ''} ${!done && ticks > 0 ? 'partial' : ''}" aria-label="Mark ${esc(t.title)} done" data-today-check="${esc(t.id)}"></button>`;
             let meta = '';
             let bar = '';
             if (prog) {
@@ -383,6 +386,8 @@
     function renderTodayModule() {
         const root = document.getElementById('module-today');
         if (!root) return;
+        // Drawing a study window: day view + panel instead of the cards (js/modules/study-draft.js)
+        if (window.CortexStudyDraft && CortexStudyDraft.isActive('today')) { CortexStudyDraft.renderToday(root); return; }
 
         // Today always shows today, whatever date other modules are browsing
         const items = getTodayTasks();

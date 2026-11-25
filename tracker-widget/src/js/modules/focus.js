@@ -89,6 +89,42 @@ window.getRunningFocusBlockIds = () => {
 };
 window.isStudyWindowRunning = (winId) => isFocusRunning() && focusPlaylist.slice(currentPlaylistIndex).some(p => p && p.windowId === winId);
 
+// The blocks of the running session follow the timer: skip a session or a break, pause, run late,
+// and the sessions still ahead move with it on Today and Plan. Every device computes the same
+// times from the shared end time, so they agree.
+function syncSessionBlocks() {
+    if (!isFocusRunning() || !Array.isArray(ephemeralData[todayStr])) return false;
+    const list = ephemeralData[todayStr];
+    const minuteOf = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes() + Math.round(d.getSeconds() / 60); };
+    const startOfDay = new Date(getNow()); startOfDay.setHours(0, 0, 0, 0);
+    let changed = false;
+    const place = (p, sMs, eMs) => {
+        const id = p && p.type === 'task' ? (p.studyBlockId || p.blockId) : null;
+        if (!id) return;
+        const b = list.find(x => x && x.id === id);
+        if (!b || b.done) return;
+        if (sMs < startOfDay.getTime() || eMs >= startOfDay.getTime() + 24 * 3600000) return;   // not today
+        const s = minuteOf(sMs), e = Math.max(s + 1, minuteOf(eMs));
+        const S = minutesToTimeStr(s), E = minutesToTimeStr(Math.min(24 * 60 - 1, e));
+        if (b.start !== S || b.end !== E) { b.start = S; b.end = E; b.minutes = e - s; changed = true; }
+    };
+    const cur = focusPlaylist[currentPlaylistIndex];
+    const leftMs = Math.max(0, isPomodoroPaused ? timeRemaining * 1000 : phaseEndTimeMs - Date.now());
+    let end = Date.now() + leftMs;
+    place(cur, end - (Number(cur.duration) || 0) * 60000, end);
+    for (let i = currentPlaylistIndex + 1; i < focusPlaylist.length; i++) {
+        const p = focusPlaylist[i];
+        const len = (Number(p && p.duration) || 0) * 60000;
+        place(p, end, end + len);
+        end += len;
+    }
+    if (changed) {
+        saveData();
+        if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
+    }
+    return changed;
+}
+
 function replanStudyAfterFocus() {
     if (window.CortexStudy && typeof CortexStudy.replanAfterFocus === 'function') CortexStudy.replanAfterFocus(todayStr);
 }
@@ -320,6 +356,18 @@ function renderAvailableTasksForFocus() {
         const mins = getTaskDurationMinutes(t, selectedDateStr);
         if (mins <= 0) return;
 
+        // Tasks counted in time (Algebra 2h): what is left today, minus what is already in the playlist
+        if (window.CortexStudy && CortexStudy.isTimeTarget(t, todayStr)) {
+            const inDraft = focusDraft.filter(p => p.type === 'task' && p.id === t.id && !p.studyBlockId).reduce((a, p) => a + (Number(p.duration) || 0), 0);
+            const left = Math.max(0, CortexStudy.remainingToday(t, todayStr, null) - inDraft);
+            if (left >= 5) {
+                if (!cats[t.category]) cats[t.category] = [];
+                cats[t.category].push({ task: t, remaining: 1, mins: Math.min(left, CortexStudy.defaultLength()), left });
+                hasTasks = true;
+            }
+            return;
+        }
+
         if (isTaskActiveOnDate(t, selectedDateStr)) {
             const currentLog = (logs[selectedDateStr] && logs[selectedDateStr][t.id]) || Array(t.instances || 1).fill(false);
             const maxAvailable = currentLog.filter(x => !x).length;
@@ -360,8 +408,9 @@ function renderAvailableTasksForFocus() {
         <button type="button" class="btn btn-sm" data-mins="50">[+ 50 MIN]</button>`;
     free.querySelectorAll('[data-mins]').forEach(b => b.addEventListener('click', () => {
         const title = (free.querySelector('#focus-free-title').value || '').trim() || 'Deep work';
+        const last = focusDraft[focusDraft.length - 1];
+        if (last && last.type === 'task') focusDraft.push({ type: 'break', duration: 5 });
         focusDraft.push({ type: 'task', id: null, category: 'Focus', title, duration: parseInt(b.dataset.mins, 10), color: '#ffffff', isPartial: true });
-        focusDraft.push({ type: 'break', duration: 5 });
         renderFocusPlaylist();
         renderAvailableTasksForFocus();
     }));
@@ -386,8 +435,11 @@ function renderAvailableTasksForFocus() {
                 if (data.remaining > 0) {
                     const chip = document.createElement('div');
                     chip.className = 'playlist-task-chip';
-                    chip.innerHTML = `+ ${escapeHtml(data.task.title)} <span class="u-ml-2" style="opacity:0.6;">(${data.mins}m) [${data.remaining}]</span>`;
-                    chip.onclick = () => addTaskToPlaylist(data.task);
+                    chip.innerHTML = data.left !== undefined
+                        ? `+ ${escapeHtml(data.task.title)} <span class="u-ml-2" style="opacity:0.6;">${data.mins}m · ${CortexStudy.fmtDur(data.left)} left</span>`
+                        : `+ ${escapeHtml(data.task.title)} <span class="u-ml-2" style="opacity:0.6;">(${data.mins}m) [${data.remaining}]</span>`;
+                    if (data.left !== undefined) chip.style.borderLeft = `3px solid ${data.task.color || '#fff'}`;
+                    chip.onclick = () => addTaskToPlaylist(data.task, data.mins);
                     container.appendChild(chip);
                 }
             });
@@ -395,15 +447,14 @@ function renderAvailableTasksForFocus() {
     }
 }
 
-function addTaskToPlaylist(task) {
-    const mins = getTaskDurationMinutes(task, selectedDateStr);
+function addTaskToPlaylist(task, minutes = null) {
+    const mins = Number(minutes) > 0 ? Number(minutes) : getTaskDurationMinutes(task, selectedDateStr);
     if (mins <= 0) return;
 
-    focusDraft.push(makeTaskPhase(task, mins));
-    focusDraft.push({
-        type: 'break',
-        duration: 5
-    });
+    // a break before it when the playlist ends with a session (5 / 10 / 15 by length, like study windows)
+    const last = focusDraft[focusDraft.length - 1];
+    if (last && last.type === 'task') focusDraft.push({ type: 'break', duration: mins <= 30 ? 5 : mins <= 45 ? 10 : 15 });
+    focusDraft.push(makeTaskPhase(task, mins, window.CortexStudy && task.load ? CortexStudy.phaseInfo({ deep: 'learn', practice: 'practice', light: 'review' }[task.load]) : {}));
     renderFocusPlaylist();
     renderAvailableTasksForFocus();
 }
@@ -434,13 +485,19 @@ function renderFocusPlaylist() {
 
     document.getElementById('btn-start-playlist').disabled = false;
 
+    const nowD = getNow();
+    let at = nowD.getHours() * 60 + nowD.getMinutes();
+    const span = (len) => { const s = at; at += Number(len) || 0; return `${minutesToTimeStr(Math.min(s, 1439))}–${minutesToTimeStr(Math.min(at, 1439))}`; };
+    if (focusDraft.some(p => p.studyBlockId)) {
+        container.innerHTML += `<div class="u-fs-xs u-dim" style="margin-bottom:var(--space-1);">From today's study plan · changes here move the sessions on the timeline when you start</div>`;
+    }
     focusDraft.forEach((item, index) => {
         if (item.type === 'task') {
             container.innerHTML += `
                 <div class="playlist-item" style="border-left: 3px solid ${item.color};">
                     <div>
                         <strong>${escapeHtml(item.title)}</strong>
-                        <div class="u-fs-xs u-dim">${escapeHtml(item.category || 'WORK SESSION')}</div>
+                        <div class="u-fs-xs u-dim">${span(item.duration)} · ${escapeHtml(item.category || 'WORK SESSION')}</div>
                     </div>
                     <div class="u-flex u-gap-2 u-ai-center">
                         <input type="number" class="form-control form-control-sm no-spinners u-tc" style="width:48px;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)"> 
@@ -453,7 +510,7 @@ function renderFocusPlaylist() {
         } else if (item.type === 'break') {
             container.innerHTML += `
                 <div class="playlist-break">
-                    <span class="u-fs-xs u-dim">BREAK</span>
+                    <span class="u-fs-xs u-dim">BREAK ${span(item.duration)}</span>
                     <input type="number" class="form-control form-control-sm no-spinners u-tc" style="width:48px;" value="${item.duration}" onchange="updatePlaylistDuration(${index}, this.value)">
                     <span class="u-fs-xs u-dim">MIN</span>
                     <button type="button" class="icon-btn delete" onclick="removePlaylistIndex(${index})">×</button>
@@ -495,9 +552,35 @@ function renderLiveFocusQueue() {
     queueEl.innerHTML = html;
 }
 
-// Builds a new playlist in a draft: the running session stays untouched until you press Start
+// What is still planned in today's study windows, as a playlist (sessions and the breaks between them)
+function planDraftForToday() {
+    if (!window.CortexStudy) return [];
+    const now = getNow();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const blocks = (Array.isArray(ephemeralData[todayStr]) ? ephemeralData[todayStr] : [])
+        .filter(b => b && b.studyWindowId && !b.done && timeToMinutes(b.end) > nowMin)
+        .sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    const out = [];
+    blocks.forEach((b, i) => {
+        const s = timeToMinutes(b.start), e = timeToMinutes(b.end);
+        if (i > 0) {
+            const gap = s - timeToMinutes(blocks[i - 1].end);
+            if (gap > 0 && gap <= 45) out.push({ type: 'break', duration: gap });
+        }
+        const startAt = i === 0 ? Math.max(s, nowMin) : s;
+        out.push(Object.assign({
+            type: 'task', id: b.templateId, category: b.category, title: b.title,
+            duration: Math.max(1, e - startAt), color: b.color || '#ffffff', isPartial: true, isStudy: true,
+            studyBlockId: b.id, windowId: b.studyWindowId
+        }, CortexStudy.phaseInfo(b.phase)));
+    });
+    return out;
+}
+
+// Builds a new playlist in a draft: the running session stays untouched until you press Start.
+// With a study window today it starts from what is still planned, so the timer and the plan are the same thing.
 function openTimerModal() {
-    focusDraft = [];
+    focusDraft = planDraftForToday();
     renderAvailableTasksForFocus();
     renderFocusPlaylist();
     closeModals();
@@ -633,6 +716,7 @@ function startCurrentPlaylistPhase(opts = {}) {
     updatePomodoroDisplay();
     clearInterval(pomodoroInterval);
     pomodoroInterval = setInterval(runPomodoroTick, 250);
+    if (!opts.quiet) syncSessionBlocks();
     publishFocusSession();
 }
 
@@ -757,6 +841,7 @@ function togglePomodoroPause() {
 
     const hdrIcon = document.getElementById('header-focus-icon');
     if (hdrIcon) hdrIcon.innerHTML = focusStateIcon(isPomodoroPaused);
+    if (!isPomodoroPaused) syncSessionBlocks();
     publishFocusSession();
 }
 
