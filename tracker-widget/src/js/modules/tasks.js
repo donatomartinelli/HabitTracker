@@ -2550,10 +2550,13 @@ function renderDayPlannerModule() {
                 // Time-based: how much of the day's target is already on the timeline
                 const fmtH = (m) => (window.CortexStudy ? CortexStudy.fmtDur(m) : `${m}m`);
                 const targetMins = rawMins > 0 && window.CortexStudy ? CortexStudy.targetFor(t, targetDate) : totalInstances * unitMins;
+                // Left = target − what you already did (timer or ticks) − what is still planned ahead
+                const timeBased = rawMins > 0 && window.CortexStudy;
+                const doneMins = timeBased ? CortexStudy.progress(t, targetDate).done : 0;
                 const placedMins = customBlocks
-                    .filter(b => b.templateId === t.id)
-                    .reduce((acc, b) => acc + (b.minutes || (timeToMinutes(b.end) - timeToMinutes(b.start)) || 0), 0);
-                const leftMins = Math.max(0, targetMins - placedMins);
+                    .filter(b => b.templateId === t.id && (!timeBased || CortexStudy.isAhead(b, targetDate)))
+                    .reduce((acc, b) => acc + ((timeToMinutes(b.end) - timeToMinutes(b.start)) || b.minutes || 0), 0);
+                const leftMins = Math.max(0, targetMins - doneMins - placedMins);
                 const remainingBlocks = rawMins > 0 ? (leftMins >= 5 ? 1 : 0) : Math.max(0, totalInstances - customBlocks.filter(b => b.templateId === t.id).length);
                 if (rawMins > 0 && leftMins > 0) unitMins = Math.min(unitMins, leftMins);
 
@@ -2567,7 +2570,7 @@ function renderDayPlannerModule() {
                 row.style.cssText = `display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; background: ${isTapSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.02)'}; border: 1px solid ${isTapSelected ? 'var(--text-main)' : 'var(--border-color)'}; border-left: 3px solid ${t.color || '#fff'}; font-size: var(--font-xs); opacity: ${remainingBlocks > 0 ? '1' : '0.4'}; cursor: ${remainingBlocks > 0 ? 'pointer' : 'default'}; user-select: none;`;
 
                 const rightHint = remainingBlocks <= 0
-                    ? '[PLACED]'
+                    ? (timeBased && doneMins >= targetMins ? '[DONE]' : '[PLACED]')
                     : (isTapSelected ? '[TAP TIME BELOW ↓]' : (isMob ? '[TAP TO SELECT]' : '[:: DRAG]'));
 
                 row.innerHTML = `
@@ -2577,7 +2580,7 @@ function renderDayPlannerModule() {
                         </div>
                         <div class="u-fs-2xs u-dim" style="margin-top:2px;">
                             ${rawMins > 0
-                                ? `${fmtH(targetMins)} today · ${placedMins > 0 ? `${fmtH(placedMins)} placed · ` : ''}<strong>${leftMins > 0 ? `${fmtH(leftMins)} left` : 'all placed'}</strong>`
+                                ? `${fmtH(targetMins)} today · ${doneMins > 0 ? `${fmtH(doneMins)} done · ` : ''}${placedMins > 0 ? `${fmtH(placedMins)} planned · ` : ''}<strong>${leftMins > 0 ? `${fmtH(leftMins)} left` : (doneMins >= targetMins ? 'done ✓' : 'all planned')}</strong>`
                                 : `${totalInstances}× · <strong>${remainingBlocks} left</strong>`}
                         </div>
                     </div>

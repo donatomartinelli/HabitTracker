@@ -128,6 +128,10 @@
         return (t && LOADS[t.load]) ? t.load : guessLoad(t || {});
     }
     function phaseLabel(key) { return PHASES[key] ? PHASES[key].label : ''; }
+    // What a focus phase needs to show the study phase (Today card, header strip)
+    function phaseInfo(key) {
+        return PHASES[key] ? { phase: key, phaseLabel: PHASES[key].label, phaseHint: PHASES[key].hint } : {};
+    }
 
     function getPrefSafe(k, d) {
         try { return typeof getPref === 'function' ? (getPref(k) ?? d) : d; } catch (e) { return d; }
@@ -180,10 +184,16 @@
         const o = p && p.targets ? parseInt(p.targets[t.id], 10) : NaN;
         return Number.isFinite(o) && o >= 0 ? o : baseTarget(t);
     }
+    // Minutes of focus on a task that day. Sessions saved before they carried the task id count
+    // when their name and category are exactly the task's.
     function focusMinutes(tid, date) {
+        const t = (typeof templates !== 'undefined' ? templates : []).find(x => x.id === tid);
         return (typeof focusLogs !== 'undefined' ? focusLogs : [])
-            .filter(l => l && l.templateId === tid && (l.date === date || l.dateStr === date))
+            .filter(l => l && (l.date === date || l.dateStr === date) && (l.templateId === tid || (!l.templateId && t && legacyMatch(l, t))))
             .reduce((a, l) => a + (Number(l.minutes) || 0), 0);
+    }
+    function legacyMatch(l, t) {
+        return Boolean(t.title) && l.title === t.title && (l.category || '') === (t.category || '');
     }
     function ticksDone(t, date) {
         const log = (typeof logs !== 'undefined' && logs[date] && logs[date][t.id]) || [];
@@ -197,12 +207,28 @@
         return { done, target, complete: allTicked || (target > 0 && done >= target), unit: unitMinutes(t) };
     }
     // What is still to do today for a task, not counting what other windows already plan for it
+    // (Time already done is in `done`: blocks that are over or done do not count again.)
     function remainingToday(t, date, winId) {
         const pr = progress(t, date);
         const elsewhere = dayBlocks(date)
-            .filter(b => b && b.templateId === t.id && b.studyWindowId && b.studyWindowId !== winId)
+            .filter(b => b && b.templateId === t.id && (!winId || b.studyWindowId !== winId) && isAhead(b, date))
             .reduce((a, b) => a + blockLen(b), 0);
         return Math.max(0, pr.target - pr.done - elsewhere);
+    }
+    // A block still to come: not done, and (today) not over yet; days before today have nothing ahead
+    function isAhead(b, date) {
+        if (!b || b.done) return false;
+        if (date < todayStr) return false;
+        return date > todayStr || toMin(b.end) > nowMinutes();
+    }
+    // Sessions of a window that re-planning leaves alone: moved by hand, done with the timer,
+    // over already, or the one running right now
+    function keepsOwn(b, date) {
+        if (b.pinned || b.done) return true;
+        if (date !== todayStr) return false;
+        if (toMin(b.end) <= nowMinutes()) return true;
+        const running = typeof window.getRunningFocusBlockIds === 'function' ? window.getRunningFocusBlockIds() : [];
+        return running.includes(b.id);
     }
 
     // After a timed session: tick boxes for every full block of minutes reached
@@ -251,7 +277,7 @@
         });
         dayBlocks(date).forEach(b => {
             if (!b || !b.start || !b.end) return;
-            if (win && b.studyWindowId === win.id && !b.pinned) return;
+            if (win && b.studyWindowId === win.id && !keepsOwn(b, date)) return;
             out.push({ s: toMin(b.start), e: toMin(b.end), why: b.title, block: b });
         });
         if (window.CortexMeals && typeof CortexMeals.getMealBlocks === 'function') {
@@ -289,7 +315,10 @@
     function defaultSubjectIds(date) {
         const all = candidateSubjects(date);
         const study = all.filter(t => t.load || STUDY_RE.test(`${t.title} ${t.category}`));
-        return (study.length ? study : all).map(t => t.id);
+        const pool = study.length ? study : all;
+        // tasks whose target for the day is already reached are not ticked (you can still tick them)
+        const open = pool.filter(t => !progress(t, date).complete);
+        return (open.length ? open : pool).map(t => t.id);
     }
 
     // ------------------------------------------------------------------
@@ -681,6 +710,8 @@
     // Returns { style, sessions:[{tid,s,e,load,phase}], breaks:[{s,e}], leftover:{tid:min}, placedMin, freeMin, focusBy:{tid:min} }
     // opts.style: plan style to use (default: the window's) · opts.loads: {tid: load} not saved yet
     // opts.lenShift: −10 / 0 / +10 on session lengths · opts.ignoreNow: plan the whole window even today
+    // opts.capToTarget: (automatic re-plans) a task never gets more than what is left of its day's target;
+    //                   the time it frees goes to the others, and what nobody needs stays free
     function computePlan(date, win, opts = {}) {
         const allTemplates = typeof templates !== 'undefined' ? templates : [];
         const wanted = STYLES[opts.style] ? opts.style : styleOf(win);
@@ -698,11 +729,19 @@
         const nowMin = nowMinutes();
         if (isToday && !opts.ignoreNow && nowMin > winS) from = Math.min(winE, Math.ceil(nowMin / 5) * 5);
 
-        // Time this window already gave each subject: pinned sessions and, today, the ones in the past
+        // Time this window already gave each subject: its sessions that stay (done, moved by hand,
+        // over, running) and anything else on that subject inside the window (a different timer you ran)
         const used = {};
-        dayBlocks(date).filter(b => b && b.studyWindowId === win.id).forEach(b => {
-            const past = isToday && !opts.ignoreNow && toMin(b.end) <= from;
-            if (b.pinned || past) used[b.templateId] = (used[b.templateId] || 0) + blockLen(b);
+        const ids0 = new Set(subjects.map(t => t.id));
+        dayBlocks(date).forEach(b => {
+            if (!b || !ids0.has(b.templateId)) return;
+            if (b.studyWindowId === win.id) {
+                const past = isToday && !opts.ignoreNow && toMin(b.end) <= from;
+                if (past || keepsOwn(b, date)) used[b.templateId] = (used[b.templateId] || 0) + blockLen(b);
+                return;
+            }
+            const overlap = Math.min(toMin(b.end), winE) - Math.max(toMin(b.start), winS);
+            if (overlap > 0) used[b.templateId] = (used[b.templateId] || 0) + overlap;
         });
 
         const busy = busyIntervals(date, win);
@@ -716,23 +755,49 @@
         const weights = splitWeights(date, win, subjects);
         const sumW = sum(subjects, t => weights[t.id]);
         if (sumW <= 0) return result;
-        const rem = subjects.map((t, i) => ({
-            tid: t.id, load: loadFor(t), order: i,
-            rem: Math.max(0, ((weights[t.id] || 0) / sumW) * total - (used[t.id] || 0))
-        }));
+        const rem = subjects.map((t, i) => {
+            const w = (weights[t.id] || 0) / sumW;
+            let r = Math.max(0, w * total - (used[t.id] || 0));
+            let cap = Infinity;
+            if (opts.capToTarget && isTimeTarget(t, date)) {
+                const left = remainingToday(t, date, win.id);       // minutes of focus still to do today
+                cap = left > 0 ? left / 0.85 : 0;                   // as time in the window, breaks included
+                r = Math.min(r, cap);
+            }
+            return { tid: t.id, load: loadFor(t), order: i, rem: r, cap, w };
+        });
+        if (opts.capToTarget) {
+            // Time nobody uses any more (a task already done, minutes lost at the start) goes to the
+            // other tasks of the window, following the split, up to what each still has to do today
+            let extra = F - sum(rem, r => r.rem);
+            for (let guard = 0; extra > 1 && guard < 10; guard++) {
+                const open = rem.filter(r => r.w > 0 && r.cap - r.rem > 0.5);
+                if (!open.length) break;
+                const sw = sum(open, r => r.w);
+                let given = 0;
+                open.forEach(r => { const add = Math.min(r.cap - r.rem, (extra * r.w) / sw); r.rem += add; given += add; });
+                extra -= given;
+                if (given < 0.5) break;
+            }
+        }
         const sumRem = sum(rem, r => r.rem);
         if (sumRem <= 0) return result;
-        const subs = rem.map(r => Object.assign(r, { S: (r.rem / sumRem) * F })).filter(r => r.S >= 5);
+        // Shares of the free time; when capped, a window that has more time than work leaves the rest free
+        const scale = opts.capToTarget ? Math.min(1, F / sumRem) : F / sumRem;
+        const subs = rem.map(r => Object.assign(r, { S: r.rem * scale })).filter(r => r.S >= 5);
+        if (!subs.length) return result;
+        const Ffill = Math.min(F, sum(subs, s => s.S));
+        result.freeMin = F;
 
         let styleKey = wanted;
         let cfg = styleConfig(styleKey, lenShift);
-        const fitFor = (Feff) => fitUnits(styleKey, subs.map(s => Object.assign({}, s, { S: (s.S * Feff) / F })), Feff, cfg);
-        let units = cfg ? fitFor(F) : null;
+        const fitFor = (Feff) => fitUnits(styleKey, subs.map(s => Object.assign({}, s, { S: (s.S * Feff) / Ffill })), Feff, cfg);
+        let units = cfg ? fitFor(Ffill) : null;
         if (!units || !units.length) {
             if (opts.strict) return Object.assign(result, { style: null });
             styleKey = 'deep_first';
             cfg = styleConfig(styleKey, lenShift);
-            units = fitFor(F) || [];
+            units = fitFor(Ffill) || [];
         }
         result.style = styleKey;
 
@@ -741,13 +806,13 @@
             const r = { sessions: [], breaks: [], leftover: {}, placedMin: 0 };
             placeUnits(list, segments, r);
             r.over = sum(Object.values(r.leftover));
-            r.slack = slackAfter(r, segments);
+            r.slack = Math.max(0, slackAfter(r, segments) - (F - Ffill));   // time left free on purpose is not slack
             r.score = r.over * 2 + Math.max(0, r.slack - 20);
             return r;
         };
         let attempt = tryPlace(units);
         let best = attempt;
-        let Feff = F;
+        let Feff = Ffill;
         for (let pass = 0; pass < 4 && attempt.score > 0; pass++) {
             Feff = Math.max(MIN_SESSION, Feff - attempt.over + (attempt.slack > 20 ? attempt.slack - 5 : 0));
             const next = fitFor(Feff);
@@ -787,26 +852,28 @@
     }
 
     // Writes the plan of a window into the day's blocks
-    function applyPlan(date, winId) {
+    function applyPlan(date, winId, opts = {}) {
         const win = findWindow(date, winId);
         if (!win) return null;
-        const plan = computePlan(date, win);
+        const plan = computePlan(date, win, opts);
         if (!Array.isArray(ephemeralData[date])) ephemeralData[date] = [];
         const isToday = date === todayStr;
         const nowMin = nowMinutes();
-        // Keep pinned sessions and (today) the ones already in the past
+        // Keep sessions moved by hand, done with the timer, already over or running now
         ephemeralData[date] = ephemeralData[date].filter(b => {
             if (!b || b.studyWindowId !== winId) return true;
-            if (b.pinned) return true;
-            return isToday && toMin(b.end) <= nowMin;
+            return keepsOwn(b, date) || (isToday && toMin(b.end) <= nowMin);
         });
         const all = typeof templates !== 'undefined' ? templates : [];
         plan.sessions.forEach(s => {
             const t = all.find(x => x.id === s.tid);
             if (!t) return;
             const minutes = s.e - s.s;
+            // same plan → same ids on every device, so two devices re-planning never duplicate sessions
+            let id = `st_${winId}_${s.s}_${String(t.id).slice(-6)}`;
+            if (ephemeralData[date].some(b => b && b.id === id)) id = uid('st');
             ephemeralData[date].push({
-                id: uid('st'),
+                id,
                 templateId: t.id,
                 title: t.title,
                 category: t.category,
@@ -882,6 +949,92 @@
         rerenderAll();
     }
 
+    // ------------------------------------------------------------------
+    // What really happened (called by focus.js when a timer phase on a task ends)
+    // ------------------------------------------------------------------
+    // The phase's block on the timeline becomes the real time you focused; a session that had no
+    // block (the exam button, the setup window...) gets one, so the day shows what you did.
+    function settleSession(phase, minutes, date, endMs, sessionId, phaseIndex) {
+        if (!phase || phase.type !== 'task' || !phase.id || !(minutes > 0)) return;
+        const t = (typeof templates !== 'undefined' ? templates : []).find(x => x.id === phase.id);
+        if (!t) return;
+        if (!Array.isArray(ephemeralData[date])) ephemeralData[date] = [];
+        const list = ephemeralData[date];
+        const end = new Date(endMs);
+        const endMin = end.getHours() * 60 + end.getMinutes();
+        const len = Math.max(1, Math.round(minutes));
+        const startMin = Math.max(0, endMin - len);
+        const wanted = phase.studyBlockId || phase.blockId || `eb_fs_${sessionId || 'x'}_${phaseIndex}`;
+        let b = list.find(x => x && x.id === wanted);
+        if (!b) {
+            b = { id: wanted, templateId: t.id, title: t.title, category: t.category, color: t.color || '#b08d43', blocksUsed: 0, focusBlock: true };
+            list.push(b);
+        }
+        Object.assign(b, { start: fmt(startMin), end: fmt(Math.max(startMin + 1, endMin)), minutes: len, done: true });
+        if (b.studyWindowId) { b.pinned = true; b.auto = false; }
+        if (phase.phase && !b.phase) b.phase = phase.phase;
+    }
+
+    // Something the plan did not foresee happened today (a different timer, a stop, a skip):
+    // today's windows that are not over re-plan what is still ahead, from now
+    function replanAfterFocus(date = todayStr) {
+        const nowMin = nowMinutes();
+        let changed = false;
+        getWindows(date).forEach(win => {
+            if (toMin(win.end) <= nowMin) return;
+            if (typeof window.isStudyWindowRunning === 'function' && window.isStudyWindowRunning(win.id)) return;
+            applyPlan(date, win.id, { capToTarget: true });
+            changed = true;
+        });
+        if (changed) { saveData(); rerenderAll(); }
+    }
+
+    // Focus of that day not counted in any task (e.g. the exam "Study" button before it knew your tasks)
+    function unassignedFocus(date) {
+        const groups = new Map();
+        const all = typeof templates !== 'undefined' ? templates : [];
+        (typeof focusLogs !== 'undefined' ? focusLogs : []).forEach(l => {
+            if (!l || l.date !== date || l.templateId || l.noTask) return;
+            if (all.some(t => legacyMatch(l, t))) return;
+            const key = `${l.category || ''}|${l.title || ''}`;
+            const g = groups.get(key) || { key, title: l.title || 'Focus', category: l.category || '', minutes: 0, ids: [] };
+            g.minutes += Number(l.minutes) || 0;
+            g.ids.push(l.id);
+            groups.set(key, g);
+        });
+        const fold = (s) => String(s || '').toLowerCase().trim();
+        return [...groups.values()].filter(g => g.minutes > 0).map(g => {
+            // the tasks of the same course or category first
+            const word = fold(['Study', 'Focus', 'General'].includes(g.category) ? g.title : g.category);
+            const rel = (t) => (word && (fold(t.category) === word || fold(t.title) === word) ? 2 : 0) + (word && fold(t.category).includes(word) ? 1 : 0);
+            const tasks = candidateSubjects(date).sort((a, b) => rel(b) - rel(a) || (LOADS[loadOf(a)].rank - LOADS[loadOf(b)].rank));
+            const close = tasks.filter(t => rel(t) > 0);
+            return Object.assign(g, { tasks: (close.length ? close : tasks).slice(0, 6) });
+        });
+    }
+    function assignFocus(date, ids, tid) {
+        const t = (typeof templates !== 'undefined' ? templates : []).find(x => x.id === tid);
+        if (!t) return;
+        let mins = 0;
+        focusLogs.forEach(l => {
+            if (l && ids.includes(l.id) && !l.templateId && l.date === date) {
+                l.templateId = t.id;
+                l.title = t.title;
+                l.category = t.category;
+                mins += Number(l.minutes) || 0;
+            }
+        });
+        if (mins > 0) creditMinutes(t.id, date, mins);
+        saveData();
+        rerenderAll();
+        if (typeof showToast === 'function') showToast(`${fmtDur(mins)} counted in ${t.title}`);
+    }
+    function ignoreFocus(date, ids) {
+        focusLogs.forEach(l => { if (l && ids.includes(l.id) && l.date === date) l.noTask = true; });
+        saveData();
+        rerenderAll();
+    }
+
     // Called by tasks.js when a study session is dragged or resized by hand
     function markPinned(block) {
         if (block && block.studyWindowId) { block.pinned = true; block.auto = false; }
@@ -916,8 +1069,9 @@
 
     function startWindow(date, winId) {
         if (typeof startCurrentPlaylistPhase !== 'function') return;
+        if (typeof closeRunningSession === 'function') closeRunningSession();
         const nowMin = nowMinutes();
-        const list = sessionsOf(date, winId).filter(b => date !== todayStr || toMin(b.end) > nowMin);
+        const list = sessionsOf(date, winId).filter(b => !b.done && (date !== todayStr || toMin(b.end) > nowMin));
         if (!list.length) { if (typeof showToast === 'function') showToast('No sessions left in this window.'); return; }
         const playlist = [];
         list.forEach((b, i) => {
@@ -929,13 +1083,11 @@
                 const gap = s - prevEnd;
                 if (gap > 0 && gap <= 45) playlist.push({ type: 'break', duration: gap });
             }
-            playlist.push({
+            playlist.push(Object.assign({
                 type: 'task', id: b.templateId, category: b.category, title: b.title,
-                duration: dur, color: b.color || '#ffffff', isPartial: true, isStudy: true, studyBlockId: b.id,
-                phase: b.phase || null,
-                phaseLabel: phaseLabel(b.phase),
-                phaseHint: PHASES[b.phase] ? PHASES[b.phase].hint : ''
-            });
+                duration: dur, color: b.color || '#ffffff', isPartial: true, isStudy: true,
+                studyBlockId: b.id, windowId: winId
+            }, phaseInfo(b.phase)));
         });
         focusPlaylist = playlist;
         currentPlaylistIndex = 0;
@@ -992,14 +1144,26 @@
     // ------------------------------------------------------------------
     // Today card
     // ------------------------------------------------------------------
+    function renderOrphans(date) {
+        return unassignedFocus(date).map(g => `
+            <div class="study-orphan" data-orphan="${esc(g.ids.join(','))}">
+                <div class="study-orphan-q"><b>${fmtDur(g.minutes)}</b> of focus on <b>${esc(g.title)}</b> ${g.ids.length > 1 ? `(${g.ids.length} sessions) ` : ''}is not counted in a task yet. Which one was it?</div>
+                <div class="study-chips">
+                    ${g.tasks.map(t => { const left = remainingToday(t, date, null); return `<button type="button" class="study-chip" data-orphan-to="${esc(t.id)}" style="--chip-color:${esc(t.color || '#888')}">${esc(t.title)}<span class="dim">${esc(t.category || '')}${left > 0 ? ` · ${fmtDur(left)} left` : ''}</span></button>`; }).join('')}
+                    <button type="button" class="study-chip" data-orphan-none>None<span class="dim">just keep it as focus time</span></button>
+                </div>
+            </div>`).join('');
+    }
+
     function renderTodayCard(date) {
         const wins = getWindows(date);
         const subjects = candidateSubjects(date).filter(t => defaultSubjectIds(date).includes(t.id));
         const leftToStudy = subjects.reduce((a, t) => { const p = progress(t, date); return a + Math.max(0, p.target - p.done); }, 0);
-        if (!wins.length && (!subjects.length || leftToStudy <= 0)) return '';
+        const orphans = renderOrphans(date);
+        if (!wins.length && !orphans && (!subjects.length || leftToStudy <= 0)) return '';
 
         const nowMin = nowMinutes();
-        let html = `<div class="today-section-head"><span>STUDY</span><span class="dim">${leftToStudy > 0 ? `${fmtDur(leftToStudy)} left` : 'done ✓'}</span></div>`;
+        let html = `<div class="today-section-head"><span>STUDY</span><span class="dim">${leftToStudy > 0 ? `${fmtDur(leftToStudy)} left` : 'done ✓'}</span></div>` + orphans;
 
         if (!wins.length) {
             // Today: only places still open for at least half an hour
@@ -1052,6 +1216,11 @@
     }
 
     function bindTodayCard(root, date) {
+        root.querySelectorAll('[data-orphan]').forEach(box => {
+            const ids = box.dataset.orphan.split(',').filter(Boolean);
+            box.querySelectorAll('[data-orphan-to]').forEach(el => el.addEventListener('click', () => assignFocus(date, ids, el.dataset.orphanTo)));
+            box.querySelector('[data-orphan-none]')?.addEventListener('click', () => ignoreFocus(date, ids));
+        });
         root.querySelectorAll('[data-study-new]').forEach(el => el.addEventListener('click', () => {
             const refId = el.dataset.studyNew || null;
             openEditor(date, { refId });
@@ -1511,7 +1680,8 @@
     // ------------------------------------------------------------------
     window.CortexStudy = {
         STYLES, STYLE_ORDER, LOADS, PHASES,
-        loadOf, guessLoad, isTimeTarget, progress, targetFor, unitMinutes, fmtDur, phaseLabel, styleLabel,
+        loadOf, guessLoad, isTimeTarget, progress, targetFor, unitMinutes, fmtDur, phaseLabel, phaseInfo, styleLabel,
+        remainingToday, isAhead, settleSession, replanAfterFocus, unassignedFocus, assignFocus, ignoreFocus,
         getWindows, findWindow, sessionsOf, computePlan, proposePlans, applyPlan, saveWindow, removeWindow, replanWindow,
         creditMinutes, markPinned, startWindow, openEditor, closeEditor,
         decorateDayCanvas, renderTodayCard, bindTodayCard, timelineGroups, placesOn,

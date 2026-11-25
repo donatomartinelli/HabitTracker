@@ -487,9 +487,28 @@
                 if (typeof navigateToSection === 'function') navigateToSection(el.dataset.nav, el.dataset.tab || null);
             });
         });
+        // Exam "Study": with several tasks for the course (Theory, Practice, Anki) you pick which one,
+        // so the session counts for it
         root.querySelectorAll('[data-study]').forEach(el => {
             el.addEventListener('click', () => {
-                if (typeof CortexLinks !== 'undefined') CortexLinks.startStudyFocus(el.dataset.study, 50, el.dataset.color || '#b08d43');
+                if (typeof CortexLinks === 'undefined') return;
+                const name = el.dataset.study, color = el.dataset.color || '#b08d43';
+                const tasks = CortexLinks.courseTasks ? CortexLinks.courseTasks(name) : [];
+                const row = el.closest('.today-link');
+                const open = row && row.nextElementSibling && row.nextElementSibling.classList.contains('today-link-pick');
+                if (open) { row.nextElementSibling.remove(); return; }
+                if (tasks.length < 2 || !row) { CortexLinks.startStudyFocus(name, 50, color); return; }
+                const pick = document.createElement('div');
+                pick.className = 'today-link-pick study-chips';
+                pick.innerHTML = tasks.map(t => {
+                    const left = window.CortexStudy ? CortexStudy.remainingToday(t, todayStr, null) : 0;
+                    return `<button type="button" class="study-chip" data-study-task="${esc(t.id)}" style="--chip-color:${esc(t.color || color)}">${esc(t.title)}<span class="dim">${left > 0 ? `${fmtDur(left)} left today` : 'target reached'}</span></button>`;
+                }).join('');
+                pick.querySelectorAll('[data-study-task]').forEach(b => b.addEventListener('click', () => {
+                    CortexLinks.startStudyFocus(name, 50, color, b.dataset.studyTask);
+                    renderTodayModule();
+                }));
+                row.after(pick);
             });
         });
         root.querySelectorAll('[data-week-prio]').forEach(el => {
@@ -576,7 +595,7 @@
                         <span class="today-link-bar"><span style="width:${pct}%"></span></span>
                     </span>
                     <span class="today-link-actions">
-                        ${p.daysLeft > 0 ? `<button type="button" class="btn btn-sm" data-study="${esc(p.name)}" data-color="${esc(p.color)}">[▶ STUDY 50m]</button>` : ''}
+                        ${p.daysLeft > 0 ? `<button type="button" class="btn btn-sm" data-study="${esc(p.name)}" data-color="${esc(p.color)}">[▶ STUDY]</button>` : ''}
                     </span>
                 </div>`);
         });

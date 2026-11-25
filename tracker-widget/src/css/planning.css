@@ -82,6 +82,19 @@
 .study-chip.active { border-color: var(--accent); border-left-color: var(--chip-color, var(--accent)); background: var(--bg-elevated); }
 .study-place-input { margin-top: var(--space-2); max-width: 280px; }
 
+/* Focus done today that no task counts yet (Today → Study) */
+.study-orphan {
+    border: 1px dashed var(--accent-gold);
+    padding: var(--space-3);
+    margin-bottom: var(--space-3);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+}
+.study-orphan-q { font-size: var(--font-sm); line-height: var(--line-normal); }
+/* Exam row → which task to study */
+.today-link-pick { padding: var(--space-2) 0 var(--space-3) var(--space-4); }
+
 .study-time-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
 .study-time-row label { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--font-xs); color: var(--text-dim); }
 .study-time-row input[type="time"] { width: 112px; }

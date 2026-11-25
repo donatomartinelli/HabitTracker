@@ -546,6 +546,7 @@ function logFocusSession(minutes, category, title, dateStr = todayStr, templateI
     if (templateId) entry.templateId = templateId;
     if (extra && Number(extra.planned) > 0) entry.planned = Math.round(Number(extra.planned));
     if (extra && extra.phase) entry.phase = String(extra.phase);
+    if (extra && Number(extra.at) > 0) entry.at = Math.round(Number(extra.at));   // when it ended (ms)
     focusLogs.push(entry);
     saveData();
     return true;

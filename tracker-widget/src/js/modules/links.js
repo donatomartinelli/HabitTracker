@@ -74,9 +74,32 @@
         return plan;
     }
 
-    // Starts a focus session titled with the course name, so it counts as study for that exam
-    function startStudyFocus(courseName, minutes = 50, color = '#b08d43') {
+    // The tasks of a course you can study today (the Theory / Practice / Anki of its exam plan), theory first
+    function courseTasks(courseName) {
+        const course = findCourse(courseName);
+        const key = fold(courseName);
+        const S = window.CortexStudy;
+        return (typeof templates !== 'undefined' ? templates : [])
+            .filter(t => t && ((course && t.uniExamId === course.id) || (key && fold(t.category) === key))
+                && (!S || S.isTimeTarget(t, todayStr))
+                && (typeof getTaskDurationMinutes !== 'function' || getTaskDurationMinutes(t, todayStr) > 0))
+            .sort((a, b) => (S ? S.LOADS[S.loadOf(a)].rank - S.LOADS[S.loadOf(b)].rank : 0));
+    }
+
+    // Study for an exam. When the course has tasks, the session runs on one of them, so Today,
+    // Plan and the study windows count it; otherwise it is a session named after the course.
+    function startStudyFocus(courseName, minutes = 50, color = '#b08d43', templateId = null) {
         if (typeof focusPlaylist === 'undefined' || typeof startCurrentPlaylistPhase !== 'function') return false;
+        const tasks = courseTasks(courseName);
+        const t = templateId ? tasks.find(x => x.id === templateId) : (tasks.length === 1 ? tasks[0] : null);
+        if (t && typeof quickStartTaskFocus === 'function') {
+            const left = window.CortexStudy ? CortexStudy.remainingToday(t, todayStr, null) : 0;
+            const mins = left >= 15 && left < minutes ? left : minutes;
+            const prev = selectedDateStr;
+            selectedDateStr = todayStr;
+            try { return quickStartTaskFocus(t.id, { minutes: mins }); } finally { selectedDateStr = prev; }
+        }
+        if (typeof closeRunningSession === 'function') closeRunningSession();
         focusPlaylist = [
             { type: 'task', id: null, category: 'Study', title: courseName, duration: minutes, color, isPartial: false },
             { type: 'break', duration: 10 }
@@ -165,7 +188,7 @@
     }
 
     window.CortexLinks = {
-        getStudyPlan, startStudyFocus, studiedMinutesFor,
+        getStudyPlan, startStudyFocus, courseTasks, studiedMinutesFor,
         getUpcomingBills, getTodayGym,
         mondayOf, addDays, daysBetween, getWeekPlan, saveWeekPlan, toggleWeekPriority, isReviewDue,
         STUDY_HOURS_PER_CFU
