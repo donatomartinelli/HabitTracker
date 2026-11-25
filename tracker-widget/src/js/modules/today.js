@@ -167,7 +167,8 @@
                         <span class="today-now-label">${isPomodoroPaused ? 'PAUSED' : (phase.type === 'break' ? 'BREAK' : 'FOCUS')}${fromTxt}</span>
                         <span class="today-now-time">${pad(Math.floor(secs / 60))}:${pad(secs % 60)}</span>
                     </div>
-                    <div class="today-now-title">${esc(title)}</div>
+                    <div class="today-now-title">${esc(title)}${phase.phaseLabel ? ` <span class="dim">· ${esc(phase.phaseLabel)}</span>` : ''}</div>
+                    ${phase.phaseHint ? `<div class="today-now-hint dim">${esc(phase.phaseHint)}</div>` : ''}
                     <div class="today-progress"><div style="width:${pct.toFixed(1)}%"></div></div>
                     ${queue}
                     <div class="today-now-actions">
@@ -328,7 +329,7 @@
                 <div class="today-tl-group-head ${stateOf(g.start, g.end)}">
                     <span class="today-tl-time">${fmtMins(g.start)}</span>
                     <button type="button" class="today-tl-group-title" data-study-edit="${esc(g.win.id)}" title="Edit this study window">
-                        <span>◉ ${esc(g.label)} <span class="dim">· ${esc(g.rhythm)}</span></span>
+                        <span>◉ ${esc(g.label)} <span class="dim">· ${esc(g.style)}</span></span>
                         <span class="today-tl-end">${fmtMins(g.end)}</span>
                     </button>
                 </div>`);
@@ -347,7 +348,7 @@
                     <div class="today-tl-row is-in-group ${stateOf(s, e)}">
                         <span class="today-tl-time">${fmtMins(s)}</span>
                         <span class="today-tl-block" style="--block-color:${esc(b.color || '#555555')}">
-                            <span class="today-tl-title">${esc(b.title)} <span class="dim">${e - s}m</span></span>
+                            <span class="today-tl-title">${esc(b.title)} <span class="dim">${e - s}m${b.phase && window.CortexStudy ? ' · ' + esc(CortexStudy.phaseLabel(b.phase)) : ''}</span></span>
                             <span class="today-tl-end">${fmtMins(e)}</span>
                         </span>
                     </div>`);

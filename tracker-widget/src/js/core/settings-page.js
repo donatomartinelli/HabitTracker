@@ -163,19 +163,19 @@
 
     function sectionStudy() {
         const S = window.CortexStudy;
-        const rh = getPref('studyRhythm');
-        const rhythms = S ? S.RHYTHM_ORDER.map(k => `<option value="${k}" ${rh === k ? 'selected' : ''}>${esc(S.RHYTHMS[k].label)}</option>`).join('') : '';
-        const desc = S && S.RHYTHMS[rh] ? S.RHYTHMS[rh].desc : '';
-        const orders = S ? Object.entries(S.ORDERS).map(([k, o]) => ({ value: k, label: o.label })) : [];
+        const L = S && S.learnedSummary ? S.learnedSummary() : null;
         const places = (typeof referenceLayers !== 'undefined' ? referenceLayers : []);
+        const learned = [];
+        if (L && L.favourite) learned.push(`You pick “${esc(L.favourite.label)}” most often (${L.favourite.count} of ${L.picks}).`);
+        if (L && L.pace) learned.push(`You stay on a session about ${L.pace.len} min (last ${L.pace.n} sessions).`);
+        if (L && L.splits) learned.push(`It remembers how you split ${L.splits} combination${L.splits === 1 ? '' : 's'} of tasks.`);
+        if (L && L.lenShift) learned.push(`You like sessions ${L.lenShift > 0 ? 'longer' : 'shorter'} than proposed.`);
+        const anything = L && (L.picks || L.splits || L.lenShift);
         return `
             ${group('Study windows', `
-                ${row('Default rhythm', esc(desc), `<select class="cx-select" data-pref-select="studyRhythm">${rhythms}</select>`)}
-                ${row('Default order', 'How subjects follow each other inside a window, by mental load.', seg('studyOrder', orders, getPref('studyOrder')))}
-                ${row('Custom rhythm', 'Used when you pick “Custom” in a window.', `<span class="cx-inline">
-                    <input type="number" class="cx-input is-num" min="10" max="180" step="5" value="${esc(getPref('studyCustomWork'))}" data-pref-num="studyCustomWork" aria-label="Work minutes"><span class="cx-unit">min work</span>
-                    <input type="number" class="cx-input is-num" min="0" max="60" step="5" value="${esc(getPref('studyCustomBreak'))}" data-pref-num="studyCustomBreak" aria-label="Break minutes"><span class="cx-unit">min break</span></span>`)}
-            `, 'Mental load is set per task in the study window: High for theory and notes, Medium for exercises, Light for flashcards like Anki.')}
+                ${row('How sessions are planned', 'No fixed rhythm: in each window you split the time between your tasks and pick one of the plans Cortex proposes (theory first, learn then apply, warm-up then peak, sprints, long blocks…).', '')}
+                ${row('What Cortex has learned', learned.length ? learned.join(' ') : 'Nothing yet: it learns from the plans you pick, how you split the time and how long your focus sessions really last.', anything ? button('Forget', 'data-act="forget-study"', 'is-quiet') : '')}
+            `, 'The kind of work is set per task in the study window: Theory for new material, Exercises for problems, Review for flashcards like Anki.')}
             ${group('Places and schedules', `
                 ${row('Places', places.length ? esc(places.map(p => p.title).join(' · ')) : 'Libraries, home, the train: places with opening hours or timetables (ghost layers).', button('Manage places', 'data-act="places"'))}
                 ${row('Tasks and routines', 'Subjects, habits, routines and medicines.', button('Open', 'data-act="tasks"'))}
@@ -393,6 +393,7 @@
             }
             else if (a === 'shortcuts') { close(); if (typeof openShortcutsHelp === 'function') openShortcutsHelp(); }
             else if (a === 'reset-cards') { setPref('todayCards', TODAY_CARD_DEFS.map(c => ({ key: c.key, on: true }))); render(); }
+            else if (a === 'forget-study') { if (window.CortexStudy) CortexStudy.forgetLearned(); render(); }
             else if (a === 'places') { close(); if (typeof openTasksSettingsModal === 'function') openTasksSettingsModal('tcfg-ghosts'); }
             else if (a === 'tasks') { close(); if (typeof openTasksSettingsModal === 'function') openTasksSettingsModal(); }
             else if (a === 'account') { close(); if (typeof openAccountPanel === 'function') openAccountPanel(); }

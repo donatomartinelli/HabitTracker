@@ -1816,7 +1816,7 @@ function renderHudPod() {
             focusBox.innerHTML = `
                 <div class="u-flex u-jc-between u-ai-base">
                     <div style="font-size:1.35rem; font-weight:bold; color:${activeColor}; font-variant-numeric:tabular-nums;">
-                        ${isPomodoroPaused ? '⏸' : '▶'} ${m}:${s}
+                        ${typeof focusStateIcon === 'function' ? focusStateIcon(isPomodoroPaused) : ''} ${m}:${s}
                     </div>
                     <div class="u-fs-xs u-bold u-main u-clip u-nowrap" style="max-width:175px; text-overflow:ellipsis;">
                         ${escapeHtml(phase.type === 'task' ? phase.title : 'BREAK')}

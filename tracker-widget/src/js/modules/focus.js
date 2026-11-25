@@ -203,7 +203,8 @@ function completeTaskPhase(phase, minutes, dateStr, phaseIndex) {
     const entryId = focusSessionId ? `fl_${focusSessionId}_${phaseIndex}` : null;
     let logged = true;
     if (typeof logFocusSession === 'function') {
-        logged = logFocusSession(minutes, phase.category, phase.title, dateStr, phase.id || null, entryId) !== false;
+        // planned length and study phase let Cortex learn how long you really stay on a session
+        logged = logFocusSession(minutes, phase.category, phase.title, dateStr, phase.id || null, entryId, { planned: phase.duration, phase: phase.phase || null }) !== false;
     }
     if (!logged) return;
     if (phase.isStudy && phase.id && window.CortexStudy) {
@@ -468,6 +469,21 @@ document.getElementById('timerSetupForm').addEventListener('submit', function(e)
     startCurrentPlaylistPhase();
 });
 
+// Play / pause drawn the same way everywhere (an emoji pause sign looked nothing like the play triangle)
+const FOCUS_ICON_PLAY = '<svg class="fx-ico" viewBox="0 0 10 10" aria-hidden="true" focusable="false"><path d="M2.2 1.2 8.8 5 2.2 8.8z" fill="currentColor"/></svg>';
+const FOCUS_ICON_PAUSE = '<svg class="fx-ico" viewBox="0 0 10 10" aria-hidden="true" focusable="false"><path d="M2.2 1.4h2.2v7.2H2.2zM5.6 1.4h2.2v7.2H5.6z" fill="currentColor"/></svg>';
+function focusStateIcon(paused) { return paused ? FOCUS_ICON_PAUSE : FOCUS_ICON_PLAY; }
+window.focusStateIcon = focusStateIcon;
+
+// The timer is already on screen (Today's "Now" card, the HUD pod): no need for the strip under the header
+function isFocusTimerShownElsewhere() {
+    const visible = (el) => el && el.isConnected && !el.closest('#module-registry') && el.getClientRects().length > 0;
+    if (visible(document.querySelector('#module-today .today-now'))) return true;
+    if (typeof isHudMode !== 'undefined' && isHudMode && visible(document.getElementById('hud-pod-focus-box'))) return true;
+    return false;
+}
+
+let focusStripShown = null;
 function syncFocusViewState() {
     const isActive = focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
     const inlineWrap = document.getElementById('header-inline-focus');
@@ -479,24 +495,24 @@ function syncFocusViewState() {
         btnWidgetMode.textContent = '[_ MINIMIZE]';
     }
 
-    document.body.classList.toggle('focus-active', isActive);
-    if (!isActive) {
-        if (inlineWrap) inlineWrap.style.display = 'none';
-        if (progTrack) progTrack.style.display = 'none';
-        if (overlay) {
-            overlay.classList.remove('widget-mode');
-            overlay.style.display = 'none';
-        }
-        return;
-    }
-
-    if (inlineWrap) inlineWrap.style.display = 'flex';
-    if (progTrack) progTrack.style.display = 'block';
+    const showStrip = isActive && !isFocusTimerShownElsewhere();
+    focusStripShown = showStrip;
+    document.body.classList.toggle('focus-running', isActive);
+    document.body.classList.toggle('focus-active', showStrip);
+    if (inlineWrap) inlineWrap.style.display = showStrip ? 'flex' : 'none';
+    if (progTrack) progTrack.style.display = showStrip ? 'block' : 'none';
 
     if (overlay) {
         overlay.classList.remove('widget-mode');
-        overlay.style.display = isFullscreenFocusOpen ? 'flex' : 'none';
+        overlay.style.display = isActive && isFullscreenFocusOpen ? 'flex' : 'none';
     }
+}
+
+// Checked on every tick: switching section or tile shows/hides the strip without each view having to say so
+function refreshFocusStripVisibility() {
+    const isActive = focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
+    const want = isActive && !isFocusTimerShownElsewhere();
+    if (want !== focusStripShown) syncFocusViewState();
 }
 
 function openFullscreenFocusOverlay() {
@@ -595,10 +611,10 @@ function renderFocusPhaseChrome(phase, opts = {}) {
         hdrPill.classList.toggle('is-paused', isPomodoroPaused);
     }
     if (hdrTitle) {
-        hdrTitle.textContent = phase.type === 'task' ? phase.title : 'BREAK';
+        hdrTitle.textContent = phase.type === 'task' ? phase.title + (phase.phaseLabel ? ` · ${phase.phaseLabel}` : '') : 'BREAK';
     }
     if (hdrIcon) {
-        hdrIcon.textContent = isPomodoroPaused ? '⏸' : '▶';
+        hdrIcon.innerHTML = focusStateIcon(isPomodoroPaused);
         hdrIcon.style.color = activeColor;
     }
     if (hdrProgBar) {
@@ -638,6 +654,7 @@ function updatePomodoroDisplay() {
 }
 
 function runPomodoroTick() {
+    refreshFocusStripVisibility();
     if (isPomodoroPaused) return;
 
     const nowMs = Date.now();
@@ -681,7 +698,7 @@ function togglePomodoroPause() {
     if (hdrPill) hdrPill.classList.toggle('is-paused', isPomodoroPaused);
 
     const hdrIcon = document.getElementById('header-focus-icon');
-    if (hdrIcon) hdrIcon.textContent = isPomodoroPaused ? '⏸' : '▶';
+    if (hdrIcon) hdrIcon.innerHTML = focusStateIcon(isPomodoroPaused);
     publishFocusSession();
 }
 

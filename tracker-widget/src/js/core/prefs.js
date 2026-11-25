@@ -6,7 +6,8 @@
 //   accent              → colour of primary buttons, active tabs, the "now" line
 //   width / density     → content centred or full width; compact or comfortable rows
 //   todayCards          → which cards Today shows, in which order
-//   studyRhythm / studyOrder / focusSound → defaults for study windows and the focus timer
+//   studyStylePicks / studySplitMemo / studyLenShift → what study windows learn from your choices
+//   focusSound → a tone when a focus session ends
 // Loaded right after state.js, before the modules that draw timelines.
 
 const PREFS_KEY = 'cortex_prefs';
@@ -40,10 +41,9 @@ const PREFS_DEFAULTS = {
     width: 'centered',          // 'centered' | 'full'
     density: 'comfortable',     // 'comfortable' | 'compact'
     todayCards: TODAY_CARD_DEFS.map(c => ({ key: c.key, on: true })),
-    studyRhythm: 'decreasing',
-    studyOrder: 'heavy_first',
-    studyCustomWork: 45,
-    studyCustomBreak: 10,
+    studyStylePicks: {},        // plan style → how many times you picked it (js/modules/study.js)
+    studySplitMemo: {},         // set of tasks → how you split the time last time
+    studyLenShift: 0,           // −10 / 0 / +10: shorter or longer sessions than proposed
     focusSound: true
 };
 
@@ -73,6 +73,12 @@ function normalizePrefs(p) {
     if (!/^#[0-9a-f]{6}$/i.test(String(out.accent || ''))) out.accent = PREFS_DEFAULTS.accent;
     if (!['centered', 'full'].includes(out.width)) out.width = PREFS_DEFAULTS.width;
     if (!['comfortable', 'compact'].includes(out.density)) out.density = PREFS_DEFAULTS.density;
+    const plain = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : {});
+    out.studyStylePicks = plain(out.studyStylePicks);
+    out.studySplitMemo = plain(out.studySplitMemo);
+    out.studyLenShift = [-10, 0, 10].includes(Number(out.studyLenShift)) ? Number(out.studyLenShift) : 0;
+    // the fixed study rhythms are gone: sessions now follow the plan you pick in each window
+    ['studyRhythm', 'studyOrder', 'studyCustomWork', 'studyCustomBreak'].forEach(k => delete out[k]);
     return out;
 }
 

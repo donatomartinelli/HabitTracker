@@ -531,7 +531,7 @@ if (!noteCategories.includes('Extracted')) {
 
 // entryId: fixed id for a phase of a shared focus session (js/modules/focus.js).
 // If that id is already logged (by this or another device) nothing is added: returns false.
-function logFocusSession(minutes, category, title, dateStr = todayStr, templateId = null, entryId = null) {
+function logFocusSession(minutes, category, title, dateStr = todayStr, templateId = null, entryId = null, extra = null) {
     const mins = Math.round(parseFloat(minutes) || 0);
     if (mins <= 0) return false;
     if (entryId && focusLogs.some(l => l && l.id === entryId)) return false;
@@ -544,6 +544,8 @@ function logFocusSession(minutes, category, title, dateStr = todayStr, templateI
     };
     // Lets study progress count minutes per task (js/modules/study.js)
     if (templateId) entry.templateId = templateId;
+    if (extra && Number(extra.planned) > 0) entry.planned = Math.round(Number(extra.planned));
+    if (extra && extra.phase) entry.phase = String(extra.phase);
     focusLogs.push(entry);
     saveData();
     return true;

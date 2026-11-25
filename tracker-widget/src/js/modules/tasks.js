@@ -1514,7 +1514,8 @@ function renderTasks() {
             title = arrow + b.title;
         } else if (b.studyWindowId) {
             const win = window.CortexStudy ? CortexStudy.findWindow(date, b.studyWindowId) : null;
-            kind = `study${win ? ' · ' + tvEsc(win.place) : ''}`;
+            const ph = b.phase && window.CortexStudy ? CortexStudy.phaseLabel(b.phase) : '';
+            kind = `study${win ? ' · ' + tvEsc(win.place) : ''}${ph ? ' · ' + tvEsc(ph) : ''}`;
         } else if (tpl && tpl.isTodo) kind = 'to-do';
         timed.push({
             start: tvMin(b.start),
@@ -1557,7 +1558,7 @@ function renderTasks() {
             const planned = blocksToday.filter(b => b.templateId === t.id).sort((a, b) => tvMin(a.start) - tvMin(b.start));
             const subBits = [];
             if (planned.length) subBits.push(`planned ${planned.map(b => b.start).join(' · ')}`);
-            if (t.load && window.CortexStudy && CortexStudy.LOADS[t.load]) subBits.push(CortexStudy.LOADS[t.load].short.toLowerCase() + ' focus');
+            if (t.load && window.CortexStudy && CortexStudy.LOADS[t.load]) subBits.push(CortexStudy.LOADS[t.load].short.toLowerCase());
             group.appendChild(tvRow({
                 color: t.color, title: t.title, done,
                 sub: subBits.length ? tvEsc(subBits.join(' · ')) : '',
@@ -2898,6 +2899,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
             isTransport: cb.isTransport,
             title: cb.title,
             category: cb.category || 'Planned',
+            phase: cb.phase && window.CortexStudy ? CortexStudy.phaseLabel(cb.phase) : '',
             color: cb.color || '#ffffff',
             start: cb.start,
             end: cb.end,
@@ -2953,7 +2955,7 @@ function renderDayPlannerTimelineCanvas(targetDate) {
         const infoSpan = document.createElement('span');
         infoSpan.style.cssText = 'overflow:hidden; text-overflow:ellipsis; white-space:nowrap; pointer-events:none;';
         const trPrefix = b.isTransport ? '🚆 ' : '';
-        infoSpan.innerHTML = `<strong>[${b.start}–${b.end}] ${trPrefix}${escapeHtml(b.title)}</strong> <span style="opacity:0.75;">(${b.minutes}m)</span>`;
+        infoSpan.innerHTML = `<strong>[${b.start}–${b.end}] ${trPrefix}${escapeHtml(b.title)}</strong> <span style="opacity:0.75;">(${b.minutes}m${b.phase ? ` · ${escapeHtml(b.phase)}` : ''})</span>`;
         block.appendChild(infoSpan);
 
         const removeBlockAction = (ev) => {

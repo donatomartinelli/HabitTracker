@@ -72,8 +72,19 @@ body.terminal-open .app-header,
 }
 
 .header-focus-icon {
+    display: inline-flex;
+    align-items: center;
     font-size: var(--font-2xs);
     color: var(--text-main);
+}
+
+/* Play / pause icon (js/modules/focus.js): same size and weight in both states */
+.fx-ico {
+    display: inline-block;
+    width: 0.85em;
+    height: 0.85em;
+    vertical-align: -0.06em;
+    flex-shrink: 0;
 }
 
 .header-focus-time {
