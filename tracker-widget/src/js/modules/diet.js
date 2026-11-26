@@ -3,13 +3,10 @@
 // - diet_today (#module-diet-today): Visione giornaliera sincronizzata con selectedDateStr (<-, ->, T)
 // - diet_week (#module-diet-week): Matrice settimanale completa (Zero istruzioni superflue)
 
-let hideBreakfast = cortexStore.getItem('cortex_hide_breakfast') === 'true';
+// Breakfast is a meal like the others: it is always shown (the old "hide breakfast" switch is gone)
+let hideBreakfast = false;
+cortexStore.removeItem('cortex_hide_breakfast');
 
-function toggleBreakfastVisibility() {
-    hideBreakfast = !hideBreakfast;
-    cortexStore.setItem('cortex_hide_breakfast', String(hideBreakfast));
-    renderDiet();
-}
 
 function parseFoodSegmentMacros(segmentText) {
     let kcal = 0, p = 0, c = 0, f = 0;
@@ -315,7 +312,6 @@ function renderDietAtomToday() {
                     <span class="u-fs-xs u-dim u-ml-2">// ${dayNames[dayKey]} ${selectedDateStr}</span>
                 </div>
                 <div class="u-gap-2 u-ai-center" style="display:flex;" id="diet-today-right-controls">
-                    <button type="button" class="btn btn-sm" onclick="toggleBreakfastVisibility()">${hideBreakfast ? '[👁 SHOW BRKFST]' : '[Ø HIDE BRKFST]'}</button>
                 </div>
             </div>
 

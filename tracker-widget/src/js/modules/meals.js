@@ -88,9 +88,8 @@
         const dayIdx = parseLocalDate(date).getDay();
         return String(row[dayIdx] || '').trim();
     }
-    function isBreakfastHidden(row) {
-        return typeof hideBreakfast !== 'undefined' && hideBreakfast && /spuntino 1|colazione|breakfast/i.test(row.type || '');
-    }
+    // Breakfast is a meal like the others (the old "hide breakfast" switch is gone)
+    function isBreakfastHidden() { return false; }
 
     // ------------------------------------------------------------------
     // Food parsing and macros
@@ -323,7 +322,8 @@
             if (!items.some(i => lc(i.name) === lc(x.name)) && !skipped.some(y => lc(y) === lc(x.name))) items.push({ name: x.name, g: r0(x.g) });
         });
         d.meals[mealId] = { status: 'eaten', items, skipped };
-        refreshStatus(date, mealId);
+        // a meal with no food from your table (a free meal, "pizza") still counts as eaten
+        if (items.length || skipped.length) refreshStatus(date, mealId);
         persist();
         rerender();
     }
@@ -655,7 +655,6 @@
                     </div>
                     <div class="diet2-head-actions">
                         <button type="button" class="ghost-btn" data-add-meal>+ Meal</button>
-                        <button type="button" class="ghost-btn" data-toggle-bf>${typeof hideBreakfast !== 'undefined' && hideBreakfast ? 'Show breakfast' : 'Hide breakfast'}</button>
                     </div>
                 </div>
                 <div class="diet2-grid">
@@ -683,7 +682,6 @@
         root.querySelectorAll('[data-eaten]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); markEatenAsPlanned(date, b.dataset.eaten); }));
         root.querySelectorAll('[data-skip-meal]').forEach(b => b.addEventListener('click', (e) => { e.stopPropagation(); skipMeal(date, b.dataset.skipMeal); }));
         bindFoodChips(root, date);
-        root.querySelector('[data-toggle-bf]')?.addEventListener('click', () => { if (typeof toggleBreakfastVisibility === 'function') toggleBreakfastVisibility(); });
         root.querySelector('[data-add-meal]')?.addEventListener('click', addMeal);
         root.querySelector('[data-nav-weight]')?.addEventListener('click', () => { if (typeof navigateToSub === 'function') navigateToSub('diet_weight'); });
         bindWeight(root);
@@ -825,38 +823,63 @@
     // ------------------------------------------------------------------
     // Today card
     // ------------------------------------------------------------------
+    // Every meal of the day, one line each: what the plan says, and two buttons, eaten or not.
+    // "All eaten" logs every meal still open as planned (logging the day in one go).
+    // The meal name opens the sheet: real grams, extra food, foods you left out.
     function renderTodayCard(date) {
         if (typeof isModuleEnabled === 'function' && !isModuleEnabled('diet')) return '';
         const blocks = getMealBlocks(date);
         if (!blocks.length) return '';
         const tot = dayTotals(date);
-        const nowMin = (() => { const n = getNow(); return n.getHours() * 60 + n.getMinutes(); })();
-        // The meal to deal with now: the latest one not logged whose time has come, otherwise the next one
-        const open = blocks.filter(b => !b.status || b.status === 'partial');
-        const due = (date === todayStr ? [...open].reverse().find(b => b.start <= nowMin + 30) : null) || open[0] || null;
-        const dueLog = due ? logFor(date, due.id) : null;
+        const open = blocks.filter(b => !b.status);
+        const rows = blocks.map(b => {
+            const what = b.summary || 'Nothing planned';
+            let side;
+            if (!b.status) {
+                side = `<button type="button" class="btn btn-sm" data-meal-eaten="${esc(b.id)}" title="Eaten as planned">✓ Eaten</button>
+                        <button type="button" class="ghost-btn" data-meal-skip="${esc(b.id)}" title="Not eaten">✗</button>`;
+            } else {
+                const label = b.status === 'skipped' ? '✗ not eaten' : `${b.status === 'partial' ? '◐' : '✓'} ${num(b.eatenKcal)} kcal`;
+                side = `<button type="button" class="meal-status is-${esc(b.status)}" data-meal-open="${esc(b.id)}" title="Change what you ate">${label}</button>
+                        <button type="button" class="ghost-btn today-meal-undo" data-meal-clear="${esc(b.id)}" title="Not logged yet" aria-label="Undo ${esc(b.title)}">↺</button>`;
+            }
+            return `
+                <div class="today-meal-row ${b.status ? 'is-' + esc(b.status) : ''}">
+                    <button type="button" class="today-meal-name" data-meal-open="${esc(b.id)}" title="Grams, extra food, what you left out">${esc(b.title)}</button>
+                    <span class="today-meal-what" title="${esc(what)}">${esc(what)}</span>
+                    <span class="today-meal-side">${side}</span>
+                </div>`;
+        }).join('');
         return `
-            <div class="today-section-head"><span>MEALS</span><span class="dim">${num(tot.eaten.kcal)} / ${num(tot.planned.kcal)} kcal</span></div>
-            <div class="today-meals">
-                ${due ? `
-                <div class="today-meal-next">
-                    <div class="today-meal-main">
-                        <button type="button" class="today-meal-when" data-meal-open="${esc(due.id)}">${date !== todayStr ? 'First' : due.end + 60 < nowMin ? 'Not logged' : due.start <= nowMin ? 'Now' : 'Next'} · ${fmt(due.start)} ${esc(due.title)}</button>
-                        <span class="meal-foods">${foodChipsHtml(due.id, date, due.foods || [], dueLog)}</span>
-                    </div>
-                    <div class="today-meal-actions">
-                        <button type="button" class="btn btn-sm" data-meal-eaten="${esc(due.id)}">✓ ${dueLog ? 'Rest' : 'Eaten'}</button>
-                        ${dueLog ? '' : `<button type="button" class="ghost-btn" data-meal-skip="${esc(due.id)}" title="Not eaten">✗</button>`}
-                    </div>
-                </div>` : '<div class="dim today-meal-done">All meals logged ✓</div>'}
-                <div class="today-meal-dots">${blocks.map(b => `<button type="button" class="today-meal-dot ${b.status ? 'is-' + b.status : ''}" data-meal-open="${esc(b.id)}" title="${esc(fmt(b.start))} ${esc(b.title)}">${esc(fmt(b.start))}</button>`).join('')}</div>
-            </div>`;
+            <div class="today-section-head">
+                <span>MEALS</span>
+                <span class="today-meal-head-right">
+                    <span class="dim">${num(tot.eaten.kcal)} / ${num(tot.planned.kcal)} kcal</span>
+                    ${open.length > 1 ? `<button type="button" class="ghost-btn" data-meal-all title="Log every meal still open as eaten, as planned">✓ All eaten</button>` : ''}
+                </span>
+            </div>
+            <div class="today-meals">${rows}</div>`;
     }
     function bindTodayCard(root, date) {
         root.querySelectorAll('[data-meal-open]').forEach(b => b.addEventListener('click', () => openMealSheet(date, b.dataset.mealOpen)));
         root.querySelectorAll('[data-meal-eaten]').forEach(b => b.addEventListener('click', () => markEatenAsPlanned(date, b.dataset.mealEaten)));
         root.querySelectorAll('[data-meal-skip]').forEach(b => b.addEventListener('click', () => skipMeal(date, b.dataset.mealSkip)));
+        root.querySelectorAll('[data-meal-clear]').forEach(b => b.addEventListener('click', () => clearMeal(date, b.dataset.mealClear)));
+        root.querySelector('[data-meal-all]')?.addEventListener('click', () => logAllAsPlanned(date));
         bindFoodChips(root, date);
+    }
+    // Every meal not logged yet: eaten as planned
+    function logAllAsPlanned(date) {
+        const open = getMealBlocks(date).filter(b => !b.status);
+        if (!open.length) return;
+        const d = dayLog(date, true);
+        open.forEach(b => {
+            const items = plannedFor(b.id, date).filter(i => i.name && i.g).map(i => ({ name: i.name, g: r0(i.g) }));
+            d.meals[b.id] = { status: 'eaten', items, skipped: [] };
+        });
+        persist();
+        rerender();
+        if (typeof showToast === 'function') showToast(`${open.length} meal${open.length === 1 ? '' : 's'} logged as eaten`);
     }
 
     // ------------------------------------------------------------------

@@ -64,9 +64,12 @@ function hasLocalChangesPending() { return localChangeSeq !== localSyncedSeq; }
 
 function registerAndRefreshServiceWorker() {
     const isDesktopTauri = Boolean(window.__TAURI__ || window.location.hostname.includes('tauri'));
+    // Sviluppo in locale: niente copia offline, altrimenti si vedono i file vecchi dopo ogni modifica
+    const isLocalDev = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
 
     // Su Desktop Tauri non serve il Service Worker e può causare il flash "Impossibile aprire pagina" di WebView2
-    if (isDesktopTauri) {
+    if (isDesktopTauri || isLocalDev) {
+        if (isLocalDev && 'caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k))).catch(() => {});
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.getRegistrations().then(regs => {
                 regs.forEach(r => r.unregister());

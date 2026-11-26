@@ -168,12 +168,11 @@
         const learned = [];
         if (L && L.favourite) learned.push(`You pick ${esc(L.favourite.label)} most often (${L.favourite.count} of ${L.picks}).`);
         if (L && L.pace) learned.push(`You stay on a session about ${L.pace.len} min (last ${L.pace.n} sessions).`);
-        if (L && L.splits) learned.push(`It remembers how you split ${L.splits} combination${L.splits === 1 ? '' : 's'} of tasks.`);
         const anything = L && (L.picks || L.splits);
         return `
             ${group('Study windows', `
-                ${row('How sessions are planned', 'Press “Study window” and drag on the timeline. You give each task its minutes of study, breaks come on top, and you pick 30, 45 or 60-minute sessions (breaks of 5, 10 or 15 minutes, 20 about every two hours).', '')}
-                ${row('What Cortex has learned', learned.length ? learned.join(' ') : 'Nothing yet: it learns from the plans you pick, how you split the time and how long your focus sessions really last.', anything ? button('Forget', 'data-act="forget-study"', 'is-quiet') : '')}
+                ${row('How sessions are planned', 'Press “Study window” and drag on the timeline: the window starts empty. Tick what to study there and give each task its time (15 minutes at a time); if your tasks need more than fits, you choose how much of each goes in. Breaks come on top: 30, 45 or 60-minute sessions with breaks of 5, 10 or 15 minutes, 20 about every two hours.', '')}
+                ${row('What Cortex has learned', learned.length ? learned.join(' ') : 'Nothing yet: it learns from the session lengths you pick and how long your focus sessions really last.', anything ? button('Forget', 'data-act="forget-study"', 'is-quiet') : '')}
             `, 'Each task is Theory (studio), Practice (esercizi) or Review (Anki); each kind has its own light colour on every exam.')}
             ${group('Places and schedules', `
                 ${row('Places', places.length ? esc(places.map(p => p.title).join(' · ')) : 'Libraries, home, the train: places with opening hours or timetables (ghost layers).', button('Manage places', 'data-act="places"'))}

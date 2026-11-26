@@ -87,31 +87,48 @@ window.getRunningFocusBlockIds = () => {
     const p = focusPlaylist[currentPlaylistIndex];
     return [p.studyBlockId, p.blockId].filter(Boolean);
 };
+// For Today: how far the running phase is (the same numbers as the timer)
+window.getRunningFocusProgress = () => {
+    if (!isFocusRunning()) return null;
+    const p = focusPlaylist[currentPlaylistIndex];
+    const done = Math.max(0, totalPhaseTime - Math.max(0, timeRemaining));
+    return {
+        type: p.type, taskId: p.type === 'task' ? p.id : null, blockId: p.studyBlockId || p.blockId || null,
+        elapsedMin: done / 60, pct: totalPhaseTime > 0 ? Math.min(1, done / totalPhaseTime) : 0
+    };
+};
 window.isStudyWindowRunning = (winId) => isFocusRunning() && focusPlaylist.slice(currentPlaylistIndex).some(p => p && p.windowId === winId);
 
 // The blocks of the running session follow the timer: skip a session or a break, pause, run late,
 // and the sessions still ahead move with it on Today and Plan. Every device computes the same
 // times from the shared end time, so they agree.
+// A study window keeps its end: when you run late, the sessions still ahead get shorter (the last
+// ones first) and one that would last less than 10 minutes is dropped, so nothing spills out of it.
 function syncSessionBlocks() {
     if (!isFocusRunning() || !Array.isArray(ephemeralData[todayStr])) return false;
+    let changed = fitPlaylistToWindows();
     const list = ephemeralData[todayStr];
     const minuteOf = (ms) => { const d = new Date(ms); return d.getHours() * 60 + d.getMinutes() + Math.round(d.getSeconds() / 60); };
     const startOfDay = new Date(getNow()); startOfDay.setHours(0, 0, 0, 0);
-    let changed = false;
     const place = (p, sMs, eMs) => {
         const id = p && p.type === 'task' ? (p.studyBlockId || p.blockId) : null;
         if (!id) return;
         const b = list.find(x => x && x.id === id);
         if (!b || b.done) return;
         if (sMs < startOfDay.getTime() || eMs >= startOfDay.getTime() + 24 * 3600000) return;   // not today
-        const s = minuteOf(sMs), e = Math.max(s + 1, minuteOf(eMs));
+        const s = minuteOf(sMs);
+        let e = Math.max(s + 1, minuteOf(eMs));
+        const winEnd = studyWindowEndMin(p.windowId);
+        if (winEnd !== null) e = Math.max(s + 1, Math.min(e, winEnd));      // drawn inside its window
         const S = minutesToTimeStr(s), E = minutesToTimeStr(Math.min(24 * 60 - 1, e));
         if (b.start !== S || b.end !== E) { b.start = S; b.end = E; b.minutes = e - s; changed = true; }
     };
     const cur = focusPlaylist[currentPlaylistIndex];
     const leftMs = Math.max(0, isPomodoroPaused ? timeRemaining * 1000 : phaseEndTimeMs - Date.now());
     let end = Date.now() + leftMs;
-    place(cur, end - (Number(cur.duration) || 0) * 60000, end);
+    // the session running now: from when it really started to when it will end (pauses included)
+    const curStart = Number(cur.startedAt) > 0 ? Math.min(Number(cur.startedAt), end - 60000) : end - (Number(cur.duration) || 0) * 60000;
+    place(cur, curStart, end);
     for (let i = currentPlaylistIndex + 1; i < focusPlaylist.length; i++) {
         const p = focusPlaylist[i];
         const len = (Number(p && p.duration) || 0) * 60000;
@@ -123,6 +140,67 @@ function syncSessionBlocks() {
         if (typeof renderDayPlannerModule === 'function') renderDayPlannerModule();
     }
     return changed;
+}
+
+// The end of a study window today, in minutes (null: not a study window)
+function studyWindowEndMin(winId) {
+    if (!winId || !window.CortexStudy) return null;
+    const w = CortexStudy.findWindow(todayStr, winId);
+    const e = w ? CortexStudy.toMin(w.end) : null;
+    return Number.isFinite(e) ? e : null;
+}
+
+// Running late in a study window (a pause, a session started late): the sessions still ahead in
+// that window shrink, from the last one back, until the window ends on time again
+function fitPlaylistToWindows() {
+    if (!isFocusRunning()) return false;
+    const MIN_LEFT = 10;
+    const leftMs = Math.max(0, isPomodoroPaused ? timeRemaining * 1000 : phaseEndTimeMs - Date.now());
+    const startOfDay = new Date(getNow()); startOfDay.setHours(0, 0, 0, 0);
+    let changed = false;
+    const ids = [...new Set(focusPlaylist.slice(currentPlaylistIndex + 1).map(p => p && p.windowId).filter(Boolean))];
+    ids.forEach(wid => {
+        const winEnd = studyWindowEndMin(wid);
+        if (winEnd === null) return;
+        const endMs = startOfDay.getTime() + winEnd * 60000;
+        // when the last phase of this window would end now
+        let t = Date.now() + leftMs, lastEnd = null, lastIdx = -1;
+        for (let i = currentPlaylistIndex + 1; i < focusPlaylist.length; i++) {
+            t += (Number(focusPlaylist[i].duration) || 0) * 60000;
+            if (focusPlaylist[i].windowId === wid) { lastEnd = t; lastIdx = i; }
+        }
+        let over = lastEnd === null ? 0 : Math.ceil((lastEnd - endMs) / 60000);
+        for (let i = lastIdx; i > currentPlaylistIndex && over > 0; i--) {
+            const p = focusPlaylist[i];
+            if (!p || p.type !== 'task' || p.windowId !== wid) continue;
+            const d = Number(p.duration) || 0;
+            if (d - over >= MIN_LEFT) { p.duration = d - over; over = 0; }
+            else { over -= d; p.duration = 0; }
+            changed = true;
+        }
+    });
+    if (!changed) return false;
+    // sessions with no time left go, with the break before them; their blocks leave the timeline
+    const gone = [];
+    const kept = focusPlaylist.slice(0, currentPlaylistIndex + 1);
+    focusPlaylist.slice(currentPlaylistIndex + 1).forEach(p => {
+        if (p.type === 'task' && !(Number(p.duration) > 0)) {
+            if (p.studyBlockId || p.blockId) gone.push(p.studyBlockId || p.blockId);
+            if (kept.length > currentPlaylistIndex + 1 && kept[kept.length - 1].type === 'break') kept.pop();
+            return;
+        }
+        kept.push(p);
+    });
+    while (kept.length > currentPlaylistIndex + 1 && kept[kept.length - 1].type === 'break') kept.pop();
+    focusPlaylist.length = 0;
+    kept.forEach(p => focusPlaylist.push(p));
+    if (gone.length && Array.isArray(ephemeralData[todayStr])) {
+        ephemeralData[todayStr] = ephemeralData[todayStr].filter(b => !(b && gone.includes(b.id) && !b.done));
+    }
+    renderLiveFocusQueue();
+    publishFocusSession();
+    if (typeof showToast === 'function') showToast(gone.length ? 'Running late: the last session of the window is dropped, so it still ends on time' : 'Running late: the last session is shorter, so the window still ends on time');
+    return true;
 }
 
 function replanStudyAfterFocus() {
@@ -706,6 +784,8 @@ function startCurrentPlaylistPhase(opts = {}) {
 
     totalPhaseTime = phase.duration * 60;
     phaseEndTimeMs = (opts.startAt || Date.now()) + (totalPhaseTime * 1000);
+    // when it really began: its block on the timeline starts here, however long you pause
+    if (!phase.startedAt) phase.startedAt = opts.startAt || Date.now();
     timeRemaining = Math.ceil((phaseEndTimeMs - Date.now()) / 1000);
 
     // ATTIVA LA ZENITH MODE

@@ -60,6 +60,8 @@
     const LONG_BREAK = 20;                          // instead of the usual one, about every two hours of study
     const LONG_EVERY = 120;
     const MIN_SESSION = 10;
+    const STEP = 15;                                // minutes are chosen (and cut) 15 at a time
+    const SPLIT_MIN = 20;                           // a session cut by a meal or a lecture: both parts at least this long
     const STUDY_RE = /stud|exam|esam|lezion|lecture|analisi|analys|algebr|fisic|physic|math|matemat|\buni\b|universit|corso|course|chapter|capitol|anki|flashcard|eserciz|exercis|problem|ripass|review|teoria|theory|appunt|notes/i;
 
     function guessLoad(t) {
@@ -347,11 +349,11 @@
         return out;
     }
 
-    // The study minutes a window asks for, per subject. A window saved without a split uses what is
-    // left of each task that day.
+    // The study minutes a window asks for, per subject (0 = nothing yet). Only an old window saved
+    // without any split uses what is left of each task that day.
     function splitOf(date, win, subjects) {
         const sp = win && win.split && typeof win.split === 'object' ? win.split : null;
-        if (sp && subjects.some(t => Number(sp[t.id]) > 0)) {
+        if (sp) {
             return Object.fromEntries(subjects.map(t => [t.id, Math.max(0, Math.round(Number(sp[t.id]) || 0))]));
         }
         return Object.fromEntries(subjects.map(t => [t.id, remainingToday(t, date, win ? win.id : null)]));
@@ -373,69 +375,58 @@
         return out.filter(x => x > 0);
     }
 
-    // Sessions in your order, each subject's minutes exactly; a break after every session but the last
-    function buildUnits(want, L) {
-        const units = [];
-        want.forEach(s => chunkEqual(s.W, L).forEach(len => units.push({ tid: s.tid, load: s.load, len, phase: LOAD_PHASE[s.load] })));
-        let since = 0;
-        units.forEach((u, i) => {
-            u.brk = 0;
-            if (i === units.length - 1) return;
-            since += u.len;
-            if (since >= LONG_EVERY) { u.brk = LONG_BREAK; since = 0; }
-            else u.brk = BREAK_AFTER[L] || 10;
-        });
-        return units;
-    }
-
-    // Lays the sessions on the free time; a busy slot in the middle (a meal, a lecture) works as a break.
-    // A session that runs into a busy slot goes on after it; a crumb under 10 min moves to the
-    // subject's next session; less than 15 min before the busy slot is not worth starting.
-    function placeUnits(units, segments, result) {
-        let si = 0;
-        let cur = segments.length ? segments[0].s : 0;
-        const carry = {};
-        const push = (u, s, e) => {
-            result.sessions.push({ tid: u.tid, s, e, load: u.load, phase: u.phase });
-            result.placedMin += e - s;
-        };
-        units.forEach((u, ui) => {
-            let need = u.len + (carry[u.tid] || 0);
-            carry[u.tid] = 0;
-            let guard = 0;
-            while (need > 0 && guard++ < 50) {
-                while (si < segments.length && cur >= segments[si].e) {
-                    si++;
-                    if (si < segments.length) cur = Math.max(cur, segments[si].s);
-                }
-                if (si >= segments.length) break;
-                const seg = segments[si];
-                cur = Math.max(cur, seg.s);
-                const avail = seg.e - cur;
-                if (need <= avail) { push(u, cur, cur + need); cur += need; need = 0; break; }
-                if (avail < 15) { cur = seg.e; continue; }
-                const rest = need - avail;
-                push(u, cur, seg.e);
-                cur = seg.e;
-                if (rest >= MIN_SESSION) { need = rest; continue; }
-                carry[u.tid] = rest;
-                need = 0;
-            }
-            if (need > 0) result.leftover[u.tid] = (result.leftover[u.tid] || 0) + need;
-            if (u.brk > 0 && ui < units.length - 1 && si < segments.length) {
-                const seg = segments[si];
-                if (cur < seg.e) result.breaks.push({ s: cur, e: Math.min(cur + u.brk, seg.e) });
-                cur += u.brk;
-            }
-        });
-        Object.entries(carry).forEach(([tid, m]) => { if (m > 0) result.leftover[tid] = (result.leftover[tid] || 0) + m; });
-        const last = result.sessions[result.sessions.length - 1];
-        result.breaks = last ? result.breaks.filter(b => b.s < last.e) : [];
-    }
-
+    // Lays the sessions on the free time, task by task in your order, each task's minutes exactly.
+    // Sessions are as even as possible and never longer than L (100 min with L = 45 → 35·35·30).
+    // A break follows every session; a busy slot (a meal, a lecture) works as the break.
+    // No crumbs: a session runs into a busy slot only when at least 20 minutes fit before it and at
+    // least 20 are left for after; then what is left of the task is split evenly again after the
+    // busy slot. A shorter gap before a busy slot stays free.
     function layout(want, L, segments) {
         const r = { sessions: [], breaks: [], leftover: {}, placedMin: 0 };
-        placeUnits(buildUnits(want, L), segments, r);
+        let si = 0;
+        let cur = segments.length ? segments[0].s : 0;
+        let since = 0;            // study since the last long break
+        let owed = 0;             // break owed before the next session
+        const advance = () => {
+            while (si < segments.length && cur >= segments[si].e) {
+                si++;
+                if (si < segments.length) { cur = Math.max(cur, segments[si].s); since = 0; owed = 0; }   // a busy slot = a break
+            }
+            if (si < segments.length) cur = Math.max(cur, segments[si].s);
+        };
+        want.forEach(s => {
+            let rem = Math.round(s.W);
+            let guard = 0;
+            while (rem > 0 && guard++ < 200) {
+                advance();
+                if (si >= segments.length) break;
+                if (owed > 0) {
+                    const seg = segments[si];
+                    r.breaks.push({ s: cur, e: Math.min(cur + owed, seg.e) });
+                    cur += owed;
+                    owed = 0;
+                    continue;
+                }
+                const seg = segments[si];
+                const len = chunkEqual(rem, L)[0];
+                const avail = seg.e - cur;
+                const lastSeg = si === segments.length - 1;
+                let take;
+                if (len <= avail) take = len;
+                else if (avail >= SPLIT_MIN && (rem - avail >= SPLIT_MIN || lastSeg)) take = avail;
+                else { cur = seg.e; continue; }      // too short a gap: start after the busy slot
+                r.sessions.push({ tid: s.tid, s: cur, e: cur + take, load: s.load, phase: LOAD_PHASE[s.load] });
+                r.placedMin += take;
+                cur += take;
+                rem -= take;
+                if (cur >= seg.e) continue;           // a busy slot (or the end) follows: no break needed
+                since += take;
+                if (since >= LONG_EVERY) { owed = LONG_BREAK; since = 0; } else owed = BREAK_AFTER[L] || 10;
+            }
+            if (rem > 0) r.leftover[s.tid] = (r.leftover[s.tid] || 0) + rem;
+        });
+        const last = r.sessions[r.sessions.length - 1];
+        r.breaks = last ? r.breaks.filter(b => b.s < last.e) : [];
         r.over = sum(Object.values(r.leftover));
         return r;
     }
@@ -493,11 +484,11 @@
 
         let placed = layout(want, L, segments);
         if (placed.over > 0 && opts.fit) {
-            // keep the proportions, cut until it fits (5 minutes at a time)
+            // keep the proportions, cut until it fits (15 minutes at a time, so no crumbs)
             let lo = 0, hi = 1, best = null;
             for (let i = 0; i < 14; i++) {
                 const mid = (lo + hi) / 2;
-                const smaller = want.map(x => Object.assign({}, x, { W: Math.floor((x.W * mid) / 5) * 5 })).filter(x => x.W >= 5);
+                const smaller = want.map(x => Object.assign({}, x, { W: Math.floor((x.W * mid) / STEP) * STEP })).filter(x => x.W >= STEP);
                 const r = layout(smaller, L, segments);
                 if (r.over === 0) { lo = mid; best = r; } else hi = mid;
             }
@@ -516,18 +507,18 @@
         return result;
     }
 
-    // The most study (multiples of 5) that fits in a window with sessions of L minutes,
+    // The most study (multiples of 15) that fits in a window with sessions of L minutes,
     // split by the given weights
     function capacity(date, win, L, ids, weightOf, opts = {}) {
-        let lo = 0, hi = Math.max(0, toMin(win.end) - toMin(win.start));
-        hi = Math.floor(hi / 5) * 5;
+        if (!ids.length) return 0;
+        let lo = 0, hi = Math.floor(Math.max(0, toMin(win.end) - toMin(win.start)) / STEP);
         let best = 0;
         while (lo <= hi) {
-            const mid = Math.floor((lo + hi) / 10) * 5;
-            const split = roundSplit(ids, weightOf, mid);
+            const mid = Math.floor((lo + hi) / 2);
+            const split = roundSplit(ids, weightOf, mid * STEP);
             const plan = computePlan(date, Object.assign({}, win, { subjects: ids, split }), Object.assign({}, opts, { len: L }));
-            if (plan.fits) { best = mid; lo = mid + 5; }
-            else hi = mid - 5;
+            if (plan.fits) { best = mid * STEP; lo = mid + 1; }
+            else hi = mid - 1;
         }
         return best;
     }
@@ -870,12 +861,22 @@
             const over = win.lastPlan ? sum(Object.values(win.lastPlan.leftover || {})) + sum(Object.values(win.lastPlan.cut || {})) : 0;
             const live = date === todayStr && nowMin >= s && nowMin < e;
             const finished = date === todayStr && nowMin >= e;
+            // Each session fills up as you study it: done = full, the one running = as far as the timer,
+            // missed = faded. Always drawn inside the window.
+            const run = date === todayStr && typeof window.getRunningFocusProgress === 'function' ? window.getRunningFocusProgress() : null;
+            const runningHere = Boolean(run && run.blockId && ses.some(b => b.id === run.blockId));
             const strip = ses.map(b => {
-                const l = ((toMin(b.start) - s) / total) * 100, w = (blockLen(b) / total) * 100;
-                const past = date === todayStr && toMin(b.end) <= nowMin;
-                return `<span class="study-strip-seg ${past ? 'is-past' : ''}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%;background:${esc(b.color || '#fff')}" title="${esc(b.start)}–${esc(b.end)} ${esc(b.title)}${b.phase ? ' · ' + esc(phaseLabel(b.phase)) : ''}"></span>`;
+                const bs = Math.max(s, toMin(b.start)), be = Math.min(e, toMin(b.end));
+                if (be <= bs) return '';
+                const l = Math.max(0, Math.min(100, ((bs - s) / total) * 100));
+                const w = Math.max(0.5, Math.min(100 - l, ((be - bs) / total) * 100));
+                const running = Boolean(run && run.blockId === b.id);
+                const fill = b.done ? 100 : running ? run.pct * 100 : 0;
+                const missed = !b.done && !running && date === todayStr && toMin(b.end) <= nowMin;
+                return `<span class="study-strip-seg ${b.done ? 'is-done' : ''} ${running ? 'is-running' : ''} ${missed ? 'is-missed' : ''}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%;--c:${esc(b.color || '#fff')}" title="${esc(b.start)}–${esc(b.end)} ${esc(b.title)}${b.phase ? ' · ' + esc(phaseLabel(b.phase)) : ''}${b.done ? ' · done' : ''}"><i ${running ? 'data-run-fill' : ''} style="width:${fill.toFixed(1)}%"></i></span>`;
             }).join('');
-            const nowMark = live ? `<span class="study-strip-now" style="left:${(((nowMin - s) / total) * 100).toFixed(2)}%"></span>` : '';
+            const nowMark = live && !runningHere ? `<span class="study-strip-now" style="left:${Math.max(0, Math.min(100, ((nowMin - s) / total) * 100)).toFixed(2)}%"></span>` : '';
+            const doneMin = ses.filter(b => b.done).reduce((a, b) => a + blockLen(b), 0) + (runningHere ? run.elapsedMin : 0);
             const nextSes = ses.find(b => !b.done && toMin(b.end) > nowMin);
             const playIco = typeof focusStateIcon === 'function' ? focusStateIcon(false) : '▶';
             html += `
@@ -883,7 +884,7 @@
                     <div class="study-card-row">
                         <div class="study-card-main">
                             <div class="study-card-title">${esc(win.place)} <span class="dim">${esc(win.start)}–${esc(win.end)}</span></div>
-                            <div class="study-card-sub dim">${lengthOf(win)}-min sessions · ${ses.length} session${ses.length === 1 ? '' : 's'} · ${fmtDur(studyMin)} of study${over > 0 ? ` · <span class="study-warn">${fmtDur(over)} don't fit</span>` : ''}</div>
+                            <div class="study-card-sub dim">${lengthOf(win)}-min sessions · ${ses.length} session${ses.length === 1 ? '' : 's'} · ${doneMin >= 1 ? `${fmtDur(Math.floor(doneMin))} of ${fmtDur(studyMin)} done` : `${fmtDur(studyMin)} of study`}${over > 0 ? ` · <span class="study-warn">${fmtDur(over)} don't fit</span>` : ''}</div>
                         </div>
                         <div class="study-card-actions">
                             ${date === todayStr && typeof window.isStudyWindowRunning === 'function' && window.isStudyWindowRunning(win.id)
@@ -976,7 +977,7 @@
     // Public API
     // ------------------------------------------------------------------
     window.CortexStudy = {
-        LOADS, PHASES, LENGTHS, BREAK_AFTER,
+        LOADS, PHASES, LENGTHS, BREAK_AFTER, STEP,
         loadOf, guessLoad, kindColor, isTimeTarget, progress, targetFor, unitMinutes, fmtDur, fmt, toMin,
         phaseLabel, phaseInfo, lengthOf, defaultLength, noteLengthPick, splitMemo, rememberSplit, roundSplit,
         remainingToday, isAhead, candidateSubjects, defaultSubjectIds, byKind, busyIntervals, placesOn, openingText,

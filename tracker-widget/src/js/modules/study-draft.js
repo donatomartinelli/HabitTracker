@@ -2,9 +2,11 @@
 // CREATING A STUDY WINDOW ON THE TIMELINE (no modal)
 //
 // "Study window" → drag on the day's timeline from when you start to when you stop
-// (mouse: press and drag · phone: hold, then drag). A panel beside the timeline (docked at the
-// bottom on the phone) shows the times, where, the tasks in your order with their minutes of
-// study, the plans (30, 45 or 60-minute sessions) and every session and break with start and end.
+// (mouse: press and drag · phone: hold, then drag). The window starts empty: only the space.
+// A panel beside the timeline (docked at the bottom on the phone) shows the times, where, the
+// tasks to tick in your order with their time "here" (15 minutes at a time; when the ticked tasks
+// need more than fits, you choose how much of each goes in), the plans (30, 45 or 60-minute
+// sessions) and every session and break with start and end.
 // The window on the timeline stretches from its edges and moves from its label; the panel and
 // the timeline always show the same thing.
 // Hosts: Plan → Day (its own canvas) and Today (a day view drawn here in place of the list).
@@ -44,12 +46,14 @@
         if (D) cleanup();
         const existing = opts.id ? S.findWindow(date, opts.id) : null;
         const cands = S.candidateSubjects(date);
-        const chosen = existing && Array.isArray(existing.subjects) ? [...existing.subjects] : S.defaultSubjectIds(date);
+        // A new window starts empty: you draw the space, then tick what to study in it
+        const chosen = existing && Array.isArray(existing.subjects) ? [...existing.subjects] : [];
         chosen.forEach(id => { const t = tpl(id); if (t && !cands.includes(t)) cands.push(t); });
-        // your order (a saved window's, or theory → practice → review), then the tasks not in it
+        // the window's own order first, then the other tasks: still to do today before done, theory → practice → review
         const inOrder = chosen.map(id => cands.find(t => t.id === id)).filter(Boolean);
-        const first = existing ? inOrder : S.byKind(inOrder);
-        const list = [...first, ...S.byKind(cands.filter(t => !chosen.includes(t.id)))].map(t => t.id);
+        const others = S.byKind(cands.filter(t => !chosen.includes(t.id)));
+        const leftNow = (t) => S.remainingToday(t, date, existing ? existing.id : null);
+        const list = [...inOrder, ...others.filter(t => leftNow(t) > 0), ...others.filter(t => leftNow(t) <= 0)].map(t => t.id);
 
         D = {
             host: hostOf(opts), date,
@@ -62,26 +66,22 @@
             on: chosen.filter(id => list.includes(id)),
             loads: Object.fromEntries(list.map(id => [id, S.loadOf(tpl(id))])),
             split: existing && existing.split ? Object.assign({}, existing.split) : {},
-            splitMode: existing && existing.split ? 'custom' : 'auto',
             len: existing ? S.lengthOf(existing) : S.defaultLength(),
+            touched: Boolean(existing),
             note: '',
             collapsed: false,
             scrolled: false
         };
-        // A place with opening hours: start from its next open slot (you can still drag it anywhere)
+        // A place picked from Today: only its name; you draw when on the timeline
         if (!existing && D.refId) {
             const p = S.placesOn(date).find(x => x.ref.id === D.refId);
-            if (p) {
-                D.place = p.ref.title;
-                const nowMin = nowMinutes();
-                const slot = p.slots.find(sl => date !== todayStr || toMin(sl.end) > nowMin + 30) || p.slots[0];
-                let s = toMin(slot.start);
-                if (date === todayStr) s = Math.max(s, Math.ceil((nowMin + 10) / 15) * 15);
-                const e = Math.min(toMin(slot.end), s + 180);
-                if (e - s >= MIN_WINDOW) { D.start = fmt(s); D.end = fmt(e); }
-            }
+            if (p) D.place = p.ref.title;
         }
-        if (D.start && D.end) refreshSplit();
+        // an old window saved without minutes: what was left of each task, as far as it fits
+        if (existing && !existing.split) {
+            D.on.forEach(id => { D.split[id] = 0; });
+            D.on.forEach(id => { D.split[id] = maxFor(id, roundUp(leftOf(id))); });
+        }
 
         // Show the host
         if (D.host === 'plan') {
@@ -131,64 +131,41 @@
     const fits = (split, len = D.len) => planFor(len, split).fits;
     const leftOf = (id) => { const t = tpl(id); return t ? St().remainingToday(t, D.date, D.id) : 0; };
 
-    // Most study that fits with these proportions
+    const STEP = 15;                                   // minutes go up and down 15 at a time
+    const dayWord = () => (D.date === todayStr ? 'today' : 'that day');
+    const roundUp = (m) => Math.ceil(Math.max(0, m) / STEP) * STEP;
+
+    // The most study that fits in the window, with the ticked tasks in these proportions
     const capFor = (weightOf, len = D.len) => St().capacity(D.date, draftWin({ len }), len, onIds(), weightOf, { loads: D.loads });
+    // What the ticked tasks still need today, all together
+    const needToday = () => sum(onIds(), id => roundUp(leftOf(id)));
 
-    // Quick ways to split, each filled up to what fits ("What is left" only up to what is left)
-    function splitOptions() {
-        const ids = onIds();
-        const out = [];
-        if (!ids.length || !D.start || !D.end) return out;
-        const add = (key, label, weightOf, limit = Infinity) => {
-            const total = Math.min(limit, capFor(weightOf));
-            const split = St().roundSplit(ids, weightOf, total);
-            if (ids.some(id => !split[id])) return;
-            const sig = ids.map(id => split[id]).join(',');
-            if (out.some(o => o.sig === sig)) return;
-            out.push({ key, label, split, sig });
-        };
-        const left = Object.fromEntries(ids.map(id => [id, leftOf(id)]));
-        const leftSum = sum(ids, id => left[id]);
-        if (leftSum > 0) add('left', 'What is left today', id => left[id], Math.floor(leftSum / 5) * 5);
-        if (ids.length > 1) {
-            const memo = St().splitMemo(ids);
-            if (memo) add('memo', 'Like last time', id => memo[id]);
-            add('even', 'Even', () => 1);
-            if (ids.length === 2) {
-                add('r21', '2 : 1', id => (id === ids[0] ? 2 : 1));
-                add('r12', '1 : 2', id => (id === ids[0] ? 1 : 2));
-            }
-        } else {
-            add('full', 'Whole window', () => 1);
-        }
-        return out;
-    }
-
-    // After the times, the tasks or the plan changed: keep the split you chose if it still fits
+    // The window got shorter or the session length changed: what no longer fits comes off the
+    // last tasks first (the ones at the top of your list keep their time)
     function refreshSplit() {
         const ids = onIds();
         if (!ids.length || !D.start || !D.end) return;
-        if (D.splitMode !== 'custom') {
-            const opts = splitOptions();
-            const o = opts.find(x => x.key === D.splitMode) || opts.find(x => x.key === 'left') || opts[0];
-            if (o) { D.split = Object.assign({}, o.split); D.splitMode = o.key === 'left' && D.splitMode === 'auto' ? 'auto' : o.key; }
-            return;
+        const cut = [];
+        for (let i = ids.length - 1, guard = 0; i >= 0 && guard < 400 && !fits(D.split); guard++) {
+            const id = ids[i];
+            if ((D.split[id] || 0) <= 0) { i--; continue; }
+            D.split[id] = Math.max(0, (D.split[id] || 0) - STEP);
+            if (!cut.includes(id)) cut.push(id);
         }
-        const cur = Object.fromEntries(ids.map(id => [id, D.split[id] || 0]));
-        if (fits(cur)) return;
-        const total = capFor(id => cur[id] || 0);
-        D.split = Object.assign({}, D.split, St().roundSplit(ids, id => cur[id] || 0, total));
-        D.note = `Shortened to what fits with ${D.len}-min sessions and their breaks.`;
+        if (cut.length) D.note = `The window is shorter now: less time for ${cut.map(id => (tpl(id) ? tpl(id).title : '')).join(', ')}.`;
     }
 
-    // The most minutes one task can have with the others as they are
+    // The most minutes one task can have with the others as they are (up to `upTo`)
     function maxFor(id, upTo) {
-        let lo = 0, hi = Math.floor(upTo / 5) * 5, best = 0;
+        if (!D.start || !D.end) return 0;
+        let lo = 0, hi = Math.floor(upTo / STEP), best = 0;
         while (lo <= hi) {
-            const mid = Math.floor((lo + hi) / 10) * 5;
-            const split = Object.assign({}, D.split, { [id]: mid });
-            if (fits(split)) { best = mid; lo = mid + 5; } else hi = mid - 5;
+            const mid = Math.floor((lo + hi) / 2);
+            const split = Object.assign({}, D.split, { [id]: mid * STEP });
+            if (fits(split)) { best = mid * STEP; lo = mid + 1; } else hi = mid - 1;
         }
+        // the last few minutes that are not a full step
+        if (best < upTo && upTo % STEP && fits(Object.assign({}, D.split, { [id]: upTo }))) best = upTo;
         return best;
     }
 
@@ -339,7 +316,7 @@
                 const top = y(b.s) - y(s), h = y(b.e) - y(b.s);
                 return `<div class="sd-brk" style="top:${top}px;height:${Math.max(2, h)}px">${h >= 12 ? `<span>break ${b.e - b.s}m</span>` : ''}</div>`;
             })
-        ].join('');
+        ].join('') || `<div class="sd-band-empty">${isPhone() ? 'Now pick what to study below' : 'Now pick what to study in the panel'}</div>`;
         ov.innerHTML = `
             <div class="sd-band" style="top:${y(s)}px;height:${Math.max(12, y(e) - y(s))}px">
                 <div class="sd-handle top" data-sd-h="top" title="Drag to change the start"></div>
@@ -435,6 +412,10 @@
         if (!D) return;
         if (toMin(D.end) <= toMin(D.start)) D.end = fmt(toMin(D.start) + MIN_WINDOW);
         D.note = '';
+        // tasks ticked before the window was drawn get their time now, in your order
+        onIds().forEach(id => { if (D.split[id] === undefined) D.split[id] = 0; });
+        onIds().forEach(id => { if (!D.split[id] && !D.touched) D.split[id] = maxFor(id, roundUp(leftOf(id)) || 30); });
+        D.touched = true;
         refreshSplit();
         rerender();
     }
@@ -478,15 +459,16 @@
         const outside = has && p && !p.slots.some(sl => s >= toMin(sl.start) && e <= toMin(sl.end));
         const startsNow = has && D.date === todayStr && nowMinutes() > s && nowMinutes() < e;
 
-        // What: the tasks, in your order
-        const rows = D.list.map((id, i) => {
+        // What: the tasks, in your order. Ticked ones get "time here": how much of the task this window takes.
+        const rows = D.list.map((id) => {
             const t = tpl(id);
             if (!t) return '';
             const on = D.on.includes(id);
             const pr = S.progress(t, D.date);
             const left = leftOf(id);
-            const info = [t.category || '', pr.done > 0 ? `${dur(pr.done)} done` : '', left > 0 ? `${dur(left)} left today` : (pr.target > 0 ? 'target reached' : '')].filter(Boolean).join(' · ');
+            const info = [t.category || '', left > 0 ? `${dur(left)} left ${dayWord()}` : (pr.target > 0 ? `done ${dayWord()} ✓` : '')].filter(Boolean).join(' · ');
             const k = D.loads[id];
+            const mins = D.split[id] || 0;
             return `
                 <div class="sd-subj ${on ? '' : 'is-off'}" data-tid="${esc(id)}" style="--k:${esc(S.kindColor(k))}">
                     <span class="sd-grip" data-sd-grip title="Drag to change the order" aria-label="Move ${esc(t.title)}">⋮⋮</span>
@@ -498,16 +480,30 @@
                     <div class="study-seg study-seg-sm sd-kinds" role="radiogroup" aria-label="Kind of work">
                         ${Object.entries(S.LOADS).map(([key, l]) => `<button type="button" class="${k === key ? 'active' : ''}" data-sd-load="${key}" title="${esc(l.hint)}" aria-pressed="${k === key}" style="--k:${esc(l.color)}">${esc(l.short)}</button>`).join('')}
                     </div>
-                    ${on && has ? `<div class="study-stepper" title="Minutes of study (breaks come on top)">
-                        <button type="button" data-sd-step="-5" aria-label="5 minutes less">−</button>
-                        <input type="text" inputmode="numeric" class="sd-mins" value="${esc(dur(D.split[id] || 0))}" data-sd-mins aria-label="Minutes of study for ${esc(t.title)}">
-                        <button type="button" data-sd-step="5" aria-label="5 minutes more">+</button>
-                    </div>` : '<span class="study-stepper is-empty dim">—</span>'}
+                    ${on && has ? `<div class="sd-here">
+                        <span class="sd-here-label dim">here</span>
+                        <div class="study-stepper" title="How much of ${esc(t.title)} you study in this window (breaks come on top)">
+                            <button type="button" data-sd-step="-${STEP}" aria-label="${STEP} minutes less" ${mins <= 0 ? 'disabled' : ''}>−</button>
+                            <input type="text" inputmode="numeric" class="sd-mins ${mins <= 0 ? 'is-zero' : ''}" value="${esc(dur(mins))}" data-sd-mins aria-label="Time for ${esc(t.title)} in this window">
+                            <button type="button" data-sd-step="${STEP}" aria-label="${STEP} minutes more">+</button>
+                        </div>
+                    </div>` : '<span class="sd-here is-empty"></span>'}
                 </div>`;
         }).join('');
+        // How much fits, and whether the ticked tasks need more than that
+        // (with the time you gave each task as proportions; before any time, what each still needs today)
+        const cap = !has || !ids.length ? 0 : (chosen > 0 ? capFor(id => D.split[id] || 0) : capFor(id => roundUp(leftOf(id)) || STEP));
+        const need = has ? needToday() : 0;
+        const tooMuch = has && ids.length && need > cap;
+        const whatHead = !has ? '' : !ids.length
+            ? `<div class="sd-what-head dim">Tick what you want to study here.</div>`
+            : `<div class="sd-what-head ${tooMuch ? 'is-over' : ''}">
+                    <div class="sd-what-nums"><span><b>${dur(chosen)}</b> chosen</span>${chosen > cap ? `<span class="study-warn">· only ${dur(cap)} fits now</span>` : `<span class="dim">· about <b>${dur(cap)}</b> of study fits here</span>`}</div>
+                    ${tooMuch ? `<div class="sd-what-msg">Your ticked tasks still need <b>${dur(need)}</b> ${dayWord()}: not all of it fits. Choose how much of each goes here with − and +.</div>` : ''}
+                </div>`;
 
         // How: one plan per session length
-        const cards = has && ids.length ? S.LENGTHS.map(L => {
+        const cards = has && chosen > 0 ? S.LENGTHS.map(L => {
             const pl = L === D.len ? plan : planFor(L);
             const brk = sum(pl.breaks, b => b.e - b.s);
             const over = sum(Object.values(pl.leftover));
@@ -533,8 +529,6 @@
                 return `<div class="sd-row" style="--k:${esc(S.kindColor(it.load))}"><span class="sd-time">${fmt(it.s)}–${fmt(it.e)}</span><span class="sd-what"><b>${esc(t ? t.title : '')}</b>${t && t.category ? ` <span class="dim">· ${esc(t.category)}</span>` : ''}</span><span class="sd-len">${it.e - it.s}m</span></div>`;
             }).join('');
         }
-        const splitOpts = has ? splitOptions() : [];
-        const curSig = ids.map(id => D.split[id] || 0).join(',');
         const brkTotal = plan ? sum(plan.breaks, b => b.e - b.s) : 0;
         const free = plan && plan.fits && plan.endMin ? Math.max(0, e - plan.endMin) : 0;
         const over = plan ? sum(Object.values(plan.leftover)) : 0;
@@ -572,12 +566,8 @@
                     ${D.refId ? '' : `<input type="text" class="form-control form-control-sm study-place-input" data-sd-place placeholder="Name of the place" maxlength="40" value="${esc(D.place || 'Home')}">`}
                 </section>
                 <section class="study-field">
-                    <div class="study-label">What <span class="dim">· minutes of study, breaks come on top${has && ids.length ? ` · ${dur(chosen)} chosen` : ''}</span></div>
-                    ${splitOpts.length ? `<div class="study-split-opts">${splitOpts.map(o => `
-                        <button type="button" class="study-split ${o.sig === curSig ? 'active' : ''}" data-sd-split="${esc(o.key)}">
-                            <span class="study-split-name">${esc(o.label)}</span>
-                            <span class="study-split-vals">${ids.map(id => `<span><i style="background:${esc(S.kindColor(D.loads[id]))}"></i>${dur(o.split[id])}</span>`).join('')}</span>
-                        </button>`).join('')}</div>` : ''}
+                    <div class="study-label">What <span class="dim">· time of study, breaks come on top</span></div>
+                    ${whatHead}
                     <div class="sd-subjects" data-sd-list>${rows || '<div class="dim study-hint">No flexible tasks with a duration on this day. Add one (e.g. "Algebra 2h") in Tasks.</div>'}</div>
                     ${D.note ? `<div class="study-hint study-warn">${esc(D.note)}</div>` : ''}
                 </section>
@@ -595,7 +585,7 @@
                 ${D.id ? '<button type="button" class="ghost-btn danger" data-sd-remove>Remove window</button>' : '<span></span>'}
                 <div class="study-foot-right">
                     <button type="button" class="btn btn-sm" data-sd-cancel>Cancel</button>
-                    <button type="button" class="btn btn-primary btn-sm" data-sd-save ${plan && plan.sessions.length && plan.fits ? '' : 'disabled'}>${D.id ? 'Save' : 'Create sessions'}</button>
+                    <button type="button" class="btn btn-primary btn-sm" data-sd-save ${plan && plan.sessions.length ? '' : 'disabled'}>${D.id ? 'Save' : 'Create sessions'}</button>
                 </div>
             </div>`;
         const body = el.querySelector('.sd-body');
@@ -619,12 +609,6 @@
             if (col && isPhone() && !t.closest('button')) { D.collapsed = !D.collapsed; rerender(); return; }
             const ref = t.closest('[data-sd-ref]');
             if (ref) { pickPlace(ref.dataset.sdRef || null); return; }
-            const sp = t.closest('[data-sd-split]');
-            if (sp) {
-                const o = splitOptions().find(x => x.key === sp.dataset.sdSplit);
-                if (o) { D.split = Object.assign({}, D.split, o.split); D.splitMode = o.key; D.note = ''; rerender(); }
-                return;
-            }
             const ln = t.closest('[data-sd-len]');
             if (ln) { D.len = parseInt(ln.dataset.sdLen, 10); D.note = ''; refreshSplit(); rerender(); return; }
             const row = t.closest('[data-tid]');
@@ -670,17 +654,17 @@
         return m ? parseInt(m[1], 10) : NaN;
     }
 
-    // ± 5 minutes: never more than fits in the window
+    // − / + : 15 minutes at a time, never more than fits in the window
     function step(id, delta) {
         const cur = D.split[id] || 0;
-        const next = Math.max(0, cur + delta);
+        // from an odd value (typed by hand) the first step lands on a multiple of 15
+        const next = Math.max(0, delta > 0 ? Math.floor(cur / STEP) * STEP + STEP : Math.ceil(cur / STEP) * STEP - STEP);
         if (delta > 0 && !fits(Object.assign({}, D.split, { [id]: next }))) {
-            D.note = 'The window is full: lower another task or make the window longer.';
+            D.note = 'The window is full: lower another task, pick longer sessions or make the window longer.';
         } else {
             D.split[id] = next;
             D.note = '';
         }
-        D.splitMode = 'custom';
         rerender();
     }
     function setMinutes(id, mins) {
@@ -689,40 +673,27 @@
         const max = maxFor(id, want);
         D.split[id] = Math.min(want, max);
         D.note = max < want ? `Only ${dur(max)} of ${tpl(id) ? tpl(id).title : 'it'} fit with the other tasks as they are.` : '';
-        D.splitMode = 'custom';
         rerender();
     }
+    // Ticking a task gives it what is left of it today, as far as there is room (the tasks above keep theirs)
     function toggleSubject(id, on) {
         if (on && !D.on.includes(id)) D.on.push(id);
         if (!on) { D.on = D.on.filter(x => x !== id); delete D.split[id]; }
         D.note = '';
-        if (D.splitMode === 'custom' && on && D.start && D.end) {
-            // a task added by hand gets what is left of it today, as far as it fits
+        if (on && D.start && D.end) {
             D.split[id] = 0;
-            D.split[id] = maxFor(id, Math.max(15, leftOf(id) || 60));
-        } else if (D.splitMode !== 'custom') {
-            D.splitMode = St().splitMemo(onIds()) ? 'memo' : 'auto';
+            const want = roundUp(leftOf(id)) || 30;
+            D.split[id] = maxFor(id, want);
+            const t = tpl(id);
+            if (D.split[id] === 0) D.note = `The window is full: lower another task to make room for ${t ? t.title : 'it'}.`;
+            else if (D.split[id] < want) D.note = `${t ? t.title : 'It'} needs ${dur(want)} ${dayWord()}: ${dur(D.split[id])} fit here.`;
         }
-        refreshSplit();
         rerender();
     }
     function pickPlace(refId) {
         D.refId = refId;
         const p = placeObj();
-        if (p) {
-            D.place = p.ref.title;
-            const s = toMin(D.start), e = toMin(D.end);
-            const ok = D.start && D.end && p.slots.some(sl => s >= toMin(sl.start) && e <= toMin(sl.end));
-            if (!ok && !D.start) {
-                const sl = p.slots[0];
-                D.start = sl.start;
-                D.end = fmt(Math.min(toMin(sl.end), toMin(sl.start) + 180));
-                timesChanged();
-                return;
-            }
-        } else {
-            D.place = 'Home';
-        }
+        D.place = p ? p.ref.title : 'Home';
         rerender();
     }
 
@@ -762,14 +733,13 @@
     function save() {
         if (!D || !D.start || !D.end) return;
         const plan = planFor();
-        if (!plan.sessions.length || !plan.fits) return;
+        if (!plan.sessions.length) return;
         const S = St();
         const existing = D.id ? S.findWindow(D.date, D.id) : null;
         // the kind of work is a property of the task: saved on it
         D.list.forEach(id => { const t = tpl(id); if (t && D.loads[id] && t.load !== D.loads[id]) t.load = D.loads[id]; });
         // what Cortex learns: the session length you pick, how you split the time
         if (!existing || S.lengthOf(existing) !== D.len) S.noteLengthPick(D.len);
-        S.rememberSplit(onIds(), D.split);
         const p = placeObj();
         const res = S.saveWindow(D.date, {
             id: D.id, refId: D.refId,

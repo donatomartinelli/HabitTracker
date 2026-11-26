@@ -39,7 +39,14 @@
             const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, todayStr) : 0;
             // Tasks measured in time (Algebra 2h): progress in minutes instead of boxes
             const timeTarget = window.CortexStudy && CortexStudy.isTimeTarget(t, todayStr) && mins > 0;
-            const prog = timeTarget ? CortexStudy.progress(t, todayStr) : null;
+            const prog = timeTarget ? Object.assign({}, CortexStudy.progress(t, todayStr)) : null;
+            // the session running on it counts as it goes, so the bar moves with the timer
+            if (prog) {
+                const run = typeof window.getRunningFocusProgress === 'function' ? window.getRunningFocusProgress() : null;
+                prog.live = Boolean(run && run.type === 'task' && run.taskId === t.id);
+                prog.base = prog.done;
+                if (prog.live) prog.done += run.elapsedMin;
+            }
             const ticks = log.filter(Boolean).length;
             const done = prog ? prog.complete : ticks >= inst;
             return { t, inst, log, ticks, done, start: win ? win.start : null, mins, prog };
@@ -153,7 +160,8 @@
         if (running) {
             const phase = focusPlaylist[currentPlaylistIndex];
             const secs = Math.abs(timeRemaining || 0);
-            const pct = totalPhaseTime > 0 ? Math.max(0, Math.min(100, (timeRemaining / totalPhaseTime) * 100)) : 0;
+            // fills up as the session goes, like the study strip and the task bars
+            const pct = totalPhaseTime > 0 ? Math.max(0, Math.min(100, (1 - timeRemaining / totalPhaseTime) * 100)) : 0;
             const title = phase.type === 'task' ? phase.title : 'Break';
             const nextPhase = focusPlaylist[currentPlaylistIndex + 1];
             const info = typeof getFocusSessionInfo === 'function' ? getFocusSessionInfo() : null;
@@ -181,8 +189,9 @@
         }
 
         const cur = nowMinutes();
-        const blocks = getTimelineBlocks();
-        const current = blocks.find(b => cur >= b.start && cur < b.end && b.kind !== 'meal') || blocks.find(b => cur >= b.start && cur < b.end);
+        // Meals are logged in their own card: "up next" is about what you do, not when you eat
+        const blocks = getTimelineBlocks().filter(b => b.kind !== 'meal');
+        const current = blocks.find(b => cur >= b.start && cur < b.end);
         const next = blocks.find(b => b.start > cur);
         const focusBlock = current || next;
         let line = '<span class="dim">Nothing scheduled right now.</span>';
@@ -193,9 +202,6 @@
         if (focusBlock && focusBlock.kind === 'study' && focusBlock.windowId) {
             primary = `<button type="button" class="btn btn-primary btn-sm" data-now-study="${esc(focusBlock.windowId)}">[▶ START STUDY]</button>
                        <button type="button" class="ghost-btn" onclick="openTimerModal()">Other focus</button>`;
-        } else if (focusBlock && focusBlock.kind === 'meal' && !focusBlock.status && current === focusBlock) {
-            primary = `<button type="button" class="btn btn-sm" data-meal-eaten="${esc(focusBlock.mealId)}">✓ Eaten</button>
-                       <button type="button" class="btn btn-primary btn-sm" onclick="openTimerModal()">[▶ START FOCUS]</button>`;
         }
 
         return `
@@ -222,9 +228,9 @@
             let meta = '';
             let bar = '';
             if (prog) {
-                meta = `<b>${fmtDur(Math.min(prog.done, Math.max(prog.target, prog.done)))}</b> / ${fmtDur(prog.target)}`;
+                meta = `<b ${prog.live ? 'data-live-done' : ''}>${fmtDur(Math.floor(prog.done))}</b> / ${fmtDur(prog.target)}`;
                 const pct = prog.target > 0 ? Math.min(100, (prog.done / prog.target) * 100) : (done ? 100 : 0);
-                bar = `<div class="today-task-bar"><div style="width:${pct.toFixed(1)}%"></div></div>`;
+                bar = `<div class="today-task-bar ${prog.live ? 'is-live' : ''}" ${prog.live ? `data-live-bar data-base="${prog.base}" data-target="${prog.target}"` : ''}><div style="width:${pct.toFixed(1)}%"></div></div>`;
             } else {
                 const bits = [];
                 if (start) bits.push(start);
@@ -641,26 +647,42 @@
         if (typeof MACRO_SUBMODULES_MAP !== 'undefined') MACRO_SUBMODULES_MAP.today = ['today'];
     }
 
-    // Live refresh: timer ticks every second while focus runs, otherwise once a minute
+    // Live refresh: while focus runs, the timer, its bar, the study strip and the task bar move every
+    // second, and the whole page is redrawn once a minute; otherwise once a minute
     let lastMinute = -1;
+    function liveTick(el) {
+        const run = typeof window.getRunningFocusProgress === 'function' ? window.getRunningFocusProgress() : null;
+        const t = el.querySelector('.today-now-time');
+        if (!t) return false;
+        const secs = Math.abs(timeRemaining || 0);
+        t.textContent = `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`;
+        const bar = el.querySelector('.today-progress > div');
+        if (bar && totalPhaseTime > 0) bar.style.width = `${Math.max(0, Math.min(100, (1 - timeRemaining / totalPhaseTime) * 100)).toFixed(1)}%`;
+        if (run) {
+            el.querySelectorAll('[data-run-fill]').forEach(f => { f.style.width = `${(run.pct * 100).toFixed(1)}%`; });
+            el.querySelectorAll('[data-live-bar]').forEach(b => {
+                const target = parseFloat(b.dataset.target) || 0;
+                const doneMin = (parseFloat(b.dataset.base) || 0) + run.elapsedMin;
+                const fill = b.firstElementChild;
+                if (fill && target > 0) fill.style.width = `${Math.min(100, (doneMin / target) * 100).toFixed(1)}%`;
+                const label = b.closest('.today-task')?.querySelector('[data-live-done]');
+                if (label) label.textContent = fmtDur(Math.floor(doneMin));
+            });
+        }
+        return true;
+    }
     setInterval(() => {
         const el = document.getElementById('module-today');
         if (!el || !el.isConnected || el.closest('#module-registry')) return;
         if (document.getElementById('study-editor') || document.getElementById('meal-sheet')) return;
         const running = typeof focusPlaylist !== 'undefined' && focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
         const m = new Date().getMinutes();
+        const typing = document.activeElement && document.activeElement.id === 'today-add-input';
         if (running) {
-            const t = el.querySelector('.today-now-time');
-            if (t) {
-                const secs = Math.abs(timeRemaining || 0);
-                t.textContent = `${pad(Math.floor(secs / 60))}:${pad(secs % 60)}`;
-                const bar = el.querySelector('.today-progress > div');
-                if (bar && totalPhaseTime > 0) bar.style.width = `${Math.max(0, Math.min(100, (timeRemaining / totalPhaseTime) * 100)).toFixed(1)}%`;
-            } else {
-                renderTodayModule();
-            }
+            const ok = liveTick(el);
+            if ((!ok || m !== lastMinute) && !typing) { lastMinute = m; renderTodayModule(); }
         } else if (m !== lastMinute || el.querySelector('.today-now.is-live')) {
-            if (document.activeElement && document.activeElement.id === 'today-add-input') return;
+            if (typing) return;
             lastMinute = m;
             renderTodayModule();
         }
