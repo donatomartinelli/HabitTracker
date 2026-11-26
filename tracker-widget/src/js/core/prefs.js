@@ -8,6 +8,9 @@
 //   todayCards          → which cards Today shows, in which order
 //   studyLenPicks / studySplitMemo → what study windows learn from your choices (session length, split)
 //   focusSound → a tone when a focus session ends
+//   backdrop            → the vector field behind the app, on/off and its settings (js/modules/backdrop.js)
+//   theme               → the colours (terminal, amber, phosphor, ice, graphite, glass)
+//   transparent / glassLevel → desktop app: frosted-glass window on/off (T), and how much tint it keeps
 //   hudCards / hudCompact → what the desktop HUD (H) shows, in which order; compact = timer and search only
 // Loaded right after state.js, before the modules that draw timelines.
 
@@ -35,6 +38,16 @@ const HUD_CARD_DEFS = [
     { key: 'routines', label: 'Routines',        desc: 'Routine checklists', def: false }
 ];
 
+// Themes: all dark, all terminal. accent = the accent colour the theme comes with
+const THEMES = [
+    { id: 'terminal', label: 'Terminal', bg: '#000000', fg: '#ffffff', dim: '#777777', accent: '#ffffff' },
+    { id: 'amber',    label: 'Amber',    bg: '#0b0700', fg: '#ffb347', dim: '#8f6626', accent: '#ffb347' },
+    { id: 'phosphor', label: 'Phosphor', bg: '#000a03', fg: '#7dffa3', dim: '#2f8a4c', accent: '#7dffa3' },
+    { id: 'ice',      label: 'Ice',      bg: '#060d16', fg: '#dcecff', dim: '#5f7f9e', accent: '#6ec1ff' },
+    { id: 'graphite', label: 'Graphite', bg: '#17181b', fg: '#e4e4e6', dim: '#7d7f87', accent: '#c9a24e' },
+    { id: 'glass',    label: 'Glass',    bg: '#0b0e14', fg: '#f3f6fb', dim: '#8590a3', accent: '#ffffff', glass: true }
+];
+
 const ACCENT_PRESETS = [
     { id: 'white',  label: 'White',  color: '#ffffff' },
     { id: 'gold',   label: 'Gold',   color: '#c9a24e' },
@@ -56,7 +69,11 @@ const PREFS_DEFAULTS = {
     studySplitMemo: {},         // set of tasks → how you split the time last time
     focusSound: true,
     hudCards: HUD_CARD_DEFS.map(c => ({ key: c.key, on: c.def })),
-    hudCompact: false
+    hudCompact: false,
+    theme: 'terminal',
+    transparent: false,         // desktop app: frosted-glass window
+    glassLevel: 0.55,           // how much of the theme's tint stays when transparent (0.25 – 0.9)
+    backdrop: { on: false }     // the vector field behind the app (js/modules/backdrop.js fills in the rest)
 };
 
 // Where every timeline starts/ends, in decimal hours. planner.js and tasks.js read it.
@@ -88,12 +105,17 @@ function normalizePrefs(p) {
     HUD_CARD_DEFS.forEach(def => { if (!hud.some(c => c.key === def.key)) hud.push({ key: def.key, on: def.def }); });
     out.hudCards = hud.map(c => ({ key: c.key, on: c.on !== false }));
     out.hudCompact = out.hudCompact === true;
+    if (!THEMES.some(t => t.id === out.theme)) out.theme = PREFS_DEFAULTS.theme;
+    out.transparent = out.transparent === true;
+    const gl = Number(out.glassLevel);
+    out.glassLevel = Number.isFinite(gl) ? Math.max(0.25, Math.min(0.9, Math.round(gl * 100) / 100)) : PREFS_DEFAULTS.glassLevel;
     if (!/^#[0-9a-f]{6}$/i.test(String(out.accent || ''))) out.accent = PREFS_DEFAULTS.accent;
     if (!['centered', 'full'].includes(out.width)) out.width = PREFS_DEFAULTS.width;
     if (!['comfortable', 'compact'].includes(out.density)) out.density = PREFS_DEFAULTS.density;
     const plain = (v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.assign({}, v) : {});
     out.studyLenPicks = plain(out.studyLenPicks);
     out.studySplitMemo = plain(out.studySplitMemo);
+    out.backdrop = plain(out.backdrop);
     // old study settings (fixed rhythms, plan styles) are gone: sessions follow the length you pick in each window
     ['studyRhythm', 'studyOrder', 'studyCustomWork', 'studyCustomBreak', 'studyStylePicks', 'studyLenShift'].forEach(k => delete out[k]);
     return out;
@@ -121,6 +143,7 @@ function applySyncedPrefs(obj) {
     cortexPrefs = normalizePrefs(Object.assign({}, cortexPrefs, obj));
     cortexStore.setItem(PREFS_KEY, JSON.stringify(cortexPrefs));
     applyPrefs({ rerender: true });
+    if (window.CortexBackdrop) CortexBackdrop.apply();
 }
 
 function hhmmToDec(str, fallback) {
@@ -164,8 +187,57 @@ function inkFor(hex) {
     return lum > 0.55 ? '#000000' : '#ffffff';
 }
 
+const isDesktopApp = () => Boolean(window.__TAURI__);
+// Transparent only means something in the desktop app (a web page has nothing behind it)
+function isTransparentOn() { return isDesktopApp() && getPref('transparent') === true; }
+
+let lastWindowEffect = null;
+function applyWindowEffect(on) {
+    if (!isDesktopApp() || lastWindowEffect === on) return;
+    lastWindowEffect = on;
+    try {
+        const w = window.__TAURI__.window && window.__TAURI__.window.getCurrentWindow ? window.__TAURI__.window.getCurrentWindow() : null;
+        if (!w) return;
+        // Windows acrylic = frosted glass behind the window; off = nothing behind (the app is opaque)
+        if (on && typeof w.setEffects === 'function') w.setEffects({ effects: ['acrylic'] }).catch(e => console.warn('[prefs] glass effect', e));
+        if (!on && typeof w.clearEffects === 'function') w.clearEffects().catch(() => {});
+    } catch (e) { console.warn('[prefs] glass effect', e); }
+}
+
+// T (or the ◐ button): normal ↔ transparent, at the level fixed in Settings
+function toggleTransparent(force = null) {
+    if (!isDesktopApp()) { if (typeof showToast === 'function') showToast('Transparency is for the desktop app'); return; }
+    const next = force === null ? !getPref('transparent') : Boolean(force);
+    setPref('transparent', next, { rerender: false });
+}
+
+// Picking a theme brings its accent colour (you can change it after); Glass also turns transparency on
+function setTheme(id) {
+    const t = THEMES.find(x => x.id === id);
+    if (!t) return;
+    cortexPrefs.theme = t.id;
+    cortexPrefs.accent = t.accent;
+    if (t.glass && isDesktopApp()) cortexPrefs.transparent = true;
+    cortexPrefs = normalizePrefs(cortexPrefs);
+    savePrefs();
+    applyPrefs({ rerender: true });
+}
+
 function applyPrefs(opts = {}) {
     const root = document.documentElement;
+    const theme = getPref('theme');
+    if (theme && theme !== 'terminal') root.dataset.theme = theme; else delete root.dataset.theme;
+    const glass = isTransparentOn();
+    if (glass) root.dataset.transparent = '1'; else delete root.dataset.transparent;
+    root.style.setProperty('--bg-opacity', glass ? String(getPref('glassLevel')) : '1');
+    applyWindowEffect(glass);
+    if (window.CortexBackdrop) CortexBackdrop.themeChanged();
+    document.querySelectorAll('[data-glass-toggle]').forEach(b => {
+        b.hidden = !isDesktopApp();
+        b.classList.toggle('is-on', glass);
+        b.setAttribute('aria-pressed', String(glass));
+        b.title = glass ? 'Transparent: on (T)' : 'Transparent: off (T)';
+    });
     const accent = getPref('accent');
     root.style.setProperty('--accent', accent);
     root.style.setProperty('--accent-ink', inkFor(accent));
@@ -183,5 +255,9 @@ window.getPref = getPref;
 window.setPref = setPref;
 window.applySyncedPrefs = applySyncedPrefs;
 window.getCortexPrefs = () => cortexPrefs;
+window.toggleTransparent = toggleTransparent;
+window.setTheme = setTheme;
 
 applyPrefs();
+// the header buttons exist only once the page is built
+window.addEventListener('DOMContentLoaded', () => applyPrefs());

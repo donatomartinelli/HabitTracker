@@ -18,6 +18,7 @@
         { key: 'today',      label: 'Today' },
         { key: 'study',      label: 'Focus & study' },
         { key: 'hud',        label: 'HUD' },
+        { key: 'background', label: 'Background' },
         { key: 'modules',    label: 'Modules' },
         { key: 'account',    label: 'Account & sync' },
         { key: 'data',       label: 'Data' },
@@ -120,7 +121,24 @@
             { value: 'classic', label: 'System', style: 'font-family:var(--font-system)!important' }
         ], fontNow);
         const red = typeof isRedMode !== 'undefined' && isRedMode;
+        const theme = getPref('theme');
+        const themes = `
+            <div class="cx-themes" role="radiogroup" aria-label="Theme">
+                ${(typeof THEMES !== 'undefined' ? THEMES : []).map(t => `
+                    <button type="button" class="cx-theme ${t.id === theme ? 'active' : ''}" data-theme-pick="${esc(t.id)}" role="radio" aria-checked="${t.id === theme}"
+                        style="--tb:${t.bg};--tf:${t.fg};--td:${t.dim};--ta:${t.accent}">
+                        <span class="cx-theme-prev ${t.glass ? 'is-glass' : ''}"><b>12:04</b><i></i><span>study 45m</span></span>
+                        <span class="cx-theme-name">${esc(t.label)}</span>
+                    </button>`).join('')}
+            </div>`;
+        const glassOn = getPref('transparent') === true;
+        const level = Math.round(getPref('glassLevel') * 100);
         return `
+            ${group('Theme', row('Theme', 'All dark, all terminal. Glass is made for the transparent window.', themes, { stack: true }))}
+            ${isTauri() ? group('Transparency', `
+                ${row('Transparent window', 'Frosted glass: the desktop shows through, blurred. Switch it any time with T or the ◐ button.', toggle('cx-glass', glassOn))}
+                ${row('How much tint stays', 'Fixed once: the transparent window always uses this.', `<span class="cx-inline"><input type="range" min="25" max="90" step="5" value="${level}" data-glass-level class="cx-range"><span class="cx-range-val" data-glass-val>${level}%</span></span>`)}
+            `, 'Off, the window is fully opaque.') : ''}
             ${group('Colours', `
                 ${row('Accent colour', 'Primary buttons, active tabs, the line that marks now, live study windows.', swatches)}
                 ${row('Night red filter', 'Turns everything red to protect your eyes in the dark. Shortcut: R.', toggle('cx-red', red))}
@@ -129,7 +147,6 @@
                 ${row('Font', 'Used across the whole app, on this device.', fonts)}
                 ${isPhone() ? '' : row('Content width', 'Centred keeps lines readable on a wide screen; full width uses all of it.', seg('width', [{ value: 'centered', label: 'Centred' }, { value: 'full', label: 'Full width' }], getPref('width')))}
                 ${row('Density', 'Compact fits more rows on screen.', seg('density', [{ value: 'comfortable', label: 'Comfortable' }, { value: 'compact', label: 'Compact' }], getPref('density')))}
-                ${isTauri() ? row('Window transparency', 'How much of the desktop shows through the app window.', `<span class="cx-inline"><input type="range" min="0.3" max="1" step="0.01" value="${esc(typeof savedOpacity !== 'undefined' ? savedOpacity : 0.92)}" data-opacity class="cx-range"><span class="cx-range-val" data-opacity-val>${esc(typeof savedOpacity !== 'undefined' ? savedOpacity : 0.92)}</span></span>`) : ''}
             `)}
             ${group('Day hours', `
                 ${row('Day starts at', 'Top of the day and week timelines.', `<select class="cx-select" data-pref-select="dayStart">${timeOptions(240, 600, 30, getPref('dayStart'))}</select>`)}
@@ -209,6 +226,37 @@
             `)}
             ${group('Cards in the HUD', `<div class="cx-order">${list}</div>`, compact ? 'Compact is on: only the timer shows. Switch it off to use these cards.' : 'The same cards as Today, in this order.')}
             <div class="cx-actions">${button('Reset to default', 'data-act="reset-hud"', 'is-quiet')}</div>
+        `;
+    }
+
+    // The vector field behind the app: on/off, then its settings (js/modules/backdrop.js)
+    function sectionBackground() {
+        const B = window.CortexBackdrop;
+        if (!B) return '';
+        const c = B.get();
+        const fmt = (it, v) => it.pct ? `${Math.round(v * 100)}%` : (it.step < 1 ? (+v).toFixed(it.step < 0.01 ? 3 : 2) : String(v)) + (it.unit || '');
+        const control = (it) => {
+            const v = c[it.k];
+            if (it.t === 'select') return `<select class="cx-select" data-bd="${it.k}">${it.o.map(o => `<option value="${esc(o)}" ${o === v ? 'selected' : ''}>${esc(o)}</option>`).join('')}</select>`;
+            if (it.t === 'check') return toggle(`cx-bd-${it.k}`, v, `data-bd="${it.k}"`);
+            if (it.t === 'color') return `<input type="color" class="cx-color" value="${esc(v)}" data-bd="${it.k}">`;
+            if (it.t === 'text') return `<input type="text" class="cx-input is-wide" value="${esc(v)}" data-bd="${it.k}" spellcheck="false">`;
+            return `<span class="cx-inline"><input type="range" class="cx-range" min="${it.min}" max="${it.max}" step="${it.step}" value="${esc(v)}" data-bd="${it.k}"><span class="cx-range-val" data-bd-val="${it.k}">${esc(fmt(it, v))}</span></span>`;
+        };
+        const groups = [];
+        let cur = null;
+        B.SCHEMA.forEach(it => {
+            if (it.sec) { cur = { title: it.sec, rows: [] }; groups.push(cur); return; }
+            if (it.show && !it.show(c)) return;
+            let desc = it.d || '';
+            if (it.k === 'field' && c.field !== 'personalizzato') desc = `<code>${esc(B.equation(c.field))}</code>`;
+            if (it.k === 'fy' && B.error()) desc = `<span class="study-warn">${esc(B.error())}</span>`;
+            cur.rows.push(row(esc(it.l), desc, control(it), { stack: it.t === 'text' }));
+        });
+        return `
+            ${group('Background', row('Vector field', 'Particles flowing along a field, behind the whole app. Your cards turn into veils so it shows through. It stops when the window is hidden.', toggle('cx-bd-on', c.on, 'data-bd="on"')), c.on ? '' : 'Off: nothing runs.')}
+            ${c.on ? groups.map(g => group(esc(g.title), g.rows.join(''))).join('') : ''}
+            ${c.on ? `<div class="cx-actions">${button('Reset the field', 'data-act="reset-backdrop"', 'is-quiet')}</div>` : ''}
         `;
     }
 
@@ -294,7 +342,7 @@
     }
 
     const RENDER = {
-        general: sectionGeneral, appearance: sectionAppearance, today: sectionToday, study: sectionStudy, hud: sectionHud,
+        general: sectionGeneral, appearance: sectionAppearance, today: sectionToday, study: sectionStudy, hud: sectionHud, background: sectionBackground,
         modules: sectionModules, account: sectionAccount, data: sectionData, commands: sectionCommands,
         labs: sectionLabs, about: sectionAbout
     };
@@ -342,6 +390,8 @@
             page._switchT = setTimeout(() => page.classList.remove('cx-switching'), 220);
         }
         page.dataset.current = current;
+        // Background: the page steps aside so you see the field while you change it
+        page.classList.toggle('is-peek', current === 'background');
         page.classList.toggle('is-detail', phoneDetail);
         const title = (SECTIONS.find(s => s.key === current) || {}).label || 'Settings';
         page.innerHTML = `
@@ -402,6 +452,8 @@
                 render();
                 return;
             }
+            const th = t.closest('[data-theme-pick]');
+            if (th) { if (typeof setTheme === 'function') setTheme(th.dataset.themePick); render(); return; }
             const sw = t.closest('[data-accent]');
             if (sw) { setPref('accent', sw.dataset.accent); render(); return; }
 
@@ -437,6 +489,7 @@
             }
             else if (a === 'shortcuts') { close(); if (typeof openShortcutsHelp === 'function') openShortcutsHelp(); }
             else if (a === 'reset-cards') { setPref('todayCards', TODAY_CARD_DEFS.map(c => ({ key: c.key, on: true }))); render(); }
+            else if (a === 'reset-backdrop') { setPref('backdrop', Object.assign({}, CortexBackdrop.DEFAULTS, { on: true }), { rerender: false }); CortexBackdrop.apply(); render(); }
             else if (a === 'reset-hud') { setPref('hudCards', HUD_CARD_DEFS.map(c => ({ key: c.key, on: c.def }))); setPref('hudCompact', false); render(); }
             else if (a === 'forget-study') { if (window.CortexStudy) CortexStudy.forgetLearned(); render(); }
             else if (a === 'places') { close(); if (typeof openTasksSettingsModal === 'function') openTasksSettingsModal('tcfg-ghosts'); }
@@ -454,6 +507,24 @@
             if (t.matches('[data-accent-custom]')) { setPref('accent', t.value); render(); return; }
             if (t.id === 'cx-red') { if (typeof toggleRedMode === 'function') toggleRedMode(t.checked); return; }
             if (t.id === 'cx-sound') { setPref('focusSound', t.checked); return; }
+            if (t.id === 'cx-glass') { if (typeof toggleTransparent === 'function') toggleTransparent(t.checked); return; }
+            if (t.matches('input[type="range"][data-bd]') && window.CortexBackdrop) {
+                // live while dragging; saved on release (change)
+                CortexBackdrop.set(t.dataset.bd, parseFloat(t.value), { save: false });
+                const it = CortexBackdrop.SCHEMA.find(x => x.k === t.dataset.bd);
+                const out = page.querySelector(`[data-bd-val="${t.dataset.bd}"]`);
+                if (out && it) out.textContent = it.pct ? `${Math.round(t.value * 100)}%` : (it.step < 1 ? (+t.value).toFixed(it.step < 0.01 ? 3 : 2) : t.value) + (it.unit || '');
+                return;
+            }
+            if (t.matches('[data-glass-level]')) { setPref('glassLevel', parseInt(t.value, 10) / 100, { rerender: false }); return; }
+            if (t.matches('[data-bd]') && window.CortexBackdrop) {
+                const k = t.dataset.bd;
+                const v = t.type === 'checkbox' ? t.checked : t.type === 'range' ? parseFloat(t.value) : t.value;
+                CortexBackdrop.set(k, v);
+                // rows that depend on this one (custom field, colours, cursor) show or hide
+                if (t.type !== 'range') render();
+                return;
+            }
             if (t.id === 'cx-hud-compact') { setPref('hudCompact', t.checked); render(); return; }
             if (t.matches('[data-hud-on]')) {
                 const cards = getPref('hudCards').map(c => c.key === t.dataset.hudOn ? Object.assign({}, c, { on: t.checked }) : c);
@@ -470,10 +541,19 @@
         });
         page.addEventListener('input', (e) => {
             const t = e.target;
-            if (t.matches('[data-opacity]')) {
-                if (typeof updateOpacity === 'function') updateOpacity(t.value);
-                const v = page.querySelector('[data-opacity-val]');
-                if (v) v.textContent = t.value;
+            if (t.matches('input[type="range"][data-bd]') && window.CortexBackdrop) {
+                // live while dragging; saved on release (change)
+                CortexBackdrop.set(t.dataset.bd, parseFloat(t.value), { save: false });
+                const it = CortexBackdrop.SCHEMA.find(x => x.k === t.dataset.bd);
+                const out = page.querySelector(`[data-bd-val="${t.dataset.bd}"]`);
+                if (out && it) out.textContent = it.pct ? `${Math.round(t.value * 100)}%` : (it.step < 1 ? (+t.value).toFixed(it.step < 0.01 ? 3 : 2) : t.value) + (it.unit || '');
+                return;
+            }
+            if (t.matches('[data-glass-level]')) {
+                const v = page.querySelector('[data-glass-val]');
+                if (v) v.textContent = `${t.value}%`;
+                // live preview while dragging, when transparency is on
+                if (getPref('transparent')) document.documentElement.style.setProperty('--bg-opacity', String(parseInt(t.value, 10) / 100));
             }
         });
     }

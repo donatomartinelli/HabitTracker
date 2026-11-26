@@ -1,8 +1,13 @@
 :root {
-    --bg-opacity: 0.92;
-    --bg-main: #000000;
-    --bg-sec: #080808;
-    --bg-elevated: #0d0d0d;
+    /* Theme colours (themes below change these; the app reads --bg-main, --bg-sec, --bg-elevated) */
+    --t-bg1: #000000;
+    --t-bg2: #080808;
+    --t-bg3: #0d0d0d;
+    --bg-opacity: 1;
+    --bg-main: var(--t-bg1);
+    --bg-sec: var(--t-bg2);
+    --bg-elevated: var(--t-bg3);
+    --track: #1a1a1a;
     --text-main: #ffffff;
     --text-muted: #bbbbbb;
     --text-dim: #777777;
@@ -54,6 +59,72 @@
     /* Focus da tastiera */
     --focus-ring: 0 0 0 1px var(--bg-main), 0 0 0 2px var(--text-main);
 }
+
+/* ==========================================================================
+   THEMES (Settings → Appearance). All dark, all terminal: the colours change,
+   the layout and the sharp corners stay. js/core/prefs.js sets data-theme.
+   ========================================================================== */
+:root[data-theme="amber"] {
+    --t-bg1: #0b0700; --t-bg2: #110b02; --t-bg3: #171004; --track: #2a1d07;
+    --text-main: #ffb347; --text-muted: #d99a3a; --text-dim: #8f6626;
+    --border-color: #33240b; --border-bright: #6b4c17;
+    --accent-green: #9bbf6a; --accent-gold: #ffcf6e;
+}
+:root[data-theme="phosphor"] {
+    --t-bg1: #000a03; --t-bg2: #021007; --t-bg3: #04160b; --track: #0a2a15;
+    --text-main: #7dffa3; --text-muted: #55cc7a; --text-dim: #2f8a4c;
+    --border-color: #0f3a1d; --border-bright: #1f6b37;
+    --accent-green: #7dffa3; --accent-gold: #d9e07a;
+}
+:root[data-theme="ice"] {
+    --t-bg1: #060d16; --t-bg2: #0a141f; --t-bg3: #0f1b28; --track: #1a2b3d;
+    --text-main: #dcecff; --text-muted: #9fc0df; --text-dim: #5f7f9e;
+    --border-color: #1b2f43; --border-bright: #36597a;
+    --accent-green: #6fd3b0; --accent-gold: #e8c77a;
+}
+:root[data-theme="graphite"] {
+    --t-bg1: #17181b; --t-bg2: #1c1d21; --t-bg3: #222328; --track: #303238;
+    --text-main: #e4e4e6; --text-muted: #b2b3b8; --text-dim: #7d7f87;
+    --border-color: #2f3137; --border-bright: #4b4e57;
+}
+:root[data-theme="glass"] {
+    --t-bg1: #0b0e14; --t-bg2: #10141c; --t-bg3: #151a24; --track: rgba(255, 255, 255, 0.12);
+    --text-main: #f3f6fb; --text-muted: #c4cbd8; --text-dim: #8590a3;
+    --border-color: rgba(255, 255, 255, 0.12); --border-bright: rgba(255, 255, 255, 0.26);
+}
+
+/* --------------------------------------------------------------------------
+   TRANSPARENT (desktop app only): frosted glass. The window shows the desktop
+   blurred (Windows acrylic, set in js/core/prefs.js); the app keeps a tint at
+   the level you fixed. Surfaces become light veils over it, floating panels
+   get a denser frosted layer so text always reads well. Not liquid glass:
+   no reflections, no wobble — just matte glass.
+   -------------------------------------------------------------------------- */
+:root:is([data-transparent="1"], [data-backdrop]) {
+    --bg-main: transparent;
+    --bg-sec: color-mix(in srgb, var(--t-bg1) 22%, transparent);
+    --bg-elevated: color-mix(in srgb, var(--text-main) 8%, transparent);
+    --text-dim: color-mix(in srgb, var(--text-main) 62%, transparent);
+    --text-muted: color-mix(in srgb, var(--text-main) 82%, transparent);
+    --track: color-mix(in srgb, var(--text-main) 14%, transparent);
+    --border-color: color-mix(in srgb, var(--text-main) 14%, transparent);
+    --border-bright: color-mix(in srgb, var(--text-main) 30%, transparent);
+}
+/* text keeps a faint shadow so it reads on a bright desktop */
+:root:is([data-transparent="1"], [data-backdrop]) body { text-shadow: 0 1px 2px rgba(0, 0, 0, 0.45); }
+:root:is([data-transparent="1"], [data-backdrop]) :is(.modal-content, .cx-settings, .study-sheet, .sd-dock, .hud-pod-results, #terminal-suggestions, .ask-bar-container.expanded, .action-toast, #terminal-toast, .more-sheet, .ev-pop, .meal-sheet) {
+    background: color-mix(in srgb, var(--t-bg1) 86%, transparent) !important;
+    backdrop-filter: blur(24px) saturate(1.15);
+}
+:root:is([data-transparent="1"], [data-backdrop]) :is(.modal-overlay, .study-overlay, .cx-settings-overlay) {
+    backdrop-filter: blur(6px);
+}
+
+/* The vector field behind the app (js/modules/backdrop.js): under everything, never in the way */
+#cx-backdrop { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -1; pointer-events: none; display: block; }
+#cx-backdrop[hidden] { display: none; }
+#cx-backdrop-label { position: fixed; right: 16px; bottom: 10px; z-index: -1; font-size: var(--font-2xs); color: var(--text-dim); white-space: pre; pointer-events: none; user-select: none; }
+#cx-backdrop-label[hidden] { display: none; }
 
 /* Accessibilità: anello di focus visibile solo con la tastiera */
 :focus { outline: none; }
@@ -173,7 +244,7 @@ h1, h2, h3, #global-clock, .hud-pod-clock, .timer-text-hover, .today-now-time, .
 }
 
 body {
-    background-color: rgba(0, 0, 0, var(--bg-opacity));
+    background-color: color-mix(in srgb, var(--t-bg1) calc(var(--bg-opacity) * 100%), transparent);
     color: var(--text-main);
     display: flex;
     height: 100vh;
@@ -337,7 +408,7 @@ option {
     width: 24px;
     height: 24px;
     cursor: pointer;
-    border: 1px solid #333;
+    border: 1px solid var(--border-color);
     transition: transform 0.1s ease, border-color 0.1s ease;
     display: flex;
     justify-content: center;

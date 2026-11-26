@@ -281,3 +281,28 @@ body.mobile-view-mode .cx-row:has(.cx-switch) .cx-row-control { flex-basis: auto
 body.mobile-view-mode .cx-input { width: 100%; min-width: 0; flex: 1; }
 body.mobile-view-mode .cx-input.is-num { width: 64px; flex: 0 0 64px; }
 body.mobile-view-mode .cx-inline { justify-content: flex-start; width: 100%; }
+
+/* Themes: a small preview of each, in its own colours */
+.cx-themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-2); width: 100%; }
+.cx-theme { display: flex; flex-direction: column; gap: 6px; padding: 6px; background: transparent; border: 1px solid var(--border-color); color: var(--text-main); font: inherit; cursor: pointer; text-align: left; transition: border-color var(--dur-fast) var(--ease); }
+.cx-theme:hover { border-color: var(--border-bright); }
+.cx-theme.active { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.cx-theme-prev { display: flex; flex-direction: column; gap: 4px; padding: 8px; background: var(--tb); color: var(--tf); border: 1px solid color-mix(in srgb, var(--tf) 18%, transparent); font-size: var(--font-2xs); }
+.cx-theme-prev b { font-size: var(--font-sm); }
+.cx-theme-prev i { display: block; height: 3px; background: color-mix(in srgb, var(--tf) 15%, transparent); position: relative; }
+.cx-theme-prev i::after { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 55%; background: var(--ta); }
+.cx-theme-prev span { color: var(--td); }
+/* Glass preview: matte glass over a soft backdrop */
+.cx-theme-prev.is-glass { background: linear-gradient(135deg, #3b4a63, #1d2433 55%, #4a3d55); position: relative; }
+.cx-theme-prev.is-glass > * { position: relative; }
+.cx-theme-prev.is-glass::before { content: ''; position: absolute; inset: 0; background: color-mix(in srgb, var(--tb) 55%, transparent); backdrop-filter: blur(6px); }
+.cx-theme-name { font-size: var(--font-xs); padding: 0 2px; }
+
+/* ◐ in the header and the HUD: transparent window on/off */
+.glass-toggle.is-on { color: var(--accent); }
+
+/* Settings → Background: the page steps aside so the field shows around it */
+.cx-settings-overlay.is-peek { background: transparent !important; backdrop-filter: none !important; }
+.cx-settings-overlay.is-peek .cx-settings { max-width: 720px; margin-left: auto; }
+.cx-color { width: 44px; height: 26px; padding: 0; border: 1px solid var(--border-bright); background: none; cursor: pointer; }
+.cx-row-desc code { font: inherit; color: var(--text-muted); }

@@ -78,7 +78,7 @@
 }
 
 .month-day.selected .cal-bottom-segments {
-    background: #000000;
+    background: var(--bg-main);
     padding: 0 1px;
 }
 
@@ -228,7 +228,7 @@
 .check-box {
     width: 16px;
     height: 16px;
-    border: 1px solid #555;
+    border: 1px solid var(--border-bright);
     background: transparent;
     cursor: pointer;
     transition: all 0.1s ease;
@@ -236,7 +236,7 @@
 }
 
 .check-box:hover {
-    border-color: #fff;
+    border-color: var(--text-main);
     background: rgba(255, 255, 255, 0.1);
 }
 
@@ -405,7 +405,7 @@
 .planner-tooltip {
     display: none;
     position: fixed;
-    background: #050505;
+    background: var(--bg-sec);
     border: 1px solid var(--text-main);
     padding: 8px 12px;
     color: white;
@@ -494,7 +494,7 @@ input[type="number"].no-spinners {
     left: 0;
     width: 100%;
     height: 26px;
-    background: #0d0d0d;
+    background: var(--bg-elevated);
     color: var(--text-dim);
     font-size: var(--font-xs);
     cursor: grab;
@@ -554,7 +554,7 @@ input[type="number"].no-spinners {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-left: 2px solid #333;
+    border-left: 2px solid var(--border-color);
     padding-left: 10px;
     margin-bottom: 8px;
     font-size: var(--font-sm);
@@ -653,7 +653,7 @@ input[type="number"].no-spinners {
     position: absolute;
     cursor: pointer;
     inset: 0;
-    background: #080808;
+    background: var(--bg-sec);
     border: 1px solid var(--border-color);
     transition: 0.2s;
     display: flex;
@@ -780,7 +780,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     position: absolute;
     top: 4px;
     right: 4px;
-    background: #050505;
+    background: var(--bg-sec);
     border: 1px solid var(--border-bright);
     padding: 1px 4px;
     gap: 4px;
@@ -879,7 +879,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 .note-inline-editor {
     width: 100%;
     min-height: 120px;
-    background: #030303;
+    background: var(--bg-sec);
     color: var(--text-main);
     border: 1px solid var(--border-bright);
     padding: 10px 12px;
@@ -896,7 +896,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 .note-ai-drawer {
     margin-top: 4px;
     padding: 10px 12px;
-    background: #050505;
+    background: var(--bg-sec);
     border: 1px solid var(--border-bright);
     display: flex;
     flex-direction: column;
@@ -1090,7 +1090,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
     flex: 1;
     position: relative;
     border: 1px solid var(--border-color);
-    background: #030303;
+    background: var(--bg-sec);
     overflow: hidden;
     min-height: 0;
 }
@@ -1125,7 +1125,7 @@ input:checked + .notes-slider .t-label.browse { color: #000; }
 
 /* --- ZENITH MODE (DEEP FOCUS) --- */
 body.zenith-mode .layout {
-    background: #000000;
+    background: var(--bg-main);
 }
 
 body.zenith-mode .quadrant-cell {
@@ -1165,7 +1165,7 @@ body.zenith-mode .app-header {
     font-size: var(--font-2xs);
     font-weight: bold;
     color: var(--accent-red);
-    background: #000;
+    background: var(--bg-main);
     padding: 2px 6px;
     border: 1px solid var(--accent-red);
     white-space: nowrap;

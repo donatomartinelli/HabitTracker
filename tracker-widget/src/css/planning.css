@@ -122,7 +122,7 @@
 .study-plan.active { border-color: var(--accent); background: var(--bg-elevated); box-shadow: inset 3px 0 0 var(--accent); }
 .study-plan-name { font-weight: bold; font-size: var(--font-sm); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .study-plan-tag { font-weight: normal; font-size: var(--font-2xs); color: var(--accent-gold); border: 1px solid currentColor; padding: 0 4px; letter-spacing: 0; }
-.study-plan-bar { position: relative; display: block; height: 10px; background: #0d0d0d; border: 1px solid #1c1c1c; }
+.study-plan-bar { position: relative; display: block; height: 10px; background: var(--bg-elevated); border: 1px solid var(--border-color); }
 .study-plan-bar .study-pv-seg { top: 1px; bottom: 1px; }
 .study-plan-stats { font-size: var(--font-2xs); color: var(--text-muted); font-variant-numeric: tabular-nums; }
 .study-plan-why { font-size: var(--font-2xs); color: var(--text-dim); line-height: 1.4; }
@@ -291,7 +291,7 @@
 .study-card-title { color: var(--text-main); font-size: var(--font-md); }
 .study-card-sub { font-size: var(--font-xs); margin-top: 2px; }
 .study-card-actions { display: flex; gap: var(--space-2); align-items: center; flex-shrink: 0; }
-.study-strip { position: relative; height: 8px; background: #111; }
+.study-strip { position: relative; height: 8px; background: var(--track); }
 /* a session: its colour faint until you study it, filled as you go */
 .study-strip-seg { position: absolute; top: 0; bottom: 0; background: color-mix(in srgb, var(--c) 30%, transparent); }
 .study-strip-seg > i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--c); }
@@ -325,7 +325,7 @@
 .today-task > .today-task-nobox { width: 16px; height: 16px; }
 .today-task .check-box.partial { background: linear-gradient(135deg, transparent 50%, var(--text-dim) 50%); }
 .today-task-body { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.today-task-bar { height: 3px; background: #1a1a1a; max-width: 320px; }
+.today-task-bar { height: 3px; background: var(--track); max-width: 320px; }
 .today-task-bar > div { height: 100%; background: var(--task-color, var(--accent)); }
 .today-task-meta b { color: var(--text-muted); font-weight: normal; }
 body.mobile-view-mode .today-task { grid-template-columns: 24px minmax(0, 1fr) auto 28px; }
@@ -364,12 +364,12 @@ body.mobile-view-mode .today-task > .today-task-nobox { width: 22px; height: 22p
 .diet2-summary { border: 1px solid var(--border-color); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
 .diet2-kcal { font-size: var(--font-md); }
 .diet2-kcal b { font-size: var(--font-lg); font-variant-numeric: tabular-nums; }
-.macro-track-big { height: 4px; background: #1a1a1a; }
+.macro-track-big { height: 4px; background: var(--track); }
 .macro-track-big > div { height: 100%; background: var(--accent); }
 .diet2-macros { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-3); }
 .macro-bar-top { display: flex; justify-content: space-between; font-size: var(--font-2xs); color: var(--text-dim); margin-bottom: 3px; }
 .macro-bar-top b { color: var(--text-main); font-weight: normal; }
-.macro-bar-track { height: 2px; background: #1a1a1a; }
+.macro-bar-track { height: 2px; background: var(--track); }
 .macro-bar-track > div { height: 100%; background: var(--text-muted); }
 
 .diet2-meals { display: flex; flex-direction: column; }
@@ -597,7 +597,7 @@ body:not(.mobile-view-mode) #today-tasks { max-width: 1100px; }
 .tv-sub { font-size: var(--font-2xs); color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tv-kind { text-transform: lowercase; }
 .tv-warn { color: var(--accent-red); }
-.tv-bar { height: 3px; background: #1a1a1a; max-width: 260px; margin-top: 2px; }
+.tv-bar { height: 3px; background: var(--track); max-width: 260px; margin-top: 2px; }
 .tv-bar > div { height: 100%; background: var(--row-color, var(--accent)); }
 .tv-meta { font-size: var(--font-xs); color: var(--text-dim); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tv-meta b { color: var(--text-muted); font-weight: normal; }

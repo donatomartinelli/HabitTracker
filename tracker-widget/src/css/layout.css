@@ -62,7 +62,7 @@ body.terminal-open .app-header,
 }
 
 .header-focus-pill:hover {
-    background: #080808;
+    background: var(--bg-sec);
     border-color: var(--text-main);
 }
 
@@ -211,7 +211,7 @@ body.terminal-open .app-header,
 
 .ask-bar-container {
     width: 380px;
-    background: #050505;
+    background: var(--bg-sec);
     border: 1px solid var(--border-bright);
     transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1),
                 width 0.28s cubic-bezier(0.16, 1, 0.3, 1),
@@ -245,7 +245,7 @@ body.terminal-open .app-header,
     align-items: center;
     height: 34px;
     padding: 0 12px;
-    background: #000000;
+    background: var(--bg-main);
     transition: height 0.25s ease, padding 0.25s ease;
 }
 
@@ -277,7 +277,7 @@ body.terminal-open .app-header,
 /* --- LIVE PREVIEW & TENDINA AUTOCOMPLETAMENTO CONTESTUALE --- */
 .terminal-live-preview {
     padding: 7px 16px;
-    background: #080808;
+    background: var(--bg-sec);
     border-bottom: 1px solid var(--border-color);
     font-size: var(--font-xs);
     color: var(--text-muted);
@@ -337,7 +337,7 @@ body.terminal-open .app-header,
 
 .ask-ai-answer {
     padding: 14px 18px;
-    background: #060606;
+    background: var(--bg-sec);
     border-bottom: 1px solid var(--border-color);
     font-size: var(--font-sm);
     line-height: 1.5;
@@ -376,7 +376,7 @@ body.terminal-open .app-header,
     align-items: center;
     padding: 16px 24px;
     border-bottom: 1px solid var(--border-color);
-    background: #060606;
+    background: var(--bg-sec);
     flex-shrink: 0;
 }
 
@@ -390,7 +390,7 @@ body.terminal-open .app-header,
 .settings-sidebar {
     width: 210px;
     border-right: 1px solid var(--border-color);
-    background: #030303;
+    background: var(--bg-sec);
     display: flex;
     flex-direction: column;
     justify-content: space-between;
@@ -445,7 +445,7 @@ body.terminal-open .app-header,
     left: 0;
     width: 100%;
     height: 42px;
-    background: #060606;
+    background: var(--bg-sec);
     border-bottom: 1px solid var(--text-main);
     z-index: 95;
     padding: 0 20px;
@@ -501,7 +501,7 @@ body.layout-edit-mode .layout {
     position: fixed;
     pointer-events: none;
     z-index: 9999;
-    background: #000000;
+    background: var(--bg-main);
     color: var(--text-main);
     border: 1px solid var(--text-main);
     padding: 5px 12px;
@@ -664,7 +664,7 @@ body.layout-edit-mode .quadrant-body {
 
 .quadrant-select {
     display: none;
-    background: #000;
+    background: var(--bg-main);
     border: 1px solid var(--border-bright);
     color: var(--text-main);
     font-size: var(--font-xs);
@@ -714,7 +714,7 @@ body.layout-edit-mode .quadrant-title-static {
 }
 
 .snap-preview-label {
-    background: #000000;
+    background: var(--bg-main);
     color: var(--text-main);
     border: 1px solid var(--text-main);
     padding: 6px 12px;
@@ -727,7 +727,7 @@ body.layout-edit-mode .quadrant-title-static {
 /* --- RESIZERS ORIZZONTALI E VERTICALI --- */
 .resizer-vertical {
     width: 6px;
-    background-color: #050505;
+    background-color: var(--bg-sec);
     border-left: 1px solid var(--border-color);
     border-right: 1px solid var(--border-color);
     cursor: ew-resize;
@@ -754,7 +754,7 @@ body.layout-edit-mode .quadrant-title-static {
 
 .resizer-horizontal {
     height: 6px;
-    background-color: #050505;
+    background-color: var(--bg-sec);
     border-top: 1px solid var(--border-color);
     border-bottom: 1px solid var(--border-color);
     cursor: ns-resize;
@@ -890,7 +890,7 @@ body.layout-edit-mode .quadrant-title-static {
     position: absolute;
     right: 0;
     top: 100%;
-    background-color: #060606;
+    background-color: var(--bg-sec);
     min-width: 220px;
     border: 1px solid var(--border-bright);
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.95);
@@ -907,7 +907,7 @@ body.layout-edit-mode .quadrant-title-static {
     position: fixed;
     bottom: 24px;
     right: 24px;
-    background: #000000;
+    background: var(--bg-main);
     border: 1px solid var(--text-main);
     color: var(--text-main);
     padding: 9px 15px;
@@ -979,7 +979,7 @@ body.layout-edit-mode .quadrant-title-static {
     color: var(--text-main);
     background: rgba(255, 255, 255, 0.06);
     padding: 1px 4px;
-    border: 1px solid #333;
+    border: 1px solid var(--border-color);
 }
 
 /* --- STAGING AREA CODA COMANDI --- */
@@ -988,7 +988,7 @@ body.layout-edit-mode .quadrant-title-static {
     flex-direction: column;
     gap: 12px;
     padding: 14px 18px;
-    background: #060606;
+    background: var(--bg-sec);
     border-bottom: 1px solid var(--border-color);
 }
 
@@ -1223,7 +1223,7 @@ body.mobile-view-mode .mobile-cmd-trigger-btn {
     font-size: var(--font-2xs) !important;
     font-weight: bold !important;
     border-color: var(--border-bright) !important;
-    background: #080808 !important;
+    background: var(--bg-sec) !important;
 }
 
 body.mobile-view-mode .ask-bar-container:not(.expanded) {
@@ -1298,7 +1298,7 @@ body.mobile-view-mode #btn-close-app {
     display: none;
     flex-direction: column;
     width: 100% !important;
-    background: #060606;
+    background: var(--bg-sec);
     border-bottom: 1px solid var(--border-color);
     padding: 6px 10px;
     gap: 6px;
@@ -1388,7 +1388,7 @@ body.mobile-view-mode .module-body-padded {
 .mobile-gym-stepper-bar {
     display: none;
     width: 100%;
-    background: #0a0a0a;
+    background: var(--bg-elevated);
     border-top: 1px solid var(--text-main);
     padding: 6px 8px;
     gap: 6px;

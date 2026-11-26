@@ -90,6 +90,7 @@
         </div>
 
         <div class="header-right">
+            <button type="button" class="hdr-icon glass-toggle" data-glass-toggle onclick="toggleTransparent()" aria-label="Transparent window" title="Transparent (T)" hidden>◐</button>
             <button id="btn-cloud-sync-hdr" class="hdr-icon" onclick="triggerManualCloudSync()" aria-label="Sync now">☁</button>
             <button id="btn-settings-app" class="hdr-icon" onclick="openSettingsModal()" aria-label="Settings" title="Settings">⚙</button>
             <span class="hdr-win-controls">
@@ -126,6 +127,7 @@
         <div data-tauri-drag-region class="hud-pod-topbar">
             <span data-tauri-drag-region id="hud-pod-clock" class="hud-pod-clock">00:00 // DAY 00</span>
             <div class="hud-pod-win-btns">
+                <button type="button" class="icon-btn win-ctrl-btn glass-toggle" data-glass-toggle onclick="toggleTransparent()" aria-label="Transparent window" title="Transparent (T)" hidden>◐</button>
                 <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false); setTimeout(() => openSettingsPage('hud'), 80)" title="Choose what the HUD shows" aria-label="HUD settings">⚙</button>
                 <button type="button" class="icon-btn win-ctrl-btn" onclick="openQuickNoteModal()" title="Quick note">[+NOTE]</button>
                 <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false)" title="Back to the whole app (H)">[FULL]</button>

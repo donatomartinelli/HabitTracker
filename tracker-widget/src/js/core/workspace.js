@@ -2220,7 +2220,10 @@ document.addEventListener('keydown', (e) => {
     const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => m.style.display === 'flex');
     if (anyModalOpen) return;
 
-    if (e.key === 'h' || e.key === 'H') {
+    if ((e.key === 't' || e.key === 'T') && window.__TAURI__ && typeof toggleTransparent === 'function') {
+        e.preventDefault();
+        toggleTransparent();
+    } else if (e.key === 'h' || e.key === 'H') {
         e.preventDefault();
         toggleHudMode();
     } else if (e.key === 'v' || e.key === 'V') {

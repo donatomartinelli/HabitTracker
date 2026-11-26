@@ -86,7 +86,7 @@
     color: var(--text-dim);
     text-transform: uppercase;
     padding: 1px 5px;
-    border: 1px solid #2a2a2a;
+    border: 1px solid var(--border-color);
 }
 
 .vault-env-numbers {
@@ -114,8 +114,8 @@
 .vault-progress-track {
     width: 100%;
     height: 6px;
-    background: #111111;
-    border: 1px solid #2a2a2a;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-color);
     position: relative;
     overflow: hidden;
 }
@@ -272,7 +272,7 @@
     top: calc(100% + 4px);
     left: 0;
     width: 215px;
-    background: #060606;
+    background: var(--bg-sec);
     border: 1px solid var(--text-main);
     box-shadow: 0 12px 32px rgba(0, 0, 0, 0.96);
     z-index: 600;

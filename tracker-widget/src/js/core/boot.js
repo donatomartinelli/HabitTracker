@@ -50,6 +50,7 @@
         'js/modules/study-draft.js',
         'js/modules/diet.js',
         'js/modules/meals.js',
+        'js/modules/backdrop.js',
         'js/modules/gym.js',
         'js/modules/money.js',
         'js/modules/uni.js',
