@@ -8,6 +8,7 @@
 //   todayCards          → which cards Today shows, in which order
 //   studyLenPicks / studySplitMemo → what study windows learn from your choices (session length, split)
 //   focusSound → a tone when a focus session ends
+//   hudCards / hudCompact → what the desktop HUD (H) shows, in which order; compact = timer and search only
 // Loaded right after state.js, before the modules that draw timelines.
 
 const PREFS_KEY = 'cortex_prefs';
@@ -22,6 +23,16 @@ const TODAY_CARD_DEFS = [
     { key: 'routines', label: 'Routines',        desc: 'Collapsible routine checklists' },
     { key: 'stats',    label: 'Numbers',         desc: 'Streak, focus hours and free money' },
     { key: 'timeline', label: 'Timeline',        desc: 'The day hour by hour (right column on a computer)' }
+];
+
+// What the HUD (the small always-on-top window, H) can show: the same cards as Today
+const HUD_CARD_DEFS = [
+    { key: 'now',      label: 'Timer / up next', desc: 'The running timer, or what comes next', def: true },
+    { key: 'timeline', label: 'Timeline',        desc: 'The next hours: sessions, events, meals', def: true },
+    { key: 'study',    label: 'Study windows',   desc: 'Where and when you study today, with how far you are', def: false },
+    { key: 'tasks',    label: 'Tasks',           desc: 'Everything active today, with its progress', def: true },
+    { key: 'meals',    label: 'Meals',           desc: 'Eaten or not, one meal at a time', def: false },
+    { key: 'routines', label: 'Routines',        desc: 'Routine checklists', def: false }
 ];
 
 const ACCENT_PRESETS = [
@@ -43,7 +54,9 @@ const PREFS_DEFAULTS = {
     todayCards: TODAY_CARD_DEFS.map(c => ({ key: c.key, on: true })),
     studyLenPicks: {},          // session length (30/45/60) → how many times you picked it (js/modules/study.js)
     studySplitMemo: {},         // set of tasks → how you split the time last time
-    focusSound: true
+    focusSound: true,
+    hudCards: HUD_CARD_DEFS.map(c => ({ key: c.key, on: c.def })),
+    hudCompact: false
 };
 
 // Where every timeline starts/ends, in decimal hours. planner.js and tasks.js read it.
@@ -69,6 +82,12 @@ function normalizePrefs(p) {
         }
     });
     out.todayCards = list.map(c => ({ key: c.key, on: c.on !== false }));
+    // HUD cards: same idea (new cards come in switched off unless they are on by default)
+    const hudKnown = new Set(HUD_CARD_DEFS.map(c => c.key));
+    const hud = Array.isArray(out.hudCards) ? out.hudCards.filter(c => c && hudKnown.has(c.key)) : [];
+    HUD_CARD_DEFS.forEach(def => { if (!hud.some(c => c.key === def.key)) hud.push({ key: def.key, on: def.def }); });
+    out.hudCards = hud.map(c => ({ key: c.key, on: c.on !== false }));
+    out.hudCompact = out.hudCompact === true;
     if (!/^#[0-9a-f]{6}$/i.test(String(out.accent || ''))) out.accent = PREFS_DEFAULTS.accent;
     if (!['centered', 'full'].includes(out.width)) out.width = PREFS_DEFAULTS.width;
     if (!['comfortable', 'compact'].includes(out.density)) out.density = PREFS_DEFAULTS.density;
@@ -154,7 +173,7 @@ function applyPrefs(opts = {}) {
     root.dataset.density = getPref('density');
     applyDayHours();
     if (opts.rerender) {
-        ['renderWeeklyPlanner', 'renderDayPlannerModule', 'renderTodayModule'].forEach(fn => {
+        ['renderWeeklyPlanner', 'renderDayPlannerModule', 'renderTodayModule', 'renderHudPod'].forEach(fn => {
             try { if (typeof window[fn] === 'function') window[fn](); } catch (e) { console.error('[prefs]', fn, e); }
         });
     }

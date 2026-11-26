@@ -875,7 +875,7 @@ function renderQuadrantLayout() {
 
     renderEditDockChips();
     updateWorkspaceDropdownUI();
-    updateHudWidgetStrip();
+    renderHudPod();
 
     if (!layoutTree || leaves.length === 0) {
         layoutTree = null;
@@ -1721,8 +1721,12 @@ function setModulesView(modKeysArray) {
 }
 
 // ============================================================================
-// TACTICAL VERTICAL POD HUD (340x460px) & MULTI-MONITOR PHYSICAL MEMORY
+// HUD: the small always-on-top window (H) & MULTI-MONITOR PHYSICAL MEMORY
 // ============================================================================
+// Same cards as Today (timer, timeline, study windows, tasks, meals, routines), in the order and
+// with the ones you choose in Settings → HUD; "compact" keeps only the timer and the search.
+// The search box on top is the command bar: it searches your data and runs commands right there.
+// Anything that needs the whole app (opening a note, a section, editing a study window) leaves the HUD.
 
 let isHudMode = false;
 let isHudTempExpanded = false;
@@ -1732,210 +1736,241 @@ let savedNormalPhysicalPos = null;
 let savedHudPodPhysicalPos = null;
 
 const HUD_POD_WIDTH = 340;
-const HUD_POD_HEIGHT = 460;
-
-let hudPodStagedCommands = [];
-
-function getNextScheduledBlockLabelForToday() {
-    const now = getNow();
-    const curMins = now.getHours() * 60 + now.getMinutes();
-    const dayIdx = now.getDay();
-    const candidates = [];
-
-    if (typeof templates !== 'undefined') {
-        templates.forEach(t => {
-            if (t && isTaskActiveOnDate(t, todayStr) && Array.isArray(t.timeWindows)) {
-                t.timeWindows.forEach(tw => {
-                    if (tw.days && tw.days.includes(dayIdx) && tw.start && tw.end) {
-                        const [sh, sm] = tw.start.split(':').map(Number);
-                        const [eh, em] = tw.end.split(':').map(Number);
-                        const sMins = sh * 60 + (sm || 0);
-                        const eMins = eh * 60 + (em || 0);
-                        if (eMins >= curMins) {
-                            candidates.push({ startMins: sMins, endMins: eMins, start: tw.start, end: tw.end, title: t.title });
-                        }
-                    }
-                });
-            }
-        });
-    }
-
-    if (typeof ephemeralData !== 'undefined' && Array.isArray(ephemeralData[todayStr])) {
-        ephemeralData[todayStr].forEach(b => {
-            if (b.start && b.end) {
-                const [sh, sm] = b.start.split(':').map(Number);
-                const [eh, em] = b.end.split(':').map(Number);
-                const sMins = sh * 60 + (sm || 0);
-                const eMins = eh * 60 + (em || 0);
-                if (eMins >= curMins) {
-                    candidates.push({ startMins: sMins, endMins: eMins, start: b.start, end: b.end, title: b.title });
-                }
-            }
-        });
-    }
-
-    if (typeof specificEvents !== 'undefined') {
-        specificEvents.filter(e => e && e.date === todayStr && e.start && e.end).forEach(ev => {
-            const [sh, sm] = ev.start.split(':').map(Number);
-            const [eh, em] = ev.end.split(':').map(Number);
-            const sMins = sh * 60 + (sm || 0);
-            const eMins = eh * 60 + (em || 0);
-            if (eMins >= curMins) {
-                candidates.push({ startMins: sMins, endMins: eMins, start: ev.start, end: ev.end, title: ev.title });
-            }
-        });
-    }
-
-    if (candidates.length === 0) return null;
-    candidates.sort((a, b) => a.startMins - b.startMins);
-    const best = candidates[0];
-    const isNow = curMins >= best.startMins && curMins <= best.endMins;
-    return `${isNow ? 'NOW' : best.start} // ${best.title.toUpperCase()}`;
+function hudPodSize() {
+    const compact = typeof getPref === 'function' && getPref('hudCompact');
+    return { width: HUD_POD_WIDTH, height: compact ? 236 : 600 };
 }
 
-function updateHudWidgetStrip() {
+let hudPodStagedCommands = [];
+let hudLastSig = '';
+let hudLastCompact = null;
+
+function hudCardKeys() {
+    if (typeof getPref !== 'function') return ['now', 'timeline', 'tasks'];
+    if (getPref('hudCompact')) return ['now'];
+    return (getPref('hudCards') || []).filter(c => c && c.on).map(c => c.key);
+}
+
+// opts.tick: called every second by the clock; redraws only when the minute or the timer state changed
+function renderHudPod(opts = {}) {
+    if (!isHudMode) return;
+    const pod = document.getElementById('hud-tactical-pod');
+    const body = document.getElementById('hud-pod-body');
+    if (!pod || !body || !window.CortexToday) return;
+
+    const compact = typeof getPref === 'function' && getPref('hudCompact');
+    pod.classList.toggle('is-compact', Boolean(compact));
+    if (hudLastCompact !== null && compact !== hudLastCompact && !isHudTempExpanded) {
+        const sz = hudPodSize();
+        applyTauriWindowGeometry(sz.width, sz.height, true, null);
+    }
+    hudLastCompact = compact;
+
+    const running = typeof focusPlaylist !== 'undefined' && focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
+    const keys = hudCardKeys();
+    const sig = [new Date().getMinutes(), running ? `${currentPlaylistIndex}:${isPomodoroPaused}` : 'idle', keys.join(',')].join('|');
+    if (opts.tick && sig === hudLastSig) {
+        if (running) CortexToday.liveTick(body);
+        return;
+    }
+    hudLastSig = sig;
+    const keep = body.scrollTop;
+    const snap = window.CortexMotion ? CortexMotion.snapshot(body) : null;
+    const html = keys.map(k => {
+        const h = CortexToday.cardHtml(k);
+        return h ? `<div class="today-card hud-card" data-card="${k}">${h}</div>` : '';
+    }).join('');
+    body.innerHTML = html || '<div class="today-empty">Nothing to show. Choose the HUD cards in Settings → HUD.</div>';
+    CortexToday.bindCards(body);
+    body.scrollTop = keep;
+    if (snap) CortexMotion.replay(body, snap);
+}
+
+// What needs the whole app leaves the HUD first
+function leaveHudFor(fn) {
+    if (isHudMode) toggleHudMode(false);
+    if (typeof fn === 'function') setTimeout(fn, 60);
+}
+
+// ---------------------------------------------------------------------------
+// The search box: the same results as the command bar, shown inside the HUD
+// ---------------------------------------------------------------------------
+let hudItems = [];
+let hudSel = 0;
+const HUD_APP_GROUPS = ['FOUND IN YOUR DATA', 'IN YOUR NOTES', 'GO TO', 'SWITCHED OFF'];
+
+function hudBuildGroups(q) {
+    const groups = typeof cortexPaletteBuild === 'function' ? cortexPaletteBuild(q) : [];
+    // notes too (the command bar leaves them out; here a quick look-up is the point)
+    if (q.trim().length >= 3 && typeof cortexSearch === 'function') {
+        const notes = cortexSearch(q, 30).filter(r => r.kind === 'Note' || r.kind === 'Notes').slice(0, 3)
+            .map(r => ({ label: r.title, hint: r.sub, run: r.run }));
+        if (notes.length) {
+            const at = groups.findIndex(g => g.title === 'GO TO');
+            groups.splice(at < 0 ? groups.length : at, 0, { title: 'IN YOUR NOTES', items: notes });
+        }
+    }
+    // the "nothing matched" hint only when nothing else is there
+    const shown = groups.length > 1 ? groups.filter(g => g.title !== 'NOTHING MATCHED') : groups;
+    return shown.map(g => Object.assign({}, g, {
+        items: g.items.map(it => Object.assign({}, it, { where: g.title === 'ASK AI' ? 'ai' : (HUD_APP_GROUPS.includes(g.title) ? 'app' : 'here') }))
+    }));
+}
+
+function renderHudResults() {
+    const input = document.getElementById('hud-pod-input');
+    const box = document.getElementById('hud-pod-results');
+    if (!input || !box) return;
+    const open = document.activeElement === input;
+    if (!open) { box.hidden = true; box.innerHTML = ''; hudItems = []; return; }
+    const groups = hudBuildGroups(input.value);
+    hudItems = [];
+    const esc = (x) => (typeof escapeHtml === 'function' ? escapeHtml(String(x ?? '')) : String(x ?? ''));
+    box.innerHTML = groups.filter(g => g.items.length).map(g => `
+        <div class="hud-res-group">${esc(g.title)}</div>
+        ${g.items.map(it => {
+            const i = hudItems.push(it) - 1;
+            return `<div class="hud-res-item ${i === hudSel ? 'active' : ''}" data-hud-res="${i}" role="option">
+                <span class="hud-res-label">${esc(it.label)}${it.where === 'app' ? ' <span class="dim">↗</span>' : ''}</span>
+                <span class="hud-res-hint">${esc(it.hint || '')}</span>
+            </div>`;
+        }).join('')}`).join('');
+    if (hudSel >= hudItems.length) hudSel = 0;
+    box.hidden = !hudItems.length;
+}
+
+function paintHudSelection() {
+    document.querySelectorAll('#hud-pod-results .hud-res-item').forEach((r, i) => r.classList.toggle('active', i === hudSel));
+    document.querySelector('#hud-pod-results .hud-res-item.active')?.scrollIntoView({ block: 'nearest' });
+}
+
+async function hudAskAi(text) {
+    const input = document.getElementById('hud-pod-input');
+    if (typeof translateNaturalLanguageToDslWithGemini !== 'function' || !input) return;
+    input.disabled = true;
+    const oldPh = input.placeholder;
+    input.value = '';
+    input.placeholder = 'AI is reading it…';
+    try {
+        const cmds = await translateNaturalLanguageToDslWithGemini(text);
+        if (Array.isArray(cmds) && cmds.length > 0) { hudPodStagedCommands.push(...cmds); renderHudPodStaging(); }
+    } catch (err) {
+        if (typeof showToast === 'function') showToast(`[AI ERROR] ${err.message}`);
+    }
+    input.disabled = false;
+    input.placeholder = oldPh;
+    input.focus();
+}
+
+function fillHudInput(it) {
+    const input = document.getElementById('hud-pod-input');
+    if (!it || !input || (it.fill === undefined && !it.cmd)) return false;
+    input.value = it.fill !== undefined ? it.fill : it.cmd;
+    hudSel = 0;
+    renderHudResults();
+    return true;
+}
+
+function activateHudItem(it) {
+    const input = document.getElementById('hud-pod-input');
+    if (!it || !input) return;
+    const typed = input.value.trim();
+    if (it.where === 'ai') { hudAskAi(typed); return; }
+    if (!it.run) { fillHudInput(it); return; }      // a completion or a suggestion to fill in
+    input.value = '';
+    input.blur();
+    renderHudResults();
+    if (it.where === 'app') { leaveHudFor(it.run); return; }
+    hudWatchNav = true;
+    try { it.run(); } finally { hudWatchNav = false; }
     renderHudPod();
 }
 
-function renderHudPod() {
-    if (!isHudMode) return;
-    const pod = document.getElementById('hud-tactical-pod');
-    if (!pod) return;
+// Something run from the HUD opened a section of the app: show the app
+let hudWatchNav = false;
+function wrapNavigationForHud() {
+    if (typeof navigateToSection !== 'function' || navigateToSection.__hud) return;
+    const orig = navigateToSection;
+    const wrapped = function (...args) {
+        if (isHudMode && hudWatchNav) toggleHudMode(false);
+        return orig.apply(this, args);
+    };
+    wrapped.__hud = true;
+    window.navigateToSection = navigateToSection = wrapped;
+}
 
-    const focusBox = document.getElementById('hud-pod-focus-box');
-    const isFocusRunning = typeof focusPlaylist !== 'undefined' && focusPlaylist.length > 0 && currentPlaylistIndex < focusPlaylist.length;
-
-    if (focusBox) {
-        if (isFocusRunning) {
-            const phase = focusPlaylist[currentPlaylistIndex];
-            const m = Math.floor(Math.abs(timeRemaining) / 60).toString().padStart(2, '0');
-            const s = (Math.abs(timeRemaining) % 60).toString().padStart(2, '0');
-            const pct = totalPhaseTime > 0 ? Math.max(0, Math.min(100, (timeRemaining / totalPhaseTime) * 100)) : 0;
-            const activeColor = phase.type === 'task' ? (phase.color || '#ffffff') : '#888888';
-
-            focusBox.innerHTML = `
-                <div class="u-flex u-jc-between u-ai-base">
-                    <div style="font-size:1.35rem; font-weight:bold; color:${activeColor}; font-variant-numeric:tabular-nums;">
-                        ${typeof focusStateIcon === 'function' ? focusStateIcon(isPomodoroPaused) : ''} ${m}:${s}
-                    </div>
-                    <div class="u-fs-xs u-bold u-main u-clip u-nowrap" style="max-width:175px; text-overflow:ellipsis;">
-                        ${escapeHtml(phase.type === 'task' ? phase.title : 'BREAK')}
-                    </div>
-                </div>
-                <div class="u-w-full u-clip" style="height:4px; background:var(--bg-elevated);">
-                    <div style="height:100%; width:${pct.toFixed(1)}%; background:${activeColor};"></div>
-                </div>
-                <div class="u-flex u-jc-end u-gap-2" style="margin-top:2px;">
-                    <button type="button" class="btn btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="togglePomodoroPause(); renderHudPod();">${isPomodoroPaused ? '[RESUME]' : '[PAUSE]'}</button>
-                    <button type="button" class="btn btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="skipPomodoroPhase(); renderHudPod();">[SKIP ✓]</button>
-                    <button type="button" class="btn btn-danger btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="stopPomodoro(); renderHudPod();">×</button>
-                </div>
-            `;
-        } else {
-            focusBox.innerHTML = `
-                <div class="u-flex u-jc-between u-ai-center">
-                    <span class="u-fs-xs u-dim u-bold">FOCUS // IDLE</span>
-                    <button type="button" class="btn btn-sm u-fs-2xs" style="padding:2px var(--space-2);" onclick="openTimerModal()">▶</button>
-                </div>
-            `;
+function wireHudPod() {
+    wrapNavigationForHud();
+    const input = document.getElementById('hud-pod-input');
+    const box = document.getElementById('hud-pod-results');
+    const body = document.getElementById('hud-pod-body');
+    if (!input || input.dataset.wired) return;
+    input.dataset.wired = '1';
+    input.addEventListener('focus', () => { hudSel = 0; renderHudResults(); });
+    input.addEventListener('blur', () => setTimeout(renderHudResults, 120));
+    input.addEventListener('input', () => { hudSel = 0; renderHudResults(); });
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowDown') { e.preventDefault(); if (hudItems.length) { hudSel = (hudSel + 1) % hudItems.length; paintHudSelection(); } return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); if (hudItems.length) { hudSel = (hudSel - 1 + hudItems.length) % hudItems.length; paintHudSelection(); } return; }
+        if (e.key === 'Tab') { e.preventDefault(); fillHudInput(hudItems[hudSel]); return; }
+        if (e.key === 'Escape') {
+            e.preventDefault();
+            hudPodStagedCommands = [];
+            renderHudPodStaging();
+            input.value = '';
+            input.blur();
+            return;
         }
-    }
-
-    const radarEl = document.getElementById('hud-pod-radar');
-    if (radarEl) {
-        const nextStr = getNextScheduledBlockLabelForToday() || 'NO TIMED BLOCKS';
-        const spendableVal = typeof getMoneyAllocationMetrics === 'function'
-            ? getMoneyAllocationMetrics().spendable
-            : (typeof mBalance !== 'undefined' ? mBalance : 0);
-
-        radarEl.innerHTML = `
-            <span class="u-clip u-nowrap u-grow" style="text-overflow:ellipsis;"><strong>${escapeHtml(nextStr)}</strong></span>
-            <span style="font-weight:bold; color:${spendableVal < 0 ? 'var(--accent-red)' : 'var(--accent-green)'}; flex-shrink:0;">€${Number(spendableVal || 0).toFixed(2)}</span>
-        `;
-    }
-
-    const listEl = document.getElementById('hud-pod-tasks-list');
-    const counterEl = document.getElementById('hud-pod-tasks-counter');
-    if (listEl) {
-        listEl.innerHTML = '';
-        const st = typeof getStatsForDate === 'function' ? getStatsForDate(todayStr) : { completed: 0, total: 0 };
-        if (counterEl) counterEl.textContent = `${st.completed}/${st.total}`;
-
-        const activeToday = (typeof templates !== 'undefined' ? templates : []).filter(t =>
-            t && t.type !== 'medicine' && isTaskActiveOnDate(t, todayStr)
-        );
-
-        const uncompleted = [];
-        const completed = [];
-
-        activeToday.forEach(t => {
-            const inst = t.instances || 1;
-            const curLog = (logs[todayStr] && logs[todayStr][t.id]) || Array(inst).fill(false);
-            if (curLog.every(Boolean)) completed.push({ t, curLog, inst });
-            else uncompleted.push({ t, curLog, inst });
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const val = input.value.trim();
+            if (!val) { if (hudPodStagedCommands.length > 0) confirmHudPodStaging(); return; }
+            // several commands separated by ";" → queued for review
+            if (val.includes(';')) {
+                hudPodStagedCommands.push(...val.split(';').map(x => x.trim()).filter(Boolean));
+                input.value = '';
+                renderHudPodStaging();
+                renderHudResults();
+                return;
+            }
+            if (hudItems[hudSel]) { activateHudItem(hudItems[hudSel]); return; }
+            if (typeof isValidDslCommand === 'function' && isValidDslCommand(val)) {
+                executeTerminalCommand(val);
+                input.value = '';
+                renderHudResults();
+                renderHudPod();
+            }
+        }
+    });
+    if (box) {
+        box.addEventListener('mousedown', (e) => {
+            const row = e.target.closest('[data-hud-res]');
+            if (!row) return;
+            e.preventDefault();
+            hudSel = parseInt(row.dataset.hudRes, 10);
+            activateHudItem(hudItems[hudSel]);
         });
-
-        const ordered = [...uncompleted, ...completed];
-        if (ordered.length === 0) {
-            listEl.innerHTML = `<div class="empty-state u-tc">[ NONE ]</div>`;
-        } else {
-            ordered.forEach(({ t, curLog, inst }) => {
-                const isAllDone = curLog.every(Boolean);
-                const mins = typeof getTaskDurationMinutes === 'function' ? getTaskDurationMinutes(t, todayStr) : 0;
-
-                const row = document.createElement('div');
-                row.className = 'hud-pod-task-row';
-                row.style.borderLeftColor = t.color || '#ffffff';
-                if (isAllDone) row.style.opacity = '0.4';
-
-                const left = document.createElement('div');
-                left.style.cssText = 'flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;';
-                left.innerHTML = `
-                    <strong style="color:var(--text-main); ${isAllDone ? 'text-decoration:line-through; ':''}">${escapeHtml(t.title)}</strong>
-                    <span class="u-fs-2xs u-dim u-ml-1">${escapeHtml(t.category)}</span>
-                `;
-
-                const right = document.createElement('div');
-                right.style.cssText = 'display:flex; align-items:center; gap:var(--space-1); flex-shrink:0;';
-
-                if (!isAllDone && mins > 0) {
-                    const playBtn = document.createElement('button');
-                    playBtn.type = 'button';
-                    playBtn.className = 'icon-btn';
-                    playBtn.style.cssText = 'font-size:var(--font-2xs); padding:1px var(--space-1); color:var(--text-main);';
-                    playBtn.textContent = '▶';
-                    playBtn.onclick = () => {
-                        if (typeof quickStartTaskFocus === 'function') {
-                            const prevDate = selectedDateStr;
-                            selectedDateStr = todayStr;
-                            quickStartTaskFocus(t.id);
-                            selectedDateStr = prevDate;
-                            renderHudPod();
-                        }
-                    };
-                    right.appendChild(playBtn);
-                }
-
-                for (let i = 0; i < inst; i++) {
-                    const cb = document.createElement('div');
-                    cb.className = `check-box ${curLog[i] ? 'checked' : ''}`;
-                    cb.style.cssText = 'width:13px; height:13px;';
-                    cb.onclick = () => {
-                        const prevDate = selectedDateStr;
-                        selectedDateStr = todayStr;
-                        toggleTask(t.id, i);
-                        selectedDateStr = prevDate;
-                        renderHudPod();
-                    };
-                    right.appendChild(cb);
-                }
-
-                row.appendChild(left);
-                row.appendChild(right);
-                listEl.appendChild(row);
-            });
-        }
+        box.addEventListener('mousemove', (e) => {
+            const row = e.target.closest('[data-hud-res]');
+            if (row && parseInt(row.dataset.hudRes, 10) !== hudSel) { hudSel = parseInt(row.dataset.hudRes, 10); paintHudSelection(); }
+        });
     }
+    // Cards: opening a section or editing a study window happens in the whole app
+    if (body) {
+        body.addEventListener('click', (e) => {
+            if (e.target.closest('[data-nav], [data-study-edit], [data-study-new]')) toggleHudMode(false);
+        }, true);
+    }
+    // In the HUD, Ctrl+K and / go to its own search box
+    window.addEventListener('keydown', (e) => {
+        if (!isHudMode || isHudTempExpanded) return;
+        const inField = ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement ? document.activeElement.tagName : '');
+        if ((e.key === 'k' && (e.ctrlKey || e.metaKey)) || (e.key === '/' && !inField)) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            input.focus();
+        }
+    }, true);
 }
 
 function renderHudPodStaging() {
@@ -2021,7 +2056,7 @@ function updateGlobalClock() {
     const podClockEl = document.getElementById('hud-pod-clock');
     if (podClockEl) podClockEl.innerText = fullClockText;
 
-    if (isHudMode) renderHudPod();
+    if (isHudMode) renderHudPod({ tick: true });
 }
 
 setInterval(updateGlobalClock, 1000);
@@ -2030,49 +2065,7 @@ window.addEventListener('DOMContentLoaded', () => {
     updateGlobalClock();
     initDashboard();
 
-    const podInput = document.getElementById('hud-pod-input');
-    if (podInput) {
-        podInput.addEventListener('keydown', async (e) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                hudPodStagedCommands = [];
-                renderHudPodStaging();
-                podInput.value = '';
-                podInput.blur();
-                return;
-            }
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                const val = podInput.value.trim();
-                if (!val) {
-                    if (hudPodStagedCommands.length > 0) confirmHudPodStaging();
-                    return;
-                }
-                if (typeof isValidDslCommand === 'function' && isValidDslCommand(val)) {
-                    executeTerminalCommand(val);
-                    podInput.value = '';
-                    renderHudPod();
-                } else if (typeof translateNaturalLanguageToDslWithGemini === 'function') {
-                    podInput.disabled = true;
-                    const oldPh = podInput.placeholder;
-                    podInput.value = '';
-                    podInput.placeholder = '◈ AI translating...';
-                    try {
-                        const cmds = await translateNaturalLanguageToDslWithGemini(val);
-                        if (Array.isArray(cmds) && cmds.length > 0) {
-                            hudPodStagedCommands.push(...cmds);
-                            renderHudPodStaging();
-                        }
-                    } catch (err) {
-                        if (typeof showToast === 'function') showToast(`[AI ERROR] ${err.message}`);
-                    }
-                    podInput.disabled = false;
-                    podInput.placeholder = oldPh;
-                    podInput.focus();
-                }
-            }
-        });
-    }
+    wireHudPod();
 });
 
 async function applyTauriWindowGeometry(width, height, alwaysOnTop = null, physicalPos = null) {
@@ -2163,7 +2156,8 @@ async function toggleHudMode(forceState = null) {
         document.body.classList.remove('hud-temp-expanded');
         renderHudPod();
 
-        await applyTauriWindowGeometry(HUD_POD_WIDTH, HUD_POD_HEIGHT, true, savedHudPodPhysicalPos);
+        const sz = hudPodSize();
+        await applyTauriWindowGeometry(sz.width, sz.height, true, savedHudPodPhysicalPos);
     } else if (!nextState && isHudMode) {
         if (appWin && typeof appWin.outerPosition === 'function') {
             try {
@@ -2197,7 +2191,8 @@ async function setHudTemporaryExpansion(shouldExpand) {
     } else if (!shouldExpand && isHudTempExpanded) {
         isHudTempExpanded = false;
         document.body.classList.remove('hud-temp-expanded');
-        await applyTauriWindowGeometry(HUD_POD_WIDTH, HUD_POD_HEIGHT, true, savedHudPodPhysicalPos);
+        const sz = hudPodSize();
+        await applyTauriWindowGeometry(sz.width, sz.height, true, savedHudPodPhysicalPos);
     }
 }
 

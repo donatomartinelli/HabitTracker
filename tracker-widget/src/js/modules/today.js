@@ -18,6 +18,7 @@
     const fmtMins = (m) => `${pad(Math.floor(m / 60))}:${pad(m % 60)}`;
     const nowMinutes = () => { const n = (typeof getNow === 'function' ? getNow() : new Date()); return n.getHours() * 60 + n.getMinutes(); };
     const fmtDur = (m) => (window.CortexStudy ? CortexStudy.fmtDur(m) : `${Math.round(m)}m`);
+    const M = window.CortexMotion || null;
 
     // ------------------------------------------------------------------
     // Data
@@ -76,7 +77,7 @@
             const list = secs.map(sec => `
                 ${sameAsTitle || !sec.title ? '' : `<li class="today-routine-sec">${esc(sec.title)}</li>`}
                 ${sec.items.map(it => `
-                    <li><button type="button" class="today-routine-step ${rLog[it.id] ? 'is-done' : ''}" data-rt="${esc(r.id)}" data-rt-step="${esc(it.id)}" aria-pressed="${Boolean(rLog[it.id])}">
+                    <li><button type="button" class="today-routine-step ${rLog[it.id] ? 'is-done' : ''} ${M && M.isJust('step', it.id) ? 'is-just' : ''}" data-rt="${esc(r.id)}" data-rt-step="${esc(it.id)}" aria-pressed="${Boolean(rLog[it.id])}">
                         <span class="check-box ${rLog[it.id] ? 'checked' : ''}" aria-hidden="true"></span><span>${esc(it.title)}</span>
                     </button></li>`).join('')}`).join('');
             return `
@@ -170,7 +171,7 @@
                 ? `<div class="today-now-queue dim">${currentPlaylistIndex + 1} of ${focusPlaylist.length}${nextPhase ? ` · next: ${nextPhase.type === 'break' ? `break ${nextPhase.duration}m` : esc(nextPhase.title)}` : ''}</div>`
                 : '';
             return `
-                <div class="today-now is-live ${phase.type === 'break' ? 'is-break' : ''}">
+                <div class="today-now is-live ${phase.type === 'break' ? 'is-break' : ''} ${isPomodoroPaused ? 'is-paused' : ''}">
                     <div class="today-now-row">
                         <span class="today-now-label">${isPomodoroPaused ? 'PAUSED' : (phase.type === 'break' ? 'BREAK' : 'FOCUS')}${fromTxt}</span>
                         <span class="today-now-time">${pad(Math.floor(secs / 60))}:${pad(secs % 60)}</span>
@@ -228,9 +229,9 @@
             let meta = '';
             let bar = '';
             if (prog) {
-                meta = `<b ${prog.live ? 'data-live-done' : ''}>${fmtDur(Math.floor(prog.done))}</b> / ${fmtDur(prog.target)}`;
+                meta = `<b ${prog.live ? 'data-live-done' : `data-count="task-${esc(t.id)}" data-count-to="${Math.floor(prog.done)}" data-count-fmt="dur"`}>${fmtDur(Math.floor(prog.done))}</b> / ${fmtDur(prog.target)}`;
                 const pct = prog.target > 0 ? Math.min(100, (prog.done / prog.target) * 100) : (done ? 100 : 0);
-                bar = `<div class="today-task-bar ${prog.live ? 'is-live' : ''}" ${prog.live ? `data-live-bar data-base="${prog.base}" data-target="${prog.target}"` : ''}><div style="width:${pct.toFixed(1)}%"></div></div>`;
+                bar = `<div class="today-task-bar ${prog.live ? 'is-live' : ''}" data-glide="task-${esc(t.id)}" ${prog.live ? `data-live-bar data-base="${prog.base}" data-target="${prog.target}"` : ''}><div style="width:${pct.toFixed(1)}%"></div></div>`;
             } else {
                 const bits = [];
                 if (start) bits.push(start);
@@ -241,10 +242,10 @@
             }
             const canFocus = !done && mins > 0;
             return `
-                <div class="today-task ${done ? 'is-done' : ''} ${prog ? 'has-bar' : ''}" style="--task-color:${esc(t.color || '#ffffff')}">
+                <div class="today-task ${done ? 'is-done' : ''} ${prog ? 'has-bar' : ''} ${M && M.isJust('task', t.id) ? 'is-just' : ''}" style="--task-color:${esc(t.color || '#ffffff')};${M ? `view-transition-name:${M.vtName('task', t.id)}` : ''}">
                     ${box}
                     <div class="today-task-body">
-                        <div class="today-task-title">${esc(t.title)}</div>
+                        <div class="today-task-title"><span>${esc(t.title)}</span></div>
                         ${bar}
                     </div>
                     <div class="today-task-meta">${meta}</div>
@@ -390,10 +391,13 @@
     }
 
     function renderTodayModule() {
+        // the HUD shows the same cards: keep it in step
+        if (typeof isHudMode !== 'undefined' && isHudMode && typeof window.renderHudPod === 'function') window.renderHudPod({ force: true });
         const root = document.getElementById('module-today');
         if (!root) return;
         // Drawing a study window: day view + panel instead of the cards (js/modules/study-draft.js)
         if (window.CortexStudyDraft && CortexStudyDraft.isActive('today')) { CortexStudyDraft.renderToday(root); return; }
+        const motionSnap = M ? M.snapshot(root) : null;
 
         // Today always shows today, whatever date other modules are browsing
         const items = getTodayTasks();
@@ -456,11 +460,6 @@
         root.querySelectorAll('.today-routine').forEach(d => {
             if (openRoutines.has(d.querySelector('summary span')?.textContent)) d.open = true;
         });
-        root.querySelectorAll('[data-rt-step]').forEach(b => b.addEventListener('click', () => {
-            if (typeof toggleRoutineStepCheckbox === 'function') toggleRoutineStepCheckbox(b.dataset.rt, b.dataset.rtStep, todayStr);
-            renderTodayModule();
-        }));
-
         const input = root.querySelector('#today-add-input');
         if (input) {
             input.value = draft;
@@ -476,10 +475,24 @@
             });
         }
 
+        bindCards(root);
+        if (M) M.replay(root, motionSnap);
+    }
+
+    // What the cards do (Today and the HUD draw the same cards, so they share this)
+    function bindCards(root) {
+        root.querySelectorAll('[data-rt-step]').forEach(b => b.addEventListener('click', () => {
+            if (M) M.mark('step', b.dataset.rtStep);
+            if (typeof toggleRoutineStepCheckbox === 'function') toggleRoutineStepCheckbox(b.dataset.rt, b.dataset.rtStep, todayStr);
+            renderTodayModule();
+        }));
+
         root.querySelectorAll('[data-today-check]').forEach(el => {
             el.addEventListener('click', () => {
-                toggleFromToday(el.dataset.todayCheck);
-                renderTodayModule();
+                const id = el.dataset.todayCheck;
+                if (M) M.mark('task', id);
+                const run = () => { toggleFromToday(id); renderTodayModule(); };
+                if (M) M.transition(run); else run();
             });
         });
         root.querySelectorAll('[data-today-focus]').forEach(el => {
@@ -630,6 +643,49 @@
     }
 
     window.renderTodayModule = renderTodayModule;
+
+    // ------------------------------------------------------------------
+    // The same cards for the HUD (js/core/workspace.js)
+    // ------------------------------------------------------------------
+    // The next hours, flat: what is on now, then what comes (sessions, events, meals), with the now line
+    function hudTimelineHtml(limit = 7) {
+        const cur = nowMinutes();
+        const blocks = getTimelineBlocks().filter(b => b.end > cur).slice(0, limit);
+        const head = `<div class="today-section-head"><span>TIMELINE</span><span class="dim">${blocks.length ? `until ${fmtMins(blocks[blocks.length - 1].end)}` : ''}</span></div>`;
+        if (!blocks.length) return `${head}<div class="today-empty">Nothing else timed today.</div>`;
+        let nowDrawn = false;
+        const rows = blocks.map(b => {
+            const live = b.start <= cur;
+            let line = '';
+            if (!nowDrawn && !live) { nowDrawn = true; line = `<div class="today-tl-now"><span>${fmtMins(cur)}</span></div>`; }
+            const what = b.kind === 'study' ? `${b.end - b.start}m` : (b.kind === 'meal' ? (b.status === 'eaten' ? '✓' : '') : '');
+            return `${line}
+                <div class="today-tl-row ${live ? 'is-current' : ''} ${b.kind === 'meal' ? 'is-meal' : ''}">
+                    <span class="today-tl-time">${fmtMins(b.start)}</span>
+                    <span class="today-tl-block" style="--block-color:${esc(b.kind === 'meal' ? '#8a8a8a' : (b.color || '#555555'))}">
+                        <span class="today-tl-title">${esc(b.title)}${what ? ` <span class="dim">${esc(what)}</span>` : ''}</span>
+                        <span class="today-tl-end">${fmtMins(b.end)}</span>
+                    </span>
+                </div>`;
+        }).join('');
+        return `${head}<div class="today-timeline hud-timeline">${rows}${nowDrawn ? '' : `<div class="today-tl-now"><span>${fmtMins(cur)}</span></div>`}</div>`;
+    }
+
+    function hudCardHtml(key) {
+        if (key === 'now') return renderNowCard();
+        if (key === 'timeline') return hudTimelineHtml();
+        if (key === 'study') return window.CortexStudy ? CortexStudy.renderTodayCard(todayStr) : '';
+        if (key === 'meals') return window.CortexMeals ? CortexMeals.renderTodayCard(todayStr) : '';
+        if (key === 'routines') return renderRoutines();
+        if (key === 'tasks') {
+            const items = getTodayTasks();
+            return `<div class="today-section-head"><span>TODAY</span><span class="dim">${items.filter(i => i.done).length} / ${items.length}</span></div>
+                <div class="today-tasks">${renderTaskRows(items)}</div>`;
+        }
+        return '';
+    }
+
+    window.CortexToday = { cardHtml: hudCardHtml, bindCards, liveTick: (el) => liveTick(el) };
 
     // Register as a module of the tiling engine (usable as a tile too)
     if (typeof dashboardModules !== 'undefined') {

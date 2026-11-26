@@ -29,6 +29,7 @@
         'js/core/audio.js',
         'js/core/state.js',
         'js/core/prefs.js',
+        'js/core/motion.js',
         'js/core/sync-merge.js',
         'js/core/cloud-sync.js',
         'js/core/cloud-account.js',

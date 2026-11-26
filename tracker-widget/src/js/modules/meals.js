@@ -824,14 +824,13 @@
     // Today card
     // ------------------------------------------------------------------
     // Every meal of the day, one line each: what the plan says, and two buttons, eaten or not.
-    // "All eaten" logs every meal still open as planned (logging the day in one go).
+    // Each meal is logged on its own; the calories eaten add up from there.
     // The meal name opens the sheet: real grams, extra food, foods you left out.
     function renderTodayCard(date) {
         if (typeof isModuleEnabled === 'function' && !isModuleEnabled('diet')) return '';
         const blocks = getMealBlocks(date);
         if (!blocks.length) return '';
         const tot = dayTotals(date);
-        const open = blocks.filter(b => !b.status);
         const rows = blocks.map(b => {
             const what = b.summary || 'Nothing planned';
             let side;
@@ -844,42 +843,23 @@
                         <button type="button" class="ghost-btn today-meal-undo" data-meal-clear="${esc(b.id)}" title="Not logged yet" aria-label="Undo ${esc(b.title)}">↺</button>`;
             }
             return `
-                <div class="today-meal-row ${b.status ? 'is-' + esc(b.status) : ''}">
+                <div class="today-meal-row ${b.status ? 'is-' + esc(b.status) : ''} ${window.CortexMotion && CortexMotion.isJust('meal', b.id) ? 'is-just' : ''}">
                     <button type="button" class="today-meal-name" data-meal-open="${esc(b.id)}" title="Grams, extra food, what you left out">${esc(b.title)}</button>
                     <span class="today-meal-what" title="${esc(what)}">${esc(what)}</span>
                     <span class="today-meal-side">${side}</span>
                 </div>`;
         }).join('');
         return `
-            <div class="today-section-head">
-                <span>MEALS</span>
-                <span class="today-meal-head-right">
-                    <span class="dim">${num(tot.eaten.kcal)} / ${num(tot.planned.kcal)} kcal</span>
-                    ${open.length > 1 ? `<button type="button" class="ghost-btn" data-meal-all title="Log every meal still open as eaten, as planned">✓ All eaten</button>` : ''}
-                </span>
-            </div>
+            <div class="today-section-head"><span>MEALS</span><span class="dim"><span data-count="meals-kcal" data-count-to="${r0(tot.eaten.kcal)}" data-count-fmt="num">${num(tot.eaten.kcal)}</span> / ${num(tot.planned.kcal)} kcal</span></div>
             <div class="today-meals">${rows}</div>`;
     }
     function bindTodayCard(root, date) {
         root.querySelectorAll('[data-meal-open]').forEach(b => b.addEventListener('click', () => openMealSheet(date, b.dataset.mealOpen)));
-        root.querySelectorAll('[data-meal-eaten]').forEach(b => b.addEventListener('click', () => markEatenAsPlanned(date, b.dataset.mealEaten)));
-        root.querySelectorAll('[data-meal-skip]').forEach(b => b.addEventListener('click', () => skipMeal(date, b.dataset.mealSkip)));
+        const just = (id) => { if (window.CortexMotion) CortexMotion.mark('meal', id); };
+        root.querySelectorAll('[data-meal-eaten]').forEach(b => b.addEventListener('click', () => { just(b.dataset.mealEaten); markEatenAsPlanned(date, b.dataset.mealEaten); }));
+        root.querySelectorAll('[data-meal-skip]').forEach(b => b.addEventListener('click', () => { just(b.dataset.mealSkip); skipMeal(date, b.dataset.mealSkip); }));
         root.querySelectorAll('[data-meal-clear]').forEach(b => b.addEventListener('click', () => clearMeal(date, b.dataset.mealClear)));
-        root.querySelector('[data-meal-all]')?.addEventListener('click', () => logAllAsPlanned(date));
         bindFoodChips(root, date);
-    }
-    // Every meal not logged yet: eaten as planned
-    function logAllAsPlanned(date) {
-        const open = getMealBlocks(date).filter(b => !b.status);
-        if (!open.length) return;
-        const d = dayLog(date, true);
-        open.forEach(b => {
-            const items = plannedFor(b.id, date).filter(i => i.name && i.g).map(i => ({ name: i.name, g: r0(i.g) }));
-            d.meals[b.id] = { status: 'eaten', items, skipped: [] };
-        });
-        persist();
-        rerender();
-        if (typeof showToast === 'function') showToast(`${open.length} meal${open.length === 1 ? '' : 's'} logged as eaten`);
     }
 
     // ------------------------------------------------------------------

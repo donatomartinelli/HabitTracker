@@ -873,7 +873,7 @@
                 const running = Boolean(run && run.blockId === b.id);
                 const fill = b.done ? 100 : running ? run.pct * 100 : 0;
                 const missed = !b.done && !running && date === todayStr && toMin(b.end) <= nowMin;
-                return `<span class="study-strip-seg ${b.done ? 'is-done' : ''} ${running ? 'is-running' : ''} ${missed ? 'is-missed' : ''}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%;--c:${esc(b.color || '#fff')}" title="${esc(b.start)}–${esc(b.end)} ${esc(b.title)}${b.phase ? ' · ' + esc(phaseLabel(b.phase)) : ''}${b.done ? ' · done' : ''}"><i ${running ? 'data-run-fill' : ''} style="width:${fill.toFixed(1)}%"></i></span>`;
+                return `<span data-glide="seg-${esc(b.id)}" class="study-strip-seg ${b.done ? 'is-done' : ''} ${running ? 'is-running' : ''} ${missed ? 'is-missed' : ''}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%;--c:${esc(b.color || '#fff')}" title="${esc(b.start)}–${esc(b.end)} ${esc(b.title)}${b.phase ? ' · ' + esc(phaseLabel(b.phase)) : ''}${b.done ? ' · done' : ''}"><i ${running ? 'data-run-fill' : ''} style="width:${fill.toFixed(1)}%"></i></span>`;
             }).join('');
             const nowMark = live && !runningHere ? `<span class="study-strip-now" style="left:${Math.max(0, Math.min(100, ((nowMin - s) / total) * 100)).toFixed(2)}%"></span>` : '';
             const doneMin = ses.filter(b => b.done).reduce((a, b) => a + blockLen(b), 0) + (runningHere ? run.elapsedMin : 0);

@@ -68,6 +68,7 @@
             split: existing && existing.split ? Object.assign({}, existing.split) : {},
             len: existing ? S.lengthOf(existing) : S.defaultLength(),
             touched: Boolean(existing),
+            opening: true,
             note: '',
             collapsed: false,
             scrolled: false
@@ -238,6 +239,11 @@
             document.body.classList.remove('sd-docked', 'sd-docked-min');
         }
         if (!el.dataset.bound) bindPanel(el);
+        // slides in when the draft starts, not on every redraw
+        if (D.opening) {
+            el.classList.add('is-opening');
+            setTimeout(() => { if (D) D.opening = false; el.classList.remove('is-opening'); }, 300);
+        }
         return el;
     }
 
@@ -306,11 +312,21 @@
         }
         const s = toMin(D.start), e = toMin(D.end);
         const plan = planFor();
+        // sessions that were not there a moment ago grow into place, one after another
+        // (not while you drag the window: then everything just follows the mouse)
+        const dragging = ov.classList.contains('is-dragging');
+        // a session is new when its task has more sessions than before (a task just ticked, more time):
+        // sessions that only got longer or shorter stay still
+        const before = D.sesCount || {};
+        const seen = {};
+        let nth = 0;
         const items = [
             ...plan.sessions.map(x => {
                 const t = tpl(x.tid);
                 const top = y(x.s) - y(s), h = y(x.e) - y(x.s);
-                return `<div class="sd-ses" style="top:${top}px;height:${Math.max(3, h)}px;--k:${esc(St().kindColor(x.load))}">${h >= 13 ? `<span>${fmt(x.s)}–${fmt(x.e)} ${esc(t ? t.title : '')}</span>` : ''}</div>`;
+                seen[x.tid] = (seen[x.tid] || 0) + 1;
+                const fresh = !dragging && seen[x.tid] > (before[x.tid] || 0);
+                return `<div class="sd-ses ${fresh ? 'is-new' : ''}" style="top:${top}px;height:${Math.max(3, h)}px;--k:${esc(St().kindColor(x.load))};${fresh ? `animation-delay:${(nth++) * 70}ms` : ''}">${h >= 13 ? `<span>${fmt(x.s)}–${fmt(x.e)} ${esc(t ? t.title : '')}</span>` : ''}</div>`;
             }),
             ...plan.breaks.map(b => {
                 const top = y(b.s) - y(s), h = y(b.e) - y(b.s);
@@ -324,6 +340,7 @@
                 <div class="sd-band-body">${items}</div>
                 <div class="sd-handle bottom" data-sd-h="bottom" title="Drag to change the end"></div>
             </div>`;
+        D.sesCount = plan.sessions.reduce((m, x) => { m[x.tid] = (m[x.tid] || 0) + 1; return m; }, {});
     }
 
     function bindOverlay(ov) {

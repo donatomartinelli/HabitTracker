@@ -3,7 +3,7 @@
 //
 // Left: sections (on the phone: a list, then the section with a back button).
 // Each row = name + one line of explanation on the left, the control on the right.
-// Sections: General · Appearance · Today · Focus & study · Modules · Account & sync · Data · Commands · Labs · About
+// Sections: General · Appearance · Today · Focus & study · HUD · Modules · Account & sync · Data · Commands · Labs · About
 //
 // Older code still calls openSettingsModal('tab-ai' | 'tab-system' | 'tab-workspace'): those names map to sections here.
 // Some controls keep the element ids that other files update (cloud sync, Gemini keys, bridge, aliases).
@@ -17,6 +17,7 @@
         { key: 'appearance', label: 'Appearance' },
         { key: 'today',      label: 'Today' },
         { key: 'study',      label: 'Focus & study' },
+        { key: 'hud',        label: 'HUD' },
         { key: 'modules',    label: 'Modules' },
         { key: 'account',    label: 'Account & sync' },
         { key: 'data',       label: 'Data' },
@@ -182,6 +183,35 @@
         `;
     }
 
+    function sectionHud() {
+        const cards = getPref('hudCards');
+        const defs = (typeof HUD_CARD_DEFS !== 'undefined' ? HUD_CARD_DEFS : []);
+        const compact = getPref('hudCompact') === true;
+        const list = cards.map((c, i) => {
+            const d = defs.find(x => x.key === c.key) || { label: c.key, desc: '' };
+            return `
+                <div class="cx-order-row ${c.on && !compact ? '' : 'is-off'}" data-hud-card="${esc(c.key)}">
+                    ${toggle(`cx-hud-${c.key}`, c.on, `data-hud-on="${esc(c.key)}"`)}
+                    <div class="cx-row-text">
+                        <div class="cx-row-name">${esc(d.label)}</div>
+                        <div class="cx-row-desc">${esc(d.desc)}</div>
+                    </div>
+                    <div class="cx-order-move">
+                        <button type="button" data-hud-move="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(d.label)} up">↑</button>
+                        <button type="button" data-hud-move="1" ${i === cards.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(d.label)} down">↓</button>
+                    </div>
+                </div>`;
+        }).join('');
+        return `
+            ${group('HUD', `
+                ${row('What it is', 'A small window that stays on top of the others (press H in the desktop app). On top: search and commands, like the command bar. Below: the cards you choose here.', '')}
+                ${row('Compact', 'Only the timer (or what comes next) and the search box: the smallest window.', toggle('cx-hud-compact', compact))}
+            `)}
+            ${group('Cards in the HUD', `<div class="cx-order">${list}</div>`, compact ? 'Compact is on: only the timer shows. Switch it off to use these cards.' : 'The same cards as Today, in this order.')}
+            <div class="cx-actions">${button('Reset to default', 'data-act="reset-hud"', 'is-quiet')}</div>
+        `;
+    }
+
     function sectionModules() {
         if (typeof OPTIONAL_MODULES === 'undefined') return '';
         const bySection = {};
@@ -264,7 +294,7 @@
     }
 
     const RENDER = {
-        general: sectionGeneral, appearance: sectionAppearance, today: sectionToday, study: sectionStudy,
+        general: sectionGeneral, appearance: sectionAppearance, today: sectionToday, study: sectionStudy, hud: sectionHud,
         modules: sectionModules, account: sectionAccount, data: sectionData, commands: sectionCommands,
         labs: sectionLabs, about: sectionAbout
     };
@@ -287,6 +317,8 @@
             page.setAttribute('aria-label', 'Settings');
             (document.getElementById('modals-root') || document.body).appendChild(page);
             bindPage(page);
+            page.classList.add('cx-opening');
+            setTimeout(() => page.classList.remove('cx-opening'), 300);
         }
         render();
         page.querySelector('.cx-nav-item.active, .cx-close')?.focus();
@@ -303,6 +335,12 @@
         const nav = SECTIONS.map(s => `<button type="button" class="cx-nav-item ${s.key === current ? 'active' : ''}" data-sec="${s.key}" ${s.key === current ? 'aria-current="page"' : ''}>${esc(s.label)}${s.lab && !labsOn ? '<span class="cx-nav-hint">off</span>' : ''}<span class="cx-nav-chev" aria-hidden="true">›</span></button>`).join('');
         const scroller = page.querySelector('.cx-main');
         const keepScroll = scroller && page.dataset.current === current ? scroller.scrollTop : 0;
+        // another section: its content fades in (a toggle in the same section redraws still)
+        if (page.dataset.current && page.dataset.current !== current) {
+            page.classList.add('cx-switching');
+            clearTimeout(page._switchT);
+            page._switchT = setTimeout(() => page.classList.remove('cx-switching'), 220);
+        }
         page.dataset.current = current;
         page.classList.toggle('is-detail', phoneDetail);
         const title = (SECTIONS.find(s => s.key === current) || {}).label || 'Settings';
@@ -375,6 +413,14 @@
                 if (j >= 0 && j < cards.length) { [cards[i], cards[j]] = [cards[j], cards[i]]; setPref('todayCards', cards); render(); }
                 return;
             }
+            const hm = t.closest('[data-hud-move]');
+            if (hm) {
+                const key = hm.closest('[data-hud-card]').dataset.hudCard;
+                const cards = getPref('hudCards').map(c => Object.assign({}, c));
+                const i = cards.findIndex(c => c.key === key), j = i + parseInt(hm.dataset.hudMove, 10);
+                if (j >= 0 && j < cards.length) { [cards[i], cards[j]] = [cards[j], cards[i]]; setPref('hudCards', cards); render(); }
+                return;
+            }
             const vo = t.closest('[data-view-open]');
             if (vo) { close(); if (typeof applyWorkspacePreset === 'function') applyWorkspacePreset(vo.dataset.viewOpen); return; }
             const vd = t.closest('[data-view-del]');
@@ -391,6 +437,7 @@
             }
             else if (a === 'shortcuts') { close(); if (typeof openShortcutsHelp === 'function') openShortcutsHelp(); }
             else if (a === 'reset-cards') { setPref('todayCards', TODAY_CARD_DEFS.map(c => ({ key: c.key, on: true }))); render(); }
+            else if (a === 'reset-hud') { setPref('hudCards', HUD_CARD_DEFS.map(c => ({ key: c.key, on: c.def }))); setPref('hudCompact', false); render(); }
             else if (a === 'forget-study') { if (window.CortexStudy) CortexStudy.forgetLearned(); render(); }
             else if (a === 'places') { close(); if (typeof openTasksSettingsModal === 'function') openTasksSettingsModal('tcfg-ghosts'); }
             else if (a === 'tasks') { close(); if (typeof openTasksSettingsModal === 'function') openTasksSettingsModal(); }
@@ -407,6 +454,11 @@
             if (t.matches('[data-accent-custom]')) { setPref('accent', t.value); render(); return; }
             if (t.id === 'cx-red') { if (typeof toggleRedMode === 'function') toggleRedMode(t.checked); return; }
             if (t.id === 'cx-sound') { setPref('focusSound', t.checked); return; }
+            if (t.id === 'cx-hud-compact') { setPref('hudCompact', t.checked); render(); return; }
+            if (t.matches('[data-hud-on]')) {
+                const cards = getPref('hudCards').map(c => c.key === t.dataset.hudOn ? Object.assign({}, c, { on: t.checked }) : c);
+                setPref('hudCards', cards); render(); return;
+            }
             if (t.matches('[data-card-on]')) {
                 const cards = getPref('todayCards').map(c => c.key === t.dataset.cardOn ? Object.assign({}, c, { on: t.checked }) : c);
                 setPref('todayCards', cards); render(); return;

@@ -121,31 +121,24 @@
         </div>
     </div>
 
-    <!-- TACTICAL VERTICAL POD (Attivo in modalità HUD [H]) -->
+    <!-- HUD (H): the small always-on-top window. Cards drawn by js/core/workspace.js with Today's cards -->
     <div id="hud-tactical-pod" class="hud-tactical-pod" style="display: none;">
         <div data-tauri-drag-region class="hud-pod-topbar">
             <span data-tauri-drag-region id="hud-pod-clock" class="hud-pod-clock">00:00 // DAY 00</span>
             <div class="hud-pod-win-btns">
-                <button type="button" class="icon-btn win-ctrl-btn" onclick="openQuickNoteModal()">[+NOTE]</button>
-                <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false)">[FULL]</button>
-                <button type="button" class="icon-btn win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().minimize()">–</button>
-                <button type="button" class="icon-btn delete win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().close(); else window.close();">×</button>
+                <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false); setTimeout(() => openSettingsPage('hud'), 80)" title="Choose what the HUD shows" aria-label="HUD settings">⚙</button>
+                <button type="button" class="icon-btn win-ctrl-btn" onclick="openQuickNoteModal()" title="Quick note">[+NOTE]</button>
+                <button type="button" class="icon-btn win-ctrl-btn" onclick="toggleHudMode(false)" title="Back to the whole app (H)">[FULL]</button>
+                <button type="button" class="icon-btn win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().minimize()" aria-label="Minimize">–</button>
+                <button type="button" class="icon-btn delete win-ctrl-btn" onclick="if(window.__TAURI__?.window) window.__TAURI__.window.getCurrentWindow().close(); else window.close();" aria-label="Close">×</button>
             </div>
         </div>
-
-        <div id="hud-pod-focus-box" class="hud-pod-focus-box"></div>
-        <div id="hud-pod-radar" class="hud-pod-radar"></div>
-
-        <div class="hud-pod-section-hdr">
-            <span>ACTIVE TASKS</span>
-            <span id="hud-pod-tasks-counter">0/0</span>
+        <div class="hud-pod-search">
+            <input type="text" id="hud-pod-input" class="hud-pod-input" placeholder="Search or command…  (Ctrl K)" autocomplete="off" spellcheck="false" aria-label="Search or command">
+            <div id="hud-pod-results" class="hud-pod-results" role="listbox" hidden></div>
         </div>
-        <div id="hud-pod-tasks-list" class="hud-pod-tasks-list"></div>
-
         <div id="hud-pod-staging" class="hud-pod-staging" style="display: none;"></div>
-        <div class="hud-pod-cmd-bar">
-            <input type="text" id="hud-pod-input" class="hud-pod-input" placeholder="Command..." autocomplete="off">
-        </div>
+        <div id="hud-pod-body" class="hud-pod-body"></div>
     </div>
 
     <div id="terminalOverlay" class="ask-backdrop-overlay" onclick="if(event.target === this) closeTerminal()"></div>

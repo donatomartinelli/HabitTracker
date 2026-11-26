@@ -692,7 +692,7 @@ window.focusStateIcon = focusStateIcon;
 function isFocusTimerShownElsewhere() {
     const visible = (el) => el && el.isConnected && !el.closest('#module-registry') && el.getClientRects().length > 0;
     if (visible(document.querySelector('#module-today .today-now'))) return true;
-    if (typeof isHudMode !== 'undefined' && isHudMode && visible(document.getElementById('hud-pod-focus-box'))) return true;
+    if (typeof isHudMode !== 'undefined' && isHudMode && visible(document.querySelector('#hud-pod-body .today-now'))) return true;
     return false;
 }
 

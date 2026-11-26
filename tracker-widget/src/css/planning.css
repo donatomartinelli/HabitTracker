@@ -312,7 +312,6 @@
 .today-meal-side { display: inline-flex; gap: var(--space-1); align-items: center; justify-content: flex-end; }
 .today-meal-side .meal-status { background: transparent; border: none; font: inherit; font-size: var(--font-xs); cursor: pointer; padding: 0 var(--space-1); }
 .today-meal-undo { padding: 0 var(--space-1); }
-.today-meal-head-right { display: inline-flex; gap: var(--space-2); align-items: center; }
 @media (max-width: 520px) {
     .today-meal-row { grid-template-columns: minmax(0, 1fr) auto; }
     .today-meal-what { grid-column: 1; grid-row: 2; }

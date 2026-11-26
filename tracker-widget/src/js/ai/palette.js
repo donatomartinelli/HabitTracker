@@ -485,6 +485,9 @@
     window.hideSuggestionsAndPreview = hideSuggestionsAndPreview = hide;
     window.applySuggestionAtIndex = applySuggestionAtIndex = (idx) => { selected = idx; completeSelected(); };
     window.cortexRunCommand = runCommand;
+    // The HUD's search box shows the same results as this palette (js/core/workspace.js)
+    window.cortexPaletteBuild = build;
+    window.cortexPushHistory = pushHistory;
 
     window.addEventListener('DOMContentLoaded', wire);
 })();

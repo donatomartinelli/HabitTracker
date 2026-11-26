@@ -241,6 +241,7 @@ function navigateToSection(secKey, tabKey = null) {
     rememberTilesLayout();
     let tab = tabKey || navState.lastTab[secKey] || vis[0].key;
     if (!vis.some(t => t.key === tab)) tab = vis[0].key;
+    const changed = navState.mode !== 'section' || navState.section !== secKey || navState.lastTab[secKey] !== tab;
     navState.mode = 'section';
     navState.section = secKey;
     navState.lastTab[secKey] = tab;
@@ -252,6 +253,14 @@ function navigateToSection(secKey, tabKey = null) {
     closeMoreSheet();
     const content = document.getElementById('app-content-wrapper');
     if (content) content.scrollTop = 0;
+    // a new section comes in with a short fade (Today's cards one after another): not on every redraw
+    if (changed && content && window.CortexMotion && !CortexMotion.reduced()) {
+        content.classList.remove('cx-enter');
+        void content.offsetWidth;
+        content.classList.add('cx-enter');
+        clearTimeout(content._enterT);
+        content._enterT = setTimeout(() => content.classList.remove('cx-enter'), 700);
+    }
 }
 
 function navigateToTiles() {
